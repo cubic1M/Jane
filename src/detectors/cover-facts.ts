@@ -57,6 +57,7 @@ const belongingsCover: Detector = {
       title: stanford
         ? "Look into cover for your things: Stanford housing doesn't insure them"
         : "Look into cover for your things: a landlord's policy covers the building, not them",
+      // What's at risk (the same typical contents figure as renters_insurance), not a promise.
       headline: headlineOf("Check cover for your things", R.rentersContentsCents, "risk"),
       short: stanford
         ? "Stanford doesn't insure students' belongings in its housing; I see no renters cover."
@@ -113,9 +114,10 @@ const carCoverCost: Detector = {
     const above = yearly - average;
     const insurer = nice(paid[paid.length - 1]!.description);
     return suggestion("insurance", "car_cover_cost", {
-      title: "Get car insurance quotes yourself: you pay above the US average",
-      headline: headlineOf("Get car insurance quotes yourself", above, "saves"),
+      title: "Your car cover costs more than the US average",
+      headline: headlineOf("Compare your car cover's price", above, "saves"),
       short: `You pay about ${formatCents(yearly)} a year to ${insurer}; the US average was ${formatWholeDollars(average)}.`,
+      // The gap to the US average: what's at stake in comparing, at most 45% sure.
       worthCents: above,
       worthKind: "saves",
       confidence: weakest([
@@ -124,7 +126,7 @@ const carCoverCost: Detector = {
         { percent: 45, reason: "an average isn't a quote for your car, cover and record" },
       ]),
       urgency: "later",
-      why: `You pay ${insurer} about ${formatCents(yearly)} a year for car cover. The NAIC's average car insurance spending in the US was ${formatWholeDollars(average)} in ${AUTO_AVERAGE.year} (via the Insurance Information Institute), ${formatCents(above)} less, though your car, cover, driving record and where you live all move the price. To look into it yourself: find your declarations page for your limits and deductibles, ask two or three insurers for a quote with the same ones before your renewal date, and ask your own insurer which discounts you aren't getting.`,
+      why: `You pay ${insurer} about ${formatCents(yearly)} a year for car cover. The NAIC's average car insurance spending in the US was ${formatWholeDollars(average)} in ${AUTO_AVERAGE.year} (via the Insurance Information Institute), ${formatCents(above)} less, though your car, cover, driving record and where you live all change the price. To look into it yourself: find your declarations page for your limits and deductibles, ask two or three insurers for a quote with the same ones before your renewal date, and ask your own insurer which discounts you aren't getting.`,
       action: { label: "See your cover", href: "/insurance" },
       more: [{ label: "Average car insurance spending", href: AUTO_AVERAGE.url }],
     });
@@ -155,7 +157,7 @@ const cardRateCheck: Detector = {
     );
     const top = cards.reduce((a, b) => (b.aprBps > a.aprBps ? b : a));
     return suggestion("debt", "card_rate_check", {
-      title: "Ask your card company for a lower rate: yours is above the average",
+      title: "Your card's rate is above the Federal Reserve's average",
       headline: headlineOf("Ask for a lower card rate", extra, "saves"),
       short: `Your card charges ${formatRate(top.aprBps)} on ${formatCents(owed)}; the average was ${formatRate(FED_RATES.cardBps)}.`,
       worthCents: extra,
@@ -199,8 +201,8 @@ const cheaperTier: Detector = {
     if (latest.amountCents <= Math.round(ads * NETFLIX_PLANS.taxRoom)) return null;
     const yearly = (latest.amountCents - ads) * 12;
     return suggestion("subscriptions", "cheaper_tier", {
-      title: "Look at Netflix's plan with ads: it costs less than yours",
-      headline: headlineOf("Try Netflix's plan with ads", yearly, "saves"),
+      title: "Netflix lists a plan with ads for less than you pay",
+      headline: headlineOf("Note Netflix's plan with ads", yearly, "saves"),
       short: `You pay Netflix ${formatCents(latest.amountCents)} a month; its plan with ads is ${formatCents(ads)}.`,
       worthCents: yearly,
       worthKind: "saves",
@@ -210,7 +212,7 @@ const cheaperTier: Detector = {
         { percent: 60, reason: "whether ads and that plan's screens suit you is yours to say" },
       ]),
       urgency: "later",
-      why: `You paid Netflix ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. Netflix's own page lists Standard with ads at ${formatCents(ads)} a month in the US, about ${formatCents(yearly)} a year less than you pay now; its plans differ in ads, screens at once and picture quality. To change it: in Netflix, open Account, then Change plan, and pick the one you want; the new price starts at your next billing date.`,
+      why: `You paid Netflix ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. Netflix's own page lists Standard with ads at ${formatCents(ads)} a month in the US, about ${formatCents(yearly)} a year less than you pay now; its plans differ in ads, screens at once and picture quality. Netflix's Account page lists each plan under Change plan.`,
       action: { label: "See my subscriptions", href: "/subscriptions" },
       more: [{ label: "Netflix's plans and prices", href: NETFLIX_PLANS.url }],
       watch: {
@@ -245,8 +247,8 @@ const phonePlanCheaper: Detector = {
     if (latest.amountCents <= floor || latest.amountCents > p.oneLineMaxCents) return null;
     const yearly = (latest.amountCents - floor) * 12;
     return suggestion("cost", "phone_plan_cheaper", {
-      title: "Look at T-Mobile's cheaper plan: one line costs less than your bill",
-      headline: headlineOf("Look at T-Mobile's cheaper plan", yearly, "saves"),
+      title: "T-Mobile lists a one-line plan below your bill",
+      headline: headlineOf("Note T-Mobile's cheapest plan", yearly, "saves"),
       short: `You paid T-Mobile ${formatCents(latest.amountCents)}; its cheapest plan is ${formatCents(p.cheapestCents)} a line with AutoPay.`,
       worthCents: yearly,
       worthKind: "saves",
@@ -256,7 +258,7 @@ const phonePlanCheaper: Detector = {
         { percent: 55, reason: "I can't see your lines, a phone payment, or your plan's perks" },
       ]),
       urgency: "later",
-      why: `You paid T-Mobile ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. T-Mobile's own plans page lists T-Mix Standard at ${formatCents(p.cheapestCents)} a month for one line with AutoPay (${formatCents(p.cheapestCents + p.autopayCents)} without), plus taxes and fees; its dearer plans add perks. Even with taxes that's about ${formatCents(yearly)} a year under your bill, if it's one line with no phone being paid off on it. To look into it: in the T-Mobile app or at t-mobile.com, open your plan, compare it with T-Mix Standard, and switch there if the perks you'd lose don't matter to you.`,
+      why: `You paid T-Mobile ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. T-Mobile's own plans page lists T-Mix Standard at ${formatCents(p.cheapestCents)} a month for one line with AutoPay (${formatCents(p.cheapestCents + p.autopayCents)} without), plus taxes and fees; its dearer plans add perks. Even with taxes that's about ${formatCents(yearly)} a year under your bill, if it's one line with no phone being paid off on it. The T-Mobile app and t-mobile.com show your plan beside T-Mix Standard.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: "T-Mobile's plans", href: p.url }],
       watch: {

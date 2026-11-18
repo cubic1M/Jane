@@ -41,6 +41,9 @@ function expectClean(s: Suggestion) {
       ok: true,
     });
     expect(recommendsAChoice(text), text).toBe(false);
+    // Says what Jane sees and what the source says; never drop, cancel, switch or move
+    // (chat-tests wording rule, 11-18).
+    expect(text, text).not.toMatch(/\b(?:switch|cancel|drop|move)\b/i);
   }
   expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
   expect(HEADLINE_VERBS, s.headline).toContain(s.headline.split(" ")[0]);
@@ -129,6 +132,7 @@ describe("car cover above the US average", () => {
     expect(s.why).toContain("$1,282");
     expect(s.why).toContain(String(AUTO_AVERAGE.year));
     expect(s.why).toContain("declarations page");
+    expect(s.worthCents).toBe(170_400 - AUTO_AVERAGE.usCents);
     expect(s.confidence.percent).toBeLessThanOrEqual(45);
     expectClean(s);
   });
