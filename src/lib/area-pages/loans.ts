@@ -185,7 +185,9 @@ export function loansTree(input: LoansTreeInput): AreaTree {
   }
 
   for (const d of input.debts) {
-    const status: TreeStatus = d.overdue ? "act" : "good";
+    // What's owed not known isn't "Good" (debugger 11-17: a card charging interest read "Good, Not
+    // known"): it needs a look, as Taxes' "Tax not yet paid, Not known" does.
+    const status: TreeStatus = d.overdue ? "act" : d.balanceCents === null ? "look" : "good";
     const parts = [
       // Debugger 11-13: a pay-in-4 plan's $62.25 every two weeks read "$62 a month".
       d.paymentCents !== null
