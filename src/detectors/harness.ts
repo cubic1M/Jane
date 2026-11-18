@@ -98,7 +98,7 @@ export function shortFormProblems(s: Suggestion): string[] {
   }
   const numbers = s.headline.match(/\$[\d,.]+/g) ?? [];
   if (numbers.length > 1) problems.push(`headline has ${numbers.length} dollar figures, not one`);
-  if (s.worthCents >= 50) {
+  if (s.worthCents >= 50 && !s.factOnly) {
     const dollars = formatWholeDollars(s.worthCents);
     if (!s.headline.includes(dollars)) problems.push(`headline lacks the dollars (${dollars})`);
   }

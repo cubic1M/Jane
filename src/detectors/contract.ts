@@ -108,6 +108,9 @@ export type Suggestion = {
   // Cover or action the law or a lender requires (car liability), or no cover at all for a
   // business: ranked above its dollars alone (REQUIRED_BOOST).
   required?: boolean;
+  // A fact card on a real account (the chat tests lane's wording rule, 11-18): its worth ranks it,
+  // but its headline names no figure, since a figure there reads as what acting would bring.
+  factOnly?: boolean;
   more?: { label: string; href: string }[];
 };
 

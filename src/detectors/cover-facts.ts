@@ -61,10 +61,11 @@ const belongingsCover: Detector = {
       "What a quote turns on: what your things would cost to replace (a laptop, a phone, a bike), the limit and the deductible; quotes from two or three insurers for the same ones compare like with like, and a parent's insurer can say whether their home policy reaches a student at school.";
     return suggestion("insurance", "belongings_cover", {
       title: stanford
-        ? "Look into cover for your things: Stanford housing doesn't insure them"
-        : "Look into cover for your things: a landlord's policy covers the building, not them",
-      // What's at risk (the same typical contents figure as renters_insurance), not a promise.
-      headline: headlineOf("Check cover for your things", R.rentersContentsCents, "risk"),
+        ? "Stanford housing doesn't insure your things, and I see no renters cover"
+        : "A landlord's policy covers the building, not your things, and I see no renters cover",
+      headline: "Note your things have no renters cover",
+      // Ranked by what's at risk (renters_insurance's typical contents figure), never shown as one.
+      factOnly: true,
       short: stanford
         ? "Stanford doesn't insure students' belongings in its housing; I see no renters cover."
         : `You rent and I see no renters-cover charge in ${profile.months} months.`,
@@ -121,7 +122,8 @@ const carCoverCost: Detector = {
     const insurer = nice(paid[paid.length - 1]!.description);
     return suggestion("insurance", "car_cover_cost", {
       title: "Your car cover costs more than the US average",
-      headline: headlineOf("Compare your car cover's price", above, "saves"),
+      // The gap to an average, not a quote: said as a fact, with the figure.
+      headline: `Note car cover ${formatWholeDollars(above)} a year above US average`,
       short: `You pay about ${formatCents(yearly)} a year to ${insurer}; the US average was ${formatWholeDollars(average)}.`,
       // The gap to the US average: what's at stake in comparing, at most 45% sure.
       worthCents: above,
@@ -132,7 +134,7 @@ const carCoverCost: Detector = {
         { percent: 45, reason: "an average isn't a quote for your car, cover and record" },
       ]),
       urgency: "later",
-      why: `You pay ${insurer} about ${formatCents(yearly)} a year for car cover. The NAIC's average car insurance spending in the US was ${formatWholeDollars(average)} in ${AUTO_AVERAGE.year} (via the Insurance Information Institute), ${formatCents(above)} less, though your car, cover, driving record and where you live all change the price. To look into it yourself: find your declarations page for your limits and deductibles, ask two or three insurers for a quote with the same ones before your renewal date, and ask your own insurer which discounts you aren't getting.`,
+      why: `You pay ${insurer} about ${formatCents(yearly)} a year for car cover. The NAIC's average car insurance spending in the US was ${formatWholeDollars(average)} in ${AUTO_AVERAGE.year} (via the Insurance Information Institute), ${formatCents(above)} less, though your car, cover, driving record and where you live all change the price. To look into it yourself: find your declarations page for your limits and deductibles, ask two or three insurers for a quote with the same ones before your renewal date, and ask your own insurer whether any discounts apply that you don't have.`,
       action: { label: "See your cover", href: "/insurance" },
       more: [{ label: "Average car insurance spending", href: AUTO_AVERAGE.url }],
     });
@@ -174,7 +176,7 @@ const cardRateCheck: Detector = {
         { percent: 50, reason: "whether the card company lowers it is up to them" },
       ]),
       urgency: "later",
-      why: `Your bank reports ${formatRate(top.aprBps)} on ${formatCents(owed)} of card balance. The Federal Reserve's latest average for bank cards charging interest was ${formatRate(FED_RATES.cardBps)} (${FED_RATES.month}); at that rate the same balance would cost about ${formatCents(extra)} a year less, and the average for a 24-month personal loan at banks was ${formatRate(FED_RATES.personalLoanBps)}. To look into it yourself: call the number on your card, say you pay on time and ask whether they can lower your rate, and write down what they say.`,
+      why: `Your bank reports ${formatRate(top.aprBps)} on ${formatCents(owed)} of card balance. The Federal Reserve's latest average for bank cards charging interest was ${formatRate(FED_RATES.cardBps)} (${FED_RATES.month}); at that rate the same balance would cost about ${formatCents(extra)} a year less. To look into it yourself: call the number on your card, ask whether they can lower your rate (if you've paid on time, say so), and write down what they say.`,
       action: { label: "Cut your card interest", href: "/loans/interest" },
       more: [{ label: "The Federal Reserve's rates (G.19)", href: FED_RATES.url }],
     });
