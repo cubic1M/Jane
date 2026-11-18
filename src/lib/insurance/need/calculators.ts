@@ -230,6 +230,11 @@ export function liabilityNeedsFor(input: NeedInput): Need[] {
       const per = num(p.coverage.bodilyInjuryPerPerson);
       const acc = num(p.coverage.bodilyInjuryPerAccident);
       const gap = Math.max(tier.autoPerAccidentCents - acc, tier.autoPerPersonCents - per, 0);
+      // No limit on file isn't $0 of cover (debug 2, 11-17: a GEICO policy found in payments and
+      // confirmed read "you have $0"): the person adds it from their policy.
+      const limitUnknown =
+        typeof p.coverage.bodilyInjuryPerPerson !== "number" &&
+        typeof p.coverage.bodilyInjuryPerAccident !== "number";
       out.push({
         kind: "auto_liability",
         applies: true,
@@ -241,11 +246,13 @@ export function liabilityNeedsFor(input: NeedInput): Need[] {
           { label: "Injury liability per person", cents: tier.autoPerPersonCents, adds: true },
           { label: "Injury liability per accident", cents: tier.autoPerAccidentCents, adds: true },
         ],
-        summary:
-          gap > 0
+        summary: limitUnknown
+          ? `Injury liability of ${formatCents(tier.autoPerPersonCents)} per person and ${formatCents(tier.autoPerAccidentCents)} per accident; your policy's limits aren't on file yet.`
+          : gap > 0
             ? `Injury liability of ${formatCents(tier.autoPerPersonCents)} per person and ${formatCents(tier.autoPerAccidentCents)} per accident; yours is ${formatCents(per)} and ${formatCents(acc)}.`
             : `Your ${formatCents(per)} and ${formatCents(acc)} injury liability meets the ${formatCents(tier.autoPerPersonCents)} and ${formatCents(tier.autoPerAccidentCents)} I'd size.`,
         policyId: p.id,
+        ...(limitUnknown ? { limitUnknown } : {}),
       });
     } else if (p.kind === "home" || p.kind === "renters") {
       const need = p.kind === "home" ? tier.homeCents : tier.rentersCents;
@@ -261,10 +268,13 @@ export function liabilityNeedsFor(input: NeedInput): Need[] {
           { label: `${p.kind === "home" ? "Home" : "Renters"} liability`, cents: need, adds: true },
         ],
         summary:
-          have >= need
-            ? `Your ${formatCents(have)} of liability meets the ${formatCents(need)} I'd size.`
-            : `Liability of ${formatCents(need)}; yours is ${formatCents(have)}.`,
+          typeof p.coverage.liability !== "number"
+            ? `Liability of ${formatCents(need)}; your policy's limit isn't on file yet.`
+            : have >= need
+              ? `Your ${formatCents(have)} of liability meets the ${formatCents(need)} I'd size.`
+              : `Liability of ${formatCents(need)}; yours is ${formatCents(have)}.`,
         policyId: p.id,
+        ...(typeof p.coverage.liability !== "number" ? { limitUnknown: true } : {}),
       });
     }
   }
