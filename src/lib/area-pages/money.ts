@@ -64,6 +64,8 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   income_smoothing: { branch: "coming", label: "Smooth out uneven pay" },
   subscriptions: { branch: "subscriptions", label: "Subscriptions to review" },
   student_discounts: { branch: "subscriptions", label: "Student plans for what you pay" },
+  free_through_school: { branch: "subscriptions", label: "Free through your school" },
+  transit_pass: { branch: "charges", label: "A free transit pass" },
   budget_overrun: { branch: "budgets", label: "Spending above your usual" },
   // Only while last month waits on a charge: it closes once confirmed (debug 2, 11-17).
   month_close: { branch: "spending", label: "Last month's close" },

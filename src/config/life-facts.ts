@@ -97,6 +97,9 @@ export const STUDENT_NOT_SCHOOL =
 export const STUDENT_CAMPUS_WORDS =
   /BOOKSTORE|CAMPUS|STUDENT (?:FEE|HOUSING|UNION)|MEAL PLAN|DINING PLAN/;
 export const STUDENT_SEEN_CAMPUS_MATCHES = 3;
+// Pay from a university: its student workers' or its staff's. With no campus spending, whether
+// the person studies there is asked, not guessed (suggest-money lane, 11-18).
+export const UNIVERSITY_PAY = /\bUNIVERSITY\b|\bUNIV\b|\bCOLLEGE\b/;
 
 // --- Home and car -------------------------------------------------------------------------
 // Homeowner bills beside the mortgage: dues and property tax say "own" on their own.

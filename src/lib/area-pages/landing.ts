@@ -31,6 +31,8 @@ const INSURANCE_TOPIC_BRANCH: Readonly<Record<string, string>> = {
   health_insurance: "health",
   medigap: "health",
   card_cover: "cards",
+  device_cover_twice: "cards",
+  cardinal_care_check: "health",
   cover_change: "changes",
   insurance_negotiation: "renewals",
   insurance_shopping: "savings",

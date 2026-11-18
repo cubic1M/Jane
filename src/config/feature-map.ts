@@ -74,6 +74,7 @@ export const FAMILY_NAMES_IN_AREA: Readonly<Partial<Record<`${AreaKey}/${FamilyK
   "investments/retirement": "Social Security",
   "money/student": "Student bills",
   "loans/student": "Student credit",
+  "insurance/student": "Student health and devices",
 };
 
 // Topic ids read as words ("pmi_removal" is "PMI removal"); these stay in capitals.

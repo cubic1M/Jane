@@ -248,12 +248,22 @@ const stanfordBillDue: Detector = {
         evidence("seen", profile.months, paid.length, "Stanford bill payments"),
       ]),
       urgency: daysBetween(data.today, plan.to) <= 10 ? "now" : "soon",
-      why: `You paid Stanford ${formatCents(last)} on ${dayLabel(paid[0]!.date)}. For undergraduates, Stanford's payment plan is free and splits a quarter's bill into three monthly parts paid automatically from your bank; ${plan.quarter} sign-up runs ${dayLabel(plan.from)} to ${dayLabel(plan.to)}, and the first part is due ${dayLabel(due, { long: true })}. It's for an enrolled undergraduate with a US bank account and no balance left from an earlier term. Whatever isn't paid by a due date is charged ${formatRate(STANFORD_BILL.lateBpsPerMonth)} a month (about ${formatCents(late)} a month on a bill like your last) and can bring a hold on registering. To do it: sign in to Axess, open My Finances, then View & Pay My Bill, and choose the payment plan.`,
+      why: `You paid Stanford ${formatCents(last)} on ${dayLabel(paid[0]!.date)}. For undergraduates, Stanford's payment plan is free and splits a quarter's bill into three monthly parts paid automatically from your bank; ${plan.quarter} sign-up runs ${dayLabel(plan.from)} to ${dayLabel(plan.to)}, and the first part is due ${dayLabel(due, { long: true })}. It's for an enrolled undergraduate with a US bank account and no balance left from an earlier term. Whatever isn't paid by a due date is charged ${formatRate(STANFORD_BILL.lateBpsPerMonth)} a month (about ${formatCents(late)} a month on a bill like your last) and can bring a hold on registering. To do it: sign in to Axess, open My Finances, then View & Pay My Bill, and choose the payment plan.${paidByStanford(data) ? " Graduate students can't use this plan; one on an assistantship can pay the bill from their pay over several months on Stanford's Payroll Deduction Plan instead." : ""}`,
       action: { label: "See Stanford's payment plans", href: STANFORD_PAYMENT_PLAN.url },
       more: [{ label: "Stanford's billing dates", href: STANFORD_BILL.url }],
     });
   },
 };
+
+// Pay from Stanford University: a student worker or an assistant, who may be a graduate student.
+const paidByStanford = (data: Data) =>
+  data.transactions.some(
+    (t) =>
+      t.amountCents < 0 &&
+      (t.pfc ?? "").startsWith("INCOME") &&
+      STANFORD_WORDS.test(lineOf(t)) &&
+      !NOT_STANFORD_UNIVERSITY.test(lineOf(t)),
+  );
 
 // Card interest while cash sits: the cash beyond a month's spending would clear the card, and the
 // card costs far more than cash earns. The card_interest card steps aside when this one applies
