@@ -166,6 +166,9 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "short_term_cash",
     "social_security_timing",
     "umbrella",
+    // suggest-taxes 11-18: two earners (Meridian Logistics, County Library), each withheld at the
+    // joint table, fall short of the year's tax on both unless a W-4 already allows for it.
+    "withholding_two_jobs",
   ],
   retiree: [
     "bill_negotiation",

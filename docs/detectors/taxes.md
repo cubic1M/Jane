@@ -395,3 +395,23 @@ it, the form line), not in `ADVICE_TOPICS`, and returns null when it's worth not
   months.
 - **The Saver's Credit and Match** are no longer offered to someone who said they're in school at least
   half time.
+
+### Withholding that's off, and the extension (`src/detectors/student-withholding.ts`)
+
+From the paychecks and Pub. 15-T's tables: a paycheck is withheld as if that pay came every period of
+the year (`withheldPerCheck`: the year's tax on the annualized pay less the standard amount, over the
+paychecks). Take-home pay is grossed up by `DETECTOR_RATES.tax.netToGross`, as the other tax cards do;
+enrolled Stanford student workers pay no Social Security or Medicare, so for them it reads pay high.
+
+- **`withholding_part_year`:** pay that starts inside the data (more than 1.15 pay intervals with no
+  pay first) is withheld for a whole year it won't run: the year's withholding less the year's tax,
+  if it's the only pay. The steps are the person's own: Pub. 15-T's part-year method, asked of the
+  employer in writing (someone working no more than 245 days in the year), and, with no 2025 tax
+  and none expected, Form W-4's exempt box (renewed by February 16, 2027). Not alongside a
+  fellowship (that year's tax is another sum), nor on a joint return.
+- **`withholding_two_jobs`:** two payroll payers (two jobs, or two earners on a joint return), each
+  withholding as if it were the only one: the year's tax less what both withhold. W-4 Step 2.
+- **`filing_extension`:** March 1 to April 15, for someone with last year's income nothing was
+  withheld from (gig or contract pay, or school money that isn't pay): Form 4868 and California's
+  automatic extension move filing to October 15, never the payment. Worth the federal income and
+  self-employment tax on those deposits.
