@@ -93,8 +93,13 @@ const KINDS = SERVICE_GROUPS.slice(0, CHECKUP_EXAMPLES)
   .join(", ");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+// Whether a check has enough goes by the days to today; what it says is the days the statements
+// cover, as the report's line above it does (debugger 11-18: "Your statements cover 31 days" over
+// "Jane has 34 days of statements").
 const shortHistory = (min: number) => (f: Facts) =>
-  f.days < min ? `Jane has ${plural(f.days, "day")} of statements; this check needs ${min}.` : null;
+  f.days < min
+    ? `Jane has ${plural(f.covered, "day")} of statements; this check needs ${min}.`
+    : null;
 
 const active = (f: Facts) => f.streams.filter((s) => s.active);
 const subscriptions = (f: Facts) => f.streams.filter(isSubscription);

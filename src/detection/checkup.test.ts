@@ -206,7 +206,7 @@ describe("checkup", () => {
 
     expect(lines.filter((l) => l.status === "passed")).toEqual([]);
     expect(byType(lines).get("bank_fees")?.detail).toBe(
-      `Jane has 19 days of statements; this check needs ${CHECKUP_MIN_HISTORY_DAYS}.`,
+      `Jane has 15 days of statements; this check needs ${CHECKUP_MIN_HISTORY_DAYS}.`,
     );
   });
 
