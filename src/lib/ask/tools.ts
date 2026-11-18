@@ -175,9 +175,10 @@ export async function runAskTool(
           .map((t) => ({
             date: t.date,
             merchant: displayMerchant(t),
-            // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store");
-            // never shown, and never for transfers, which name people.
-            words: displayMerchant(t) === "Transfer" ? "" : t.description.toLowerCase(),
+            // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store"), and
+            // never shown. Transfers match on them too ("how much does my mom send me?" finds
+            // "MOM VENMO CASHOUT", desktop sweep 5's upload S1) while still shown only as Transfer.
+            words: t.description.toLowerCase(),
             cardPayment: t.pfcDetailed === CARD_PAYMENT_DETAILED,
             category: categoryLabel(t.pfcPrimary),
             amountCents: t.amountCents,
