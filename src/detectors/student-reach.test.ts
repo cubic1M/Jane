@@ -4,6 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { ADVICE_TOPICS } from "@/config/suggestions";
 import { buildProfile, type ProfileInput } from "@/profile/build";
+import { missingFacts } from "@/profile/questions";
 import { runDetectors } from "./index";
 import { grad, undergrad } from "./__fixtures__/students";
 
@@ -17,16 +18,32 @@ const realTopics = (data: ProfileInput) =>
     .sort();
 
 describe("a thin-data student's suggestions", () => {
-  it("five weeks of one checking account: fees, a cushion, student plans, a credit file", () => {
-    expect(realTopics(undergrad())).toEqual(
+  it("five weeks of one checking account: ten or more suggestions and questions, in five areas", () => {
+    const data = undergrad();
+    const topics = realTopics(data);
+    expect(topics).toEqual(
       expect.arrayContaining([
         "bank_fees",
+        "belongings_cover",
+        "cheaper_tier",
         "credit_file_start",
         "emergency_fund",
+        "phone_plan_cheaper",
         "student_checking",
         "student_discounts",
       ]),
     );
+    const questions = missingFacts(buildProfile(data), data).map((c) => c.spec.fact);
+    expect(questions).toContain("pays_school_bill");
+    // The manager's bar (11-18): ten or more real suggestions or one-tap questions.
+    expect(topics.length + questions.length).toBeGreaterThanOrEqual(10);
+    // Across at least five areas.
+    const areas = new Set(
+      runDetectors({ profile: buildProfile(data), data })
+        .filter((s) => topics.includes(s.topic))
+        .map((s) => s.capability),
+    );
+    expect(areas.size).toBeGreaterThanOrEqual(5);
   });
 
   it("a grad who says they're a student: the card paid from cash and Cardinal Care beside a plan", () => {
