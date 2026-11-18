@@ -226,8 +226,9 @@ const fitNeedOf = (text: string): FitNeed =>
           ? "home"
           : "personal";
 
+// "What do I owe on my credit card?" too: that card, not the bills coming up (debugger 11-18).
 const OWE =
-  /\bhow much (?:do|does|did) (?:i|we) (?:still )?owe\b|\bhow much debt\b|\bwhat do (?:i|we) owe (?:in total|altogether|overall)\b|\b(?:my )?total (?:debt|owed)\b|\bwhat (?:are|is) (?:all )?my (?:debts?|loans)\b|\b(?:list|show)(?: me)? (?:all )?my (?:debts|loans)\b|\ball my debts?\b/;
+  /\bhow much (?:do|does|did) (?:i|we) (?:still )?owe\b|\bwhat do (?:i|we) (?:still )?owe on\b|\bhow much debt\b|\bwhat do (?:i|we) owe (?:in total|altogether|overall)\b|\b(?:my )?total (?:debt|owed)\b|\bwhat (?:are|is) (?:all )?my (?:debts?|loans)\b|\b(?:list|show)(?: me)? (?:all )?my (?:debts|loans)\b|\ball my debts?\b/;
 // "… on my car", after a question about what's owed.
 const ON = /\b(?:on|for) (?:my |the |our )?(.+)$/;
 // Every debt, not one named "loans" (debugger 11-16: "I can't find "loans" among your debts").
@@ -237,8 +238,10 @@ const ALL_DEBTS =
 // answer that one yet" beside Loans' "You owe $1,890.00"). Only debts' words, so checking's
 // balance stays checking's.
 const DEBT_WORDS = "(?:credit )?cards?|car loan|auto loan|student loans?|loans?|mortgage";
+// "What's my Discover card balance?": a name of a word or two before the card (debugger 11-18: no
+// answer, though "what's my card balance?" had one).
 const BALANCE = new RegExp(
-  `\\b(?:what(?:'s| is) (?:my|our|the) (${DEBT_WORDS})(?:'s)? balance|what(?:'s| is) the balance (?:on|of) (?:my |our |the )?(${DEBT_WORDS})|how much is (?:left )?on (?:my|our|the) (${DEBT_WORDS}))\\b`,
+  `\\b(?:what(?:'s| is) (?:my|our|the) ((?:[a-z&]+ ){0,2}(?:${DEBT_WORDS}))(?:'s)? balance|what(?:'s| is) the balance (?:on|of) (?:my |our |the )?(${DEBT_WORDS})|how much is (?:left )?on (?:my|our|the) (${DEBT_WORDS}))\\b`,
 );
 // "How much is my car payment?": that loan, not what was spent on Transportation (debugger 11-16).
 const PAYMENT =
