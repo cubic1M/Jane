@@ -74,8 +74,9 @@ const ACCOUNT = new RegExp(`\\b(${ACCOUNT_WORDS})(?=\\s|$|[^\\w])`);
 // Where students invest: "how much did I send to Fidelity", "what's in my Fidelity account".
 const BROKERS =
   "fidelity|schwab|vanguard|robinhood|e\\*?trade|webull|acorns|stash|betterment|wealthfront|public";
+// "How much am I putting into Fidelity?" asks the same (debugger 11-18: no answer, twice).
 const PUT_IN = new RegExp(
-  `\\bhow much (?:have|did|do) (?:i|we) (?:put|sen[dt]|add(?:ed)?|moved?|transferr?(?:ed)?|invest(?:ed)?) (?:in|into|to|toward|with) (?:my )?(?:${BROKERS}|${ACCOUNT_WORDS}|investing|investments?|stocks)\\b`,
+  `\\bhow much (?:(?:have|did|do) (?:i|we) (?:put|sen[dt]|add(?:ed)?|moved?|transferr?(?:ed)?|invest(?:ed)?)|(?:am i|are we) (?:putting|sending|adding|moving|transferring|investing)) (?:in|into|to|toward|with) (?:my )?(?:${BROKERS}|${ACCOUNT_WORDS}|investing|investments?|stocks)\\b`,
 );
 const HOLDINGS = new RegExp(
   [
