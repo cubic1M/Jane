@@ -1,1 +1,1 @@
-20270517000000_merchant_without_pos_debit
+20270518000000_merchant_without_online_transfer
