@@ -10,6 +10,11 @@ import { NOT_A_REFUND_MIN_CENTS } from "./forecast";
 // RENT_TRANSFER_MIN_CENTS. A yes files those payments as rent; a no keeps them as transfers, and
 // either way Jane never asks about that payee again.
 export const RENT_TRANSFER_WORDS: readonly string[] = ["ZELLE", "VENMO", "CASH APP", "PAYPAL"];
+// Rent sent by the bank's own online transfer to a building or its manager ("ONLINE TRANSFER TO
+// OAKWOOD RES": upload S6, suggest-money gap pass 11-18). The same transfer to the person's own
+// savings ("ONLINE TRANSFER TO ALLY BANK SAV") names no landlord, so it isn't asked about.
+export const RENT_TRANSFER_LANDLORD_WORDS =
+  /\b(?:RES|RESIDENCES?|RESIDENTIAL|APTS?|APARTMENTS?|PROPERTY|PROPERTIES|PROP MGMT|MGMT|MANAGEMENT|LEASING|REALTY|RENTALS?|RENT)\b/;
 // Cash deposits as income (founder, 10-30): Plaid calls cash paid in moved money, so a server
 // who lives on tips read as earning half of what they do. Deposits that come back regularly,
 // at a similar cadence or of similar amounts, count as income (src/categorize/cash-income.ts).
