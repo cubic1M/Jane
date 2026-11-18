@@ -109,6 +109,9 @@ const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
 
 export type InsuranceTreeInput = {
   asOf: string;
+  // Cover the person said they don't need ("I don't need it" on its gap): a need of that kind
+  // isn't listed short either (debug 2, 11-18: "Disability cover, $1.1k/mo short" stayed after it).
+  dismissed?: readonly string[];
   // No bank account on file: premiums are mostly paid from one, so no charge says nothing.
   noBankSeen?: boolean;
   needs: {
@@ -211,8 +214,10 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   const raiseOffered = new Set(
     input.savings.filter((s) => s.kind === "higher_deductible").map((s) => s.policyId),
   );
+  const dismissed = new Set(input.dismissed ?? []);
   const shownNeeds = input.needs.filter(
     (n) =>
+      !dismissed.has(n.kind) &&
       !(n.kind === "deductible" && n.direction === "raise" && raiseOffered.has(n.policyId ?? "")),
   );
 

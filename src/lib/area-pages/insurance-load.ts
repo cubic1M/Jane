@@ -92,6 +92,7 @@ export async function loadInsuranceArea(
     // Only with something on file: with no accounts at all, what they told Jane stands.
     noBankSeen: accounts.length > 0 && !accounts.some((a) => a.type === "depository"),
     needs: coverage.needs.map((n) => ({ ...n, opened: coverage.opened.has(needKey(n)) })),
+    dismissed: household.dismissedGaps,
     policies: policies.map((p) => ({
       id: p.id,
       kind: p.kind,
