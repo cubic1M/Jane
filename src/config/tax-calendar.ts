@@ -99,7 +99,7 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   // coverage); a payment due within a month makes it "soon" any month.
   cash_flow: 1,
   identity_ip_pin: 1,
-  // EFTPS is closing to individuals: any month an EFTPS payment is seen.
+  // EFTPS no longer takes individuals' payments (since 2026-11-12): any month an EFTPS payment is seen.
   eftps_move: 1,
   // The Saver's Credit: from January, until IRA money for the year is due.
   savers_credit: 1,

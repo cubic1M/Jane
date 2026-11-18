@@ -111,7 +111,7 @@ export const SUGGESTION_TOPICS = [
   "roth_conversion",
   "childcare_tax_break",
   "identity_ip_pin",
-  // Connectors roadmap round 16: EFTPS is closing to individuals.
+  // Connectors roadmap round 16: EFTPS no longer takes individuals' payments (since 2026-11-12).
   "eftps_move",
   // Connectors roadmap round 17: the Saver's Credit's last year.
   "savers_credit",
