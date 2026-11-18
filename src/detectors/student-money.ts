@@ -217,38 +217,72 @@ const billGapAhead: Detector = {
 // Stanford's bill, for an undergraduate who pays it themselves: the next due date, the late charge
 // and, while sign-up is open, the free plan that splits it into three. Only while a payment plan
 // window is open or about to be.
+// The plan's sign-up window open now or within two weeks.
+const planWindowNear = (today: string) => {
+  const plan = STANFORD_PAYMENT_PLAN.windows.find((w) => w.to >= today);
+  return plan && daysBetween(today, plan.from) <= 14 ? plan : null;
+};
+
+// A Stanford student whose bill isn't paid from these accounts, while the plan's sign-up is near:
+// whether they pay it is theirs to say (the question in src/config/questions.ts).
+export function payingBillUnknown(
+  profile: Parameters<Detector["detect"]>[0]["profile"],
+  data: Data,
+): boolean {
+  return (
+    profile.facts.is_student.value === true &&
+    atStanford(data) &&
+    billPayments(data).length === 0 &&
+    planWindowNear(data.today) !== null
+  );
+}
+
 const stanfordBillDue: Detector = {
   capability: "safe_to_spend",
   topic: "stanford_bill_due",
   covers: [],
-  needs: ["is_student"],
+  needs: ["is_student", "pays_school_bill"],
   detect({ profile, data }) {
     const student = profile.facts.is_student;
     if (student.value !== true || !atStanford(data)) return null;
     const paid = billPayments(data);
-    if (paid.length === 0) return null;
+    const told = profile.facts.pays_school_bill;
+    // No payment in these accounts: only for someone who says they pay it.
+    if (paid.length === 0 && told.value !== true) return null;
     // Two payments about a month apart: already paying in parts (the plan, or by hand).
     const [latest, before] = paid;
     if (before && daysBetween(before.date, latest!.date) <= BILL_GAP.monthlyGapDays) return null;
-    const plan = STANFORD_PAYMENT_PLAN.windows.find((w) => w.to >= data.today);
-    if (!plan || daysBetween(data.today, plan.from) > 14) return null;
+    const plan = planWindowNear(data.today);
+    if (!plan) return null;
     const due = nextDue(plan.to, STANFORD_BILL.dueDates.undergraduate);
     if (!due) return null;
-    const last = paid[0]!.amountCents;
-    const late = Math.round((last * STANFORD_BILL.lateBpsPerMonth) / 10_000);
-    const third = Math.round(last / 3);
+    const last = latest?.amountCents ?? null;
+    const late = last === null ? 0 : Math.round((last * STANFORD_BILL.lateBpsPerMonth) / 10_000);
+    const graduate = paidByStanford(data)
+      ? " Graduate students can't use this plan; one on an assistantship can pay the bill from their pay over several months on Stanford's Payroll Deduction Plan instead."
+      : "";
+    const rules = `For undergraduates, Stanford's payment plan is free and splits a quarter's bill into three monthly parts paid automatically from your bank; ${plan.quarter} sign-up runs ${dayLabel(plan.from)} to ${dayLabel(plan.to)}, and the first part is due ${dayLabel(due, { long: true })}. It's for an enrolled undergraduate with a US bank account and no balance left from an earlier term.`;
+    const steps = `To do it: sign in to Axess, open My Finances, then View & Pay My Bill, and choose the payment plan.${graduate}`;
     return suggestion("safe_to_spend", "stanford_bill_due", {
       title: `Split your ${plan.quarter} Stanford bill into three free payments: sign up by ${dayLabel(plan.to, { long: true })}`,
       headline: headlineOf("Pay your Stanford bill in three parts", late, "risk"),
-      short: `You paid ${formatCents(last)} at once; in three parts that's about ${formatCents(third)} a month.`,
+      short:
+        last === null
+          ? `You pay your Stanford bill; ${plan.quarter} plan sign-up runs ${dayLabel(plan.from)} to ${dayLabel(plan.to)}.`
+          : `You paid ${formatCents(last)} at once; in three parts that's about ${formatCents(Math.round(last / 3))} a month.`,
       worthCents: late,
       worthKind: "risk",
       confidence: weakest([
         factEvidence(student),
-        evidence("seen", profile.months, paid.length, "Stanford bill payments"),
+        last === null
+          ? factEvidence(told)
+          : evidence("seen", profile.months, paid.length, "Stanford bill payments"),
       ]),
       urgency: daysBetween(data.today, plan.to) <= 10 ? "now" : "soon",
-      why: `You paid Stanford ${formatCents(last)} on ${dayLabel(paid[0]!.date)}. For undergraduates, Stanford's payment plan is free and splits a quarter's bill into three monthly parts paid automatically from your bank; ${plan.quarter} sign-up runs ${dayLabel(plan.from)} to ${dayLabel(plan.to)}, and the first part is due ${dayLabel(due, { long: true })}. It's for an enrolled undergraduate with a US bank account and no balance left from an earlier term. Whatever isn't paid by a due date is charged ${formatRate(STANFORD_BILL.lateBpsPerMonth)} a month (about ${formatCents(late)} a month on a bill like your last) and can bring a hold on registering. To do it: sign in to Axess, open My Finances, then View & Pay My Bill, and choose the payment plan.${paidByStanford(data) ? " Graduate students can't use this plan; one on an assistantship can pay the bill from their pay over several months on Stanford's Payroll Deduction Plan instead." : ""}`,
+      why:
+        last === null
+          ? `You told me you pay your Stanford bill. ${rules} Whatever isn't paid by a due date is charged ${formatRate(STANFORD_BILL.lateBpsPerMonth)} a month and can bring a hold on registering. ${steps}`
+          : `You paid Stanford ${formatCents(last)} on ${dayLabel(latest!.date)}. ${rules} Whatever isn't paid by a due date is charged ${formatRate(STANFORD_BILL.lateBpsPerMonth)} a month (about ${formatCents(late)} a month on a bill like your last) and can bring a hold on registering. ${steps}`,
       action: { label: "See Stanford's payment plans", href: STANFORD_PAYMENT_PLAN.url },
       more: [{ label: "Stanford's billing dates", href: STANFORD_BILL.url }],
     });

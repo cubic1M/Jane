@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import { HEADLINE_VERBS } from "@/config/detectors";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -34,6 +35,8 @@ function expectClean(s: Suggestion) {
       ok: true,
     });
     expect(recommendsAChoice(text), text).toBe(false);
+    // Real-account text never tells them what to do with money (src/lib/real-account-text.ts).
+    expect(tellsThemToAct(text), text).toBe(false);
   }
   expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
   expect(HEADLINE_VERBS, s.headline).toContain(s.headline.split(" ")[0]);

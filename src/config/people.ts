@@ -122,6 +122,12 @@ export const SUGGESTION_TOPICS = [
   "grace_ending",
   "clipper_start",
   "aid_priority_date",
+  // Facts for real accounts where the advice card is demo-only (suggest-money phase 2).
+  "belongings_cover",
+  "car_cover_cost",
+  "card_rate_check",
+  "cheaper_tier",
+  "phone_plan_cheaper",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

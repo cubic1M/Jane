@@ -115,6 +115,9 @@ export const FACT_SPECS = [
   F("app_income", "What the money cashed out of payment apps is", "choice", {
     choices: ["friends", "work", "mixed", "unsure"],
   }),
+  // Suggest-money (11-18): told only; a Stanford student whose bill isn't paid from these accounts
+  // says whether they pay it, which decides whether its payment plan applies to them.
+  F("pays_school_bill", "You pay your school bill yourself", "boolean"),
   // The state they live in: told, from the tax profile, or where they shop.
   F("home_state", "The state you live in", "text"),
 ] as const satisfies readonly FactSpec[];

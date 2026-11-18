@@ -896,6 +896,7 @@ function toldFacts(b: Builder) {
     "owed_tax_last_year",
     "age_25_plus",
     "app_income",
+    "pays_school_bill",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

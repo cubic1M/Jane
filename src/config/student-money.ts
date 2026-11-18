@@ -382,3 +382,78 @@ export const AID_PRIORITY = {
 // Money from Stanford that isn't pay: an aid refund or disbursement.
 export const STANFORD_AID_WORDS =
   /STANFORD.*(?:REFUND|FIN(?:ANCIAL)? ?AID|DISBURSE|SCHOLARSHIP)|(?:REFUND|FINANCIAL AID).*STANFORD/;
+
+// --- Phase 2: facts for real accounts where the advice card is demo-only ----------------------
+// Stanford's 2026-27 residence agreement (rde.stanford.edu, read 2026-11-18): "The university does
+// not carry insurance covering personal property", and "it is advisable that you obtain your own
+// renter's insurance to cover your personal property in the event of damage or loss"; residents
+// are responsible for damage to university property, and jointly when no one person is.
+export const STANFORD_HOUSING = {
+  url: "https://rde.stanford.edu/studenthousing/residence-agreement-policies-and-procedures-2026-27",
+} as const;
+// The NAIC's average renters (HO-4) premium for 2022, the latest year published, via the Insurance
+// Information Institute (iii.org/fact-statistic/facts-statistics-renters-insurance, read
+// 2026-11-18): $171 in the US, $169 in California (California's from its Department of Insurance).
+export const RENTERS_AVERAGE = {
+  url: "https://www.iii.org/fact-statistic/facts-statistics-renters-insurance",
+  year: 2022,
+  usCents: 17_100,
+  byState: { CA: 16_900 } as Readonly<Record<string, number>>,
+} as const;
+// The NAIC's average auto insurance expenditure for 2023 via the Insurance Information Institute
+// (iii.org/fact-statistic/facts-statistics-auto-insurance, read 2026-11-18): $1,282 in the US. No
+// state figure on that page, so only the US one is said.
+export const AUTO_AVERAGE = {
+  url: "https://www.iii.org/fact-statistic/facts-statistics-auto-insurance",
+  year: 2023,
+  usCents: 128_200,
+  // Said only when what the person pays is at least this much above it.
+  aboveShare: 0.1,
+} as const;
+export const AUTO_PREMIUM_WORDS =
+  /GEICO|PROGRESSIVE|STATE FARM|ALLSTATE|FARMERS|MERCURY INS|AAA\b|CSAA|LIBERTY MUTUAL|NATIONWIDE|USAA|TRAVELERS|ROOT INS|WAWANESA|\bAUTO INS/;
+// The Federal Reserve's G.19 (release of 2026-11-06, read 2026-11-18): commercial banks' average
+// rate on credit card plans for accounts assessed interest, 22.36%, and on 24-month personal
+// loans, 11.90%, both August 2026.
+export const FED_RATES = {
+  url: "https://www.federalreserve.gov/releases/g19/current/default.htm",
+  month: "August 2026",
+  cardBps: 2_236,
+  personalLoanBps: 1_190,
+  // A card's rate this far above the average is worth a call.
+  aboveBps: 200,
+  minBalanceCents: 50_000,
+} as const;
+
+// --- A cheaper plan of the same service -------------------------------------------------------
+// Netflix's help centre, "Plans and pricing" (help.netflix.com/en/node/24926, read 2026-11-18):
+// Standard with ads $8.99 a month, Standard $19.99, Premium $26.99, in the US.
+export const NETFLIX_PLANS = {
+  url: "https://help.netflix.com/en/node/24926",
+  withAdsCents: 899,
+  words: /NETFLIX/,
+  // Sales tax on the ad plan's price, so someone already on it isn't told to move to it.
+  taxRoom: 1.15,
+} as const;
+// T-Mobile's plans page (t-mobile.com/cell-phone-plans, read 2026-11-18): for one line, T-Mix
+// Standard $55 a month, More $75 and Loaded $95 with AutoPay, each $10 more without, plus taxes
+// and fees. A bill over this many cents is likely more than one line, so nothing is said.
+export const TMOBILE_PLANS = {
+  url: "https://www.t-mobile.com/cell-phone-plans",
+  cheapestCents: 5_500,
+  autopayCents: 1_000,
+  words: /T-?MOBILE/,
+  notWords: /PROTECTION|P360|INSURANCE|HOME INTERNET/,
+  taxRoom: 1.15,
+  oneLineMaxCents: 11_000,
+} as const;
+
+// Chase's overdraft FAQ (chase.com/personal/checking/overdraft-services/faqs, read 2026-11-18): a
+// $34 Overdraft Fee; with Chase Overdraft Assist, none if overdrawn by $50 or less at the end of the
+// business day, or if the balance is brought back to that by 11 PM ET the next business day.
+// Not on Chase First, High School or Secure Checking.
+export const CHASE_OVERDRAFT = {
+  url: "https://www.chase.com/personal/checking/overdraft-services/faqs",
+  graceCents: 5_000,
+  words: /\bCHASE\b|JPMORGAN/,
+} as const;

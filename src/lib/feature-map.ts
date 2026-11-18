@@ -21,6 +21,11 @@ import { STUDENT_CREDIT_CASH_DETECTORS } from "@/detectors/student-credit-cash";
 import { STUDENT_LIFE_DETECTORS } from "@/detectors/student-life";
 import { STUDENT_LOANS_HELD_DETECTORS } from "@/detectors/student-loans-held";
 import { STUDENT_BENEFIT_DETECTORS } from "@/detectors/student-benefits";
+import {
+  BILL_FACT_DETECTORS,
+  COVER_FACT_DETECTORS,
+  LOAN_FACT_DETECTORS,
+} from "@/detectors/cover-facts";
 import { FAMILY_CREDIT_DETECTORS } from "@/detectors/family-credit";
 import { FIGURES_DETECTORS } from "@/detectors/figures";
 import { FIT_DETECTORS } from "@/detectors/fit";
@@ -70,11 +75,14 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "home", detectors: HOME_DETECTORS },
   { key: "work", detectors: WORK_DETECTORS },
   { key: "life", detectors: [...LIFE_DETECTORS, ...LIFE_FACT_DETECTORS] },
-  { key: "insurance", detectors: INSURANCE_DETECTORS },
+  { key: "insurance", detectors: [...INSURANCE_DETECTORS, ...COVER_FACT_DETECTORS] },
   { key: "coverGaps", detectors: COVER_GAP_DETECTORS },
-  { key: "debt", detectors: [...DEBT_DETECTORS, ...STUDENT_AID_DETECTORS] },
+  { key: "debt", detectors: [...DEBT_DETECTORS, ...STUDENT_AID_DETECTORS, ...LOAN_FACT_DETECTORS] },
   { key: "fit", detectors: FIT_DETECTORS },
-  { key: "spending", detectors: [...SPENDING_DETECTORS, ...UTILITY_DETECTORS] },
+  {
+    key: "spending",
+    detectors: [...SPENDING_DETECTORS, ...UTILITY_DETECTORS, ...BILL_FACT_DETECTORS],
+  },
   { key: "renting", detectors: RENTING_DETECTORS },
   { key: "borrowing", detectors: BORROWING_POWER_DETECTORS },
   { key: "familyCredit", detectors: FAMILY_CREDIT_DETECTORS },

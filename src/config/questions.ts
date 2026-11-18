@@ -178,6 +178,15 @@ export const QUESTIONS: readonly QuestionSpec[] = [
     ],
     topics: ["free_through_school", "transit_pass", "cardinal_care_check", "student_checking"],
   },
+  {
+    fact: "pays_school_bill",
+    text: "Do you pay your Stanford bill yourself, at least in part? It decides whether its free payment plan is worth a look.",
+    choices: [
+      { label: "Yes, I pay it", value: "yes" },
+      { label: "No, someone else or aid does", value: "no" },
+    ],
+    topics: ["stanford_bill_due"],
+  },
 ];
 
 // Typical rates for what an answer could unlock (cents are computed from the person's own
@@ -198,4 +207,6 @@ export const UNLOCK = {
   // Knowing someone paid by a university is a student: a student price, a pass or a plan they
   // may be paying for twice, at a typical yearly amount.
   studentCents: 30_000,
+  // A Stanford bill paid at once instead of in parts, and late: a month's 1% on a typical quarter.
+  schoolBillCents: 5_000,
 } as const;

@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import { HEADLINE_VERBS } from "@/config/detectors";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { CREDIT_START, OVERDRAFT_OPT_IN, STUDENT_ACCOUNTS } from "@/config/student-money";
+import {
+  CHASE_OVERDRAFT,
+  CREDIT_START,
+  OVERDRAFT_OPT_IN,
+  STUDENT_ACCOUNTS,
+} from "@/config/student-money";
 import { PEOPLE } from "@/config/people";
 import { checkGuardrails, dollarFigures, recommendsAChoice } from "@/lib/guardrails";
 import { buildProfile, type ProfileInput } from "@/profile/build";
@@ -32,6 +38,8 @@ function expectClean(s: Suggestion) {
       ok: true,
     });
     expect(recommendsAChoice(text), text).toBe(false);
+    // Real-account text never tells them what to do with money (src/lib/real-account-text.ts).
+    expect(tellsThemToAct(text), text).toBe(false);
   }
   expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
   expect(HEADLINE_VERBS, s.headline).toContain(s.headline.split(" ")[0]);
@@ -174,7 +182,10 @@ describe("the overdraft opt-out on the bank-fees card", () => {
     expect(s.more?.map((m) => m.href)).toEqual([
       OVERDRAFT_OPT_IN.consumerUrl,
       OVERDRAFT_OPT_IN.url,
+      CHASE_OVERDRAFT.url,
     ]);
+    // The undergraduate banks at Chase: Chase's own $50 rule.
+    expect(s.why).toContain("overdrawn by $50 or less");
     expectClean(s);
   });
 
@@ -186,6 +197,7 @@ describe("the overdraft opt-out on the bank-fees card", () => {
     };
     const s = fire(data, "bank_fees", DETECTORS)!;
     expect(s.why).not.toContain("opt-in");
+    expect(s.why).not.toContain("Chase's own rule");
     expect(s.more).toBeUndefined();
   });
 });
