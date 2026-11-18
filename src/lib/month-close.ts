@@ -185,6 +185,13 @@ async function close(
   const data = { status: "closed", uncertain: [], figures, closedAt: now };
   if (id) await db.monthCloses.updateMany({ where: { id }, data });
   else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
+  // The scan's "confirm the charges" for the month is done once it closes; it stopped showing
+  // only at the next scan, so Spending's tree kept "Last month's close · Openai $20.00: I'm not
+  // sure what it was" after "Looks right" (debug 2, 11-18).
+  await db.suggestions.updateMany({
+    where: { topic: "month_close", status: { in: ["waiting", "selected"] } },
+    data: { status: "gone" },
+  });
   await track(userId, "month_closed", { month, confirmed });
 }
 
