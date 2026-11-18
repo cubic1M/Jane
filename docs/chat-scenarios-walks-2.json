@@ -1,0 +1,308 @@
+[
+  {
+    "id": "walk-s6d-1",
+    "category": "walk: desktop S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-desktop",
+    "messages": [
+      "How much do I spend on Netflix a month?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $15.49 a month (about $185.88 a year)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s6d-2",
+    "category": "walk: desktop S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-desktop",
+    "messages": [
+      "How much did I pay in overdraft fees?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $70.00 in overdraft fees in the last 12 months: two $35.00 fees, Feb 2 and Jul 31, 2026",
+        "Other bank fees, if mentioned, are said apart: four $10.00 monthly service fees on checking and a $29.00 late fee on the card"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Count the service or late fees as overdraft fees"
+      ]
+    }
+  },
+  {
+    "id": "walk-s6d-3",
+    "category": "walk: desktop S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-desktop",
+    "messages": [
+      "What is my income?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say pay from Univ of Calif every two weeks, about $598.70 to $655.20 a paycheck ($638.10 on Nov 13)",
+        "Say the $400 Zelle from a person on Nov 3 apart from pay, or leave it out; never fold it into pay"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say there is no income or no paycheck"
+      ]
+    }
+  },
+  {
+    "id": "walk-s3d-1",
+    "category": "walk: desktop S3",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s3-desktop",
+    "messages": [
+      "When is my car payment due?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say Toyota Financial, $345.12, paid on the 9th each month, so next about Dec 9",
+        "Say the loan's balance and rate aren't known (the bank shows payments only), or don't state them"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Answer with transportation spending instead of the car payment",
+        "State a balance or rate for the car loan"
+      ]
+    }
+  },
+  {
+    "id": "walk-s3d-2",
+    "category": "walk: desktop S3",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s3-desktop",
+    "messages": [
+      "How much do I pay on my student loan?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say Nelnet, $217.40 a month (about $2,608.80 a year), next about Dec 5"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "State a balance owed on the student loan"
+      ]
+    }
+  },
+  {
+    "id": "walk-s3d-3",
+    "category": "walk: desktop S3",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s3-desktop",
+    "messages": [
+      "How much did I spend on gas last month?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $147.36 on gas in October (Chevron, 3 charges)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7d-1",
+    "category": "walk: desktop S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-desktop",
+    "messages": [
+      "How much is my internet bill?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say Comcast California, $89.99 a month (about $1,079.88 a year)",
+        "If it gives a next date, say it's an estimate because the statements end Oct 20"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7d-2",
+    "category": "walk: desktop S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-desktop",
+    "messages": [
+      "What subscriptions do I have?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say Netflix, $15.99 a month (about $191.88 a year), from statements that end Oct 20"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say there are no subscriptions"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7d-3",
+    "category": "walk: desktop S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-desktop",
+    "messages": [
+      "How much did I spend in October?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $1,235.64, for Oct 1 to 20 only, because the statement ends Oct 20"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Present it as all of October without saying the data ends Oct 20"
+      ]
+    }
+  },
+  {
+    "id": "walk-s4d-1",
+    "category": "walk: desktop S4",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s4-desktop",
+    "messages": [
+      "How much do I have invested?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $8,315.46 in the Fidelity account: Fidelity 500 Index $5,096.72, money market $1,840.22, Four-In-One Index $1,378.52, from the uploaded positions"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s4d-2",
+    "category": "walk: desktop S4",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s4-desktop",
+    "messages": [
+      "What fees am I paying on my investments?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say the Fidelity 500 Index's expense ratio is tiny (about 0.015% a year, under $1 on $5,096.72), or that it's very low",
+        "Say the Four-In-One Index's cost isn't known from the file, or don't give a figure for it",
+        "Say no other fees are seen"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Give an expense ratio for the Four-In-One Index as if known from their data"
+      ]
+    }
+  },
+  {
+    "id": "walk-s4d-3",
+    "category": "walk: desktop S4",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s4-desktop",
+    "messages": [
+      "How much is my rent?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $1,400.00 a month to Avalon Bay (about $16,800.00 a year), next Dec 1"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s5d-1",
+    "category": "walk: desktop S5",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-desktop",
+    "messages": [
+      "How much do I make a month?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say Campus Dining pay every two weeks, about $710 to $721 a paycheck, so about $1,550 a month (October's two came to $1,422.30)",
+        "Say it's from one month of data"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say there is no income"
+      ]
+    }
+  },
+  {
+    "id": "walk-s5d-2",
+    "category": "walk: desktop S5",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-desktop",
+    "messages": [
+      "Why was I charged $35 on Oct 28?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say it was an overdraft fee from Wells Fargo, for a $6.20 item, when the balance went below zero"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s1d-1",
+    "category": "walk: desktop S1",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s1-desktop",
+    "messages": [
+      "How much is my rent?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $725.00 a month to Sunset Villas (about $8,700.00 a year), next Dec 1"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s1d-2",
+    "category": "walk: desktop S1",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s1-desktop",
+    "messages": [
+      "How much does my mom send me?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $200.00 a month, by Venmo cashout on the 20th (Aug 20, Sep 20, Oct 20; $600.00 so far)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Treat it as spending or say nothing was found"
+      ]
+    }
+  },
+  {
+    "id": "walk-s1d-3",
+    "category": "walk: desktop S1",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s1-desktop",
+    "messages": [
+      "What did I spend on food in October?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $188.66 on food in October (Taco Bell and DoorDash Chipotle, 6 charges)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  }
+]
