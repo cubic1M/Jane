@@ -1,5 +1,5 @@
 import { addDays, daysBetween } from "@/detection/units";
-import type { Deadline } from "@/insights/deadlines";
+import type { Deadline, DeadlineKind } from "@/insights/deadlines";
 
 // "Coming up" on Today (spec step 79): the next few bills and deadlines in one list,
 // soonest first. Pure: the bills forecast and the deadlines list in, rows out.
@@ -16,6 +16,9 @@ export type ComingUpRow = {
   daysLeft: number;
   // Bills go to /bills, deadlines to /deadlines.
   href: "/bills" | "/deadlines";
+  // What it is: a bill, or the deadline's kind. A return window's amount is the purchase, said
+  // beside it but never owed (debug 3, 11-18).
+  kind?: DeadlineKind | "bill";
 };
 
 // A bill that is the same thing as a deadline on the same day (a yearly renewal, a card payment).
@@ -44,6 +47,7 @@ export function comingUp(
       amountCents: d.amountCents ?? bills.find((b) => sameThing(b, d))?.amountCents ?? null,
       daysLeft: daysBetween(asOf, d.date),
       href: "/deadlines" as const,
+      kind: d.kind,
     })),
     ...bills
       .filter((b) => within(b.date) && !dated.some((d) => sameThing(b, d)))
@@ -54,6 +58,7 @@ export function comingUp(
         amountCents: b.amountCents,
         daysLeft: daysBetween(asOf, b.date),
         href: "/bills" as const,
+        kind: "bill" as const,
       })),
   ];
   return rows
