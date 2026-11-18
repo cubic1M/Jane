@@ -359,14 +359,17 @@ uploads and the Stanford ones in `src/detectors/__fixtures__/student-walk.ts`) m
   person said they owed none, the $1,000 floor, the 90% / 100% / 110% safe harbour) and the next dates.
   Not when they said the money is pay or aid, nor for a student on an F or J visa. A bare "refund" is
   guessed (under 50%) until they answer what it is. A fact for everyone, not in `ADVICE_TOPICS`.
-- **An F or J student (`student_tax_residency`):** told only. Form 8843 every year, Form 1040-NR with
-  US income, Stanford's 30% withholding on nonresidents' awards, and that the American opportunity
-  credit and the earned income credit aren't for nonresidents, with Bechtel's, Sprintax's and the
-  IRS's pages. No dollars; `required`.
+- **An F or J student (`student_tax_residency`):** told only. That residency turns on the substantial
+  presence test, that which forms a nonresident files is on Bechtel's and the IRS's pages (linked),
+  Stanford's 30% withholding on nonresidents' awards, and that the American opportunity credit and the
+  earned income credit aren't for nonresidents. No dollars; `required`.
+- **Wording on real accounts (suggestions wording check, 11-18):** facts, attributed, never which form
+  to file or the line income goes on; the IRS's or FTB's page is linked instead.
 - **Questions:** `school_deposit`, `claimed_as_dependent`, `tax_residency` and `owed_tax_last_year`
   are asked with `decides` (`src/config/questions.ts`): the detectors that need the fact are run with
   each answer (`decidedBy`, `src/profile/questions.ts`), and the question says how many suggestions
-  and dollars the answer decides. A question that decides nothing for the person is never asked.
+  the answer decides ("It decides 3 credits and tax figures for you"), never their dollars, which
+  would read as a promise. A question that decides nothing for the person is never asked.
   "Not sure" is an answer: asked once, read as not known.
 - **Home state:** told, else the tax profile's, else where most located card purchases are
   (`src/profile/home-state.ts`, at least 3 and 60% of them).

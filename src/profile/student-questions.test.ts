@@ -26,8 +26,9 @@ describe("what an answer decides", () => {
     expect(best.decidesCount).toBe(1);
     const card = decidedBy("school_deposit", spec("school_deposit"), data);
     expect(best.unlockCents).toBe(card.cents);
-    const line = decidesLine(best.spec, best.decidesCount, best.unlockCents)!;
-    expect(line).toMatch(/^It decides a tax figure worth up to \$[\d,]+ for you\.$/);
+    const line = decidesLine(best.spec, best.decidesCount)!;
+    // No dollars: a figure "for you" reads as a promise (suggestions wording check, 11-18).
+    expect(line).toBe("It decides a tax figure for you.");
     expect(
       checkGuardrails(
         `${best.spec.text} ${line}`,
@@ -60,14 +61,21 @@ describe("what an answer decides", () => {
   });
 
   it("counts several suggestions and names them in the plural", () => {
-    expect(decidesLine(spec("claimed_as_dependent"), 3, 286_000)).toBe(
-      "It decides 3 credits and deductions worth up to $2,860 for you.",
+    expect(decidesLine(spec("claimed_as_dependent"), 3)).toBe(
+      "It decides 3 credits and tax figures for you.",
     );
-    expect(decidesLine(spec("claimed_as_dependent"), 1, 286_000)).toBe(
-      "It decides a credit or deduction worth up to $2,860 for you.",
+    expect(decidesLine(spec("claimed_as_dependent"), 1)).toBe(
+      "It decides a credit or tax figure for you.",
     );
-    expect(decidesLine(spec("claimed_as_dependent"), 0, 286_000)).toBeUndefined();
-    expect(decidesLine(spec("employer_match"), 2, 286_000)).toBeUndefined();
+    expect(decidesLine(spec("claimed_as_dependent"), 0)).toBeUndefined();
+    expect(decidesLine(spec("employer_match"), 2)).toBeUndefined();
+    // Every question's line, in every count, passes the real-account guardrails (the questions
+    // themselves trip the word list as questions; the chat tests lane read them as such).
+    for (const q of QUESTIONS.filter((x) => x.decides))
+      for (const n of [1, 3]) {
+        const line = decidesLine(q, n)!;
+        expect(checkGuardrails(line, []), line).toEqual({ ok: true });
+      }
   });
 
   it("offers one tap per answer, at most four, never a form", () => {

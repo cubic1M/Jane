@@ -64,7 +64,10 @@ describe("tax on a fellowship", () => {
     expect(s.worthCents).toBe(federalTaxOf(yearly, "single", false));
     expect(s.worthKind).toBe("risk");
     expect(s.why).toContain("Stanford doesn't withhold tax from fellowship stipends");
-    expect(s.why).toContain("Schedule 1 line 8r");
+    // A fact, not a form line (suggestions wording check, 11-18), with the IRS's page linked.
+    expect(s.why).toContain("is income for federal tax (IRS Pub. 970)");
+    expect(s.why).not.toMatch(/\bline \d/);
+    expect(s.more?.[0].href).toBe("https://www.irs.gov/publications/p970");
     expect(s.why).toContain("January 15, 2027");
     expect(s.why).toContain("February 1, 2027");
     expect(s.why).toContain("California's next date is January 15, 2027, for 30%");
@@ -156,12 +159,21 @@ describe("a student on an F or J visa", () => {
       student([stipend("2026-11-02")], { tax_residency: "student_visa" }),
       "student_tax_residency",
     )!;
-    expect(s.why).toContain("Form 8843 every year, even with no US income");
-    expect(s.why).toContain("Form 1040-NR");
+    // Which forms is the IRS's and Bechtel's to say, not Jane's (suggestions wording check, 11-18).
+    expect(s.why).toContain(
+      "Which forms a nonresident files, Form 8843 among them, is on Bechtel's pages and the IRS's",
+    );
+    expect(s.why).toContain("turns on the IRS's substantial presence test");
+    expect(s.why).not.toMatch(/\bfiles Form\b|Form 1040-NR/);
     expect(s.why).toContain("withholds 30%");
     expect(s.required).toBe(true);
     expect(s.confidence.percent).toBe(100);
-    expect(s.more?.map((m) => m.href)).toContain("https://www.irs.gov/forms-pubs/about-form-8843");
+    expect(s.more?.map((m) => m.href)).toEqual(
+      expect.arrayContaining([
+        "https://www.irs.gov/forms-pubs/about-form-8843",
+        "https://www.irs.gov/individuals/international-taxpayers/substantial-presence-test",
+      ]),
+    );
     passesGuardrails(s);
   });
 

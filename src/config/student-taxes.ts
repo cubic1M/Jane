@@ -198,7 +198,6 @@ export const CA_RENTERS_CREDIT = {
   },
   // At least half the year's rent paid in California.
   minMonths: 6,
-  line: "Form 540 line 46 (540 2EZ line 19)",
   sources: ["ftbRenters"],
 } as const;
 
@@ -211,17 +210,13 @@ export const AOTC_FORM = {
   secondCents: 200_000,
   secondRate: 0.25,
   refundableShare: 0.4,
-  lines: "Form 8863; the refundable part on Form 1040 and the rest on Schedule 3 line 3",
   sources: ["pub970", "form8863"],
 } as const;
-
-export const STUDENT_LOAN_INTEREST_LINE = "Schedule 1 line 21; the lender's Form 1098-E shows it";
 
 // The earned income credit without children: from 25 to 64 at the year's end (./tax-rates.ts EITC has
 // the amounts). Earned income is wages and self-employment (Pub. 596); a fellowship isn't on that
 // list, though it is in AGI.
 export const EITC_FORM = {
-  line: "Form 1040 line 27 (no Schedule EIC without children)",
   sources: ["eitcTables", "eitcWho", "pub596"],
 } as const;
 
@@ -249,6 +244,10 @@ export const INTERNATIONAL = {
       href: "https://bechtel.stanford.edu/navigate-international-life/taxes/sprintax-software",
     },
     { label: "IRS: Form 8843", href: "https://www.irs.gov/forms-pubs/about-form-8843" },
+    {
+      label: "IRS: the substantial presence test",
+      href: "https://www.irs.gov/individuals/international-taxpayers/substantial-presence-test",
+    },
   ],
   sources: ["bechtelForms", "stanfordPayingStudents"],
 } as const;
