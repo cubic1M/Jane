@@ -11,7 +11,7 @@ import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { summarize, TITLE_LOAN_NAMES } from "@/planning/costly-borrowing";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import {
   cashLine,
@@ -27,7 +27,7 @@ import {
 } from "./helpers";
 import { stoppedEmployer } from "./life";
 import { cashClearsCard } from "./student-money";
-import { OVERDRAFT_OPT_IN } from "@/config/student-money";
+import { CHASE_OVERDRAFT, OVERDRAFT_OPT_IN } from "@/config/student-money";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
 // cash, the emergency fund and debt in trouble. Pure; see ./contract.ts.
@@ -140,11 +140,19 @@ const bankFees: Detector = {
     const total = fees.yearCents;
     // Night QA 10-30: a traveller's foreign-transaction and annual card fees read as "Stop paying
     // overdraft and bank fees" though nothing was ever overdrawn.
-    const overdrawn = data.transactions.some(
+    const overdrafts = data.transactions.filter(
       (t) =>
         t.amountCents > 0 &&
         (t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS"),
     );
+    const overdrawn = overdrafts.length > 0;
+    // An overdraft fee at Chase: Chase's own rule on when it charges one (src/config/student-money.ts).
+    const atChase = overdrafts.some((t) => {
+      const a = data.accounts.find((x) => x.id === t.accountId);
+      return (
+        !!a && CHASE_OVERDRAFT.words.test(`${a.institution ?? ""} ${a.name ?? ""}`.toUpperCase())
+      );
+    });
     // "Card" only when there's a card fee: one on a card, or a foreign-transaction or annual fee
     // (debug 2, 11-17: a checking account's $12 monthly maintenance fee read as "bank and card fees").
     const cardFee = data.transactions.some(
@@ -178,6 +186,10 @@ const bankFees: Detector = {
         overdrawn
           ? " The CFPB says banks need your opt-in to charge an overdraft fee on an ATM withdrawal or a one-time debit card purchase, and that you can change that choice any time by asking your bank: the card is then declined instead, with no fee."
           : ""
+      }${
+        atChase
+          ? ` Chase's own rule: no overdraft fee if you're overdrawn by ${formatWholeDollars(CHASE_OVERDRAFT.graceCents)} or less at the end of the business day, or if you bring it back to that by 11 p.m. Eastern the next business day, with a deposit, a transfer or Zelle.`
+          : ""
       }`,
       action: { label: "See the fees", href: "/insights" },
       ...(overdrawn
@@ -185,6 +197,7 @@ const bankFees: Detector = {
             more: [
               { label: "CFPB: overdraft coverage", href: OVERDRAFT_OPT_IN.consumerUrl },
               { label: "The overdraft opt-in rule", href: OVERDRAFT_OPT_IN.url },
+              ...(atChase ? [{ label: "Chase's overdraft rules", href: CHASE_OVERDRAFT.url }] : []),
             ],
           }
         : {}),

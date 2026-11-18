@@ -447,3 +447,13 @@ export const TMOBILE_PLANS = {
   taxRoom: 1.15,
   oneLineMaxCents: 11_000,
 } as const;
+
+// Chase's overdraft FAQ (chase.com/personal/checking/overdraft-services/faqs, read 2026-11-18): a
+// $34 Overdraft Fee; with Chase Overdraft Assist, none if overdrawn by $50 or less at the end of the
+// business day, or if the balance is brought back to that by 11 PM ET the next business day.
+// Not on Chase First, High School or Secure Checking.
+export const CHASE_OVERDRAFT = {
+  url: "https://www.chase.com/personal/checking/overdraft-services/faqs",
+  graceCents: 5_000,
+  words: /\bCHASE\b|JPMORGAN/,
+} as const;
