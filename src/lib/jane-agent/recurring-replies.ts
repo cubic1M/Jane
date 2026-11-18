@@ -1,4 +1,5 @@
 import type { Frequency } from "@/config/detection";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { nameMatches } from "./names";
 import type { Charge, Recurring } from "./recurring";
@@ -100,16 +101,27 @@ export function costReply(
 
 // "What subscriptions do I have?": the most expensive first, what they come to, and the
 // biggest saving Jane found among them. With all, every regular charge (bills too).
+// Statements that end weeks ago read every charge as stopped (debugger 11-17: "I don't see any
+// subscriptions yet" and "I don't see a regular paycheck yet" on statements ending Sep 28 that
+// pay Netflix and a paycheck every two weeks): what they can't say, as safe to spend says it.
+const oldStatements = (statementsEnd: string, what: string, then: string): Reply => ({
+  body: `Your statements end ${dayLabel(statementsEnd, { year: true })}, so I can't say ${what}. Upload newer statements and I'll ${then}.`,
+  actions: [openLink("Upload newer statements", "/import")],
+  refs: {},
+});
+
 export function subscriptionsReply(
   intent: { total: boolean; all: boolean },
   recurring: Recurring,
   snapshot: Snapshot | null,
+  { statementsEnd = null }: { statementsEnd?: string | null } = {},
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
   const what = intent.all ? "regular charges" : "subscriptions";
   // "1 subscription", not "1 subscriptions" (night QA 10-30).
   const counted = `${list.length} ${list.length === 1 ? what.replace(/s$/, "") : what}`;
   if (list.length === 0) {
+    if (statementsEnd) return oldStatements(statementsEnd, `what ${what} you pay now`, "check");
     return { body: `I don't see any ${what} yet.`, actions: [subscriptionsLink], refs: {} };
   }
   const yearCents = list.reduce((sum, c) => sum + c.annualCostCents, 0);
@@ -162,8 +174,15 @@ export function subscriptionsReply(
 }
 
 // "When do I get paid?": the same payday as safe to spend.
-export function paydayReply(recurring: Recurring, asOf: string): Reply {
+export function paydayReply(
+  recurring: Recurring,
+  asOf: string,
+  { statementsEnd = null }: { statementsEnd?: string | null } = {},
+): Reply {
   const income = recurring.nextIncome;
+  if (!income && statementsEnd) {
+    return oldStatements(statementsEnd, "when you're paid next", "work it out");
+  }
   if (!income) {
     return {
       body: "I don't see a regular paycheck yet. Once one has come in a few times, I'll know when the next is due.",
