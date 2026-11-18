@@ -46,7 +46,9 @@ export type ConnectorCategory =
   | "credit"
   | "tax"
   | "investing"
-  | "payroll";
+  | "payroll"
+  // A letter the person signs that lets Jane act for them (./signwell).
+  | "permission";
 
 // read: Jane reads data. prefill: Jane fills in the steps for the person. act: Jane carries them out
 // after the person's yes.
@@ -74,6 +76,8 @@ export const CONSENT_SCOPES = {
   tax_7216_disclosure: "Share your tax information with a tax partner, for the use you choose",
   place_orders: "Place investment orders, after your yes on each",
   open_accounts: "Open an account in your name with a partner, after your yes",
+  sign_letters:
+    "Send you a letter to sign that lets Jane act for you with a company, after your yes",
 } as const;
 export type ConsentScope = keyof typeof CONSENT_SCOPES;
 
@@ -181,6 +185,19 @@ export const CHART = {
   apiVersion: "2024-01-01",
   clientIdEnv: "CHART_CLIENT_ID",
   clientSecretEnv: "CHART_CLIENT_SECRET",
+} as const;
+
+// SignWell (read connectors, 11-18; developers.signwell.com, read 2026-11-17): a letter the person
+// signs to let Jane act for them with one company. X-Api-Key auth; SIGNWELL_ENV=production sends
+// binding documents, anything else test-mode ones. Its webhooks carry an event hash: HMAC-SHA256
+// keyed by the webhook's id over "<type>@<time>".
+export const SIGNWELL = {
+  baseUrl: "https://www.signwell.com",
+  envEnv: "SIGNWELL_ENV",
+  apiKeyEnv: "SIGNWELL_API_KEY",
+  webhookIdEnv: "SIGNWELL_WEBHOOK_ID",
+  // Days before an unsigned letter's request expires.
+  expiresInDays: 14,
 } as const;
 
 export const STRIPE_FC = {

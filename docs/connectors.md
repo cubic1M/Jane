@@ -321,3 +321,20 @@ counsel's question. A test holds that no real one is registered or switched on. 
 (`chartHttp`: the code-for-token exchange and `/records`) is built and tested, so that day is a
 registration, not a build.
 
+## A letter that lets Jane act for the person (SignWell)
+
+`signwell_permission` and its sandbox twin `sandbox_signwell_permission`
+(`src/lib/connectors/signwell/`, built from developers.signwell.com on 2026-11-17) prefill and, after
+the person's yes, send them a letter to sign that lets Jane act for them with one company: one of a
+fixed list of tasks (cancel, ask for a lower rate, dispute a charge, ask about the account), for a
+year unless they pick less (never past three), and never anything that moves money. Who signs and
+which company come from Jane's own records: the person's name and email on their profile, and a
+company Jane knows (`src/config/cancel-methods.ts`). The signed letter, with SignWell's audit trail,
+is the record behind an act. Consent scope `sign_letters`; category `permission`.
+
+SignWell's webhook carries an event hash, HMAC-SHA256 keyed by the webhook's id over
+`<type>@<time>` (signing kind `signwell_event_hash`, checked within `WEBHOOK_TOLERANCE_SECONDS`).
+It doesn't cover which document, so the real connector stays off until a "completed" is confirmed
+with Get Document first (`api.get` is built). Letters are test-mode (not binding) unless
+`SIGNWELL_ENV=production`. Counsel reads the letter's words before any real person signs one.
+

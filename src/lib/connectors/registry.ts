@@ -17,6 +17,7 @@ import { taxFormUpload } from "./tax-form-upload/connector";
 import { stripeFc } from "./stripe-fc/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { sandboxChartTranscripts } from "./chart/connector";
+import { sandboxSignwellPermission, signwellPermission } from "./signwell/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -78,6 +79,10 @@ const CONNECTORS: readonly Connector[] = [
   sandboxCanopyConnect,
   // Sandbox only: IRS transcripts through Chart. No real one until counsel answers (./chart/).
   sandboxChartTranscripts,
+  // Real, off until REAL_CONNECTORS: letters the person signs to let Jane act for them through
+  // SignWell, and its sandbox twin for sample data (./signwell/).
+  signwellPermission,
+  sandboxSignwellPermission,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

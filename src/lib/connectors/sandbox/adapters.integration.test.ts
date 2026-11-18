@@ -116,6 +116,7 @@ describe("the sandbox adapters' definitions", () => {
       "tax_form_upload",
       "stripe_fc",
       "canopy_connect",
+      "signwell_permission",
     ]);
   });
 
