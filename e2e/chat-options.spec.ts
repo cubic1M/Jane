@@ -58,7 +58,7 @@ test("a pick on the options card is instant, and the next card follows within 10
       id: li.getAttribute("data-option-id") ?? "",
       name: li.querySelector("h4")?.textContent ?? "",
       year: li.querySelector('[data-row="year"] dd')?.textContent ?? "",
-      isPick: (li.textContent ?? "").includes("JANE'S PICK"),
+      isPick: (li.textContent ?? "").includes("Jane's pick"),
       why: li.querySelector("[id^=why-] p")?.textContent ?? "",
     })),
   );
@@ -168,7 +168,7 @@ test("cheaper car insurance comes as comparison cards, and a pick starts the swi
   await expect(sheet).toBeVisible({ timeout: 30_000 });
   const cards = sheet.locator("li[data-option-id]");
   const first = cards.first();
-  await expect(first.getByText("JANE'S PICK")).toBeVisible();
+  await expect(first.getByText("Jane's pick")).toBeVisible();
   await expect(first.getByText("/mo")).toBeVisible();
   const carrier = ((await first.getByRole("heading", { level: 4 }).textContent()) ?? "").trim();
   // On a phone: a stack to swipe through, the page itself not wider than the screen.

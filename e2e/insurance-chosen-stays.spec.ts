@@ -36,9 +36,9 @@ test("the chosen insurance stays on the quotes page after it reloads", async ({
     await page.goto("/insurance");
     await pickItem(page, "Insurance", "Your policies", "GEICO car");
     await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
-    await expect(page.getByText("JANE'S PICK")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Jane's pick")).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
-  const pick = page.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
+  const pick = page.locator("li[data-option-id]").filter({ hasText: "Jane's pick" });
   await pick.getByRole("button", { name: /^Choose / }).click();
   await expect(page.getByRole("status").filter({ hasText: "Chosen:" })).toBeVisible();
 
@@ -50,5 +50,5 @@ test("the chosen insurance stays on the quotes page after it reloads", async ({
       { timeout: 2_000 },
     );
   }).toPass({ timeout: 30_000 });
-  await expect(page.getByText("JANE'S PICK")).toHaveCount(0);
+  await expect(page.getByText("Jane's pick")).toHaveCount(0);
 });

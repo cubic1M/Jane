@@ -31,6 +31,6 @@ test("a sample family reaches the insurance comparison cards from the Insurance 
   await expect(cards).toBeVisible({ timeout: 30_000 });
   const options = cards.locator("li[data-option-id]");
   expect(await options.count()).toBeGreaterThanOrEqual(2);
-  await expect(options.filter({ hasText: "JANE'S PICK" })).toHaveCount(1);
+  await expect(options.filter({ hasText: "Jane's pick" })).toHaveCount(1);
   await expect(cards.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
 });

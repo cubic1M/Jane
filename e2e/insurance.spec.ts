@@ -136,7 +136,7 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   // when the bank linked (spec step 104): its pick, why, labelled as demo advice.
   // Its pick and the other cheaper quotes as comparison cards, Jane's tagged.
   const pick = page.getByRole("region", { name: "Jane's pick" });
-  const janes = pick.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
+  const janes = pick.locator("li[data-option-id]").filter({ hasText: "Jane's pick" });
   await expect(janes.getByRole("heading", { level: 4 })).toHaveText("Lighthouse Insurance (demo)");
   await expect(janes.locator('[data-row="saves"] dd')).toHaveText("$408.00");
   await expect(janes.locator('[data-row="cover"] dd')).toContainText("Same as now");
@@ -488,7 +488,7 @@ test("a demo-bank person goes from a gap to a picked option, and it reaches the 
   const card = page.getByTestId("option-card");
   await expect(card).toBeVisible();
   await expect(card.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
-  await expect(card.getByText("JANE'S PICK")).toBeVisible();
+  await expect(card.getByText("Jane's pick")).toBeVisible();
   await card
     .getByRole("button", { name: /^Choose / })
     .first()

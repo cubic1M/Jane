@@ -520,7 +520,7 @@ export function SideChat() {
         }`}
       >
         <span aria-hidden className="text-lg font-bold">
-          J_
+          J
         </span>
         {/* Its name is its text, so it matches what speech users say. */}
         <span className="sr-only">
