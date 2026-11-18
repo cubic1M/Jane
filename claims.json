@@ -8,5 +8,10 @@
   "task": "chart-transcripts",
   "lane": "lane:connectors",
   "expires": "2026-11-18T09:33:23.423Z"
+ },
+ {
+  "task": "signwell-permission",
+  "lane": "lane:connectors",
+  "expires": "2026-11-18T09:52:54.863Z"
  }
 ]
