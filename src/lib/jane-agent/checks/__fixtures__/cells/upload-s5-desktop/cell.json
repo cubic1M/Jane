@@ -1,0 +1,10 @@
+{
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "kind": "checking",
+      "balance": "642.18",
+      "files": ["wells-fargo-checking.csv"]
+    }
+  ]
+}
