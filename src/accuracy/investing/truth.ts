@@ -33,6 +33,9 @@ export const INVESTING_TRUTH: Readonly<Record<string, Truth>> = {
   beneficiaries: { yes: ["family", "preretire"] },
   invested_cash: { yes: ["equity", "preretire"], maybe: ["family", "retiree"] },
   concentration: { yes: ["equity"] },
+  // Its fact version fires for real accounts only (src/detectors/tax-facts.ts); the sample people are
+  // demo people, who get concentration instead.
+  company_stock_share: { yes: [] },
   retirement_self_employed: { yes: ["freelancer", "owner"] },
   idle_cash: { yes: ["equity", "preretire", "retiree"], maybe: ["family"] },
   social_security_timing: { yes: ["preretire"] },

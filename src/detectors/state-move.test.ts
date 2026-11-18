@@ -54,7 +54,11 @@ describe("California's part-year return", () => {
     const s = run(data)!;
     // Late September's purchases are still mostly in Austin: October is the first month in California.
     expect(s.title).toContain("moved to California by October 2026");
-    expect(s.why).toContain("Form 540NR");
+    expect(s.why).toContain("part-year resident on all income while a resident");
+    expect(s.why).not.toMatch(/return for such a year is|goes on the return/);
+    expect(s.more?.[0].href).toBe(
+      "https://www.ftb.ca.gov/forms/2025/2025-540nr-ca-instructions.html",
+    );
     expect(s.why).toContain("Texas has no income tax on wages");
     for (const t of [s.title, s.headline, s.short, s.why]) {
       expect(

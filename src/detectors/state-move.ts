@@ -1,4 +1,5 @@
 import { US_STATES } from "@/config/referrals";
+import { SOURCES } from "@/config/student-taxes";
 import { STATE_TAX } from "@/config/tax-rates";
 import { monthLabel } from "@/lib/day-label";
 import { stateMove } from "@/profile/home-state";
@@ -29,15 +30,18 @@ const californiaMove: Detector = {
     const month = monthLabel(move.month, { long: true, year: true });
     return suggestion("taxes", "state_move", {
       title: `You moved ${into ? "to" : "from"} California by ${month}: a part-year year for its income tax`,
-      headline: "Note California's part-year return, Form 540NR",
+      headline: "Note California's part-year rules",
       short: `Your purchases move from ${nameOf(move.from)} to ${nameOf(move.to)} by ${month}.`,
       worthCents: 0,
       worthKind: "risk",
       required: true,
       confidence: evidence("seen", profile.months, rows.length, "located purchases"),
       urgency: "later",
-      why: `Your card purchases are mostly in ${nameOf(move.from)} until ${month} and in ${nameOf(move.to)} from then on. California taxes a part-year resident on all income while a resident and only on California-source income while not, and its return for such a year is Form 540NR (FTB's Schedule CA (540NR) instructions).${noTax} The move's date goes on the return.`,
+      why: `Your card purchases are mostly in ${nameOf(move.from)} until ${month} and in ${nameOf(move.to)} from then on. California taxes a part-year resident on all income while a resident and only on California-source income while not (FTB's Schedule CA (540NR) instructions, linked).${noTax}`,
       action: { label: "See your taxes", href: "/taxes" },
+      more: [
+        { label: "FTB: part-year residents (Schedule CA (540NR))", href: SOURCES.ftb540nrCa.url },
+      ],
     });
   },
 };

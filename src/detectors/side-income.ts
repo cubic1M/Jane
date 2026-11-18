@@ -1,5 +1,5 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { SIDE_INCOME } from "@/config/student-taxes";
+import { SIDE_INCOME, SOURCES } from "@/config/student-taxes";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { sumCents } from "@/planning/student-money";
@@ -96,8 +96,12 @@ const sideIncomeTax: Detector = {
             },
       ]),
       urgency: urgencyForEstimated(profile.today),
-      why: `You received ${formatCents(seen)} from ${payers.join(", ")} in ${span} besides your pay, about ${formatCents(pace)} a year at that pace, with nothing withheld.${appLine} Self-employment tax of ${Math.round(SIDE_INCOME.seRate * 1000) / 10}% (Social Security and Medicare) applies from ${formatWholeDollars(SIDE_INCOME.seFromCents)} of net earnings (Schedule SE), and the earnings less their costs go into income: before costs, about ${formatCents(se)} and ${formatCents(income)} at your ${Math.round(rate * 100)}% rate. Payment apps send a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments, and the income counts either way (IRS). ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)}`,
+      why: `You received ${formatCents(seen)} from ${payers.join(", ")} in ${span} besides your pay, about ${formatCents(pace)} a year at that pace, with nothing withheld.${appLine} Self-employment tax of ${Math.round(SIDE_INCOME.seRate * 1000) / 10}% (Social Security and Medicare) applies from ${formatWholeDollars(SIDE_INCOME.seFromCents)} of net earnings, and the earnings less their costs go into income: before costs, about ${formatCents(se)} and ${formatCents(income)} at your ${Math.round(rate * 100)}% rate. Payment apps send a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments, and the income counts either way (IRS). ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)}`,
       action: { label: "See your taxes", href: "/taxes" },
+      more: [
+        { label: "IRS: self-employment tax", href: SOURCES.seTax.url },
+        { label: "IRS: Form 1099-K", href: SOURCES.form1099K.url },
+      ],
     });
   },
 };
