@@ -415,3 +415,27 @@ enrolled Stanford student workers pay no Social Security or Medicare, so for the
   withheld from (gig or contract pay, or school money that isn't pay): Form 4868 and California's
   automatic extension move filing to October 15, never the payment. Worth the federal income and
   self-employment tax on those deposits.
+
+### Fact versions of advice-only cards (`src/detectors/tax-facts.ts`, suggest-taxes phase 2)
+
+A real account sees none of the `ADVICE_TOPICS` cards. Where one can be said as a fact (what Jane sees,
+the rule and its figure, the arithmetic, the person's own form), a fact version fires for a real
+account only: the scan passes `advice` in the detector context (`src/lib/suggestions.ts` detectFor),
+and these return null unless it's `false`, so a demo person never sees a card and its fact version.
+
+- **`social_security_taxed`** (beside `social_security_tax`): the part of Social Security that goes
+  into federal income, its tax at their bracket, and that Social Security withholds only on a Form
+  W-4V (7%, 10%, 12% or 22%).
+- **`stock_vest_tax`** (beside `withholding_gap`): vests withheld at Pub. 15's flat 22% against their
+  bracket, the same figure (`stockVestGap`, shared with the advice card).
+- **`company_stock_share`** (beside `concentration`): company stock's share of what they invest, and a
+  30% fall in dollars.
+
+Left hidden, each because it can't be said without a move: `roth_conversion`, `backdoor_roth`,
+`catch_up`, `hsa`, `year_end_moves`, `childcare_tax_break` and `retirement_self_employed` (a
+contribution or a conversion is the whole content), `rebalance`, `tax_loss_harvest` (a sale),
+`s_corp_election`, `business_separation`, `cash_flow` (a business choice), `irmaa_watch` and
+`inherited_ira_spread` (keeping income under a line, spreading withdrawals), `property_tax_check` (an
+appeal nobody has priced), `estimated_taxes` and `tax_set_aside` (a real account already gets
+`tax_not_yet_paid`), `home_office_deduction` (the square feet are assumed), `rmd` (the amount needs
+the person's age and the IRS's table, which Jane guesses).

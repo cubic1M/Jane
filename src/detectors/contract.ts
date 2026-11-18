@@ -123,7 +123,15 @@ export type MarketPrices = {
   }[];
 };
 
-export type DetectorContext = { profile: Profile; data: ProfileInput; market?: MarketPrices };
+export type DetectorContext = {
+  profile: Profile;
+  data: ProfileInput;
+  market?: MarketPrices;
+  // False for a real account (not in demo advice mode), as the scan knows it. A fact version of an
+  // advice-only card (./tax-facts.ts) fires only then; absent (the harness, the sample people, who
+  // are demo people) it stays quiet, so no one sees a card and its fact version side by side.
+  advice?: boolean;
+};
 
 export type Detector = {
   // The registry capability this detector belongs to (src/lib/jane-agent/capabilities).

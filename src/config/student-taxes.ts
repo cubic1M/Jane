@@ -43,6 +43,14 @@ export const SOURCES = {
     "https://www.irs.gov/instructions/i8863",
     "Form 8863 line 7 (2025): no refundable AOTC for someone under 18, or 18 with earned income under half their support, or 18 to 23 and a full-time student, when a parent is alive and the return isn't joint; expenses are reduced by tax-free scholarships",
   ),
+  pub15: src(
+    "https://www.irs.gov/publications/p15",
+    "Pub. 15 (2026): supplemental wages (stock vests among them) withheld at a flat 22% (37% over $1 million)",
+  ),
+  formW4V: src(
+    "https://www.irs.gov/pub/irs-pdf/fw4v.pdf",
+    "Form W-4V: voluntary federal withholding from Social Security and other government payments, at 7%, 10%, 12% or 22%",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -275,3 +283,6 @@ export const INTERNATIONAL = {
   ],
   sources: ["bechtelForms", "stanfordPayingStudents", "stanfordInternational"],
 } as const;
+
+// The fact versions of advice-only tax and investing cards (./src/detectors/tax-facts.ts).
+export const W4V_RATES = [0.07, 0.1, 0.12, 0.22] as const;

@@ -107,12 +107,15 @@ async function detectForWork(
     marketPrices({ client, now }),
   ]);
   const profile = buildProfile(input);
-  const suggestions = runDetectors({ profile, data: input, market }, undefined, (d, error) =>
-    log.error("Detector failed", {
-      userId,
-      detector: `${d.capability}:${d.topic}`,
-      error: scrub(String(error)),
-    }),
+  const suggestions = runDetectors(
+    { profile, data: input, market, advice },
+    undefined,
+    (d, error) =>
+      log.error("Detector failed", {
+        userId,
+        detector: `${d.capability}:${d.topic}`,
+        error: scrub(String(error)),
+      }),
   )
     .filter((s) => advice || forRealAccount(s))
     .map((s) => inReportsBand(s, input));

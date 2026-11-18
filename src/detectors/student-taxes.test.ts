@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkGuardrails, dollarFigures, recommendsAChoice } from "@/lib/guardrails";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import { buildProfile, rateMonthsOf, type ProfileInput, type Told } from "@/profile/build";
 import { federalTaxOf } from "@/planning/student-tax";
 import { runDetectors, type Suggestion } from "./index";
@@ -54,6 +55,7 @@ const passesGuardrails = (s: Suggestion) => {
     text,
   ).toEqual({ ok: true });
   expect(recommendsAChoice(text), text).toBe(false);
+  expect(tellsThemToAct(text), text).toBe(false);
 };
 
 describe("tax on a fellowship", () => {

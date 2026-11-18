@@ -124,31 +124,41 @@ export function urgencyForEstimated(today: string): Urgency {
 
 // Company stock paid as RSUs is withheld at a flat rate; a person in a higher bracket owes
 // the difference at filing (steps 120 and 219).
+// What a stock plan's vests leave to pay at filing: the vests this year (or an assumed share of the
+// plan), the bracket they reach, and the shortfall against the flat withholding. Null when there's
+// no plan or nothing short. Shared with the fact version (./tax-facts.ts).
+export function stockVestGap({ profile, data }: Parameters<Detector["detect"]>[0]) {
+  const plan = profile.facts.has_stock_plan;
+  const income = profile.facts.monthly_income;
+  if (plan.value !== true) return null;
+  const stock = data.accounts
+    .filter((a) => a.subtype === "stock plan")
+    .reduce((s, a) => s + a.balanceCents, 0);
+  if (stock <= 0) return null;
+  // The person's figure, worked out by the same code as the chat's answer (their vests this
+  // year, or an assumed share of the plan when none are known); the sample people's is
+  // estimated here.
+  const given = data.extras?.rsuGap;
+  if (given !== undefined && (given === null || given.shortfallCents <= 0)) return null;
+  const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
+  const rate = given
+    ? given.marginalRate
+    : marginalRate(annual(income.value), vested, profile.facts.household.value);
+  if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
+  const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
+  return { plan, income, stock, vested, rate, short, assumed: !given || given.assumed };
+}
+
 const withholdingGap: Detector = {
   capability: "taxes",
   topic: "withholding_gap",
   covers: ["tax_equity", "tax_withholding"],
   needs: ["has_stock_plan", "monthly_income", "household"],
-  detect({ profile, data }) {
-    const plan = profile.facts.has_stock_plan;
-    const income = profile.facts.monthly_income;
-    if (plan.value !== true) return null;
-    const stock = data.accounts
-      .filter((a) => a.subtype === "stock plan")
-      .reduce((s, a) => s + a.balanceCents, 0);
-    if (stock <= 0) return null;
-    // The person's figure, worked out by the same code as the chat's answer (their vests this
-    // year, or an assumed share of the plan when none are known); the sample people's is
-    // estimated here.
-    const given = data.extras?.rsuGap;
-    if (given !== undefined && (given === null || given.shortfallCents <= 0)) return null;
-    const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
-    const rate = given
-      ? given.marginalRate
-      : marginalRate(annual(income.value), vested, profile.facts.household.value);
-    if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
-    const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
-    const assumed = !given || given.assumed;
+  detect(ctx) {
+    const { profile } = ctx;
+    const gap = stockVestGap(ctx);
+    if (!gap) return null;
+    const { plan, income, stock, vested, rate, short, assumed } = gap;
     return suggestion("taxes", "withholding_gap", {
       title: "Set aside the tax your stock vests won't have withheld",
       headline: headlineOf("Set aside tax on stock vests", short, "risk"),

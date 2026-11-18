@@ -45,6 +45,10 @@ export const SUGGESTION_TOPICS = [
   "withholding_part_year",
   "withholding_two_jobs",
   "filing_extension",
+  // Fact versions of advice-only cards (src/detectors/tax-facts.ts).
+  "social_security_taxed",
+  "company_stock_share",
+  "stock_vest_tax",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",
