@@ -74,3 +74,6 @@ export const AGE_BAND_FROM: Readonly<Record<string, number>> = {
 // purchases located in one state, and that state at least this share of all located ones.
 export const HOME_STATE_MIN_MATCHES = 3;
 export const HOME_STATE_MIN_SHARE = 0.6;
+// A move between states (src/profile/home-state.ts stateMove): each side of it a run of whole months
+// whose located purchases are mostly in one state, at least this many purchases a month.
+export const STATE_MOVE_MIN_PER_MONTH = 2;

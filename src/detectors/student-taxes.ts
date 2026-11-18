@@ -120,7 +120,9 @@ const stipendTax: Detector = {
           reason: `${evidence("seen", profile.months, deposits.length, "school deposits").reason}, carried to a year at that pace`,
         },
       ]),
-      urgency: urgencyForEstimated(profile.today),
+      // No estimates required under the no-2025-tax exception: the date that matters is April's.
+      urgency:
+        facts.owed_tax_last_year.value === "no" ? "later" : urgencyForEstimated(profile.today),
       why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)} This is arithmetic on your deposits, not tax advice.`,
       action: { label: "See your tax estimate", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],

@@ -43,6 +43,34 @@ export const SOURCES = {
     "https://www.irs.gov/instructions/i8863",
     "Form 8863 line 7 (2025): no refundable AOTC for someone under 18, or 18 with earned income under half their support, or 18 to 23 and a full-time student, when a parent is alive and the return isn't joint; expenses are reduced by tax-free scholarships",
   ),
+  pub15: src(
+    "https://www.irs.gov/publications/p15",
+    "Pub. 15 (2026): supplemental wages (stock vests among them) withheld at a flat 22% (37% over $1 million)",
+  ),
+  formW4V: src(
+    "https://www.irs.gov/pub/irs-pdf/fw4v.pdf",
+    "Form W-4V: voluntary federal withholding from Social Security and other government payments, at 7%, 10%, 12% or 22%",
+  ),
+  form1099K: src(
+    "https://www.irs.gov/businesses/understanding-your-form-1099-k",
+    "Form 1099-K: payment apps and online marketplaces report payments over $20,000 in more than 200 transactions; income is reported whether or not a 1099-K comes; gifts and repayments of shared personal costs aren't taxable income",
+  ),
+  seTax: src(
+    "https://www.irs.gov/businesses/small-businesses-self-employed/self-employment-tax-social-security-and-medicare-taxes",
+    "Self-employment tax: 15.3% (12.4% Social Security, 2.9% Medicare); Schedule SE from $400 of net earnings; for 2026 the first $184,500 of wages and net earnings for Social Security",
+  ),
+  ftb540nrCa: src(
+    "https://www.ftb.ca.gov/forms/2025/2025-540nr-ca-instructions.html",
+    "Schedule CA (540NR) instructions (2025): a part-year resident is taxed on all income while a resident and only on California-source income while a nonresident; Form 540NR is the return for a nonresident or part-year resident",
+  ),
+  w2Instructions: src(
+    "https://www.irs.gov/instructions/iw2w3",
+    "Form W-2 instructions (2026): furnish Copies B, C and 2 to employees by February 1, 2027",
+  ),
+  infoReturns: src(
+    "https://www.irs.gov/instructions/i1099gi",
+    "General Instructions for Certain Information Returns, Part M: Forms 1098 and 1099 to recipients by January 31, or the next business day when it falls on a weekend",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -274,4 +302,40 @@ export const INTERNATIONAL = {
     },
   ],
   sources: ["bechtelForms", "stanfordPayingStudents", "stanfordInternational"],
+} as const;
+
+// The fact versions of advice-only tax and investing cards (./src/detectors/tax-facts.ts).
+export const W4V_RATES = [0.07, 0.1, 0.12, 0.22] as const;
+
+// Side income beside a paycheck (./src/detectors/side-income.ts): payouts for work or sales, and money
+// cashed out of a payment app, which only the person can say is work or friends.
+export const SIDE_INCOME = {
+  appThreshold: { cents: 2_000_000, payments: 200 },
+  seRate: 0.153,
+  seFromCents: 40_000,
+  // Cashed out of an app: friends paying back, or customers paying; asked (app_income).
+  appWords: /\b(?:VENMO|CASH ?APP|PAYPAL)\b.*\b(?:CASHOUT|CASH OUT|TRANSFER|INST XFER)\b/,
+  sources: ["form1099K", "seTax"],
+} as const;
+
+// Tuition paid by December 31 for an academic period that starts by the end of March counts toward
+// this year's education credits (Form 8863 instructions): said on the card from this day.
+export const TUITION_TIMING_FROM = "11-01";
+
+// The forms a person can expect for the year, from the payers Jane sees (./src/detectors/tax-forms.ts):
+// shown from December 1 to February 15. W-2s, 1098s and 1099s are due to them January 31, or the next
+// business day; Stanford mails fellowship recipients a letter summing payments over $600 in January;
+// a nonresident's Form 1042-S comes in March.
+export const FORMS_COMING = {
+  from: "12-01",
+  until: "02-15",
+  dueMonthDay: "01-31",
+  loanInterestFormFromCents: 60_000,
+  sources: [
+    "w2Instructions",
+    "infoReturns",
+    "stanfordPayingStudents",
+    "stanfordInternational",
+    "form1099K",
+  ],
 } as const;

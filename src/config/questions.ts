@@ -136,6 +136,18 @@ export const QUESTIONS: readonly QuestionSpec[] = [
     decides: ["credit or date", "credits and dates"],
   },
   {
+    fact: "app_income",
+    text: "The money you cash out of Venmo, PayPal or Cash App: is it friends paying you back, or pay for work or sales?",
+    choices: [
+      { label: "Friends and family", value: "friends" },
+      { label: "Work or sales", value: "work" },
+      { label: "Some of each", value: "mixed" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["side_income_tax"],
+    decides: ["tax figure", "tax figures"],
+  },
+  {
     fact: "owed_tax_last_year",
     text: "Did you owe any federal income tax for 2025, after credits?",
     choices: [

@@ -15,7 +15,7 @@ export type Candidate = {
 
 // What an answer could decide, worked out rather than assumed (suggest-taxes, 11-18): the
 // detectors that need the fact are run as if the person gave each answer in turn. The answer that
-// changes the most (a suggestion appears, goes, or changes its dollars) is what the question is
+// changes the most (a suggestion appears, goes, or changes its dollars or urgency) is what the question is
 // worth: those suggestions' dollars, and how many they are. "unsure" decides nothing.
 export function decidedBy(
   fact: FactKey,
@@ -27,7 +27,7 @@ export function decidedBy(
   const worth = (told: ProfileInput["told"]) => {
     const input = { ...data, told };
     const fired = runDetectors({ profile: buildProfile(input), data: input }, detectors);
-    return new Map(fired.map((s) => [s.id, s.worthCents]));
+    return new Map(fired.map((s) => [s.id, { cents: s.worthCents, urgency: s.urgency }]));
   };
   const before = worth(data.told);
   let best = { cents: 0, count: 0 };
@@ -37,10 +37,12 @@ export function decidedBy(
     let cents = 0;
     let count = 0;
     for (const id of new Set([...before.keys(), ...after.keys()])) {
-      const a = before.get(id) ?? 0;
-      const b = after.get(id) ?? 0;
-      if (a === b && before.has(id) === after.has(id)) continue;
-      cents += Math.max(a, b);
+      const a = before.get(id);
+      const b = after.get(id);
+      // The same dollars and the same urgency: the answer changed nothing here. (An answer that
+      // moves a date's pressure, as the no-2025-tax exception does, decides something.)
+      if (a && b && a.cents === b.cents && a.urgency === b.urgency) continue;
+      cents += Math.max(a?.cents ?? 0, b?.cents ?? 0);
       count += 1;
     }
     if (cents > best.cents) best = { cents, count };

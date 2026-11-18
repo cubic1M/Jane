@@ -45,6 +45,16 @@ export const SUGGESTION_TOPICS = [
   "withholding_part_year",
   "withholding_two_jobs",
   "filing_extension",
+  // Fact versions of advice-only cards (src/detectors/tax-facts.ts).
+  "social_security_taxed",
+  "company_stock_share",
+  "stock_vest_tax",
+  // Side income beside a paycheck (src/detectors/side-income.ts).
+  "side_income_tax",
+  // A move into or out of California during the year (src/detectors/state-move.ts).
+  "state_move",
+  // The tax forms each payer will send (src/detectors/tax-forms.ts).
+  "tax_forms_coming",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",

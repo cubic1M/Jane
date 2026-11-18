@@ -415,3 +415,54 @@ enrolled Stanford student workers pay no Social Security or Medicare, so for the
   withheld from (gig or contract pay, or school money that isn't pay): Form 4868 and California's
   automatic extension move filing to October 15, never the payment. Worth the federal income and
   self-employment tax on those deposits.
+
+### Fact versions of advice-only cards (`src/detectors/tax-facts.ts`, suggest-taxes phase 2)
+
+A real account sees none of the `ADVICE_TOPICS` cards. Where one can be said as a fact (what Jane sees,
+the rule and its figure, the arithmetic, the person's own form), a fact version fires for a real
+account only: the scan passes `advice` in the detector context (`src/lib/suggestions.ts` detectFor),
+and these return null unless it's `false`, so a demo person never sees a card and its fact version.
+
+- **`social_security_taxed`** (beside `social_security_tax`): the part of Social Security that goes
+  into federal income, its tax at their bracket, and that Social Security withholds only on a Form
+  W-4V (7%, 10%, 12% or 22%).
+- **`stock_vest_tax`** (beside `withholding_gap`): vests withheld at Pub. 15's flat 22% against their
+  bracket, the same figure (`stockVestGap`, shared with the advice card).
+- **`company_stock_share`** (beside `concentration`): company stock's share of what they invest, and a
+  30% fall in dollars.
+
+Left hidden, each because it can't be said without a move: `roth_conversion`, `backdoor_roth`,
+`catch_up`, `hsa`, `year_end_moves`, `childcare_tax_break` and `retirement_self_employed` (a
+contribution or a conversion is the whole content), `rebalance`, `tax_loss_harvest` (a sale),
+`s_corp_election`, `business_separation`, `cash_flow` (a business choice), `irmaa_watch` and
+`inherited_ira_spread` (keeping income under a line, spreading withdrawals), `property_tax_check` (an
+appeal nobody has priced), `estimated_taxes` and `tax_set_aside` (a real account already gets
+`tax_not_yet_paid`), `home_office_deduction` (the square feet are assumed), `rmd` (the amount needs
+the person's age and the IRS's table, which Jane guesses).
+
+### Side income beside a paycheck (`src/detectors/side-income.ts`, suggest-taxes gap pass)
+
+The walk's checking-only person is paid by an employer and also takes Stripe payouts and Venmo
+cash-outs. `side_income_tax`: platform payouts (contractor and gig categories) beside wages, at the
+year's pace, with self-employment tax (15.3% from $400 of net earnings) plus income tax at their rate,
+before costs. Money cashed out of a payment app counts only once they say it's work or sales
+(`app_income`, one tap, "It decides…"): the IRS doesn't count friends paying back for shared costs as
+income. A 1099-K comes only above $20,000 and 200 payments; the income counts either way. Not beside
+the engine's own `tax_not_yet_paid` (a real account whose estimate already shows the gap).
+
+### A move into or out of California (`src/detectors/state-move.ts`, gap pass)
+
+`state_move`: the months before mostly in one state and the months after mostly in another (located
+card purchases, at least two a month, `stateMove` in `src/profile/home-state.ts`), when one side is
+California: California taxes a part-year resident on all income while a resident and only
+California-source income while not, on Form 540NR (FTB's Schedule CA (540NR) instructions). No
+dollars; `required`. The education credit card also says, from November 1, that tuition paid by
+December 31 for a term starting by the end of March counts toward this year's credits (Form 8863).
+
+### The forms on the way (`src/detectors/tax-forms.ts`, gap pass)
+
+`tax_forms_coming`, December 1 to February 15: from the payers Jane sees, the forms for the year and
+by when (January 31, or the next business day: February 1, 2027): a W-2 from each employer, a 1098-T
+from a school paid tuition, a 1098-E from a loan servicer if the interest reached $600, a 1099-K from a
+payout platform only above $20,000 and 200 payments, and for a Stanford fellowship no W-2 or 1099 but
+Stanford's January letter (a nonresident's 1042-S in March). No dollars.

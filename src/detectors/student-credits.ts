@@ -1,4 +1,4 @@
-import { CA_RENTERS_CREDIT, AOTC_FORM, SOURCES } from "@/config/student-taxes";
+import { CA_RENTERS_CREDIT, AOTC_FORM, SOURCES, TUITION_TIMING_FROM } from "@/config/student-taxes";
 import { EDUCATION_CREDITS, EITC, STUDENT_LOAN_INTEREST } from "@/config/tax-rates";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { formatRate } from "@/lib/percent";
@@ -92,7 +92,7 @@ const educationCredit: Detector = {
         : "lifetime learning credit";
     const where = dependent
       ? `You said you're someone's dependent: then the credit goes on that person's return, not yours, for the tuition you paid.`
-      : `It lowers federal income tax owed${name === "American opportunity credit" ? (refundable ? `, and ${pct(AOTC_FORM.refundableShare)} of it is paid even with no tax owed` : "; its refundable part isn't paid to most full-time students under 24 with a living parent (Form 8863 line 7)") : ""}: about ${formatCents(tax)} of tax on your income at its pace, so ${formatCents(worth)} of it is yours to use.`;
+      : `It lowers federal income tax owed${name === "American opportunity credit" ? (refundable ? `, and ${pct(AOTC_FORM.refundableShare)} of it is paid even with no tax owed` : "; its refundable part isn't paid to most full-time students under 24 with a living parent (Form 8863 instructions)") : ""}: about ${formatCents(tax)} of tax on your income at its pace, so ${formatCents(worth)} of it is yours to use.`;
     const aotcLine = undergrad
       ? ""
       : ` If you're an undergraduate in your first four years, at least half time, the American opportunity credit is ${pct(1)} of the first ${formatWholeDollars(AOTC_FORM.firstCents)} and ${pct(AOTC_FORM.secondRate)} of the next ${formatWholeDollars(AOTC_FORM.secondCents)}: ${formatCents(aotc)} on what you paid.`;
@@ -114,7 +114,7 @@ const educationCredit: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(paid)} in tuition to ${nice(money.tuition[0].description).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately or a nonresident alien (IRS Pub. 970); tuition a scholarship paid isn't in the figure. The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.`,
+      why: `You paid ${formatCents(paid)} in tuition to ${nice(money.tuition[0].description).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately or a nonresident alien (IRS Pub. 970); tuition a scholarship paid isn't in the figure. The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS: Form 8863 instructions", href: SOURCES.form8863.url }],
     });

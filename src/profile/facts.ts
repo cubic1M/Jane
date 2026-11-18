@@ -112,6 +112,9 @@ export const FACT_SPECS = [
   F("owed_tax_last_year", "You owed federal income tax last year", "choice", {
     choices: ["yes", "no", "unsure"],
   }),
+  F("app_income", "What the money cashed out of payment apps is", "choice", {
+    choices: ["friends", "work", "mixed", "unsure"],
+  }),
   // The state they live in: told, from the tax profile, or where they shop.
   F("home_state", "The state you live in", "text"),
 ] as const satisfies readonly FactSpec[];
@@ -156,6 +159,8 @@ const CHOICE_WORDS: Readonly<Record<string, string>> = {
   fellowship: "a fellowship, grant or stipend",
   wage: "pay for work",
   aid_refund: "loan money",
+  friends: "friends and family paying back",
+  work: "pay for work or sales",
   starting: "starting out",
   raising: "raising a family",
   peak: "peak earning years",
@@ -165,6 +170,7 @@ const CHOICE_WORDS: Readonly<Record<string, string>> = {
 // "single" for a tax return (debugger 11-13: "How you file taxes: just you").
 const FACT_CHOICE_WORDS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   filing_status: { single: "single" },
+  app_income: { mixed: "some of each" },
 };
 export const choiceWords = (choice: string, key?: string) =>
   (key ? FACT_CHOICE_WORDS[key]?.[choice] : undefined) ??

@@ -160,3 +160,15 @@ describe("the student question and the enrollment one agree", () => {
     expect(await asked({ is_student: false })).not.toContain("enrollment");
   });
 });
+
+describe("the 2025 tax question", () => {
+  it("is asked of a fellow once January's estimate is near, since the answer decides whether it's required", async () => {
+    const files = STUDENT_SHAPES["fellowship-two-months"]();
+    const asked = async (today: string) => {
+      const data = { ...(await inputFromStatements(files, STUDENT_TODAY)), today };
+      return missingFacts(buildProfile(data), data).map((c) => c.spec.fact);
+    };
+    expect(await asked("2026-11-17")).not.toContain("owed_tax_last_year");
+    expect(await asked("2026-12-10")).toContain("owed_tax_last_year");
+  });
+});

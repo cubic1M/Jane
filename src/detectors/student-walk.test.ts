@@ -24,7 +24,11 @@ const WALK: Record<string, string[]> = {
 
 // Each shape's tax topics, today. A new tax detector that reaches one of them adds it here.
 const EXPECTED: Record<string, { must: string[]; never: string[] }> = {
-  "walk-checking-only": { must: [], never: ["stipend_tax", "student_tax_residency"] },
+  // Paid by an employer, with Stripe payouts beside it (and Venmo cash-outs, asked about).
+  "walk-checking-only": {
+    must: ["side_income_tax"],
+    never: ["stipend_tax", "student_tax_residency"],
+  },
   "walk-one-month": { must: [], never: ["stipend_tax", "student_tax_residency"] },
   "walk-old-statement": { must: [], never: ["stipend_tax", "student_tax_residency"] },
   "fellowship-one-month": { must: ["stipend_tax"], never: ["student_tax_residency"] },
@@ -35,6 +39,7 @@ const EXPECTED: Record<string, { must: string[]; never: string[] }> = {
     must: ["student_loan_interest", "ca_renters_credit"],
     never: ["stipend_tax", "education_credit"],
   },
+  "moved-to-stanford": { must: ["state_move"], never: ["stipend_tax"] },
   // On campus (no renter's credit); RA pay from October withheld as if it ran all year.
   "ra-two-months": {
     must: ["withholding_part_year"],

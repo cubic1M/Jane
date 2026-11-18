@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkGuardrails, dollarFigures, recommendsAChoice } from "@/lib/guardrails";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import { buildProfile, rateMonthsOf, type ProfileInput, type Told } from "@/profile/build";
 import { federalTaxOf, marginalRateFor, studentYearOf } from "@/planning/student-tax";
 import { decidesLine } from "@/lib/questions";
@@ -78,6 +79,7 @@ const passes = (s: Suggestion) => {
       t,
     ).toEqual({ ok: true });
     expect(recommendsAChoice(t), t).toBe(false);
+    expect(tellsThemToAct(t), t).toBe(false);
   }
 };
 
