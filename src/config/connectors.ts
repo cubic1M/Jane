@@ -159,6 +159,20 @@ export const CREDIT_SCORE_MAX_AGE_DAYS = 45;
 // until Stripe approves Jane's purpose in writing (REAL_CONNECTORS). Its terms: data shared only with
 // service providers bound by consistent obligations, stored in the US, consent records kept 24
 // months after the contract ends.
+// Canopy Connect (read connectors, 11-18; docs.usecanopy.com/reference, read 2026-11-17): the
+// person signs in to their insurer through Canopy's hosted link, and Canopy's "pull" lists their
+// policies. One API for sandbox and production, the team's keys deciding which (Basic auth: client
+// id and secret). Webhooks are signed in one canopy-signature header, "t=<seconds>,s=<hex>",
+// HMAC-SHA256 over `${t}.${body}`, and carry no event id.
+export const CANOPY = {
+  baseUrl: "https://app.usecanopy.com/api/v1.0.0",
+  clientIdEnv: "CANOPY_CLIENT_ID",
+  clientSecretEnv: "CANOPY_CLIENT_SECRET",
+  teamIdEnv: "CANOPY_TEAM_ID",
+  webhookSecretEnv: "CANOPY_WEBHOOK_SECRET",
+  signatureHeader: "canopy-signature",
+} as const;
+
 export const STRIPE_FC = {
   historyDays: 180,
   balanceRefreshDays: 7,

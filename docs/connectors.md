@@ -292,3 +292,19 @@ no pay, and named offers stay in demo advice mode.
 
 Not built yet: the disclosure component, balance-transfer and rewards-fit maths, the CFPB card-terms
 importer, and wiring offers into a card.
+
+## Read connectors
+
+A read connector brings a person's data in from a partner and saves it where Jane already reads it,
+so the findings that read those tables work unchanged. `readConnector` (`src/lib/connectors/read.ts`)
+runs one only when it's usable for the person (`whyUnavailable`) and their consent covers its
+scopes, audits it (`connector_data_read`) and counts it. It runs right after the person allows the
+connector on `/settings/connections`, and again when the partner's webhook says there's fresh data.
+Each vendor has two registrations: the real one, which calls the vendor and reaches nobody until its
+`REAL_CONNECTORS` switch, and a sandbox twin that reads the vendor's own documented example for
+sample-data people. Tests use a fake `fetch`, never the network.
+
+| Id | Reads | Into | Finding it feeds | Vendor docs read |
+| --- | --- | --- | --- | --- |
+| `canopy_connect`, `sandbox_canopy_connect` | Personal policies from the person's insurer: kind, carrier, premium, term, deductible, limits, renewal date (`GET /teams/{team}/pulls/{pull}`, Basic auth; webhook `canopy-signature` `t=,s=`) | `insurance_policies`, source `canopy`, updated in place on a new pull | The renewal reshop before a car or home renews, and a price rise against the last reshop | docs.usecanopy.com/reference and its OpenAPI, 2026-11-17 |
+

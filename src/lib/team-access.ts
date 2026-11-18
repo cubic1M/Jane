@@ -154,6 +154,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   irs_transcript_uploaded: own,
   tax_form_uploaded: own,
   connector_link_changed: own,
+  connector_data_read: own,
   connector_action_planned: own,
   connector_action_approved: own,
   connector_action_declined: own,
