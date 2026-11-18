@@ -9,6 +9,7 @@ import {
 } from "@/config/detection";
 import { duplicatePairs } from "@/detection/rules/duplicate-charge";
 import { merchantOf } from "@/detection/streams";
+import { cheaperPhonePlan } from "./cover-facts";
 import type { DetectionInput } from "@/detection/types";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
@@ -190,11 +191,15 @@ const billNegotiation: Detector = {
   covers: [],
   needs: [],
   detect({ profile, data }) {
+    // A phone bill a carrier's cheaper plan is under is the plan card's to say (./cover-facts.ts).
+    const plan = cheaperPhonePlan(data);
     const bills = regular(data)
       .filter(
         (s) =>
           (s.pfc === INTERNET && last(s) >= S.internetBillMinCents) ||
-          (s.pfc === PHONE && last(s) >= S.phoneBillMinCents),
+          (s.pfc === PHONE &&
+            last(s) >= S.phoneBillMinCents &&
+            !(plan && s.description === plan.latest.description)),
       )
       .map((s) => ({ s, yearly: last(s) * 12 }));
     if (bills.length === 0) return null;

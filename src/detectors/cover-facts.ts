@@ -266,6 +266,31 @@ const cheaperTier: Detector = {
 
 // A T-Mobile bill that looks like one line on a plan above T-Mix Standard: the carrier's own
 // cheaper plan, as its plans page prices it.
+// The phone bill a carrier's own cheaper plan is under, when there is one: the plan card's, and
+// the ask-for-a-lower-rate card leaves that bill to it (./spending.ts; debugger 11-18: two cards
+// for one $85 T-Mobile bill).
+export function cheaperPhonePlan(data: Parameters<Detector["detect"]>[0]["data"]): {
+  bills: ProfileTx[];
+  latest: ProfileTx;
+  yearly: number;
+} | null {
+  const p = TMOBILE_PLANS;
+  const since = addDays(data.today, -45);
+  const bills = data.transactions
+    .filter((t) => {
+      const line = lineOf(t);
+      return (
+        t.amountCents > 0 && t.date <= data.today && p.words.test(line) && !p.notWords.test(line)
+      );
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const latest = bills[0];
+  if (!latest || latest.date < since) return null;
+  const floor = Math.round(p.cheapestCents * p.taxRoom);
+  if (latest.amountCents <= floor || latest.amountCents > p.oneLineMaxCents) return null;
+  return { bills, latest, yearly: (latest.amountCents - floor) * 12 };
+}
+
 const phonePlanCheaper: Detector = {
   capability: "cost",
   topic: "phone_plan_cheaper",
@@ -273,20 +298,9 @@ const phonePlanCheaper: Detector = {
   needs: [],
   detect({ profile, data }) {
     const p = TMOBILE_PLANS;
-    const since = addDays(data.today, -45);
-    const bills = data.transactions
-      .filter((t) => {
-        const line = lineOf(t);
-        return (
-          t.amountCents > 0 && t.date <= data.today && p.words.test(line) && !p.notWords.test(line)
-        );
-      })
-      .sort((a, b) => b.date.localeCompare(a.date));
-    const latest = bills[0];
-    if (!latest || latest.date < since) return null;
-    const floor = Math.round(p.cheapestCents * p.taxRoom);
-    if (latest.amountCents <= floor || latest.amountCents > p.oneLineMaxCents) return null;
-    const yearly = (latest.amountCents - floor) * 12;
+    const found = cheaperPhonePlan(data);
+    if (!found) return null;
+    const { bills, latest, yearly } = found;
     return suggestion("cost", "phone_plan_cheaper", {
       title: "T-Mobile lists a one-line plan below your bill",
       headline: headlineOf("Note T-Mobile's cheapest plan", yearly, "saves"),
