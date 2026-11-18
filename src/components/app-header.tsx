@@ -34,9 +34,6 @@ function JaneLogo({ marked = true }: { marked?: boolean }) {
       data-jane-logo={marked ? "" : undefined}
       className="inline-flex min-h-11 shrink-0 cursor-default items-center text-base font-bold tracking-tight select-none"
     >
-      <span aria-hidden className="text-emerald-700">
-        &gt;
-      </span>
       Jane
     </span>
   );

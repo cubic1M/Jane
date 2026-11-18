@@ -79,9 +79,7 @@ export function AreaTabs() {
                     : "font-medium text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
                 }`}
               >
-                {current && <span aria-hidden>[</span>}
                 {tab.label}
-                {current && <span aria-hidden>]</span>}
               </Link>
             </li>
           );

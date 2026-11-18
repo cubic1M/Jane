@@ -13,9 +13,14 @@ const open = (query: Record<string, string>) =>
   ContinueSignInPage({ searchParams: Promise.resolve(query) });
 
 describe("the page a sign-in link lands on", () => {
-  it("names the account", async () => {
-    const page = await open({ token: "abc", email: "a@b.test" });
-    expect(renderToStaticMarkup(page)).toContain("Sign in as a@b.test");
+  it("names the account, and opens Jane with one tap", async () => {
+    const html = renderToStaticMarkup(await open({ token: "abc", email: "a@b.test" }));
+    expect(html).toContain("You&#x27;re almost in");
+    expect(html.replace(/<[^>]+>/g, "")).toContain("One tap to open Jane as a@b.test.");
+    expect(html).toMatch(/<button type="submit"[^>]*>Open Jane<\/button>/);
+    expect(html.replace(/<[^>]+>/g, "")).toContain(
+      "Not your email, or you didn&#x27;t ask for this link? Don&#x27;t continue.",
+    );
   });
 
   it.each([

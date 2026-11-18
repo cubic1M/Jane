@@ -4,7 +4,7 @@ import { demoPerson } from "./demo-person";
 import { holds } from "./waits";
 
 // Jane's logos are only logos (founder: "you should not be able to click the top right Jane logo
-// and it does anything. It should just be the logo, and no interaction"): the ">Jane" in the top
+// and it does anything. It should just be the logo, and no interaction"): the "Jane" in the top
 // bar and the "J_" over the chat are no link or button, take no focus, and a click changes
 // nothing. The tabs and labelled buttons do the moving.
 
@@ -39,7 +39,7 @@ test("Jane's logos are plain marks: no link, no button, a click does nothing", a
       })),
     ).toEqual({ inControl: false, focusable: false, cursor: "default" });
   }
-  // Clicking the top bar's ">Jane" stays on this page.
+  // Clicking the top bar's "Jane" stays on this page.
   await page.locator("#app-top-bar [data-jane-logo]").click({ force: true });
   await holds(() => expect(new URL(page.url()).pathname).toBe("/insurance"), 500);
   // Home is a tab.

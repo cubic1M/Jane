@@ -636,7 +636,7 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   opacity: 0.85;
 }
 
-/* An error says so in words and weight, not in red: a heavy border and an [ERROR] tag. */
+/* An error says so in words and weight, not in red: a heavy border and "Error:" before it. */
 [role="alert"]:is(.text-red-600, .text-red-700, .text-red-800) {
   border: 2px solid currentColor;
   --tw-border-style: solid;
@@ -644,7 +644,7 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   font-weight: 600;
 }
 [role="alert"]:is(.text-red-600, .text-red-700, .text-red-800)::before {
-  content: "[ERROR] ";
+  content: "Error: ";
 }
 
 /* An inverted box (Jane's own cards, which must look unlike its answers): white on black in
@@ -1103,37 +1103,61 @@ body:has([data-chat-embed]) > footer {
   display: none;
 }
 
-/* ASCII style: Jane looks like a terminal. Every page uses the monospace font, square
-   corners, and dashed lines for borders (boxes drawn with - and |). Page titles start with
-   "> " and section headings with "# " (silent for screen readers). Unlayered, so it wins
-   over the utilities without editing every page. */
+/* Readable style (founder, 2026-11-18: "it looks like a terminal"). It was the ASCII style:
+   monospace everywhere, dashed borders, "> " and "# " before headings. Now the sans font and solid
+   hairlines; figures keep one width so columns of money still line up. Monospace only where
+   characters must line up, by class (font-mono). Still black, white and greys (monochrome.test.ts).
+   Unlayered, so it wins over the utilities without editing every page. */
 body {
-  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-ligatures: none;
+  font-family:
+    var(--font-sans),
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
 }
 
+@layer base {
+  :where(main) :where(h1) {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* The corner shape, for every corner whatever class a page sets: square (founder, 2026-11-18:
+   "stick with the squared edges"). Nothing else depends on it, so another shape is this rule
+   alone. */
 *,
 *::before,
 *::after {
   border-radius: 0 !important;
-  --tw-border-style: dashed;
 }
 
-main h1::before {
+/* The landing page keeps the look it was drawn in (src/app/page.tsx, landing.css): the
+   monospace font, dashed lines and the "> " before its title. */
+.landing {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-ligatures: none;
+}
+.landing *,
+.landing *::before,
+.landing *::after {
+  --tw-border-style: dashed;
+}
+.landing h1::before {
   content: "> " / "";
   color: var(--color-emerald-700);
 }
-
-main h2::before {
+.landing h2::before {
   content: "# " / "";
   color: var(--color-zinc-400);
 }
-
 @media (prefers-color-scheme: dark) {
-  main h1::before {
+  .landing h1::before {
     color: var(--color-emerald-400);
   }
-  main h2::before {
+  .landing h2::before {
     color: var(--color-zinc-600);
   }
 }
