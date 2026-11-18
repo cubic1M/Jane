@@ -157,7 +157,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     w4Sent: !!estimate.w4,
     refunds: refunds.length,
     investments:
-      investments.taxableAccounts === 0
+      investments.taxableAccounts === 0 || !investments.holdingsKnown
         ? null
         : {
             washSales: investments.washSales.length,
