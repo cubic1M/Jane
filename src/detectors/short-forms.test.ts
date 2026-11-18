@@ -22,6 +22,20 @@ describe("the short forms of a suggestion", () => {
     expect(bad, bad.join("\n")).toEqual([]);
   });
 
+  it("lets a fact card leave its figure out of the headline, and nothing else", () => {
+    const fact = {
+      worthCents: 3_000_000,
+      headline: "Note your things have no renters cover",
+      short: "You rent and I see no renters-cover charge in 12 months.",
+      factOnly: true,
+    } as Suggestion;
+    expect(shortFormProblems(fact)).toEqual([]);
+    expect(shortFormProblems({ ...fact, factOnly: undefined })).toEqual([
+      "headline lacks the dollars ($30,000)",
+    ]);
+    expect(shortFormProblems({ ...fact, headline: "Your things have no cover" })).toHaveLength(1);
+  });
+
   it("is checked: a long, verbless or dollarless headline fails", () => {
     const base = {
       worthCents: 21_588,

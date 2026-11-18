@@ -424,13 +424,12 @@ export const AUTO_AVERAGE = {
 export const AUTO_PREMIUM_WORDS =
   /GEICO|PROGRESSIVE|STATE FARM|ALLSTATE|FARMERS|MERCURY INS|AAA\b|CSAA|LIBERTY MUTUAL|NATIONWIDE|USAA|TRAVELERS|ROOT INS|WAWANESA|\bAUTO INS/;
 // The Federal Reserve's G.19 (release of 2026-11-06, read 2026-11-18): commercial banks' average
-// rate on credit card plans for accounts assessed interest, 22.36%, and on 24-month personal
-// loans, 11.90%, both August 2026.
+// rate on credit card plans for accounts assessed interest, 22.36%, August 2026. (Its 24-month
+// personal-loan rate isn't said: beside a card's rate it points toward taking a loan.)
 export const FED_RATES = {
   url: "https://www.federalreserve.gov/releases/g19/current/default.htm",
   month: "August 2026",
   cardBps: 2_236,
-  personalLoanBps: 1_190,
   // A card's rate this far above the average is worth a call.
   aboveBps: 200,
   minBalanceCents: 50_000,

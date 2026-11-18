@@ -75,6 +75,10 @@ describe("cover for belongings", () => {
     expect(s.why).toContain("$169");
     expect(s.why).toContain("2022");
     expect(s.why).toContain("quotes from two or three insurers");
+    expect(s.title).toBe(
+      "A landlord's policy covers the building, not your things, and I see no renters cover",
+    );
+    expect(s.headline).not.toMatch(/\$/);
     expect(s.more?.map((m) => m.href)).toEqual([RENTERS_AVERAGE.url]);
     expectClean(s);
   });
@@ -82,7 +86,10 @@ describe("cover for belongings", () => {
   it("a Stanford student with no rent: Stanford's own words on its housing", () => {
     const s = fire(undergrad(), "belongings_cover")!;
     expect(s).not.toBeNull();
-    expect(s.title).toContain("Stanford housing");
+    expect(s.title).toBe("Stanford housing doesn't insure your things, and I see no renters cover");
+    // No figure in the headline: it would read as what buying cover brings.
+    expect(s.headline).toBe("Note your things have no renters cover");
+    expect(s.factOnly).toBe(true);
     expect(s.why).toContain("doesn't carry insurance on residents' belongings");
     expect(s.more?.[0]?.href).toBe(STANFORD_HOUSING.url);
     expectClean(s);
@@ -136,6 +143,8 @@ describe("car cover above the US average", () => {
     expect(s.why).toContain("$1,282");
     expect(s.why).toContain(String(AUTO_AVERAGE.year));
     expect(s.why).toContain("declarations page");
+    expect(s.headline).toBe("Note car cover $422 a year above US average");
+    expect(s.why).toContain("whether any discounts apply that you don't have");
     expect(s.worthCents).toBe(170_400 - AUTO_AVERAGE.usCents);
     expect(s.confidence.percent).toBeLessThanOrEqual(45);
     expectClean(s);
@@ -163,7 +172,9 @@ describe("a card rate above the Fed's average", () => {
     // 27.99% against 22.36% on $2,350.
     expect(s.worthCents).toBe(Math.round((235_000 * (2_799 - FED_RATES.cardBps)) / 10_000));
     expect(s.why).toContain("22.36%");
-    expect(s.why).toContain("11.90%");
+    // A different product's rate beside the card's reads as a nudge to borrow (wording check 2).
+    expect(s.why).not.toContain("personal loan");
+    expect(s.why).toContain("if you've paid on time, say so");
     expect(s.why).toContain("call the number on your card");
     expectClean(s);
   });
