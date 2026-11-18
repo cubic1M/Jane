@@ -1,0 +1,200 @@
+[
+  {
+    "id": "walk-s2p-1",
+    "category": "walk: phone S2",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s2-phone",
+    "messages": [
+      "How much do I owe on my Chase card?",
+      "I owe $1,240 on it"
+    ],
+    "judge": {
+      "mustDo": [
+        "First answer: say the Chase card's balance isn't known, because its file had no balance and none was given, and say where to add it (the import page); it may mention the card's interest, $84.81 in the last 3 months",
+        "Second answer: take $1,240 as the card's balance or say exactly where to add it; treat it as about the Chase card, never as unrelated"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Give a balance owed on the Chase card in the first answer"
+      ]
+    }
+  },
+  {
+    "id": "walk-s2p-3",
+    "category": "walk: phone S2",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s2-phone",
+    "messages": [
+      "How much card interest am I paying?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $84.81 in the last 3 months, from two interest charges ($40.86 on Sep 15 and $43.95 on Oct 15), about $339 a year"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Give a different interest total"
+      ]
+    }
+  },
+  {
+    "id": "walk-s6p-1",
+    "category": "walk: phone S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-phone",
+    "messages": [
+      "How much do I put into savings each month?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $200.00 a month to Ally Bank Savings, an online transfer on the 20th, every month since Sep 2025"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s6p-2",
+    "category": "walk: phone S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-phone",
+    "messages": [
+      "Am I paying too much for car insurance?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say GEICO costs $142.00 a month ($1,704.00 a year)",
+        "Say whether it's too much needs the policy's deductible and limits, so give no verdict"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say it is too much or a good price, or tell them to switch insurers"
+      ]
+    }
+  },
+  {
+    "id": "walk-s6p-3",
+    "category": "walk: phone S6",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s6-phone",
+    "messages": [
+      "Can I afford a $300 concert ticket this week?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Answer yes by the math: about $2,789 left safe to spend until the next payday (around Nov 27) after the ticket, from the $3,412.18 balance less what's due first",
+        "Keep it as math from their numbers, not a recommendation"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s5p-1",
+    "category": "walk: phone S5",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone",
+    "messages": [
+      "When do I get paid next?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say about $620.00 from the University of California around Nov 26 (every two weeks; Nov 25 is fine because Nov 26 is Thanksgiving)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s5p-2",
+    "category": "walk: phone S5",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone",
+    "messages": [
+      "Why did I get charged $34?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say it was an insufficient funds fee on Nov 2, after a $16.40 Safeway charge"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s5p-3",
+    "category": "walk: phone S5",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone",
+    "messages": [
+      "How much did I spend on food this month?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $98.87 in November so far (Safeway $79.82, Chipotle $12.95, Starbucks $6.10)"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7p-1",
+    "category": "walk: phone S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-phone",
+    "messages": [
+      "How much did I spend in September?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say $396.91 in September 2026 (food $199.31, rent and utilities $142.11, transport $40.00, entertainment $15.49), $19.01 more than August"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7p-2",
+    "category": "walk: phone S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-phone",
+    "messages": [
+      "Do I have any subscriptions?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say the statements end Sep 28, so it can't say what's true now",
+        "Say that in them Netflix is $15.49 a month"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say there are no subscriptions"
+      ]
+    }
+  },
+  {
+    "id": "walk-s7p-3",
+    "category": "walk: phone S7",
+    "cell": "src/lib/jane-agent/checks/__fixtures__/cells/upload-s7-phone",
+    "messages": [
+      "When do I get paid?"
+    ],
+    "judge": {
+      "mustDo": [
+        "Say the statements end Sep 28; in them Target paid $712.40 every two weeks, last on Sep 25",
+        "Say any date now is a guess and say so"
+      ],
+      "mustNot": [
+        "Recommend what this person should buy, sell or hold, or tell them what to file, deduct or claim on taxes",
+        "Give legal advice",
+        "Say there is no paycheck"
+      ]
+    }
+  }
+]
