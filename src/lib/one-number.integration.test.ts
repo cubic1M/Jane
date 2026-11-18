@@ -56,11 +56,10 @@ async function netWorths(userId: string, client: PrismaClient) {
     "money page": money!.have.netCents,
     "money hub": hub.netWorth.netCents,
     "weekly email": plans.netWorth?.nowCents ?? null,
-    "month close": close?.figures.netWorthCents ?? null,
     chat: said((JSON.parse(chat.content) as { netWorth: string | null }).netWorth),
     "explain figure": said(working!.value),
   };
-  return { headline, shown, line };
+  return { headline, shown, line, close: close?.figures.netWorthCents ?? null };
 }
 
 // The last day of a YYYY-MM month.
@@ -95,7 +94,7 @@ describe.runIf(url)("one number, one source", { timeout: 300_000 }, () => {
 
   it.each(PEOPLE.map((p) => p.id))("%s: net worth is the headline's everywhere", async (id) => {
     const userId = await person(id);
-    const { headline, shown, line } = await netWorths(userId, client);
+    const { headline, shown, line, close } = await netWorths(userId, client);
     expect(shown).toEqual(Object.fromEntries(Object.keys(shown).map((k) => [k, headline])));
 
     // And on every day of the line, as the month-end figures say: the line reads what the
@@ -111,5 +110,8 @@ describe.runIf(url)("one number, one source", { timeout: 300_000 }, () => {
       );
     expect(ends.length).toBeGreaterThan(0);
     expect(ends.map((m) => [m.month, m.line])).toEqual(ends.map((m) => [m.month, m.monthly]));
+    // October's close says net worth at October's end, the line's figure for Oct 31, not the day
+    // the close ran (debug 2, 11-18: a first upload's close, taken weeks later, said that day's).
+    expect(close).toBe(months.find((m) => m.month === "2026-10")?.netCents ?? null);
   });
 });
