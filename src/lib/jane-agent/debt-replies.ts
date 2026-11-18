@@ -151,10 +151,17 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   if (payment) {
     lines.push(`You pay ${payment}${debt.nextDue ? `, next on ${dayLabel(debt.nextDue)}` : ""}.`);
   }
+  // An uploaded card's balance is asked on the import page (loansIntro). Debugger 11-17: "how much
+  // do I owe on my chase card?" said it didn't know, then "A card has no end date", with no way
+  // to tell it.
+  const addOwed =
+    debt.kind === "card" && debt.balanceCents === null && debt.key.startsWith("account:");
   if (debt.payoffDate) {
     lines.push(
       `It's paid off by ${dayLabel(debt.payoffDate, { year: true })} (${sourceLabel(debt.payoffFrom, debt.typedOn)}).`,
     );
+  } else if (addOwed) {
+    lines.push("Add what you owe on the import page and I'll count it.");
   } else if (debt.kind === "card") {
     lines.push("A card has no end date: when it's paid off depends on what you pay each month.");
   } else {
@@ -165,7 +172,11 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
       `Your bank shows it as overdue${debt.pastDueCents ? `: ${formatCents(debt.pastDueCents)} past due` : ""}.`,
     );
   }
-  return { body: lines.join("\n"), actions: [SEE_DEBTS], refs: {} };
+  return {
+    body: lines.join("\n"),
+    actions: [addOwed ? openLink("Add what you owe", "/import") : SEE_DEBTS],
+    refs: {},
+  };
 }
 
 export function debtReply(
