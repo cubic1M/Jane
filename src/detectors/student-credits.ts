@@ -92,7 +92,7 @@ const educationCredit: Detector = {
         : "lifetime learning credit";
     const where = dependent
       ? `You said you're someone's dependent: then the credit goes on that person's return, not yours, for the tuition you paid.`
-      : `It lowers federal income tax owed${name === "American opportunity credit" ? (refundable ? `, and ${pct(AOTC_FORM.refundableShare)} of it is paid even with no tax owed` : "; its refundable part isn't paid to most full-time students under 24 with a living parent (Form 8863 line 7)") : ""}: about ${formatCents(tax)} of tax on your income at its pace, so ${formatCents(worth)} of it is yours to use.`;
+      : `It lowers federal income tax owed${name === "American opportunity credit" ? (refundable ? `, and ${pct(AOTC_FORM.refundableShare)} of it is paid even with no tax owed` : "; its refundable part isn't paid to most full-time students under 24 with a living parent (Form 8863 instructions)") : ""}: about ${formatCents(tax)} of tax on your income at its pace, so ${formatCents(worth)} of it is yours to use.`;
     const aotcLine = undergrad
       ? ""
       : ` If you're an undergraduate in your first four years, at least half time, the American opportunity credit is ${pct(1)} of the first ${formatWholeDollars(AOTC_FORM.firstCents)} and ${pct(AOTC_FORM.secondRate)} of the next ${formatWholeDollars(AOTC_FORM.secondCents)}: ${formatCents(aotc)} on what you paid.`;

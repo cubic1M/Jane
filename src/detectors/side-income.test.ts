@@ -79,9 +79,7 @@ describe("side income beside a paycheck", () => {
     const data = await walk();
     const best = bestQuestion(buildProfile(data), data, new Set())!;
     expect(best.spec.fact).toBe("app_income");
-    expect(decidesLine(best.spec, best.decidesCount, best.unlockCents)).toMatch(
-      /^It decides a tax figure worth up to \$[\d,]+ for you\.$/,
-    );
+    expect(decidesLine(best.spec, best.decidesCount)).toBe("It decides a tax figure for you.");
   });
 
   it("is the self-employment tax plus income tax at their rate on the year's pace", () => {
