@@ -57,8 +57,9 @@ export type WebhookSigning =
   // Svix (Resend, and others): svix-id, svix-timestamp and svix-signature, "v1,<base64>".
   | { kind: "svix"; secretEnv: string }
   // One header "t=<unix seconds>,v1=<hex>" over `${t}.${body}` (PostGrid, Stripe's Stripe-Signature;
-  // several v1 while a secret rotates).
-  | { kind: "hmac_sha256_tv"; secretEnv: string; header: string };
+  // several v1 while a secret rotates). `field` names the signature part when it isn't "v1"
+  // (Canopy's "s").
+  | { kind: "hmac_sha256_tv"; secretEnv: string; header: string; field?: string };
 
 // A verified event, read by the connector: whose action it is about, and what happened.
 export type WebhookEvent = {
@@ -84,6 +85,9 @@ export type LinkEvent = {
 
 export const isLinkEvent = (event: WebhookEvent | LinkEvent): event is LinkEvent =>
   "kind" in event && event.kind === "link";
+
+// What a read connector brought in for the person: how many things it saved, in the person's words.
+export type ReadResult = { saved: number; note: string };
 
 export type Connector = {
   id: string;
@@ -116,6 +120,10 @@ export type Connector = {
     context: CheckContext & { actionId?: string },
   ) => Promise<ActionDetails>;
   guard?: (details: ActionDetails, context: CheckContext & { actionId: string }) => Promise<void>;
+  // Reads the person's data from the partner and saves it where Jane already reads it (a policy,
+  // a form). Only through readConnector (./read.ts), which checks the person may use it and their
+  // consent covers it first. A real one opens the person's credential from the vault itself.
+  read?: (context: CheckContext) => Promise<ReadResult>;
   // Carries out a draft the person said yes to. Gated: only inside the pipeline's grant.
   act?: (draft: ActionDraft, context: ActContext) => Promise<ActResult>;
   // Takes it back at the partner, while ActResult.cancelUntil allows. Gated.

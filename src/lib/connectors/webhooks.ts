@@ -48,7 +48,10 @@ export function signatureValid(
     // "t=1793988000,v1=ab12...,v1=cd34..."
     const parts = (headers.get(signing.header) ?? "").split(",").map((part) => part.trim());
     timestamp = parts.find((part) => part.startsWith("t="))?.slice(2) ?? null;
-    signatures = parts.filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
+    const field = `${signing.field ?? "v1"}=`;
+    signatures = parts
+      .filter((part) => part.startsWith(field))
+      .map((part) => part.slice(field.length));
   } else {
     timestamp = headers.get(signing.timestampHeader);
     // Several while a secret rotates, comma-separated.

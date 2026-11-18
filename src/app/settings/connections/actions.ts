@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { connectorsOn } from "@/config/connectors";
 import { ConsentError, grantConsent, revokeConsent } from "@/lib/connectors/consent";
 import { ConnectorRefused, answerAction, cancelAction } from "@/lib/connectors/pipeline";
+import { readIfReader } from "@/lib/connectors/read";
 import { requireUser } from "@/lib/session";
 
 // Connections (/settings/connections): allowing a connector the scopes it asks for or revoking that,
@@ -22,7 +23,12 @@ export async function allowConnector(formData: FormData): Promise<void> {
   } catch (error) {
     // Nothing granted; the page shows what is still allowed.
     if (!(error instanceof ConsentError)) throw error;
+    revalidatePath("/settings/connections");
+    return;
   }
+  // A read connector brings the data in at once (insurance policies, tax forms): the person said
+  // yes to exactly that.
+  await readIfReader(user.id, connectorId);
   revalidatePath("/settings/connections");
 }
 

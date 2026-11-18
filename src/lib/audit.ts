@@ -120,6 +120,9 @@ export type AuditEvent =
   | "irs_transcript_uploaded"
   | "tax_form_uploaded"
   | "connector_link_changed"
+  // A read connector brought the person's data in (src/lib/connectors/read.ts): the connector and
+  // a count, never the data.
+  | "connector_data_read"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"

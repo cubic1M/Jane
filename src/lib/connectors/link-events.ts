@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { readIfReader } from "./read";
 import type { LinkEvent } from "./types";
 
 // What a partner's word about a person's link does (connectors roadmap round 4, "connection-level
@@ -26,4 +27,7 @@ export async function applyLinkEvent(
     { type: "user", id: userId },
     { connector: connectorId, change },
   );
+  // The partner has fresh data: a read connector reads it now (still only with the person's
+  // consent and the connector on for them).
+  if (change === "refreshed") await readIfReader(userId, connectorId, { client, now });
 }

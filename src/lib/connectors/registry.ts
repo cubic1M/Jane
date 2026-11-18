@@ -15,6 +15,7 @@ import { myAidUpload } from "./my-aid/connector";
 import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { taxFormUpload } from "./tax-form-upload/connector";
 import { stripeFc } from "./stripe-fc/connector";
+import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -70,6 +71,10 @@ const CONNECTORS: readonly Connector[] = [
   // Real, read only, off until Stripe approves Jane's purpose: a second bank-data source
   // (./stripe-fc/).
   stripeFc,
+  // Real, read only, off until REAL_CONNECTORS: insurance policies through Canopy Connect, and its
+  // sandbox twin on Canopy's documented example for sample data (./canopy/).
+  canopyConnect,
+  sandboxCanopyConnect,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

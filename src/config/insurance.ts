@@ -44,6 +44,9 @@ export const POLICY_SOURCES = [
   "switch",
   // Spec step 150: a benefit through work, confirmed from a pay stub or the guided flow.
   "employer",
+  // Read from the insurer through Canopy Connect, after the person's consent
+  // (src/lib/connectors/canopy/).
+  "canopy",
 ] as const;
 export type PolicySource = (typeof POLICY_SOURCES)[number];
 
@@ -54,6 +57,7 @@ export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
   demo: "Demo policy",
   switch: "Bound by Jane",
   employer: "Through your job",
+  canopy: "From your insurer",
 };
 
 // found: seen in payments, not confirmed yet (it doesn't count until it is). active: the
