@@ -97,8 +97,9 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
   const sentences: string[] = [];
   // "Bonds" reads "bonds" mid-sentence; "US stocks" stays "US" (night QA 10-30: "50% us stocks").
   const inSentence = (label: string) => label.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
-  // "Other" that is only funds the table doesn't know is said as such, by name, after the rest
-  // (debugger 11-01: "50% other" was a target-date fund and a stock fund).
+  // "Other" that is funds the table doesn't know is said as such, by name, after the rest
+  // (debugger 11-01: "50% other" was a target-date fund and a stock fund); what's left of it (a
+  // coin, an option: Plaid sandbox walk, 11-17) stays "other".
   const unseen = holdings.filter(
     (h) =>
       !h.isCash &&
@@ -107,19 +108,24 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
       (h.mix.other ?? 0) > 0,
   );
   const otherCents = byClass.get("other") ?? 0;
-  const unseenCents = unseen.reduce((s, h) => s + h.valueCents * (h.mix.other ?? 0), 0);
-  const onlyUnseen = unseen.length > 0 && Math.abs(otherCents - unseenCents) < 1;
-  const parts = onlyUnseen
-    ? [
-        ...mix
-          .filter((m) => m.assetClass !== "other")
-          .map((m) => `${pct(m.share)} ${inSentence(m.label)}`),
-        `${pct(otherCents / total)} in funds whose mix I don't know (${unseen
-          .slice(0, 4)
-          .map((h) => h.ticker ?? h.name)
-          .join(", ")}${unseen.length > 4 ? " and others" : ""})`,
-      ]
-    : mix.map((m) => `${pct(m.share)} ${inSentence(m.label)}`);
+  const unseenCents = Math.min(
+    otherCents,
+    unseen.reduce((s, h) => s + h.valueCents * (h.mix.other ?? 0), 0),
+  );
+  const restCents = otherCents - unseenCents;
+  const parts =
+    unseen.length > 0
+      ? [
+          ...mix
+            .filter((m) => m.assetClass !== "other")
+            .map((m) => `${pct(m.share)} ${inSentence(m.label)}`),
+          ...(restCents >= 1 ? [`${pct(restCents / total)} other`] : []),
+          `${pct(unseenCents / total)} in funds whose mix I don't know (${unseen
+            .slice(0, 4)
+            .map((h) => h.ticker ?? h.name)
+            .join(", ")}${unseen.length > 4 ? " and others" : ""})`,
+        ]
+      : mix.map((m) => `${pct(m.share)} ${inSentence(m.label)}`);
   sentences.push(
     owned > 0 && owned !== total
       ? `You own ${formatCents(owned)}. Of the ${formatCents(total)} your accounts list holdings for: ${parts.join(", ")}.`

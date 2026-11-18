@@ -98,6 +98,8 @@ describe("the Investing summary on Plaid's sandbox holdings", () => {
   it("calls only funds 'funds whose mix I don't know', never a coin or an option", () => {
     const mixLine = facts.sentences[0]!;
     expect(mixLine).not.toMatch(/funds whose mix I don't know \([^)]*(BTC|NFLX)/);
+    // The coin and the option are "other"; the fund is still named beside them.
+    expect(mixLine).toMatch(/\d+% other, \d+% in funds whose mix I don't know \(CAMYX\)\.$/);
   });
 
   it("says the same total as the page's tree, and names accounts that list no holdings", () => {
