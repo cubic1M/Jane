@@ -1,7 +1,7 @@
 [
  {
-  "task": "gate-b-debt-owed",
-  "lane": "lane:beta-accuracy",
-  "expires": "2026-11-16T05:12:20.126Z"
+  "task": "investments-walk",
+  "lane": "lane:connectors",
+  "expires": "2026-11-18T06:32:18.956Z"
  }
 ]
