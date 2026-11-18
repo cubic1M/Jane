@@ -11,6 +11,11 @@ export const IDLE_CASH_MONTHS_OF_SPENDING = 3;
 // An account whose last row is more than this many days old has data that ended there: its
 // spending is a month of what that data shows (DATA_ENDED_DAYS, the tax estimate's too).
 export const IDLE_CASH_DATA_ENDED_DAYS = DATA_ENDED_DAYS;
+// Payments to a person (Zelle, Venmo) of about the same amount this many days apart, at least
+// RENT_TRANSFER_MIN_MONTHS of them, are a month's spending though filed as transfers: rent sent to
+// a landlord who's a person, before "Is this your rent?" is answered (debugger 11-18). By the gap
+// between payments, not the day of the month, so moving every date moves nothing (the bench).
+export const IDLE_CASH_PERSON_MONTHLY_GAP_DAYS: readonly [number, number] = [25, 35];
 // Ignore excess cash below this (in cents): the yearly difference would be pocket change.
 export const IDLE_CASH_MIN_EXCESS_CENTS = 100_000;
 // Yearly rates in basis points (100 = 1%): the high-yield savings rate the cash page shows
