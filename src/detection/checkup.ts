@@ -1,5 +1,4 @@
 import {
-  BANK_FEE_CATEGORIES,
   CHECKUP_DAYS_UNTIL_MONTHS,
   CHECKUP_EXAMPLES,
   CHECKUP_MIN_HISTORY_DAYS,
@@ -25,11 +24,12 @@ import { STALE_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents, formatWholeDollars } from "@/lib/money";
+import { isBankFee } from "@/planning/bank-fees";
 import { cashCushionOf, idleCashOf } from "@/planning/idle-cash";
 import { stoppedEmployer } from "@/profile/stopped-employer";
 import { detect } from "./detect";
 import { forecastAccounts } from "./forecast";
-import { inList, inLookback, isProcessorFee } from "./helpers";
+import { inList, inLookback } from "./helpers";
 import { benchmarkOf } from "./rules/bill-negotiation";
 import { isSubscription } from "./rules/subscription-review";
 import { buildStreams, type Stream } from "./streams";
@@ -175,8 +175,18 @@ export const CHECKS: Record<FindingType, Check> = {
     label: "Bank fees",
     missing: shortHistory(CHECKUP_MIN_HISTORY_DAYS),
     passed: (f) => {
-      const fees = inLookback(f.input).filter(
-        (t) => inList(t.pfcDetailed, BANK_FEE_CATEGORIES) && !isProcessorFee(t.description),
+      // The bank's own fees, as the bank-fee finding counts them: a loan's late fee paid from
+      // checking is the late-fee suggestion's (debugger 11-18: Nelnet's $14 read "Refunded in
+      // full", and nothing was refunded).
+      const cash = new Set(
+        f.input.accounts.filter((a) => a.type === "depository").map((a) => a.id),
+      );
+      const fees = inLookback(f.input).filter((t) =>
+        isBankFee({
+          description: t.description,
+          pfc: t.pfcDetailed,
+          onCash: cash.has(t.accountId),
+        }),
       );
       return {
         line:
