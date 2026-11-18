@@ -181,4 +181,6 @@ export const KEEP_RATE_LIMIT_PREFIXES = [
   // the 2nd any cleanup took it and the person's month cap started again from nothing (debugger
   // 11-14, while tracing a flaky cap test).
   "chatspendmonth:",
+  // Gate E's category check, a count per day of replies by kind of claim (src/config/claim-check.ts).
+  "claimcheck:",
 ] as const;

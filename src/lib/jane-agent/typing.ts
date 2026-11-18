@@ -19,6 +19,7 @@ import { hit } from "@/lib/rate-limit";
 import { claudeFinished, claudeLimit, refundClaudeUse } from "./claude-limits";
 import { overDailyCap, overMonthlyPersonCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
+import { noteClaims } from "./claim-check";
 import {
   UNSAFE_TEXT,
   payeeFactsReply,
@@ -447,6 +448,9 @@ async function sendToJaneWork(
     reply.refs = { ...reply.refs, topic: { kind: "asked", target: text.slice(0, 80) } };
   }
   const replied = await storeReply(userId, reply, { client, at: answeredAt });
+  // Gate E's category check, reporting only: what it would have flagged goes to the log and a
+  // count, and the reply stays as it is (src/config/claim-check.ts).
+  await noteClaims(userId, reply.body, source, { client, now });
   // What kind of question, never its words.
   await track(userId, "chat_message_sent", {
     intent,
