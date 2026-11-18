@@ -275,7 +275,11 @@ export function studentToolOutput(data: StudentLoans, money: (cents: number) => 
     rate: formatRate(data.loan.aprBps!),
     income: money(data.agiCents),
     incomeFrom:
-      data.agiFrom === "you" ? "the person gave it" : "estimated from paychecks (take-home)",
+      data.agiFrom === "you"
+        ? "the person gave it"
+        : data.agiFrom === "paychecks"
+          ? "estimated from paychecks (take-home)"
+          : "unknown: no paychecks seen, so the plans use $0; ask for their tax return's income",
     plans: data.comparison.results.map((r) => ({
       plan: PLAN_NAMES[r.plan],
       monthlyNow: money(r.monthlyNowCents),

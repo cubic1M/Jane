@@ -43,7 +43,7 @@ export function studentReply(data: StudentLoans): Reply {
   }
   const { loan, comparison } = data;
   const lines = [
-    `Your ${loan.name}: ${formatCents(loan.balanceCents!)} at ${formatRate(loan.aprBps!)}. At ${data.agiFrom === "you" ? "the income you gave" : "an income estimated from your paychecks"} (${formatCents(data.agiCents)} a year):`,
+    `Your ${loan.name}: ${formatCents(loan.balanceCents!)} at ${formatRate(loan.aprBps!)}. At ${data.agiFrom === "you" ? `the income you gave (${formatCents(data.agiCents)} a year)` : data.agiFrom === "paychecks" ? `an income estimated from your paychecks (${formatCents(data.agiCents)} a year)` : "an income of $0, since I see no paychecks in your accounts (give your tax return's income on the student loans page for real numbers)"}:`,
     ...comparison!.results.map(
       (r) =>
         `- ${PLAN_NAMES[r.plan]}: ${formatCents(r.monthlyNowCents)} a month, ${r.leftCents > 0 ? inAll(r).toLowerCase() : `${inAll(r)} in all`}${r.forgivenCents > 0 ? `, ${formatCents(r.forgivenCents)} forgiven${r.viaPslf ? " through PSLF" : ""}` : ""}`,

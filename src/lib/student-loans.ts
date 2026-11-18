@@ -53,10 +53,11 @@ export type StudentLoans = {
   advice: boolean;
   loan: Debt | null;
   profile: StudentProfile;
-  // The income the plans use, and whether the person gave it or Jane estimated it from
-  // paychecks (take-home pay, so a low estimate; the tax return's AGI is what counts).
+  // The income the plans use, and whether the person gave it, Jane estimated it from paychecks
+  // (take-home pay, so a low estimate; the tax return's AGI is what counts), or Jane saw no
+  // paychecks at all, so the $0 is unknown, not an estimate.
   agiCents: number;
-  agiFrom: "you" | "paychecks";
+  agiFrom: "you" | "paychecks" | "none";
   comparison: StudentComparison | null;
   // Forgiveness tracking: payments Jane saw (one a month) and the total counted.
   paymentsSeen: number;
@@ -120,7 +121,10 @@ export async function loadStudentLoans(
     [...book.debts]
       .filter((d) => d.kind === "student" && (d.balanceCents ?? 0) > 0 && d.aprBps !== null)
       .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ?? null;
-  const agiFrom = profile.agiCents !== null ? "you" : "paychecks";
+  // No pay seen isn't an income of $0 (Plaid sandbox walk, 11-17: "$0.00 a year (estimated from
+  // your paychecks)" with none in the accounts, and IBR at $0 a month).
+  const agiFrom =
+    profile.agiCents !== null ? "you" : (pay._sum.amountCents ?? 0) !== 0 ? "paychecks" : "none";
   // A year's pay: under a year of statements, the paychecks paced over the days they cover (debugger
   // 11-06: six months of a teacher's pay read as a year's, $26,572, and IBR came out $22 a month).
   const coveredDays =

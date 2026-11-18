@@ -130,7 +130,9 @@ async function StudentContent({
               {formatCents(data.agiCents)} a year{" "}
               {data.agiFrom === "you"
                 ? "(the income you gave)"
-                : "(estimated from your paychecks: give your tax return's income below for a closer number)"}
+                : data.agiFrom === "paychecks"
+                  ? "(estimated from your paychecks: give your tax return's income below for a closer number)"
+                  : "(no paychecks seen in your accounts, so this isn't your income: give your tax return's income below)"}
               , income unchanged.
             </p>
             <table className="w-full text-left text-sm">
