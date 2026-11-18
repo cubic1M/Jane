@@ -101,7 +101,7 @@ const partYearWithholding: Detector = {
         : "";
     return suggestion("taxes", "withholding_part_year", {
       title: `About ${formatCents(refund)} more than your ${money.year} tax is being withheld from your new job's pay`,
-      headline: headlineOf("Ask payroll for part-year withholding", refund, "earns", true),
+      headline: `Note: about ${formatWholeDollars(refund)} withheld beyond the year's tax`,
       short: `Pay from ${dayLabel(first)} is withheld as if it ran all year: about ${formatWholeDollars(refund)} too much.`,
       worthCents: refund,
       worthKind: "earns",
@@ -115,8 +115,9 @@ const partYearWithholding: Detector = {
         },
       ]),
       urgency: "soon",
-      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year. It comes back after you file. Pub. 15-T's part-year method, asked of the employer in writing by someone working no more than ${W4.partYearMaxDays} days in the year, withholds on what the year's pay really is.${exempt}`,
+      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year. It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}`,
       action: { label: "See your taxes", href: "/taxes" },
+      more: [{ label: "IRS Pub. 15-T", href: SOURCES.pub15t.url }],
     });
   },
 };

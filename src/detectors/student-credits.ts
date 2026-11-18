@@ -164,7 +164,7 @@ const studentLoanInterest: Detector = {
       "",
     );
     return suggestion("taxes", "student_loan_interest", {
-      title: `The interest on your student loan comes off income, up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)}`,
+      title: `Student loan interest can come off income, up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} (IRS Pub. 970)`,
       headline: headlineOf("Check the student loan interest", worth, "saves"),
       short: `${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}; its interest part lowers income.`,
       worthCents: worth,
@@ -259,9 +259,9 @@ const caRentersCredit: Detector = {
     const credit = CA_RENTERS_CREDIT.creditCents[status];
     const months = new Set(rent.map((t) => t.date.slice(0, 7))).size;
     return suggestion("taxes", "ca_renters_credit", {
-      title: `California's renter's credit is ${formatWholeDollars(credit)} for a renter with your income`,
+      title: `California's renter's credit can be ${formatWholeDollars(credit)} at your income; FTB's rules decide it`,
       headline: headlineOf("Check California's renter's credit", credit, "saves"),
-      short: `Rent paid in California, income under ${formatWholeDollars(limit)}: ${formatWholeDollars(credit)} off state tax.`,
+      short: `Rent paid in California, income under ${formatWholeDollars(limit)}: the credit can be ${formatWholeDollars(credit)}; FTB's rules decide it.`,
       worthCents: credit,
       worthKind: "saves",
       confidence: weakest([
