@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { CHEAPER_PLANS } from "@/config/student-money";
 import { FINDING_KIND_OF_TOPIC } from "@/config/suggestions";
 import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
@@ -135,9 +136,19 @@ export const findingsSource: MessageSource = {
         return kind ? [kind] : [];
       }),
     );
+    // A cheaper plan of one service (cheaper_tier) is that service's subscription card: Netflix had
+    // "Note Netflix's Standard with ads plan, save $78/yr" and "Review your Netflix subscription"
+    // in one dock (debug 2, 11-18). Only the services it names; the others' cards stay.
+    const cheaperPlanOf = (snapshot.suggestions ?? [])
+      .filter((s) => s.topic === "cheaper_tier")
+      .flatMap((s) => CHEAPER_PLANS.filter((p) => `${s.title} ${s.short}`.includes(p.service)));
+    const saidAsCheaperPlan = (finding: SnapshotFinding) =>
+      finding.type === "subscription_review" &&
+      cheaperPlanOf.some((p) => p.words.test(finding.title.toUpperCase()));
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
       .filter((finding) => !suggested.has(finding.type))
+      .filter((finding) => !saidAsCheaperPlan(finding))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(byPriority(snapshot))
       .filter((finding) => {
