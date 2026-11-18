@@ -131,6 +131,7 @@ async function loadProfileInputFrom(
         availableBalanceCents: true,
         itemId: true,
         mask: true,
+        item: { select: { institutionName: true } },
       },
     }),
     db.liabilities.findMany({
@@ -265,6 +266,7 @@ async function loadProfileInputFrom(
     accounts: accounts.map((a) => ({
       id: a.id,
       name: a.name,
+      institution: a.item?.institutionName ?? null,
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,

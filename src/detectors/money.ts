@@ -27,6 +27,7 @@ import {
 } from "./helpers";
 import { stoppedEmployer } from "./life";
 import { cashClearsCard } from "./student-money";
+import { OVERDRAFT_OPT_IN } from "@/config/student-money";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
 // cash, the emergency fund and debt in trouble. Pure; see ./contract.ts.
@@ -173,8 +174,20 @@ const bankFees: Detector = {
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.count, "bank fees"),
       urgency: "soon",
-      why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.`,
+      why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.${
+        overdrawn
+          ? " The CFPB says banks need your opt-in to charge an overdraft fee on an ATM withdrawal or a one-time debit card purchase, and that you can change that choice any time by asking your bank: the card is then declined instead, with no fee."
+          : ""
+      }`,
       action: { label: "See the fees", href: "/insights" },
+      ...(overdrawn
+        ? {
+            more: [
+              { label: "CFPB: overdraft coverage", href: OVERDRAFT_OPT_IN.consumerUrl },
+              { label: "The overdraft opt-in rule", href: OVERDRAFT_OPT_IN.url },
+            ],
+          }
+        : {}),
       watch: {
         kind: "fee_stops",
         pfcs: [...BANK_FEE_CATEGORIES],

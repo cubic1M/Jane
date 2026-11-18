@@ -227,6 +227,9 @@ const stanfordBillDue: Detector = {
     if (student.value !== true || !atStanford(data)) return null;
     const paid = billPayments(data);
     if (paid.length === 0) return null;
+    // Two payments about a month apart: already paying in parts (the plan, or by hand).
+    const [latest, before] = paid;
+    if (before && daysBetween(before.date, latest!.date) <= BILL_GAP.monthlyGapDays) return null;
     const plan = STANFORD_PAYMENT_PLAN.windows.find((w) => w.to >= data.today);
     if (!plan || daysBetween(data.today, plan.from) > 14) return null;
     const due = nextDue(plan.to, STANFORD_BILL.dueDates.undergraduate);
