@@ -2,7 +2,7 @@ import { plural } from "@/lib/plural";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
-import { bankFeesYear } from "@/planning/bank-fees";
+import { bankFeesYear, isBankFee } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { feeMonthsOf, paceOf } from "@/detection/rules/fee-totals";
 import { inList, lookbackEnd } from "@/detection/helpers";
@@ -27,6 +27,7 @@ import {
 } from "./helpers";
 import { stoppedEmployer } from "./life";
 import { cashClearsCard } from "./student-money";
+import { isWaivableMonthlyFee, waivableFee } from "./cover-facts";
 import { CHASE_OVERDRAFT, OVERDRAFT_OPT_IN } from "@/config/student-money";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
@@ -137,6 +138,20 @@ const bankFees: Detector = {
     // one fee is money lost, often given back for the asking, and it counts once, not at a pace
     // (FEE_PACE_MIN_CHARGES), so a single fee never reads as a yearly habit.
     if (!fees) return null;
+    // A monthly fee the person's own pay may already waive is fee_waiver_met's to say, with the
+    // bank's rule: when it's the only fee, one card, not two at the same $144 (debugger 11-18).
+    const waivable = waivableFee(data);
+    if (
+      waivable &&
+      data.transactions
+        .filter(
+          (t) =>
+            t.amountCents > 0 &&
+            isBankFee({ description: t.description, pfc: t.pfc, onCash: cash.has(t.accountId) }),
+        )
+        .every((t) => isWaivableMonthlyFee(t, waivable))
+    )
+      return null;
     const total = fees.yearCents;
     // Night QA 10-30: a traveller's foreign-transaction and annual card fees read as "Stop paying
     // overdraft and bank fees" though nothing was ever overdrawn.

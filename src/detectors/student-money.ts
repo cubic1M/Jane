@@ -25,6 +25,7 @@ import {
   factEvidence,
   headlineOf,
   liquidCents,
+  reportsWorth,
   weakest,
 } from "./helpers";
 
@@ -334,9 +335,13 @@ export function cashClearsCard(data: Data): {
   const aprBps = aprs.length > 0 ? Math.max(...aprs) : null;
   // A year of interest on what cash could clear: at the card's rate when the bank says it, else
   // the charges seen, at a year's pace, for the share cleared.
+  // The report's yearly figure when it has one, so the dock and the report say one (gate B;
+  // debugger 11-18: "stops about $396.87 a year" beside the report's "$339.24 a year").
   const first = charges.reduce((m, t) => (t.date < m ? t.date : m), data.today);
   const spanDays = Math.max(30, daysBetween(first, data.today) + 15);
-  const seenYear = Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays);
+  const seenYear =
+    reportsWorth(data, "card_interest") ??
+    Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays);
   const interest =
     aprBps !== null ? Math.round((clear * aprBps) / 10_000) : Math.round((seenYear * clear) / owed);
   return {
