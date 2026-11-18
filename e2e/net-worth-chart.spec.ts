@@ -153,7 +153,7 @@ test("every day money moved is a dot that opens where the money went, inside the
 
   // More details: the full breakdown beside it, joined by a dotted line (on a phone a sheet from
   // the bottom of the screen), every movement linked to where to see it.
-  await card.getByRole("button", { name: "[MORE DETAILS]" }).click();
+  await card.getByRole("button", { name: "More details" }).click();
   const details = page.locator("[data-net-worth-event-detail]");
   await expect(details).toBeVisible();
   await expect(details.getByRole("link").first()).toHaveAttribute(
@@ -201,7 +201,7 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   await page.goto("/home");
 
   const chart = page.locator("[data-net-worth-chart]");
-  await chart.getByRole("button", { name: /EXPAND/ }).click();
+  await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
   // Every movement in cash: far more than the significant days, overlapping ones drawn as one.
   const dots = chart.locator("[data-net-worth-dots]");
   await expect(dots).toBeAttached({ timeout: 30_000 });
@@ -210,7 +210,7 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   expect(Number(await dots.getAttribute("data-dots"))).toBeLessThanOrEqual(all);
   await expect(chart.locator("[data-net-worth-event]")).toHaveCount(0);
 
-  // Zoomed in as far as it goes (the brush's [+], all in the chart's own area), every
+  // Zoomed in as far as it goes (the brush's +, all in the chart's own area), every
   // movement in view is its own dot.
   const zoomIn = chart.getByRole("button", { name: "Zoom in" });
   for (let i = 0; i < 12; i++) await zoomIn.click();
@@ -238,7 +238,7 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   const card = chart.locator("[data-net-worth-event-card]");
   await expect(card).toBeVisible();
   await expect(card.getByRole("listitem").first()).toHaveText(line.split("; ")[0]);
-  await card.getByRole("button", { name: "[MORE DETAILS]" }).click();
+  await card.getByRole("button", { name: "More details" }).click();
   const details = page.locator("[data-net-worth-event-detail]");
   await expect(details).toBeVisible();
   if (isMobile) {

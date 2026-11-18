@@ -39,7 +39,7 @@ async function tab(page: Page, path: string) {
 
 // Figures start hidden on every return.
 async function safeDollars(page: Page) {
-  await page.getByRole("button", { name: /SHOW VALUE.* of safe to spend/i }).click();
+  await page.getByRole("button", { name: "Show value of safe to spend" }).click();
   const figure = page.locator('[data-hub-number="safe"]');
   await expect(figure).toHaveText(/\$[\d,]+/);
   return Number((await figure.innerText()).replace(/[^0-9.]/g, ""));

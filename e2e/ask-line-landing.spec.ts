@@ -39,7 +39,7 @@ test("Ask Jane always draws its line, and asked again finds the earlier answer",
   await expect(line).toBeVisible({ timeout: 30_000 });
   // The one marching line, like every other (MARCHING_LINE).
   await expectMarchingLine(line);
-  await expect(ask).toContainText("ASKED ✓ · TAP TO SEE", { timeout: 60_000 });
+  await expect(ask).toContainText("Asked ✓ · Tap to see", { timeout: 60_000 });
   const count = await messages.count();
   if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
 

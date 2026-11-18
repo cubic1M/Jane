@@ -149,8 +149,8 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
             </span>
           ))}
         </span>
-        <span className="text-xs font-semibold tracking-wider">
-          {open ? "[LESS]" : "[WHY THIS NUMBER]"}
+        <span className="text-sm font-medium underline underline-offset-4">
+          {open ? "Less" : "Why this number?"}
         </span>
       </button>
       <Opens id="safe-why" open={open}>
@@ -174,9 +174,9 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
           type="button"
           data-aim-to-spend=""
           onClick={aimToSpend}
-          className="self-start text-sm font-semibold hover:underline"
+          className="self-start text-sm font-medium underline underline-offset-4"
         >
-          [What are you aiming to spend?]
+          What are you aiming to spend?
           <span className="sr-only"> Opens the chat with it ready to type.</span>
         </button>
       </Opens>
@@ -308,8 +308,8 @@ export function SavedTile({
                 label={`${Math.round(saved.share * 100)}% of what Jane found`}
               />
             </span>
-            <span className="text-xs font-semibold tracking-wider">
-              {open ? "[LESS]" : "[WHERE IT CAME FROM]"}
+            <span className="text-sm font-medium underline underline-offset-4">
+              {open ? "Less" : "Where it came from"}
             </span>
           </button>
         </>
