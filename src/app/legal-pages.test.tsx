@@ -40,10 +40,10 @@ describe("the legal pages", () => {
   it("say Plaid is read-only: transactions, with loan and investment details optional", () => {
     const link = readFileSync("src/lib/plaid/link.ts", "utf8");
     expect(link).toMatch(/products: \[Products\.Transactions\]/);
-    // Loan details are optional; investment details are optional too, and asked for only while
-    // PLAID_INVESTMENTS=1.
+    // Loan details are optional (the person consents in Link; read only for a link with a card or
+    // loan); investment details are optional too, and asked for only while PLAID_INVESTMENTS=1.
     expect(link).toMatch(
-      /optional_products: \[\s*Products\.Liabilities,\s*\.\.\.\(plaidInvestmentsEnabled\(\) \? \[Products\.Investments\] : \[\]\),?\s*\]/,
+      /additional_consented_products: \[\s*Products\.Liabilities,\s*\.\.\.\(plaidInvestmentsEnabled\(\) \? \[Products\.Investments\] : \[\]\),?\s*\]/,
     );
     // Nothing that moves money is asked for.
     expect(link).not.toMatch(/Products\.(Transfer|PaymentInitiation|Auth|Signal)/);

@@ -85,7 +85,7 @@ describe("Plaid Link", () => {
 
   it("asks for Investments only once PLAID_INVESTMENTS is on", async () => {
     await createLinkToken("user_1", null, { api });
-    expect(linkTokenCreate.mock.calls[0][0].optional_products).toEqual(["liabilities"]);
+    expect(linkTokenCreate.mock.calls[0][0].additional_consented_products).toEqual(["liabilities"]);
 
     itemPublicTokenExchange.mockResolvedValue({
       data: { access_token: "access-sandbox-secret", item_id: "plaid_item_1" },
@@ -101,7 +101,7 @@ describe("Plaid Link", () => {
     expect(linkTokenCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         products: ["transactions"],
-        optional_products: ["liabilities", "investments"],
+        additional_consented_products: ["liabilities", "investments"],
         transactions: { days_requested: 365 },
         user: { client_user_id: "user_1" },
         country_codes: ["US"],
@@ -124,6 +124,7 @@ describe("Plaid Link", () => {
     expect(request.access_token).toBe("access-sandbox-item");
     expect(request.products).toBeUndefined();
     expect(request.optional_products).toBeUndefined();
+    expect(request.additional_consented_products).toBeUndefined();
   });
 
   it("lets the person pick new accounts to share when the bank has some", async () => {

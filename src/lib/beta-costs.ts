@@ -23,7 +23,8 @@ export type BetaCosts = {
     // Real banks connected now, and of those how many need a sign-in.
     connected: number;
     needSignIn: number;
-    // Of the connected: linked this month, and with the optional products (billed on their own).
+    // Of the connected: linked this month, and asked for Liabilities or Investments (consented in
+    // Link, billed on their own from Jane's first read; /admin/costs' "What Plaid granted" has the rest).
     linkedThisMonth: number;
     withLiabilities: number;
     withInvestments: number;

@@ -81,8 +81,9 @@ async function Costs() {
 }
 
 // What Plaid actually granted and bills each real bank link (src/lib/plaid/granted.ts), from Plaid
-// itself: Link asks for Liabilities and Investments, and Plaid drops one silently when the bank or
-// the plan lacks it. Its own Suspense: it asks Plaid once per link.
+// itself: the person consents to Liabilities and Investments in Link, and each is added (and billed)
+// only at Jane's first read, made only for a link with that kind of account. Its own Suspense: it
+// asks Plaid once per link.
 async function Granted() {
   const granted = await plaidGranted();
   return (
@@ -93,13 +94,16 @@ async function Granted() {
       ) : (
         <>
           <AdminTable
-            head={["Product", "Asked for", "Granted", "Billed"]}
+            head={["Product", "Asked for", "Consented", "Granted", "Billed"]}
             rows={granted.products.map((p) => ({
               key: p.product,
               cells: [
                 p.product,
                 <span key="a" className="tabular-nums">
                   {p.asked}
+                </span>,
+                <span key="c" className="tabular-nums">
+                  {p.consented}
                 </span>,
                 <span key="g" className="tabular-nums">
                   {p.granted}
@@ -113,8 +117,10 @@ async function Granted() {
           <p className={MUTED}>
             Of {granted.checked} real bank links, from each one&apos;s /item/get
             {granted.unreadable > 0 ? `; Plaid didn't answer for ${granted.unreadable}` : ""}.
-            Liabilities and Investments bill each link every month from their first use until the
-            link is removed.
+            Consented is what the person agreed to in Link; a consented product is granted and
+            billed only from Jane&apos;s first read of it, made only for a link with that kind of
+            account. Liabilities and Investments then bill each link every month until it is
+            removed.
           </p>
         </>
       )}

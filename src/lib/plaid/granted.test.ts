@@ -21,9 +21,13 @@ const row = (token: string, investments = true) => ({
   investments,
 });
 
-// What each sandbox bank's /item/get said on the walk.
-const ITEMS: Record<string, { products: string[]; billed_products: string[] }> = {
+// What each sandbox bank's /item/get said on the walk, with what the person consented to.
+const ITEMS: Record<
+  string,
+  { products: string[]; billed_products: string[]; consented_products?: string[] }
+> = {
   "tok-platypus": {
+    consented_products: ["investments", "liabilities", "transactions"],
     products: ["investments", "liabilities", "transactions"],
     billed_products: ["investments", "liabilities", "recurring_transactions", "transactions"],
   },
@@ -50,11 +54,11 @@ describe("what Plaid granted each bank link", () => {
     expect(counts.checked).toBe(3);
     expect(counts.unreadable).toBe(0);
     expect(counts.products).toEqual([
-      { product: "investments", asked: 2, granted: 1, billed: 1 },
-      { product: "liabilities", asked: 3, granted: 1, billed: 1 },
+      { product: "investments", asked: 2, consented: 1, granted: 1, billed: 1 },
+      { product: "liabilities", asked: 3, consented: 1, granted: 1, billed: 1 },
       // Not asked for in Link: Plaid bills it once the recurring endpoint is called.
-      { product: "recurring_transactions", asked: 0, granted: 0, billed: 3 },
-      { product: "transactions", asked: 3, granted: 3, billed: 3 },
+      { product: "recurring_transactions", asked: 0, consented: 0, granted: 0, billed: 3 },
+      { product: "transactions", asked: 3, consented: 1, granted: 3, billed: 3 },
     ]);
   });
 
@@ -65,6 +69,7 @@ describe("what Plaid granted each bank link", () => {
     expect(counts.products.find((p) => p.product === "investments")).toEqual({
       product: "investments",
       asked: 2,
+      consented: 1,
       granted: 1,
       billed: 1,
     });
@@ -80,7 +85,7 @@ describe("what Plaid granted each bank link", () => {
     expect(said).not.toContain("tok-");
     expect(Object.keys(counts).sort()).toEqual(["checked", "products", "unreadable"]);
     for (const p of counts.products) {
-      expect(Object.keys(p).sort()).toEqual(["asked", "billed", "granted", "product"]);
+      expect(Object.keys(p).sort()).toEqual(["asked", "billed", "consented", "granted", "product"]);
     }
   });
 
