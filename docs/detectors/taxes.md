@@ -341,3 +341,32 @@ The tax on the income so far that isn't withheld or paid: `src/planning/tax-set-
 - **Known limits:** from January to April the figure is for the year just ended, so the new year's
   income isn't counted until May. A balance paid in April for the year before counts toward both
   that year here and, from May, the new year's payments, as the estimate already did.
+- **When it's due (suggest-taxes, 11-18):** both cards end with the next federal estimated payment date
+  and, for someone in California, the state's next date with money due (`datesLine`,
+  `src/detectors/student-taxes.ts`).
+
+## Students' taxes (`src/detectors/student-taxes.ts`, suggest-taxes 11-18)
+
+Figures and rules are in `src/config/student-taxes.ts`, each with the page it was read on and the day;
+the federal figures already in `src/config/tax-rates.ts` that were checked against the source are
+listed in `READ`. `src/detectors/student-walk.test.ts` holds what each student shape (the walk's
+uploads and the Stanford ones in `src/detectors/__fixtures__/student-walk.ts`) must and must never get.
+
+- **A fellowship with nothing withheld (`stipend_tax`):** deposits from a school that aren't payroll
+  (`src/planning/student-money.ts`): a stipend, or a refund from the student account, which is how
+  Stanford pays a fellowship. The year's federal tax at the deposits' pace (`federalTaxOf`,
+  `src/planning/student-tax.ts`), the penalty rule that applies (the no-2025-tax exception when the
+  person said they owed none, the $1,000 floor, the 90% / 100% / 110% safe harbour) and the next dates.
+  Not when they said the money is pay or aid, nor for a student on an F or J visa. A bare "refund" is
+  guessed (under 50%) until they answer what it is. A fact for everyone, not in `ADVICE_TOPICS`.
+- **An F or J student (`student_tax_residency`):** told only. Form 8843 every year, Form 1040-NR with
+  US income, Stanford's 30% withholding on nonresidents' awards, and that the American opportunity
+  credit and the earned income credit aren't for nonresidents, with Bechtel's, Sprintax's and the
+  IRS's pages. No dollars; `required`.
+- **Questions:** `school_deposit`, `claimed_as_dependent`, `tax_residency` and `owed_tax_last_year`
+  are asked with `decides` (`src/config/questions.ts`): the detectors that need the fact are run with
+  each answer (`decidedBy`, `src/profile/questions.ts`), and the question says how many suggestions
+  and dollars the answer decides. A question that decides nothing for the person is never asked.
+  "Not sure" is an answer: asked once, read as not known.
+- **Home state:** told, else the tax profile's, else where most located card purchases are
+  (`src/profile/home-state.ts`, at least 3 and 60% of them).

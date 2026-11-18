@@ -1,11 +1,52 @@
 import { QUESTIONS, UNLOCK, type QuestionSpec } from "@/config/questions";
-import type { Profile, ProfileInput, ProfileTx } from "./build";
+import { DETECTORS, runDetectors } from "@/detectors";
+import { buildProfile, type Profile, type ProfileInput, type ProfileTx } from "./build";
 import type { FactKey } from "./facts";
 
 // The one question worth asking (spec step 257). Pure. For each fact the profile doesn't
 // have, how much would knowing it unlock; the best one not asked before is the question.
 
-export type Candidate = { spec: QuestionSpec; unlockCents: number };
+export type Candidate = {
+  spec: QuestionSpec;
+  unlockCents: number;
+  // For a question that says what it decides (spec.decides): how many suggestions an answer changes.
+  decidesCount?: number;
+};
+
+// What an answer could decide, worked out rather than assumed (suggest-taxes, 11-18): the
+// detectors that need the fact are run as if the person gave each answer in turn. The answer that
+// changes the most (a suggestion appears, goes, or changes its dollars) is what the question is
+// worth: those suggestions' dollars, and how many they are. "unsure" decides nothing.
+export function decidedBy(
+  fact: FactKey,
+  spec: QuestionSpec,
+  data: ProfileInput,
+): { cents: number; count: number } {
+  const detectors = DETECTORS.filter((d) => d.needs.includes(fact));
+  if (detectors.length === 0) return { cents: 0, count: 0 };
+  const worth = (told: ProfileInput["told"]) => {
+    const input = { ...data, told };
+    const fired = runDetectors({ profile: buildProfile(input), data: input }, detectors);
+    return new Map(fired.map((s) => [s.id, s.worthCents]));
+  };
+  const before = worth(data.told);
+  let best = { cents: 0, count: 0 };
+  for (const choice of spec.choices) {
+    if (choice.value === "unsure") continue;
+    const after = worth({ ...data.told, [fact]: choice.value });
+    let cents = 0;
+    let count = 0;
+    for (const id of new Set([...before.keys(), ...after.keys()])) {
+      const a = before.get(id) ?? 0;
+      const b = after.get(id) ?? 0;
+      if (a === b && before.has(id) === after.has(id)) continue;
+      cents += Math.max(a, b);
+      count += 1;
+    }
+    if (cents > best.cents) best = { cents, count };
+  }
+  return best;
+}
 
 const annualIncome = (p: Profile) =>
   typeof p.facts.monthly_income.value === "number" ? p.facts.monthly_income.value * 12 : 0;
@@ -52,8 +93,12 @@ function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
 // Every question that applies, with what it would unlock, the most valuable first. A fact
 // the profile already has (seen, told or answered) is not asked.
 export function missingFacts(profile: Profile, data: ProfileInput): Candidate[] {
-  return QUESTIONS.flatMap((spec) => {
+  return QUESTIONS.flatMap((spec): Candidate[] => {
     if (profile.facts[spec.fact].value !== null) return [];
+    if (spec.decides) {
+      const { cents, count } = decidedBy(spec.fact, spec, data);
+      return cents > 0 ? [{ spec, unlockCents: cents, decidesCount: count }] : [];
+    }
     const unlockCents = unlockOf(spec.fact, profile, data);
     return unlockCents > 0 ? [{ spec, unlockCents }] : [];
   }).sort((a, b) => b.unlockCents - a.unlockCents || a.spec.fact.localeCompare(b.spec.fact));

@@ -32,6 +32,7 @@ import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
 import { employerName } from "./employer-name";
+import { stateOfPayments } from "./home-state";
 import { latestByPayer, payKeyOf, stoppedPayers } from "./stopped-payers";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PolicyKind } from "@/config/insurance";
@@ -865,10 +866,23 @@ function toldFacts(b: Builder) {
     "inherited_from_spouse",
     "marketplace_aptc_monthly",
     "marketplace_benchmark_monthly",
+    "claimed_as_dependent",
+    "enrollment",
+    "tax_residency",
+    "school_deposit",
+    "owed_tax_last_year",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);
   }
+  // The state: what they told, else their tax profile's, else where most of their purchases are.
+  const { state } = b.input;
+  const shops = stateOfPayments(b.txs);
+  if (told.home_state === undefined && state)
+    set("home_state", state, "told", "your tax profile", 0);
+  else if (told.home_state === undefined && shops)
+    set("home_state", shops.code, "seen", "purchases in that state", shops.matches);
+  else unknown("home_state");
 }
 
 // Life stage.

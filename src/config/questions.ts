@@ -14,6 +14,10 @@ export type QuestionSpec = {
   choices: readonly QuestionChoice[];
   // What it would unlock.
   topics: readonly SuggestionTopic[];
+  // Said with the question: "It decides 3 credits and deductions worth up to $2,860 for you", the
+  // count and dollars worked out from the detectors that need the fact (src/profile/questions.ts).
+  // The words for one and for several.
+  decides?: readonly [one: string, several: string];
 };
 
 export const QUESTIONS: readonly QuestionSpec[] = [
@@ -58,6 +62,53 @@ export const QUESTIONS: readonly QuestionSpec[] = [
       { label: "Something else", value: "other" },
     ],
     topics: ["estimated_taxes", "retirement_self_employed", "business_insurance"],
+  },
+  // Students' taxes (suggest-taxes, 11-18): one tap each, "Not sure" is an answer too.
+  {
+    fact: "school_deposit",
+    text: "Is the money from your school a fellowship or stipend, pay for work, or aid?",
+    choices: [
+      { label: "Fellowship or stipend", value: "fellowship" },
+      { label: "Pay for work (RA, TA)", value: "wage" },
+      { label: "Aid or loan money", value: "aid_refund" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["stipend_tax"],
+    decides: ["tax figure", "tax figures"],
+  },
+  {
+    fact: "claimed_as_dependent",
+    text: "Can a parent or anyone else claim you as a dependent on their taxes?",
+    choices: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["stipend_tax"],
+    decides: ["credit or deduction", "credits and deductions"],
+  },
+  {
+    fact: "tax_residency",
+    text: "For US taxes, are you a citizen or green card holder, or here on a visa?",
+    choices: [
+      { label: "Citizen or green card", value: "citizen" },
+      { label: "F or J student visa", value: "student_visa" },
+      { label: "Another visa", value: "other_visa" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["stipend_tax", "student_tax_residency"],
+    decides: ["credit or form", "credits and forms"],
+  },
+  {
+    fact: "owed_tax_last_year",
+    text: "Did you owe any federal income tax for 2025, after credits?",
+    choices: [
+      { label: "Yes", value: "yes" },
+      { label: "No, none", value: "no" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["stipend_tax"],
+    decides: ["penalty rule", "penalty rules"],
   },
   {
     fact: "hardship_reason",

@@ -105,6 +105,10 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   savers_credit: 1,
   // The Saver's Match: before and through its first year.
   savers_match: 1,
+  // A fellowship with nothing withheld: the January 15 estimate (suggest-taxes); an F or J student's
+  // forms, from January until the mid-June Form 8843 date.
+  stipend_tax: 1,
+  student_tax_residency: 1,
   charity_receipts: 1,
   social_security_tax: 1,
   s_corp_election: 2,

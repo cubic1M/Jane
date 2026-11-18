@@ -2,6 +2,7 @@ import { formatWholeDollars } from "@/lib/money";
 import { NOTHING_KEPT_APART } from "@/planning/tax-set-aside";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { type Detector, type Suggestion, suggestion } from "./contract";
+import { datesLine } from "./student-taxes";
 import { urgencyForEstimated } from "./taxes";
 
 // The tax on the income so far that isn't withheld or paid, brought up unasked: for freelancers,
@@ -14,7 +15,7 @@ import { urgencyForEstimated } from "./taxes";
 
 const HREF = "/taxes?focus=estimate:set-aside";
 
-function shared(figure: NonNullable<Figure>, today: string) {
+function shared(figure: NonNullable<Figure>, today: string, state: unknown) {
   const worked = `Tax on your ${figure.year} income so far comes to about ${formatWholeDollars(figure.taxSoFarCents)}, and ${
     figure.withholdingKnown ? "" : "Jane assumes "
   }about ${formatWholeDollars(figure.paidSoFarCents)} ${figure.withholdingKnown ? "is" : "of it is"} withheld or paid.`;
@@ -22,7 +23,8 @@ function shared(figure: NonNullable<Figure>, today: string) {
   const unknowns = figure.unknowns.length > 0 ? ` ${figure.unknowns.join(" ")}` : "";
   return {
     worked,
-    tail: `Safe to spend leaves it out.${kept}${unknowns}`,
+    // When it's due (suggest-taxes, 11-18): the next federal date, and California's there.
+    tail: `Safe to spend leaves it out.${kept}${unknowns} ${datesLine(today, state)}`,
     confidence: figure.confidence,
     urgency: urgencyForEstimated(today),
     worthCents: figure.holdCents,
@@ -52,7 +54,7 @@ const taxNotYetPaid: Detector = {
       figure.keptApartCents > 0
         ? ` ${formatWholeDollars(figure.keptApartCents)} of it is kept apart.`
         : "";
-    const { worked, tail, ...card } = shared(figure, profile.today);
+    const { worked, tail, ...card } = shared(figure, profile.today, profile.facts.home_state.value);
     return suggestion("taxes", "tax_not_yet_paid", {
       title: `About ${cents} of your ${figure.year} tax isn't withheld or paid yet (estimate)`,
       headline: `Check tax not yet paid: about ${cents}`,
@@ -74,7 +76,7 @@ const taxSetAside: Detector = {
     const figure = data.extras?.taxSetAside;
     if (!dueHere(figure, true)) return null;
     const cents = formatWholeDollars(figure.holdCents);
-    const { worked, tail, ...card } = shared(figure, profile.today);
+    const { worked, tail, ...card } = shared(figure, profile.today, profile.facts.home_state.value);
     return suggestion("taxes", "tax_set_aside", {
       title: `Set aside about ${cents} for your ${figure.year} tax`,
       headline: `Set aside about ${cents} for tax`,

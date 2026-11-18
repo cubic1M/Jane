@@ -6,6 +6,7 @@ import { correctFact, loadProfileInput } from "@/lib/profile";
 import { buildProfile } from "@/profile/build";
 import { bestQuestion } from "@/profile/questions";
 import { todayOf } from "@/lib/today";
+import { formatWholeDollars } from "@/lib/money";
 
 // The one question worth asking (spec step 257): when a detector could fire but needs a fact
 // the profile doesn't have, Jane asks the question whose answer unlocks the most, one at a
@@ -22,7 +23,22 @@ export type OpenQuestion = {
   text: string;
   choices: QuestionSpec["choices"];
   unlockCents: number;
+  // What an answer decides, said with the question ("It decides 3 credits and deductions worth up to
+  // $2,860 for you."), for the questions that work it out (QuestionSpec.decides).
+  decides?: string;
 };
+
+// The sentence a question says it decides, from what planQuestion kept.
+export function decidesLine(
+  spec: QuestionSpec,
+  count?: number,
+  cents?: number,
+): string | undefined {
+  if (!spec.decides || !count || !cents) return undefined;
+  const [one, several] = spec.decides;
+  const what = count === 1 ? `a ${one}` : `${count} ${several}`;
+  return `It decides ${what} worth up to ${formatWholeDollars(cents)} for you.`;
+}
 
 async function askedFacts(userId: string, client: PrismaClient): Promise<Set<string>> {
   const rows = await scopedFor(userId, client).janePreferences.findMany({
@@ -56,7 +72,13 @@ export async function planQuestion(
     ...posted.map((m) => m.dedupeKey.slice("questions:".length)),
   ]);
   const best = bestQuestion(buildProfile(data), data, asked);
-  const value = best ? { fact: best.spec.fact, unlockCents: best.unlockCents } : {};
+  const value = best
+    ? {
+        fact: best.spec.fact,
+        unlockCents: best.unlockCents,
+        ...(best.decidesCount ? { decidesCount: best.decidesCount } : {}),
+      }
+    : {};
   await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: "system", key: NEXT } },
     create: { userId, kind: "system", key: NEXT, value, label: "Next question" },
@@ -80,14 +102,24 @@ export async function nextQuestion(
     }),
     askedFacts(userId, client),
   ]);
-  const value = kept?.value as { fact?: string; unlockCents?: number } | null;
+  const value = kept?.value as {
+    fact?: string;
+    unlockCents?: number;
+    decidesCount?: number;
+  } | null;
   if (!value?.fact || posted.some((m) => m.status === "open")) return null;
   const fact = value.fact;
   if (answered.has(fact) || posted.some((m) => m.dedupeKey === `questions:${fact}`)) return null;
   const spec = QUESTIONS.find((q) => q.fact === fact);
-  return spec
-    ? { fact, text: spec.text, choices: spec.choices, unlockCents: value.unlockCents ?? 0 }
-    : null;
+  if (!spec) return null;
+  const decides = decidesLine(spec, value.decidesCount, value.unlockCents);
+  return {
+    fact,
+    text: spec.text,
+    choices: spec.choices,
+    unlockCents: value.unlockCents ?? 0,
+    ...(decides ? { decides } : {}),
+  };
 }
 
 export class QuestionError extends Error {}

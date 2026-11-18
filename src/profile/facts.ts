@@ -92,6 +92,25 @@ export const FACT_SPECS = [
   F("life_stage", "Where you are in life", "choice", {
     choices: ["starting", "raising", "peak", "approaching", "retired"],
   }),
+  // Students' taxes (suggest-taxes, 11-18): told only, each decides which credits and dates apply.
+  // "unsure" is an answer: asked once, and treated as not known.
+  F("claimed_as_dependent", "Someone can claim you as a dependent", "choice", {
+    choices: ["yes", "no", "unsure"],
+  }),
+  F("enrollment", "How you're enrolled in school", "choice", {
+    choices: ["full_time", "half_time", "less_than_half", "not_enrolled"],
+  }),
+  F("tax_residency", "Your status for US tax", "choice", {
+    choices: ["citizen", "student_visa", "other_visa", "unsure"],
+  }),
+  F("school_deposit", "What your school's deposits are", "choice", {
+    choices: ["fellowship", "wage", "aid_refund", "unsure"],
+  }),
+  F("owed_tax_last_year", "You owed federal income tax last year", "choice", {
+    choices: ["yes", "no", "unsure"],
+  }),
+  // The state they live in: told, from the tax profile, or where they shop.
+  F("home_state", "The state you live in", "text"),
 ] as const satisfies readonly FactSpec[];
 
 export type FactKey = (typeof FACT_SPECS)[number]["key"];
@@ -123,6 +142,17 @@ const CHOICE_WORDS: Readonly<Record<string, string>> = {
   overspending: "spending more than came in",
   under_30: "under 30",
   "73_plus": "73 or older",
+  unsure: "not sure",
+  full_time: "full time",
+  half_time: "at least half time",
+  less_than_half: "less than half time",
+  not_enrolled: "not in school",
+  citizen: "US citizen or green card",
+  student_visa: "an F or J student visa",
+  other_visa: "another visa",
+  fellowship: "a fellowship or stipend",
+  wage: "pay for work",
+  aid_refund: "aid or loan money",
   starting: "starting out",
   raising: "raising a family",
   peak: "peak earning years",

@@ -13,7 +13,9 @@ export const questionsSource: MessageSource = {
     return [
       {
         kind: "decision" as const,
-        body: `${q.text} It helps me work out what's worth doing for you, and I won't ask again.`,
+        body: q.decides
+          ? `${q.text} ${q.decides} I won't ask again.`
+          : `${q.text} It helps me work out what's worth doing for you, and I won't ask again.`,
         refs: { askFact: q.fact },
         actions: [
           ...q.choices.map((c, i) => ({

@@ -69,3 +69,8 @@ export const AGE_BAND_FROM: Readonly<Record<string, number>> = {
   "66_to_72": 66,
   "73_plus": 73,
 };
+
+// The state a person lives in, from where they pay (src/profile/home-state.ts): at least this many
+// purchases located in one state, and that state at least this share of all located ones.
+export const HOME_STATE_MIN_MATCHES = 3;
+export const HOME_STATE_MIN_SHARE = 0.6;
