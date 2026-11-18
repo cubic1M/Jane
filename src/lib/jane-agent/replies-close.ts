@@ -52,7 +52,9 @@ export function waitingBody(view: CloseView): string {
     (t) => `• ${t.name} on ${dayLabel(t.date)}: ${formatCents(t.amountCents)}`,
   );
   return [
-    `Closing ${monthLabel(view.month, { long: true })}: I wasn't sure what ${view.uncertain.length === 1 ? "this charge was" : `these ${view.uncertain.length} charges were`}. Are they right as they are?`,
+    // One charge is "it" (debug 2, 11-17: "I wasn't sure what this charge was. Are they right as
+    // they are?"); the question stays the founder's (11-16).
+    `Closing ${monthLabel(view.month, { long: true })}: I wasn't sure what ${view.uncertain.length === 1 ? "this charge was. Is it right as it is?" : `these ${view.uncertain.length} charges were. Are they right as they are?`}`,
     ...lines,
   ].join("\n");
 }
