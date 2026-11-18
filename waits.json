@@ -46,5 +46,13 @@
   "when": "merged",
   "since": "2026-11-18T07:43:38.201Z",
   "expires": "2026-11-21T07:43:38.201Z"
+ },
+ {
+  "on": 2057,
+  "lane": "lane:suggest",
+  "task": "claude/suggest-money-2",
+  "when": "merged",
+  "since": "2026-11-18T08:46:35.834Z",
+  "expires": "2026-11-21T08:46:35.834Z"
  }
 ]
