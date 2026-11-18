@@ -122,6 +122,12 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   hardship_plan: ["interest", "fees"],
   // Card interest paid while cash sits: the same interest card_interest counts.
   card_from_cash: ["interest"],
+  card_rate_check: ["interest"],
+  // A fact card and the demo-only advice card on the same cover: one shows.
+  renters_insurance: ["renters_cover"],
+  belongings_cover: ["renters_cover"],
+  insurance_shopping: ["car_cover"],
+  car_cover_cost: ["car_cover"],
   // A bill ahead the cash won't cover and the Stanford bill's date: one bill, said once; and cash
   // short for the month's bills is the same shortfall.
   bill_gap_ahead: ["bill_ahead", "cash_short"],

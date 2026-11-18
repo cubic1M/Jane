@@ -66,6 +66,7 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   subscriptions: { branch: "subscriptions", label: "Subscriptions to review" },
   student_discounts: { branch: "subscriptions", label: "Student plans for what you pay" },
   free_through_school: { branch: "subscriptions", label: "Free through your school" },
+  cheaper_tier: { branch: "subscriptions", label: "A cheaper plan, same service" },
   transit_pass: { branch: "charges", label: "A free transit pass" },
   clipper_start: { branch: "charges", label: "Half-price transit fares" },
   budget_overrun: { branch: "budgets", label: "Spending above your usual" },
