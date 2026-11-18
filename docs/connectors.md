@@ -338,3 +338,18 @@ It doesn't cover which document, so the real connector stays off until a "comple
 with Get Document first (`api.get` is built). Letters are test-mode (not binding) unless
 `SIGNWELL_ENV=production`. Counsel reads the letter's words before any real person signs one.
 
+## Investing through Alpaca's Broker API, sandbox only
+
+`sandbox_alpaca_account` (open an Individual, Roth or Traditional IRA account; turn on the FDIC cash
+sweep) and `sandbox_alpaca_order` (a market buy by dollar amount) are built from docs.alpaca.markets
+(Getting Started with Broker API, Create an Order for an Account, Cancel an Open Order and the FDIC
+Sweep Program, read 2026-11-17). Both move money (`movesMoney`), so a real one would need
+`REAL_MONEY_MOVEMENT`; a buy is a pick (`recommends: "investment"`), held back from any real person
+until `HUMAN_REVIEW_READY`; crypto is refused at the plan and at the order by the brokerage's own
+`refuseCrypto`. **There is no real Alpaca connector**, and `REAL_TRADING` (`src/config/connectors.ts`,
+code only) is false. Alpaca's client (`alpacaBrokerHttp`: a buy with Jane's `client_order_id`, and a
+cancel) only ever points at the sandbox host. Not built: opening an account for real (Alpaca's request
+carries the person's government id, date of birth and identity documents: counsel and a design of its
+own) and the sweep enrollment call (described in Alpaca's blog, not its reference). The paper account
+(`src/lib/paper/`) stays simulated money with its own pop-up and never reaches these.
+
