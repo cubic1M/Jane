@@ -63,6 +63,14 @@ export const SOURCES = {
     "https://www.ftb.ca.gov/forms/2025/2025-540nr-ca-instructions.html",
     "Schedule CA (540NR) instructions (2025): a part-year resident is taxed on all income while a resident and only on California-source income while a nonresident; Form 540NR is the return for a nonresident or part-year resident",
   ),
+  w2Instructions: src(
+    "https://www.irs.gov/instructions/iw2w3",
+    "Form W-2 instructions (2026): furnish Copies B, C and 2 to employees by February 1, 2027",
+  ),
+  infoReturns: src(
+    "https://www.irs.gov/instructions/i1099gi",
+    "General Instructions for Certain Information Returns, Part M: Forms 1098 and 1099 to recipients by January 31, or the next business day when it falls on a weekend",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -313,3 +321,21 @@ export const SIDE_INCOME = {
 // Tuition paid by December 31 for an academic period that starts by the end of March counts toward
 // this year's education credits (Form 8863 instructions): said on the card from this day.
 export const TUITION_TIMING_FROM = "11-01";
+
+// The forms a person can expect for the year, from the payers Jane sees (./src/detectors/tax-forms.ts):
+// shown from December 1 to February 15. W-2s, 1098s and 1099s are due to them January 31, or the next
+// business day; Stanford mails fellowship recipients a letter summing payments over $600 in January;
+// a nonresident's Form 1042-S comes in March.
+export const FORMS_COMING = {
+  from: "12-01",
+  until: "02-15",
+  dueMonthDay: "01-31",
+  loanInterestFormFromCents: 60_000,
+  sources: [
+    "w2Instructions",
+    "infoReturns",
+    "stanfordPayingStudents",
+    "stanfordInternational",
+    "form1099K",
+  ],
+} as const;

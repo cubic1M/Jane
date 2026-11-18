@@ -458,3 +458,11 @@ California: California taxes a part-year resident on all income while a resident
 California-source income while not, on Form 540NR (FTB's Schedule CA (540NR) instructions). No
 dollars; `required`. The education credit card also says, from November 1, that tuition paid by
 December 31 for a term starting by the end of March counts toward this year's credits (Form 8863).
+
+### The forms on the way (`src/detectors/tax-forms.ts`, gap pass)
+
+`tax_forms_coming`, December 1 to February 15: from the payers Jane sees, the forms for the year and
+by when (January 31, or the next business day: February 1, 2027): a W-2 from each employer, a 1098-T
+from a school paid tuition, a 1098-E from a loan servicer if the interest reached $600, a 1099-K from a
+payout platform only above $20,000 and 200 payments, and for a Stanford fellowship no W-2 or 1099 but
+Stanford's January letter (a nonresident's 1042-S in March). No dollars.

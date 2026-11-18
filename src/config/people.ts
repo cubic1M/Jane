@@ -53,6 +53,8 @@ export const SUGGESTION_TOPICS = [
   "side_income_tax",
   // A move into or out of California during the year (src/detectors/state-move.ts).
   "state_move",
+  // The tax forms each payer will send (src/detectors/tax-forms.ts).
+  "tax_forms_coming",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",
