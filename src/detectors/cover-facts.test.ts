@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { tellsThemToAct } from "@/lib/real-account-text";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
@@ -41,6 +42,8 @@ function expectClean(s: Suggestion) {
       ok: true,
     });
     expect(recommendsAChoice(text), text).toBe(false);
+    // Real-account text never tells them what to do with money (src/lib/real-account-text.ts).
+    expect(tellsThemToAct(text), text).toBe(false);
     // Says what Jane sees and what the source says; never drop, cancel, switch or move
     // (chat-tests wording rule, 11-18).
     expect(text, text).not.toMatch(/\b(?:switch|cancel|drop|move)\b/i);
@@ -70,7 +73,7 @@ describe("cover for belongings", () => {
     expect(s).not.toBeNull();
     expect(s.why).toContain("$169");
     expect(s.why).toContain("2022");
-    expect(s.why).toContain("ask two or three insurers");
+    expect(s.why).toContain("quotes from two or three insurers");
     expect(s.more?.map((m) => m.href)).toEqual([RENTERS_AVERAGE.url]);
     expectClean(s);
   });

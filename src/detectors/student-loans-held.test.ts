@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { tellsThemToAct } from "@/lib/real-account-text";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
@@ -65,6 +66,8 @@ describe("a grace period ending", () => {
         ok: true,
       });
       expect(recommendsAChoice(text), text).toBe(false);
+      // Real-account text never tells them what to do with money (src/lib/real-account-text.ts).
+      expect(tellsThemToAct(text), text).toBe(false);
     }
     expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
     expect(s.short.length).toBeLessThanOrEqual(SHORT_MAX);

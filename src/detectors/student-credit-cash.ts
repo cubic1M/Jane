@@ -67,8 +67,8 @@ const creditFileStart: Detector = {
     const c = CREDIT_START;
     const span = profile.months >= 2 ? `${profile.months} months` : `${days} days`;
     return suggestion("debt", "credit_file_start", {
-      title: "Start a credit file: no card or loan shows in your accounts",
-      headline: "Start building your credit file",
+      title: "No credit history may be building: no card or loan shows in your accounts",
+      headline: "Look at how a credit file starts",
       short: `No card or loan payment in ${span} of your accounts, so no credit history may be building.`,
       worthCents: 0,
       worthKind: "saves",

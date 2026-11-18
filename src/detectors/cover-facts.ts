@@ -52,7 +52,7 @@ const belongingsCover: Detector = {
         : "in the US";
     const averageLine = `In ${RENTERS_AVERAGE.year}, the latest year published, the average renters policy ${where} cost ${formatWholeDollars(average)} a year (the NAIC's figure, via the Insurance Information Institute).`;
     const steps =
-      "To look into it yourself: add up what your things would cost to replace (a laptop, a phone, a bike), ask two or three insurers for a quote with the same limit and deductible, and ask a parent whether their home policy reaches you while you're at school.";
+      "What a quote turns on: what your things would cost to replace (a laptop, a phone, a bike), the limit and the deductible; quotes from two or three insurers for the same ones compare like with like, and a parent's insurer can say whether their home policy reaches a student at school.";
     return suggestion("insurance", "belongings_cover", {
       title: stanford
         ? "Look into cover for your things: Stanford housing doesn't insure them"
