@@ -111,6 +111,10 @@ const sumOf = (rows: FeeTransaction[], subtypes: readonly string[]) =>
     .filter((t) => subtypes.includes(t.subtype) && t.amountCents > 0)
     .reduce((sum, t) => sum + t.amountCents, 0);
 
+// Plaid security types that charge no expense ratio (Plaid sandbox walk, 11-17: Bitcoin, an
+// option and a Treasury bill were listed as "yearly cost not known").
+const NO_YEARLY_COST = new Set(["equity", "cryptocurrency", "derivative", "fixed income", "cash"]);
+
 export function feeSummary(
   accounts: InvestmentAccountView[],
   feeTransactions: FeeTransaction[],
@@ -123,8 +127,9 @@ export function feeSummary(
     for (const h of account.holdings) {
       if (h.isCash && h.expenseRatioBps === null) continue;
       if (h.expenseRatioBps === null) {
-        // Shares of one company have no yearly cost; anything else unknown is listed.
-        if (h.type !== "equity") unknown.push(h.name);
+        // Shares of one company, a coin, an option or a bond have no yearly cost; a fund (or
+        // anything Plaid doesn't type) whose cost is unknown is listed.
+        if (!NO_YEARLY_COST.has((h.type ?? "").toLowerCase())) unknown.push(h.name);
         continue;
       }
       const rate = h.expenseRatioBps / 10_000;
