@@ -3,7 +3,16 @@ import type { InsightTransaction } from "@/insights/spending";
 import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import { spendingMonthOf } from "@/planning/idle-cash";
-import { monthsForRate, type Fact, type ProfileInput, type ProfileTx } from "@/profile/build";
+import {
+  monthsForRate,
+  rateMonthsOf,
+  type Fact,
+  type Profile,
+  type ProfileInput,
+  type ProfileTx,
+} from "@/profile/build";
+import { DETECTOR_RATES } from "@/config/detectors";
+import { studentYearOf } from "@/planning/student-tax";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 import { withoutAchDetails, withoutAchEntry } from "@/data-sources/merchant";
 import { formatCents, formatWholeDollars } from "@/lib/money";
@@ -241,4 +250,24 @@ export function feeEvidence(
         };
   }
   return { percent: 80, reason: "the fund companies' published expense ratios, rounded" };
+}
+
+// A year's income before tax, one figure on every income-tested card: pay grossed up, gig pay and
+// fellowship money as the tax credits estimate it (studentYearOf); what the person told Jane wins,
+// and with none of that seen (a pension), the profile's monthly income grossed up. Debug 2, uploads
+// S6 and the 14-month Plaid person, 11-19: "income near $27,444.46" on the Saver's Credit beside
+// "$18,744.80" on the renter's credit, then Lifeline's "$21,204.46" beside "$21,530.03".
+export function yearIncomeOf(
+  profile: Pick<Profile, "facts" | "months" | "rateMonths">,
+  data: Pick<ProfileInput, "transactions" | "today">,
+): number {
+  const income = profile.facts.monthly_income;
+  const year =
+    income.source === "told"
+      ? 0
+      : studentYearOf(data, profile.facts, rateMonthsOf(profile)).agiCents;
+  if (year > 0) return year;
+  return typeof income.value === "number" && income.value > 0
+    ? Math.round(income.value * 12 * DETECTOR_RATES.tax.netToGross)
+    : 0;
 }

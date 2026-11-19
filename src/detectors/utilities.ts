@@ -1,4 +1,3 @@
-import { DETECTOR_RATES } from "@/config/detectors";
 import { SPENDING_DETECTOR_RATES as S } from "@/config/detectors-spending";
 import {
   CA_CARE_FERA,
@@ -18,6 +17,7 @@ import {
   statementsTooOld,
   tx,
   weakest,
+  yearIncomeOf,
 } from "./helpers";
 
 // Utilities (connectors roadmap round 17). Read only, no vendor, no Claude call. Pure; see
@@ -88,12 +88,11 @@ const careDiscount: Detector = {
   detect({ profile, data }) {
     if (data.state !== CA_CARE_FERA.state || !data.householdSize) return null;
     if (data.today < CA_CARE_FERA.from || data.today > CA_CARE_FERA.until) return null;
-    const monthly = profile.facts.monthly_income.value;
-    if (typeof monthly !== "number" || monthly <= 0) return null;
+    const gross = yearIncomeOf(profile, data);
+    if (gross <= 0) return null;
     const energy = outCents(tx(data, (t) => t.pfc === ENERGY && t.amountCents > 0));
     if (energy <= 0) return null;
     const yearlyEnergy = Math.round((energy * 12) / Math.max(1, profile.months));
-    const gross = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
     const people = data.householdSize;
     const care = caLimit(CA_CARE_FERA.care, people);
     const fera = caLimit(CA_CARE_FERA.fera, people);
@@ -138,11 +137,11 @@ function householdOf(data: { householdSize?: number | null }, household: unknown
   return household === "single" ? 1 : household === "couple" ? 2 : null;
 }
 
-// Gross yearly household income from take-home pay, as the other income-tested cards read it.
-const grossOf = (monthly: unknown) =>
-  typeof monthly === "number" && monthly > 0
-    ? Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross)
-    : null;
+// Gross yearly household income, one figure with the other income-tested cards (yearIncomeOf).
+const grossOf = (input: Parameters<Detector["detect"]>[0]) => {
+  const gross = yearIncomeOf(input.profile, input.data);
+  return gross > 0 ? gross : null;
+};
 
 // Lifeline (lifeline_eligibility_hint): a household whose income looks to be at or under 135% of the
 // poverty line, paying for phone or internet, may qualify for up to $9.25 a month off.
@@ -155,7 +154,7 @@ const lifeline: Detector = {
     if (data.state && (LIFELINE.excludedStates as readonly string[]).includes(data.state))
       return null;
     const people = householdOf(data, profile.facts.household.value);
-    const gross = grossOf(profile.facts.monthly_income.value);
+    const gross = grossOf({ profile, data });
     if (!people || gross === null) return null;
     const pays = tx(data, (t) => (t.pfc === PHONE || t.pfc === INTERNET) && t.amountCents > 0);
     if (pays.length === 0) return null;
@@ -195,7 +194,7 @@ const lowCostInternet: Detector = {
     // ended long ago.
     if (statementsTooOld(data)) return null;
     const people = householdOf(data, profile.facts.household.value);
-    const gross = grossOf(profile.facts.monthly_income.value);
+    const gross = grossOf({ profile, data });
     if (!people || gross === null) return null;
     const bills = tx(data, (t) => t.pfc === INTERNET && t.amountCents > 0);
     const plan = LOW_COST_INTERNET.plans.find((p) =>
