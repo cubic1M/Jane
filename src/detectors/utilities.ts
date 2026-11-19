@@ -9,7 +9,16 @@ import {
 } from "@/config/utility-assistance";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
-import { evidence, factEvidence, headlineOf, nice, outCents, tx, weakest } from "./helpers";
+import {
+  evidence,
+  factEvidence,
+  headlineOf,
+  nice,
+  outCents,
+  statementsTooOld,
+  tx,
+  weakest,
+} from "./helpers";
 
 // Utilities (connectors roadmap round 17). Read only, no vendor, no Claude call. Pure; see
 // ./contract.ts.
@@ -182,6 +191,9 @@ const lowCostInternet: Detector = {
   covers: [],
   needs: ["monthly_income"],
   detect({ profile, data }) {
+    // "You pay Xfinity about $55.00 a month" says what's paid now: not from statements that
+    // ended long ago.
+    if (statementsTooOld(data)) return null;
     const people = householdOf(data, profile.facts.household.value);
     const gross = grossOf(profile.facts.monthly_income.value);
     if (!people || gross === null) return null;
