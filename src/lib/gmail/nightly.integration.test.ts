@@ -26,8 +26,10 @@ vi.mock("@/lib/ops-alerts", () => ({
 }));
 
 import { GMAIL_LIMITS } from "@/config/gmail";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 import { NO_SECRETS, sealSecrets } from "./secrets";
@@ -54,6 +56,7 @@ type Fields = Partial<{
   lastErrorCode: string | null;
   nextTryAt: Date | null;
   syncingSince: Date | null;
+  updatedAt: Date;
 }>;
 
 describe.runIf(url)("the daily job over Gmail mailboxes", () => {
@@ -69,9 +72,12 @@ describe.runIf(url)("the daily job over Gmail mailboxes", () => {
     return user.id;
   }
 
-  // A mailbox as connecting leaves one, with notices on for a week, last read `checked` ago.
-  async function connected(userId: string, fields: Fields = {}) {
-    const address = `box-${randomUUID()}@fake-mailbox.test`;
+  // A mailbox as connecting leaves one, with notices on for a week, last read an hour ago.
+  async function connected(
+    userId: string,
+    fields: Fields = {},
+    address = `box-${randomUUID()}@fake-mailbox.test`,
+  ) {
     const tokens = fake.issueTokensForTest(address);
     const box = fake.mailbox(address);
     const { id } = await scopedFor(userId, db).gmailMailboxes.create({
@@ -94,8 +100,8 @@ describe.runIf(url)("the daily job over Gmail mailboxes", () => {
 
   const nightly = (userIds: string[], options: Parameters<typeof refreshAllGmail>[0] = {}) =>
     refreshAllGmail({ client: db, now: NOW, clock: () => 0, userIds, ...options });
-  const checkedAt = async (id: string) =>
-    (await system().gmailMailbox.findUniqueOrThrow({ where: { id } })).lastCheckedAt;
+  const rowOf = (id: string) => system().gmailMailbox.findUniqueOrThrow({ where: { id } });
+  const checkedAt = async (id: string) => (await rowOf(id)).lastCheckedAt;
   // The mailboxes Google was asked about, in the order the job reached them.
   const reachedOrder = (mailboxes: { token: string }[]) => {
     const firsts = new Map<string, number>();
@@ -218,6 +224,302 @@ describe.runIf(url)("the daily job over Gmail mailboxes", () => {
       expect(row).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null, nextTryAt: null });
     }
     for (const mailbox of waiting) expect(await checkedAt(mailbox.id)).toEqual(at(-HOUR));
+  });
+
+  // Section 17 of the design: a read that didn't get to all its mail says so, and the job takes it.
+  it("takes up a mailbox whose last read was unfinished at its next run, and a read that gets through clears it", async () => {
+    const userId = await person();
+    const { id, box } = await connected(userId, { lastErrorCode: "unfinished" });
+    box.deliver({ subject: "Lunch on Friday?", text: "See you there." });
+    expect(await nightly([userId])).toMatchObject({ read: 1, failed: 0, deferred: 0 });
+    const row = await system().gmailMailbox.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({
+      historyCursor: box.historyId,
+      lastCheckedAt: NOW,
+      lastErrorCode: null,
+    });
+  });
+
+  it("gives a mailbox never read through a whole read's time, so its look-back isn't cut short", async () => {
+    // Each call to Google takes this long on the job's clock: in nightMailboxBudgetMs the look-back
+    // would get to one email.
+    const STEP = 8_000;
+    const clock = () => fake.requests.length * STEP;
+    const userId = await person();
+    const address = `box-${randomUUID()}@fake-mailbox.test`;
+    const box = fake.mailbox(address);
+    // Recent mail from before it was connected, that isn't about money: none reaches Claude.
+    const recent = [1, 2, 3, 4, 5].map((days) =>
+      box.deliver({
+        subject: `Lunch ${days}?`,
+        text: "See you there.",
+        receivedAt: at(-days * DAY),
+      }),
+    );
+    const { id } = await connected(userId, { lastCheckedAt: null }, address);
+    expect(await nightly([userId], { clock })).toMatchObject({ read: 1, deferred: 0 });
+    // One listing of the history, one search, and every recent email looked at: more than
+    // nightMailboxBudgetMs would allow.
+    expect(fake.fetched("metadata").sort()).toEqual(recent.map((mail) => mail.id).sort());
+    expect(fake.requests.length * STEP).toBeGreaterThan(GMAIL_LIMITS.nightMailboxBudgetMs);
+    const row = await system().gmailMailbox.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null });
+  });
+
+  // Section 17 of the design, item 18: a mailbox never read through, or whose last read was
+  // unfinished, gets a whole read's runBudgetMs, or waits for a run with that much left.
+  describe("a mailbox that needs a whole read", () => {
+    // Each call to Google takes this long on the job's clock: in nightMailboxBudgetMs a read lists
+    // its history and looks at two emails.
+    const STEP = 8_000;
+    const slow = () => fake.requests.length * STEP;
+    const lunches = (count: number) =>
+      Array.from({ length: count }, (_, n) => ({ subject: `Lunch ${n}?`, text: "See you there." }));
+
+    // Never read through, with recent mail from before it was connected that isn't about money: the
+    // look-back's, and none of it reaches Claude.
+    async function neverRead(userId: string, emails: number, fields: Fields = {}) {
+      const address = `box-${randomUUID()}@fake-mailbox.test`;
+      const box = fake.mailbox(address);
+      const recent = lunches(emails).map(
+        (mail, n) => box.deliver({ ...mail, receivedAt: at(-(n + 1) * HOUR) }).id,
+      );
+      return { ...(await connected(userId, { lastCheckedAt: null, ...fields }, address)), recent };
+    }
+
+    it("gets one when its last read was unfinished, so a record twenty seconds can't get through is read through at the next run", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId, { lastCheckedAt: at(-25 * HOUR) });
+      const start = box.historyId;
+      // Five emails in one history record: a read stopped among them leaves the cursor before it.
+      const together = box.deliverTogether(lunches(5)).map((mail) => mail.id);
+      expect(await nightly([userId], { clock: slow })).toMatchObject({ read: 1, deferred: 0 });
+      // Its twenty seconds: the listing and two of the five.
+      expect(fake.fetched("metadata")).toEqual(together.slice(0, 2));
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: start,
+        lastCheckedAt: at(-25 * HOUR),
+        lastErrorCode: "unfinished",
+      });
+      // The next day's run gives it a whole read. With twenty seconds again it would stop at the
+      // same place every night.
+      expect(await nightly([userId], { now: at(DAY), clock: slow })).toMatchObject({
+        read: 1,
+        deferred: 0,
+      });
+      expect(fake.fetched("metadata").slice(2)).toEqual(together);
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastCheckedAt: at(DAY),
+        lastErrorCode: null,
+      });
+    });
+
+    it("waits for the next run when it is the second never read through and less than a whole read is left, and is looked back over then", async () => {
+      // A run's budget holds a whole read, so the first mailbox of a run that needs one gets it.
+      expect(GMAIL_LIMITS.cronBudgetMs).toBeGreaterThanOrEqual(GMAIL_LIMITS.runBudgetMs);
+      const userId = await person();
+      const both = [await neverRead(userId, 2), await neverRead(userId, 2)];
+      expect(await nightly([userId], { clock: slow })).toEqual({
+        read: 1,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 1,
+      });
+      // Neither was ever checked and both were written just now, so either may go first.
+      const reached = reachedOrder(both);
+      expect(reached).toHaveLength(1);
+      const first = both[reached[0]];
+      const second = both[1 - reached[0]];
+      // The first looked back over all its recent mail, in five calls: forty seconds, which left
+      // the second less than a whole read. A look-back started short counts as done however short
+      // it is cut, so the second waits instead.
+      expect(fake.fetched("metadata").sort()).toEqual(first.recent.sort());
+      expect(await rowOf(first.id)).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null });
+      expect(await rowOf(second.id)).toMatchObject({ lastCheckedAt: null, lastErrorCode: null });
+      // Never checked, it is first in the next day's run, which looks back over its recent mail.
+      expect(await nightly([userId], { now: at(DAY), clock: slow })).toEqual({
+        read: 2,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 0,
+      });
+      expect(fake.fetched("metadata")).toEqual(expect.arrayContaining(second.recent));
+      expect(await rowOf(second.id)).toMatchObject({ lastCheckedAt: at(DAY), lastErrorCode: null });
+    });
+
+    it("waits for the next run when its last read was unfinished and less than a whole read is left after another mailbox", async () => {
+      const userId = await person();
+      // Checked longest ago, so read first: one new email, three calls, twenty-four seconds, which
+      // leave the unfinished one less than a whole read.
+      const ordinary = await connected(userId, { lastCheckedAt: at(-30 * HOUR) });
+      ordinary.box.deliver(lunches(1)[0]);
+      const unfinished = await connected(userId, {
+        lastCheckedAt: at(-2 * HOUR),
+        lastErrorCode: "unfinished",
+      });
+      const start = unfinished.box.historyId;
+      unfinished.box.deliverTogether(lunches(5));
+      expect(await nightly([userId], { clock: slow })).toEqual({
+        read: 1,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 1,
+      });
+      expect(reachedOrder([ordinary, unfinished])).toEqual([0]);
+      expect(await rowOf(unfinished.id)).toMatchObject({
+        historyCursor: start,
+        lastCheckedAt: at(-2 * HOUR),
+        lastErrorCode: "unfinished",
+      });
+      // The next day it is the one checked longest ago, so first, with a whole read.
+      expect(await nightly([userId], { now: at(DAY), clock: slow })).toMatchObject({
+        read: 2,
+        deferred: 0,
+      });
+      expect(await rowOf(unfinished.id)).toMatchObject({
+        historyCursor: unfinished.box.historyId,
+        lastCheckedAt: at(DAY),
+        lastErrorCode: null,
+      });
+    });
+
+    it("doesn't hold up an ordinary mailbox after it, which is read with what is left", async () => {
+      const userId = await person();
+      const both = [await neverRead(userId, 1), await neverRead(userId, 1)];
+      const ordinary = await connected(userId, { lastCheckedAt: at(-25 * HOUR) });
+      const start = ordinary.box.historyId;
+      const unreached = ordinary.box.deliver(lunches(1)[0]).id;
+      // The first never read through takes thirty-two of the run's forty seconds: a listing, the
+      // look-back's search and its one email, and a listing again. The second waits, and the
+      // ordinary one has the eight left, less than nightMailboxBudgetMs, for its listing.
+      expect(await nightly([userId], { clock: slow, budgetMs: 40_000 })).toEqual({
+        read: 2,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 1,
+      });
+      const reached = reachedOrder([...both, ordinary]);
+      expect(reached).toHaveLength(2);
+      expect(reached[1]).toBe(2);
+      const first = both[reached[0]];
+      const second = both[1 - reached[0]];
+      expect(await checkedAt(first.id)).toEqual(NOW);
+      expect(await checkedAt(second.id)).toBeNull();
+      // Then the run's time is up, before its email: twenty seconds of its own would have got to it,
+      // and every read ends with the run.
+      expect(fake.fetched("metadata")).not.toContain(unreached);
+      expect(await rowOf(ordinary.id)).toMatchObject({
+        historyCursor: start,
+        lastCheckedAt: at(-25 * HOUR),
+        lastErrorCode: "unfinished",
+      });
+    });
+
+    it("isn't one with any other code, a failed watch's or a failure's, which gets twenty seconds and is never put off", async () => {
+      const userId = await person();
+      // Checked longest ago, so read first: one new email, three calls, twenty-four seconds, which
+      // leave less than a whole read. A mailbox taken to need one would wait after it.
+      const ordinary = await connected(userId, { lastCheckedAt: at(-30 * HOUR) });
+      ordinary.box.deliver(lunches(1)[0]);
+      const coded = [
+        await connected(userId, { lastCheckedAt: at(-3 * HOUR), lastErrorCode: "watch_failed" }),
+        await connected(userId, {
+          lastCheckedAt: at(-2 * HOUR),
+          lastErrorCode: "http_503",
+          nextTryAt: at(-MINUTE),
+        }),
+      ];
+      // Five emails in one record each: more than twenty seconds get through.
+      const together = coded.map((mailbox) =>
+        mailbox.box.deliverTogether(lunches(5)).map((mail) => mail.id),
+      );
+      expect(await nightly([userId], { clock: slow })).toEqual({
+        read: 3,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 0,
+      });
+      // Twenty seconds each, not a whole read: the listing and two of the five.
+      for (const ids of together) {
+        expect(fake.fetched("metadata").filter((id) => ids.includes(id))).toEqual(ids.slice(0, 2));
+      }
+    });
+
+    it("goes in turn with another never read through, the one written longest ago first, so one that never gets through doesn't hold the other every night", async () => {
+      const userId = await person();
+      // Never read through, and stopped every night in a record whose emails take longer than a
+      // whole read: last night's read wrote its row. Made first, and with an address that sorts
+      // first, so the database's own order would take it first, whether it reads the rows where they
+      // lie or by the address index.
+      const stuck = await connected(
+        userId,
+        { lastCheckedAt: null, lastErrorCode: "unfinished", updatedAt: at(-DAY) },
+        `a-${randomUUID()}@fake-mailbox.test`,
+      );
+      const start = stuck.box.historyId;
+      stuck.box.deliverTogether(lunches(25));
+      // Connected the day before, and put off last night for want of a whole read: untouched since.
+      const other = await neverRead(userId, 2, { updatedAt: at(-2 * DAY) });
+      expect(await nightly([userId], { clock: slow })).toEqual({
+        read: 1,
+        waiting: 0,
+        failed: 0,
+        reconnect: 0,
+        deferred: 1,
+      });
+      // The one that waited is read through, which writes its row, and leaves less than a whole read
+      // for the other.
+      expect(reachedOrder([stuck, other])).toEqual([1]);
+      expect(await rowOf(other.id)).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null });
+      expect((await rowOf(other.id)).updatedAt).not.toEqual(at(-2 * DAY));
+      // Put off, the stuck one isn't written: it keeps its turn, ahead of any mailbox read since.
+      expect(await rowOf(stuck.id)).toMatchObject({
+        historyCursor: start,
+        lastCheckedAt: null,
+        lastErrorCode: "unfinished",
+        updatedAt: at(-DAY),
+      });
+    });
+  });
+
+  it("counts a mailbox whose read broke as failed, says only the error's kind, and goes on to the next", async () => {
+    const userId = await person();
+    const broken = await connected(userId, { lastCheckedAt: at(-30 * HOUR) });
+    const next = await connected(userId, { lastCheckedAt: at(-25 * HOUR) });
+    // The database going away as the job takes that mailbox's lock.
+    const outage = Object.assign(new Error(`Can't reach the database for ${broken.address}`), {
+      name: "PrismaClientInitializationError",
+    });
+    const failing = db.$extends({
+      query: {
+        gmailMailbox: {
+          async updateMany({ args, query }) {
+            if (JSON.stringify(args.where).includes(broken.id)) throw outage;
+            return query(args);
+          },
+        },
+      },
+    }) as unknown as PrismaClient;
+    const errors = vi.spyOn(log, "error");
+    expect(await nightly([userId], { client: failing })).toEqual({
+      read: 1,
+      waiting: 0,
+      failed: 1,
+      reconnect: 0,
+      deferred: 0,
+    });
+    expect(await checkedAt(next.id)).toEqual(NOW);
+    expect(await checkedAt(broken.id)).toEqual(at(-30 * HOUR));
+    expect(errors).toHaveBeenCalledWith("Gmail read broke", {
+      kind: "PrismaClientInitializationError",
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain(broken.address);
   });
 
   it("doesn't take a mailbox for its notices while there are none to ask for", async () => {

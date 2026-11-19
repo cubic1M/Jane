@@ -5,7 +5,7 @@ import type { anthropic } from "@/lib/anthropic";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { meteredClaude } from "@/lib/claude-budget";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { personTransaction, scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { ownedByStaying, STAYING, type OnlyPeople } from "@/lib/only-people";
 import { recordOpsEvent } from "@/lib/ops-alerts";
@@ -20,7 +20,7 @@ import {
 } from "./google";
 import { readerReady } from "./limits";
 import { refreshTokens } from "./oauth";
-import { readMessage, type Handled, type MessageRead } from "./read-message";
+import { readMessage, type Handled, type MessageRead, type Reading } from "./read-message";
 import { NO_SECRETS, openSecrets, sealSecrets, type GmailSecrets } from "./secrets";
 
 // Reading a Gmail mailbox (docs/setup/gmail.md): what arrived after the saved place in its history,
@@ -28,11 +28,11 @@ import { NO_SECRETS, openSecrets, sealSecrets, type GmailSecrets } from "./secre
 // anywhere loses no mail and repeats little. A read is started by a notice from Google
 // (syncFromNotice), by connecting (the callback), and by the daily job (refreshAllGmail). One read
 // per mailbox at a time, under a lock that outlives the function, and every write a read makes
-// matches only while the mailbox is still active and the lock still its own: a disconnect, a
-// take-over or a lost lock stops it quietly. Once a read has its row, an expected failure ends up
-// there as a code of ours, never thrown; the database failing before then (taking the lock,
-// reading the row) is thrown to the caller. Nothing here logs an address, a token or anything an
-// email says.
+// matches only while the mailbox is still active, the lock still its own and the tokens still the
+// ones it opened: a disconnect, a take-over, connecting it again, a key rotation or a lost lock
+// stops it quietly. Once a read has its row, an expected failure ends up there as a code of ours,
+// never thrown; the database failing before then (taking the lock, reading the row) is thrown to
+// the caller. Nothing here logs an address, a token or anything an email says.
 
 export type SyncOutcome =
   "read" | "off" | "busy" | "backing_off" | "waiting" | "reconnect" | "failed" | "none";
@@ -53,23 +53,30 @@ const WHY_DUE = "Cron: finds every Gmail mailbox due a read, whoever holds it";
 // Gmail's history ids are digits, past what a JavaScript number holds: compared only as BigInt.
 const HISTORY_ID = /^\d{1,20}$/;
 
+// The tokens a read holds, and the sealed value they were last saved as.
+type Tokens = { secrets: GmailSecrets; sealed: string; expiresAt: Date | null };
+
 // One read of one mailbox, from the moment it holds the lock. `now` is the lock's own mark too:
 // every write the read makes matches only while the row still carries it.
-type Read = {
+type Locked = {
   db: ScopedDb;
   client: PrismaClient;
   userId: string;
   mailboxId: string;
   now: Date;
   clock: () => number;
-  // When the read stops starting new records: one deadline for everything the call starts.
+  // When the read stops starting new emails: one deadline for everything the call starts.
   deadline: number;
   runMessages: number;
   claude: typeof anthropic;
 };
 
-// A write matched nothing: the mailbox was disconnected or taken over, or another read took the
-// lock. The read stops quietly, with no audit row, no ops event and no failure.
+// The same read once it has read its row under the lock: the tokens it opened, renewed in place.
+type Read = Locked & { tokens: Tokens };
+
+// A write matched nothing: the mailbox was disconnected, taken over or connected again, its tokens
+// were sealed again, or another read took the lock. The read stops quietly, with no audit row, no
+// ops event and no failure.
 class LockLost extends Error {
   constructor() {
     super("The read no longer holds this mailbox");
@@ -87,24 +94,45 @@ class ReadFailed extends Error {
 
 const kindOf = (error: unknown): string => (error instanceof Error ? error.name : typeof error);
 
-// 4. What every write of a read matches on.
-const held = ({ mailboxId, now }: Read) => ({ id: mailboxId, status: "active", syncingSince: now });
+// 4. What every write of a read matches on. The sealed tokens too: connecting the mailbox again
+// saves new ones and a key rotation seals the same ones again, and either way a read that opened
+// the old value stops, rather than write its ending over the row they left.
+const held = ({ mailboxId, now, tokens }: Read) => ({
+  id: mailboxId,
+  status: "active",
+  syncingSince: now,
+  secretsEncrypted: tokens.sealed,
+});
 
-async function save(
-  read: Read,
-  data: Prisma.GmailMailboxUpdateManyMutationInput,
-  also: { secretsEncrypted?: string } = {},
-): Promise<void> {
-  const { count } = await read.db.gmailMailboxes.updateMany({
-    where: { ...held(read), ...also },
-    data,
-  });
+async function save(read: Read, data: Prisma.GmailMailboxUpdateManyMutationInput): Promise<void> {
+  const { count } = await read.db.gmailMailboxes.updateMany({ where: held(read), data });
   if (count === 0) throw new LockLost();
 }
 
 // The same test with nothing written, before each call out (./read-message.ts asks it too).
 async function holding(read: Read): Promise<void> {
   if ((await read.db.gmailMailboxes.count({ where: held(read) })) === 0) throw new LockLost();
+}
+
+// A reading, in one transaction that first writes the read's own lock again: a take-over or a
+// reconnect that came first leaves nothing saved and stops the read, and one that comes while it
+// runs waits for it. Its statements aren't filtered for the person, so each names them.
+async function saveReading(read: Read, reading: Reading): Promise<void> {
+  await personTransaction(
+    read.userId,
+    async (tx) => {
+      const { count } = await tx.gmailMailbox.updateMany({
+        where: { ...held(read), userId: read.userId },
+        data: { syncingSince: read.now },
+      });
+      if (count === 0) throw new LockLost();
+      await tx.gmailReading.createMany({
+        data: [{ ...reading, userId: read.userId, mailboxId: read.mailboxId }],
+        skipDuplicates: true,
+      });
+    },
+    read.client,
+  );
 }
 
 // 2. One statement, so two reads can't both take it. A lock older than lockMinutes was left by a
@@ -136,8 +164,9 @@ async function whyNotLocked(db: ScopedDb, mailboxId: string, now: Date): Promise
   return "busy";
 }
 
-// 3. Lets go of this read's own lock only: one taken over from it is the other read's.
-async function release({ db, mailboxId, now }: Read): Promise<void> {
+// 3. Lets go of this read's own lock only: one taken over from it is the other read's. Whatever the
+// tokens are now: a read stopped by a reconnect still lets the next one in.
+async function release({ db, mailboxId, now }: Locked): Promise<void> {
   try {
     await db.gmailMailboxes.updateMany({
       where: { id: mailboxId, syncingSince: now },
@@ -148,10 +177,6 @@ async function release({ db, mailboxId, now }: Read): Promise<void> {
     log.error("Gmail read: lock not let go", { kind: kindOf(error) });
   }
 }
-
-// The tokens this read holds, and the sealed value they were last saved as: a renewal's save
-// matches only that value, so tokens a reconnect saved meanwhile are never overwritten.
-type Tokens = { secrets: GmailSecrets; sealed: string; expiresAt: Date | null };
 
 // 5. A value that won't open is a failed read, and nothing is wiped: a missing or wrong key gives
 // the same error for every mailbox, and wiping then would end every connection that works.
@@ -170,7 +195,8 @@ const expiring = ({ secrets, expiresAt }: Tokens, now: Date): boolean =>
 
 // 6. A new access token, saved at once. Google keeps the refresh token it gave (./oauth.ts hands
 // back the one it was given when it sends none). Only invalid_grant means connecting again.
-async function renew(read: Read, tokens: Tokens): Promise<string> {
+async function renew(read: Read): Promise<string> {
+  const { tokens } = read;
   const { refreshToken } = tokens.secrets;
   if (!refreshToken) throw new GmailGrantGoneError();
   await holding(read);
@@ -180,13 +206,9 @@ async function renew(read: Read, tokens: Tokens): Promise<string> {
     refreshToken: fresh.refreshToken ?? refreshToken,
   };
   const sealed = sealSecrets(secrets);
-  // No match: a reconnect saved newer tokens, or a key rotation sealed these again. Either way the
-  // row isn't what this read opened, and the read stops.
-  await save(
-    read,
-    { secretsEncrypted: sealed, accessExpiresAt: fresh.expiresAt },
-    { secretsEncrypted: tokens.sealed },
-  );
+  // Saved only over the value this read opened or last saved (held). No match: a reconnect saved
+  // newer tokens, or a key rotation sealed these again, and the read stops.
+  await save(read, { secretsEncrypted: sealed, accessExpiresAt: fresh.expiresAt });
   tokens.secrets = secrets;
   tokens.sealed = sealed;
   tokens.expiresAt = fresh.expiresAt;
@@ -195,14 +217,14 @@ async function renew(read: Read, tokens: Tokens): Promise<string> {
 
 // Gmail turning a token away renews it once and repeats that one call (./api.ts). A second refusal
 // leaves as GmailSignedOutError: a failed read, never a reason to connect again.
-const accessFor = (read: Read, tokens: Tokens): Access => ({
-  token: async () => tokens.secrets.accessToken ?? "",
-  renew: () => renew(read, tokens),
+const accessFor = (read: Read): Access => ({
+  token: async () => read.tokens.secrets.accessToken ?? "",
+  renew: () => renew(read),
 });
 
 // 7. Google's notices end after a week unless asked for again. A watch Google refuses doesn't stop
 // the read: the mailbox is still read, by the daily job if not by notices, and `watch_failed` stays
-// on the row until a watch works. Answers whether that code stands now.
+// on the row until a watch works. Answers whether the read's ending leaves that code.
 async function keepNoticesComing(
   read: Read,
   access: Access,
@@ -221,7 +243,10 @@ async function keepNoticesComing(
     throw error;
   });
   if (answer instanceof GoogleCallError) {
-    await save(read, { lastErrorCode: "watch_failed" });
+    // Not over `reader_unread`: the next read lets the emails the read before stopped for go only
+    // with it, and this read may stop before it gets past them. Once it does, its ending writes
+    // `watch_failed` (codeAfter); until then the watch is still due, and the next read asks again.
+    if (row.lastErrorCode !== "reader_unread") await save(read, { lastErrorCode: "watch_failed" });
     log.warn("Gmail notices not renewed", { code: answer.code });
     await recordOpsEvent("gmail_read_failed", {
       code: "WATCH_FAILED",
@@ -257,21 +282,32 @@ type Run = {
   skipped: Record<string, number>;
   streak: Streak | null;
   lookedBack: boolean;
+  // The look-back stopped by the deadline or runMessages with emails it never got to.
+  lookBackCut: boolean;
   jumped: boolean;
+  // Whether Gmail has answered a listing yet: a read that ran out of time before it did read
+  // nothing, and isn't a success (readHeld).
+  listed: boolean;
 };
 
 // How reading new mail ended: everything read, stopped by the deadline or runMessages with history
 // left or the look-back not begun, the person's count used up, Claude not to be asked (`later`), or
-// emails Claude gave no answer for one after another (`unread`), with where the cursor goes back to:
-// before the first of them.
+// emails Claude gave no answer for one after another (`unread`). Both of those last say where the
+// cursor goes back to: before the first of the emails Claude gave no answer for, when there are any.
 type Ended =
   | { end: "done" | "left" | "waiting" }
-  | { end: "later"; reason: string }
+  | { end: "later"; reason: string; cursorBack: string | null }
   | { end: "unread"; cursorBack: string };
 
-// Between records only: the deadline, or as many emails as one read asks Gmail for.
+// The deadline alone: before each email of a record too. A read stopped inside a record leaves the
+// cursor before it, so the next read meets all its emails again, which runMessages would count again:
+// a record longer than runMessages would never be got past.
+const pastDeadline = (read: Read): boolean => read.clock() >= read.deadline;
+
+// Between records and between the look-back's emails: the deadline, or as many emails as one read
+// asks Gmail for.
 const timeIsUp = (read: Read, run: Run): boolean =>
-  read.clock() >= read.deadline || run.messages.count >= read.runMessages;
+  pastDeadline(read) || run.messages.count >= read.runMessages;
 
 const countSkip = (run: Run, why: string): void => {
   run.skipped[why] = (run.skipped[why] ?? 0) + 1;
@@ -288,7 +324,9 @@ const metAgain = (run: Run, streak: Streak): boolean =>
 // from different senders, mean Claude is down, not that the emails are odd: the read ends as
 // `unread`, with the cursor back before the first of them. A read that meets the same ones again
 // takes them as odd after all: they stay skipped and it goes on, so they hold a mailbox for one
-// wait at most. An email Claude did answer ends the streak.
+// wait at most. An email Claude did answer ends the streak. Claude found down (`later`) while a
+// streak is open takes the streak's emails for the start of it: the cursor goes back before them
+// too, and they are read again at the next try.
 function noted(run: Run, handled: Handled, lookingBack: boolean): Ended | null {
   if (handled.outcome === "kept" || handled.outcome === "none") {
     run[handled.outcome] += 1;
@@ -311,7 +349,7 @@ function noted(run: Run, handled: Handled, lookingBack: boolean): Ended | null {
     return { end: "unread", cursorBack: run.streak.cursorBefore };
   }
   if (handled.outcome === "waiting") return { end: "waiting" };
-  return { end: "later", reason: handled.reason };
+  return { end: "later", reason: handled.reason, cursorBack: run.streak?.cursorBefore ?? null };
 }
 
 // Each email once in a read, whichever records name it.
@@ -331,10 +369,11 @@ async function oneEmail(
 // runMessages: once, after the history passes, in a read of a mailbox never read through, and once
 // after a gap. It is best effort, and done once it ends: run to its end, it records a never-read
 // mailbox as read through at once, whatever stops the read after it; cut short by the deadline or
-// runMessages, it ends the read as done (what it left out is counted). Either way it isn't looked
-// back over from the top at the next read, so a mailbox with more recent mail than one read has time
-// for is read through all the same. Ended by `later`, or by the person's count, it isn't done, and
-// the next read tries it again. With no time left it isn't begun.
+// runMessages, it ends the read as done, with what it left out counted and `unfinished` on the row,
+// since mail that came while it ran wasn't listed again. Either way it isn't looked back over from
+// the top at the next read, so a mailbox with more recent mail than one read has time for is read
+// through all the same. Ended by `later`, or by the person's count, it isn't done, and the next
+// read tries it again. With no time left it isn't begun.
 async function lookBack(
   read: Read,
   run: Run,
@@ -348,10 +387,14 @@ async function lookBack(
     days: GMAIL_LIMITS.lookBackDays,
     most: GMAIL_LIMITS.lookBackMessages,
   });
+  run.listed = true;
   for (const [index, id] of newestFirst.entries()) {
     if (timeIsUp(read, run)) {
       const leftOut = newestFirst.slice(index).filter((other) => !run.met.has(other)).length;
-      if (leftOut > 0) run.skipped.look_back_cut = leftOut;
+      if (leftOut > 0) {
+        run.skipped.look_back_cut = leftOut;
+        run.lookBackCut = true;
+      }
       return { end: "done" };
     }
     const ended = await oneEmail(run, mail, { id, labelIds: null }, { lookingBack: true });
@@ -372,7 +415,8 @@ async function moveCursor(read: Read, run: Run, id: string): Promise<boolean> {
 }
 
 // 10. One pass over what arrived after the cursor, every page, oldest first, with the cursor saved
-// after each record. Answers whether the pass found a record, or how the read ended part way.
+// after each record. Answers whether the pass found a record, or how the read ended part way: a
+// stop inside a record leaves the cursor before it.
 async function onePass(
   read: Read,
   run: Run,
@@ -387,10 +431,13 @@ async function onePass(
     if (pageToken !== null && timeIsUp(read, run)) return { end: "left" };
     await holding(read);
     const page = await listHistory(access, start, pageToken);
+    run.listed = true;
     firstPageId ??= page.historyId;
     for (const record of page.records) {
       if (timeIsUp(read, run)) return { end: "left" };
       for (const added of record.added) {
+        // One record can name many emails, and the deadline doesn't wait for all of them.
+        if (pastDeadline(read)) return { end: "left" };
         const ended = await oneEmail(run, mail, added, { lookingBack: false });
         if (ended) return ended;
       }
@@ -413,6 +460,8 @@ async function jumpAhead(
   mail: MessageRead,
 ): Promise<Ended | null> {
   run.jumped = true;
+  // Gmail answered the listing, with where its history now begins.
+  run.listed = true;
   await holding(read);
   const { historyId } = await getProfile(access);
   await save(read, { historyCursor: historyId, missedAt: read.now });
@@ -434,9 +483,10 @@ async function jumpAhead(
 // read began the look-back again. History left before the look-back ends the read as `left`, and the
 // look-back waits for a read that gets through it. A look-back that runs to its end records the
 // mailbox as read through as it ends (lookBack), so what stops the read after it isn't a reason to
-// look back again: history left then can only be mail that came in while it ran, which the next
-// notice reads. After a pass that handled mail, and after the look-back, the read lists once more,
-// so a notice that found the lock held loses nothing.
+// look back again. After a pass that handled mail, and after a look-back that ran to its end, the
+// read lists once more, so a notice that found the lock held loses nothing. A read that stops before
+// then, with history left or its look-back cut short, leaves `unfinished` on the row (succeeded):
+// what came in meanwhile is read by the next notice, or by the daily job at its next run.
 async function readNewMail(read: Read, run: Run, access: Access): Promise<Ended> {
   const mail: MessageRead = {
     db: read.db,
@@ -447,6 +497,7 @@ async function readNewMail(read: Read, run: Run, access: Access): Promise<Ended>
     claude: read.claude,
     messages: run.messages,
     holding: () => holding(read),
+    saveReading: (reading) => saveReading(read, reading),
   };
   for (;;) {
     if (timeIsUp(read, run)) return { end: "left" };
@@ -469,16 +520,19 @@ async function readNewMail(read: Read, run: Run, access: Access): Promise<Ended>
 }
 
 // `later` (./read-mail.ts): Claude couldn't be asked part way. The read stops at the last finished
-// record and is tried again after readerRetryMinutes. `unread`: the same, with the cursor back
-// before the first of the emails Claude was taken to be down for, and `reader_unread` on the row, so
-// the next read knows them if they stop it again (noted). Not the mailbox failing: no failure is
-// counted, no audit row is written, and one ops event says why.
+// record, or before the emails Claude gave no answer for just before (noted), and is tried again
+// after readerRetryMinutes. `unread`: the same, with the cursor back before the first of the emails
+// Claude was taken to be down for, and `reader_unread` on the row, so the next read knows them if
+// they stop it again (noted). Not the mailbox failing: no failure is counted, no audit row is
+// written, and one ops event says why.
 async function readerDown(
   read: Read,
-  ended: { end: "later"; reason: string } | { end: "unread"; cursorBack: string },
+  ended:
+    | { end: "later"; reason: string; cursorBack: string | null }
+    | { end: "unread"; cursorBack: string },
 ): Promise<void> {
   await save(read, {
-    ...(ended.end === "unread" ? { historyCursor: ended.cursorBack } : {}),
+    ...(ended.cursorBack !== null ? { historyCursor: ended.cursorBack } : {}),
     nextTryAt: new Date(read.now.getTime() + GMAIL_LIMITS.readerRetryMinutes * MINUTE),
     lastErrorCode: ended.end === "unread" ? "reader_unread" : "reader_later",
   });
@@ -492,15 +546,30 @@ async function readerDown(
   });
 }
 
-// 11. A read that stopped with history left doesn't say it was checked, so the daily job takes it
-// up as stale; only a look-back that ran to its end has said so already (lookBack).
+// Whether the emails the read before put the cursor back for (`reader_unread`) are still ahead of
+// it: once the cursor is past them that stop is spent, and the mark goes.
+const stillPutBack = (run: Run): boolean => run.putBack !== null && run.cursor === run.putBack;
+
+// The code a read that got through leaves. Stopped short of the emails the read before put the
+// cursor back for, it keeps their mark, a failed watch or not: the next read lets them go only with
+// it. Otherwise a failed watch's code wins (keepNoticesComing). Mail the read didn't get to, history
+// left or a look-back cut short, is `unfinished`: the daily job takes the mailbox at its next run,
+// and a read that gets through clears it.
+function codeAfter(run: Run, { watchFailed, left }: { watchFailed: boolean; left: boolean }) {
+  if (left && stillPutBack(run)) return "reader_unread";
+  if (watchFailed) return "watch_failed";
+  return left || run.lookBackCut ? "unfinished" : null;
+}
+
+// 11. A read that stopped with history left doesn't say it was checked; only a look-back that ran
+// to its end has said so already (lookBack).
 async function succeeded(
   read: Read,
   run: Run,
   { watchFailed, left }: { watchFailed: boolean; left: boolean },
 ): Promise<void> {
   await save(read, {
-    lastErrorCode: watchFailed ? "watch_failed" : null,
+    lastErrorCode: codeAfter(run, { watchFailed, left }),
     failures: 0,
     nextTryAt: null,
     ...(left ? {} : { lastCheckedAt: read.now }),
@@ -532,11 +601,11 @@ const backoffUntil = (failures: number, now: Date): Date =>
   );
 
 // 12. Google no longer accepts the refresh token: only connecting again helps. The tokens are
-// wiped only if they are still the ones this read holds, so a reconnect that saved new ones keeps
-// them. Answers whether it wrote.
-async function needsReconnect(read: Read, tokens: Tokens): Promise<boolean> {
+// wiped only if they are still the ones this read holds (held), so a reconnect that saved new ones
+// keeps them. Answers whether it wrote.
+async function needsReconnect(read: Read): Promise<boolean> {
   const { count } = await read.db.gmailMailboxes.updateMany({
-    where: { ...held(read), secretsEncrypted: tokens.sealed },
+    where: held(read),
     data: {
       status: "reconnect",
       secretsEncrypted: sealSecrets(NO_SECRETS),
@@ -593,11 +662,11 @@ async function recordFailure(read: Read, error: unknown): Promise<boolean> {
   return true;
 }
 
-async function failed(read: Read, tokens: Tokens, error: unknown): Promise<SyncOutcome> {
+async function failed(read: Read, error: unknown): Promise<SyncOutcome> {
   if (error instanceof LockLost) return "none";
   try {
     if (error instanceof GmailGrantGoneError) {
-      return (await needsReconnect(read, tokens)) ? "reconnect" : "none";
+      return (await needsReconnect(read)) ? "reconnect" : "none";
     }
     return (await recordFailure(read, error)) ? "failed" : "none";
   } catch (recording) {
@@ -607,10 +676,10 @@ async function failed(read: Read, tokens: Tokens, error: unknown): Promise<SyncO
 }
 
 // Steps 3 to 12, holding the lock.
-async function readHeld(read: Read): Promise<SyncOutcome> {
+async function readHeld(locked: Locked): Promise<SyncOutcome> {
   // 3. Read under the lock, so nothing another read changes is acted on twice.
-  const row = await read.db.gmailMailboxes.findFirst({
-    where: { id: read.mailboxId },
+  const row = await locked.db.gmailMailboxes.findFirst({
+    where: { id: locked.mailboxId },
     select: {
       secretsEncrypted: true,
       accessExpiresAt: true,
@@ -621,19 +690,18 @@ async function readHeld(read: Read): Promise<SyncOutcome> {
     },
   });
   if (!row) return "none";
-  const tokens: Tokens = {
-    secrets: NO_SECRETS,
-    sealed: row.secretsEncrypted,
-    expiresAt: row.accessExpiresAt,
+  const read: Read = {
+    ...locked,
+    tokens: { secrets: NO_SECRETS, sealed: row.secretsEncrypted, expiresAt: row.accessExpiresAt },
   };
   try {
     // 5.
-    tokens.secrets = opened(row.secretsEncrypted);
+    read.tokens.secrets = opened(row.secretsEncrypted);
     // Only Gmail's digits are a place: a row the access proof planted carries text that isn't.
     if (!HISTORY_ID.test(row.historyCursor)) throw new ReadFailed("bad_cursor");
-    const access = accessFor(read, tokens);
+    const access = accessFor(read);
     // 6.
-    if (expiring(tokens, read.now)) await renew(read, tokens);
+    if (expiring(read.tokens, read.now)) await renew(read);
     // 7.
     const watchFailed = await keepNoticesComing(read, access, row);
     // 8. Known before anything is read: nothing is recorded and nothing backs off, and the token and
@@ -652,7 +720,9 @@ async function readHeld(read: Read): Promise<SyncOutcome> {
       skipped: {},
       streak: null,
       lookedBack: false,
+      lookBackCut: false,
       jumped: false,
+      listed: false,
     };
     const ended = await readNewMail(read, run, access);
     if (ended.end === "waiting") {
@@ -668,12 +738,15 @@ async function readHeld(read: Read): Promise<SyncOutcome> {
       await readerDown(read, ended);
       return "waiting";
     }
+    // Out of time before Gmail listed anything: nothing was read, so this is no success. The code,
+    // the failures and the wait stay as they were, a failing mailbox's and `reader_unread` alike.
+    if (ended.end === "left" && !run.listed) return "read";
     // 11.
     await succeeded(read, run, { watchFailed, left: ended.end === "left" });
     return "read";
   } catch (error) {
     // 12.
-    return failed(read, tokens, error);
+    return failed(read, error);
   }
 }
 
@@ -700,11 +773,21 @@ export async function syncMailbox(
   const db = scopedFor(userId, client);
   // 2.
   if (!(await lock(db, mailboxId, now))) return whyNotLocked(db, mailboxId, now);
-  const read: Read = { db, client, userId, mailboxId, now, clock, deadline, runMessages, claude };
+  const locked: Locked = {
+    db,
+    client,
+    userId,
+    mailboxId,
+    now,
+    clock,
+    deadline,
+    runMessages,
+    claude,
+  };
   try {
-    return await readHeld(read);
+    return await readHeld(locked);
   } finally {
-    await release(read);
+    await release(locked);
   }
 }
 
@@ -733,9 +816,15 @@ type GmailRun = {
 
 // The daily job (src/app/api/cron/gmail/route.ts), the backstop for notices that didn't come. Due:
 // an active mailbox whose wait is over, and that wasn't read through in staleHours, or whose last
-// read left a code, or whose notices need asking for. Oldest checked first, each with the smaller
-// of nightMailboxBudgetMs and what is left of the run; those past it wait for tomorrow. Off, it
-// reads nothing.
+// read left a code (any: a failure, Claude's, `unfinished`, `watch_failed`), or whose notices need
+// asking for. Oldest checked first, each with the smaller of nightMailboxBudgetMs and what is left
+// of the run; those past it wait for tomorrow. Two kinds need a whole read's runBudgetMs instead. A
+// mailbox never read through: its look-back counts as done however short it is cut, so twenty
+// seconds would leave most of its recent mail unread for good. And one whose last read was
+// `unfinished`: it may have stopped inside a record with more emails than twenty seconds get
+// through, and would stop there again every night. Once the run has started another mailbox, one
+// of these with less than a whole read left waits for tomorrow, rather than start short. A record
+// longer than a whole read can still hold a mailbox. Off, it reads nothing.
 export async function refreshAllGmail({
   client = defaultClient,
   now = new Date(),
@@ -766,23 +855,33 @@ export async function refreshAllGmail({
         },
       ],
     },
-    select: { id: true, userId: true },
-    orderBy: { lastCheckedAt: { sort: "asc", nulls: "first" } },
+    select: { id: true, userId: true, lastCheckedAt: true, lastErrorCode: true },
+    // Then the one written longest ago. Every mailbox never read through ties at null, and a run may
+    // have time for only one whole read: in the database's own order, one that never gets through
+    // could take it every night while another waits. A read writes its row and a mailbox put off
+    // isn't touched, so the one that waited goes first the next night.
+    orderBy: [{ lastCheckedAt: { sort: "asc", nulls: "first" } }, { updatedAt: "asc" }],
     take: GMAIL_LIMITS.cronMailboxes,
   });
   const run: GmailRun = { read: 0, waiting: 0, failed: 0, reconnect: 0, deferred: 0 };
   const started = clock();
-  for (const { id, userId } of due) {
+  // Whether a mailbox has been started yet: the first always is, so a run shorter than a whole
+  // read still reads one.
+  let begun = false;
+  for (const { id, userId, lastCheckedAt, lastErrorCode } of due) {
     const left = budgetMs - (clock() - started);
-    if (left <= 0) {
+    const whole = lastCheckedAt === null || lastErrorCode === "unfinished";
+    const own = whole ? GMAIL_LIMITS.runBudgetMs : GMAIL_LIMITS.nightMailboxBudgetMs;
+    if (left <= 0 || (whole && begun && left < own)) {
       run.deferred += 1;
       continue;
     }
+    begun = true;
     const outcome = await syncMailbox(userId, id, {
       client,
       now,
       clock,
-      budgetMs: Math.min(GMAIL_LIMITS.nightMailboxBudgetMs, left),
+      budgetMs: Math.min(own, left),
     }).catch((error: unknown) => {
       log.error("Gmail read broke", { kind: kindOf(error) });
       return "failed" as const;

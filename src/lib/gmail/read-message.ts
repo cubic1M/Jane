@@ -1,4 +1,4 @@
-import { GMAIL_LIMITS, SKIPPED_LABELS } from "@/config/gmail";
+import { GMAIL_LIMITS, SKIPPED_LABELS, type GmailKind } from "@/config/gmail";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { anthropic } from "@/lib/anthropic";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -52,6 +52,16 @@ export type Handled =
   // Claude can't be asked: the read stops where it is.
   | { outcome: "later"; reason: string };
 
+// What one email gives a reading. The read it is part of adds whose it is and which mailbox's.
+export type Reading = {
+  messageRef: string;
+  receivedAt: Date;
+  senderDomain: string;
+  kind: GmailKind;
+  amountCents: number | null;
+  occursOn: Date | null;
+};
+
 // What one email needs of the read it is part of.
 export type MessageRead = {
   db: ScopedDb;
@@ -62,10 +72,13 @@ export type MessageRead = {
   claude: typeof anthropic;
   // Emails that reached Gmail in this read, which runMessages counts.
   messages: { count: number };
-  // Throws when the read no longer holds the mailbox: disconnected, taken over, or the lock taken
-  // by another read. Asked before every call out and before a reading is saved, so nothing is
-  // fetched, sent to Claude or saved for a mailbox that is no longer this read's.
+  // Throws when the read no longer holds the mailbox: disconnected, taken over, connected again, or
+  // the lock taken by another read. Asked before every call out, so nothing is fetched or sent to
+  // Claude for a mailbox that is no longer this read's.
   holding: () => Promise<void>;
+  // Saves a reading in one transaction that asks the same first (./sync.ts), so nothing is saved
+  // for a mailbox taken away while Claude answered, however late that was.
+  saveReading: (reading: Reading) => Promise<void>;
 };
 
 const skip = (why: Skip): Handled => ({ outcome: "skipped", why });
@@ -205,19 +218,6 @@ async function askClaude(
     await giveBackRead(read.db.userId, senderDomain, { client: read.client, now: read.now });
     return { outcome: "later", reason: reading.reason };
   }
-  await read.holding();
-  await read.db.gmailReadings.createMany({
-    data: [
-      {
-        userId: read.db.userId,
-        mailboxId: read.mailboxId,
-        messageRef: id,
-        receivedAt,
-        senderDomain,
-        ...reading.fact,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  await read.saveReading({ messageRef: id, receivedAt, senderDomain, ...reading.fact });
   return { outcome: "kept" };
 }
