@@ -523,6 +523,10 @@ export const PRONOUNS: readonly string[] = [
 const ABOUT_MAX_WORDS = 3;
 const WHY_FEE =
   /\bwhy\b.{0,40}\b(?:fees?|overdraft|maintenance|nsf|insufficient funds)\b|\bwhat(?:'s| is) (?:this|that|the) (?:\$[\d.,]+ )?fee\b/;
+// "How much did Hulu go up?", "when did Netflix go up?": one merchant's price, which its price-rise
+// finding answers. Prices about to go up are PRICE_RISES', earlier.
+const WENT_UP =
+  /^(?:(?:how much|when|why) (?:did|has|have)|did|has|have) (?:my |the )?([a-z][a-z0-9&+' .-]*?) (?:go|gone|went) up\b/;
 const SPARE_CASH =
   /\b(?:extra|idle|spare|leftover|excess) (?:cash|money)\b|\bcash (?:that'?s )?(?:just )?(?:sitting|doing nothing)\b/;
 
@@ -812,6 +816,12 @@ export function parseIntent(
   // "Why is there a $6.95 fee?": about their fees, which the bank fee finding answers (debugger
   // 11-17: no answer, three walks running).
   if (WHY_FEE.test(text)) return { kind: "about", target: "fees" };
+  // Debugger 11-19: "I can't answer that one yet" beside "Hulu went up from $9.99 to $11.99".
+  const wentUp = WENT_UP.exec(text);
+  if (wentUp) {
+    const target = cleanTarget(wentUp[1]!);
+    if (target) return { kind: "about", target };
+  }
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };
   // A name on its own ("netflix", "the bank fees").
