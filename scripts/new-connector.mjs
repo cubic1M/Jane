@@ -54,7 +54,7 @@ export const ${twin}: Connector = {
   ...${name},
   id: "sandbox_${id}",
   name: "What it does for the person, through ${vendor} (sandbox)",
-  from: "${vendor}'s own example",
+  from: "A sample from ${vendor}'s own example",
   sandbox: true,
 };
 `,

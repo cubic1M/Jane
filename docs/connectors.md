@@ -181,10 +181,12 @@ so, formatted, never overwriting. Then:
 6. **Config and keys**: rates, limits, hosts and versions in `src/config` with URL and date; key names
    (empty) in `.env.example`, each key line followed by a comment line; the names in `VENDOR_CHECKS`
    (`env-check.ts`) and the vendor in `VENDOR_OF` (`status.ts`), so `npm run connectors:check` and
-   /admin/connectors see it.
+   /admin/connectors see it. A keyed vendor also gets a contract in `src/lib/connectors/contract/` (its
+   test host on `CONTRACT_HOSTS`, its own read and parse), so `npm run connectors:contract` checks the
+   adapter against real answers.
 7. **Consent**: its scopes' words; a legal scope (`EXACT_TEXT_SCOPES`) needs counsel's approved text as
    `consentText`, and a soft pull also needs `COUNSEL_SOFT_PULL`. `from` says where the data comes
-   from.
+   from, not the name again; a sandbox twin's says it's a sample.
 8. **Connect**: `connect` if the partner has its own step (it gets Jane's return address); offered with
    `<ConnectTap>` inside the card that needs it, never in sign-up or onboarding.
 9. **Revoke**: a `forget` step, or a stated reason it keeps nothing (`forget.integration.test.ts`).

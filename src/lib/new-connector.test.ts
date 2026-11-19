@@ -27,6 +27,8 @@ describe("node scripts/new-connector.mjs", () => {
     expect(connector).toContain("sandbox: false");
     expect(connector).toContain('id: "sandbox_acme_rates"');
     expect(connector).toContain("movesMoney: false");
+    // The twin says it reads a sample, as connector-from.test.ts asks of every registered twin.
+    expect(connector).toMatch(/from: "A sample from Acme's own example"/);
     expect(readFileSync(join(dir, "acme-rates.test.ts"), "utf8")).toContain('toBe("switched_off")');
   });
 
