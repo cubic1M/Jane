@@ -70,7 +70,10 @@ export type WebhookSigning =
   // SignWell's event hash, in the body: HMAC-SHA256 keyed by the webhook's id over
   // "<event.type>@<event.time>". It doesn't cover which document, so its connector confirms with
   // the partner before relying on one (./signwell).
-  | { kind: "signwell_event_hash"; secretEnv: string };
+  | { kind: "signwell_event_hash"; secretEnv: string }
+  // SnapTrade's: `header` is HMAC-SHA256 keyed by the consumer key over the body as canonical JSON
+  // (keys sorted, no spaces, non-ASCII escaped), base64; its age is the body's eventTimestamp.
+  | { kind: "canonical_json_hmac"; secretEnv: string; header: string; timestampField: string };
 
 // A verified event, read by the connector: whose action it is about, and what happened.
 export type WebhookEvent = {

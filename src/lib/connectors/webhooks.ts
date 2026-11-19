@@ -9,6 +9,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { verifyResendSignature } from "@/lib/digest/resend-webhook";
 import { systemDb } from "@/lib/system-db";
+import { canonicalJson } from "./canonical-json";
 import { applyLinkEvent } from "./link-events";
 import { applyPartnerEvent } from "./pipeline";
 import { connectorById } from "./registry";
@@ -42,6 +43,21 @@ export function signatureValid(
   const secret = env[signing.secretEnv]?.trim();
   if (!secret) return false;
   if (signing.kind === "svix") return verifyResendSignature(rawBody, headers, secret, now);
+  if (signing.kind === "canonical_json_hmac") {
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch {
+      return false;
+    }
+    const at = Date.parse(String(body?.[signing.timestampField] ?? ""));
+    if (!Number.isFinite(at)) return false;
+    if (Math.abs(now.getTime() - at) / 1000 > WEBHOOK_TOLERANCE_SECONDS) return false;
+    const signature = headers.get(signing.header) ?? "";
+    if (!/^[A-Za-z0-9+/]{43}=$/.test(signature)) return false;
+    const expected = createHmac("sha256", secret).update(canonicalJson(body)).digest();
+    return sameBytes(Buffer.from(signature, "base64"), expected);
+  }
   if (signing.kind === "signwell_event_hash") {
     let event: { type?: unknown; time?: unknown; hash?: unknown } | undefined;
     try {

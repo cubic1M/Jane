@@ -15,6 +15,7 @@ import { myAidUpload } from "./my-aid/connector";
 import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { taxFormUpload } from "./tax-form-upload/connector";
 import { stripeFc } from "./stripe-fc/connector";
+import { sandboxSnaptradeHoldings, snaptradeHoldings } from "./snaptrade/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { sandboxChartTranscripts } from "./chart/connector";
 import { sandboxSignwellPermission, signwellPermission } from "./signwell/connector";
@@ -75,6 +76,10 @@ const CONNECTORS: readonly Connector[] = [
   // Real, read only, off until Stripe approves Jane's purpose: a second bank-data source
   // (./stripe-fc/).
   stripeFc,
+  // Real, read only, off until REAL_CONNECTORS: brokerage holdings through SnapTrade (a read
+  // connection, never trading), and its sandbox twin on SnapTrade's documented examples (./snaptrade/).
+  snaptradeHoldings,
+  sandboxSnaptradeHoldings,
   // Real, read only, off until REAL_CONNECTORS: insurance policies through Canopy Connect, and its
   // sandbox twin on Canopy's documented example for sample data (./canopy/).
   canopyConnect,

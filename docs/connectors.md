@@ -337,6 +337,26 @@ counsel's question. A test holds that no real one is registered or switched on. 
 (`chartHttp`: the code-for-token exchange and `/records`) is built and tested, so that day is a
 registration, not a build.
 
+## Brokerage holdings, read only (SnapTrade)
+
+`snaptrade_holdings` and its sandbox twin `sandbox_snaptrade_holdings` (`src/lib/connectors/snaptrade/`,
+built from docs.snaptrade.com on 2026-11-19: Request Signatures, Register User, Generate Connection
+Portal URL, List All User Accounts, List All Account Positions, Sandbox and Webhooks) read a person's
+brokerage accounts and positions into Jane's own investment accounts (`source: snaptrade`), securities
+(`snaptrade:<ticker>`) and holdings, in Plaid Investments' shape: Plaid's security types, value and the
+position's total cost basis in cents (SnapTrade's is per share). Options, futures, CFDs, tokenized
+assets and positions in another currency are left out and counted; the account's total is SnapTrade's
+net value. Paper, closed and archived accounts aren't read. Accounts carry the connection; revoking
+removes them and their holdings.
+
+Read only: the Connection Portal link (`snaptradeConnectLink`, not on a page yet) asks for
+`connectionType: "read"`, the scope is `read_holdings`, and nothing places, previews or cancels an
+order. Each person gets a SnapTrade user under an id Jane makes up, kept with its secret in the vault;
+that id is the link's ref for SnapTrade's webhooks (`Signature` over the body's canonical JSON with the
+consumer key, and `eventTimestamp` within five minutes). Fresh holdings read again; a broken or fixed
+connection is a link event. **Off for real people**: no entry in `REAL_CONNECTORS`. Not built: deleting
+the SnapTrade user on revoke (SnapTrade's Delete User), cash balances (List Account Balances).
+
 ## A letter that lets Jane act for the person (SignWell)
 
 `signwell_permission` and its sandbox twin `sandbox_signwell_permission`
