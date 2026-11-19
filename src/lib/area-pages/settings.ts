@@ -78,6 +78,9 @@ export type SettingsTreeInput = {
   documents: number;
   twoFactor: boolean;
   calendar: boolean;
+  // Gmail mailboxes the person has connected (src/app/settings/mailboxes/). Left out while Gmail
+  // isn't offered and they have none, and then there's no item for them.
+  mailboxes?: number;
 };
 
 const asLabel = (name: string) => shortLabel(name);
@@ -128,6 +131,19 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
           ? "No banks linked. Link one, or import a statement file."
           : "Link another bank, or import a statement file.",
     }),
+    // After "add": #banks opens the first item, which stays a bank or "add".
+    ...(input.mailboxes === undefined
+      ? []
+      : [
+          item("banks", "mailboxes", {
+            label: "Gmail mailboxes",
+            figure: input.mailboxes > 0 ? plural(input.mailboxes, "mailbox", "mailboxes") : "None",
+            summary:
+              input.mailboxes > 0
+                ? "The Gmail mailboxes you connected, and the money emails Jane read in them."
+                : "Connect a Gmail mailbox, read-only, and Jane lists the money emails it reads there.",
+          }),
+        ]),
   ];
 
   // Debugger 11-01: a real account was offered standing rules and caps that never run for it.

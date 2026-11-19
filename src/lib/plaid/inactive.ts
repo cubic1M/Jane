@@ -4,7 +4,9 @@ import { SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { appBase } from "@/lib/digest/links";
+import { removeAllMailboxes } from "@/lib/gmail/mailbox";
 import { removePlaidItem } from "./remove";
+import { inactivityWords, type InactivityWords } from "./inactive-words";
 import { removeConnection } from "@/lib/robinhood/connection";
 import { log } from "@/lib/log";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
@@ -13,8 +15,8 @@ import { systemDb } from "@/lib/system-db";
 const WHY = "Cron: finds inactive people across everyone";
 
 // Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid and Robinhood
-// connections, with an email REMOVAL_WARNING_DAYS before. Using the app at any point
-// after the warning cancels it.
+// connections and their Gmail mailboxes, with an email REMOVAL_WARNING_DAYS before. Using the app
+// at any point after the warning cancels it.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,21 +50,21 @@ async function warn(
   email: string,
   removalDate: Date,
   send: typeof sendEmail,
-  what = "your linked banks",
+  { subject, what, after }: InactivityWords,
 ) {
   // In words, not "2027-02-07" (beta walk 11-12). UTC, as the removal is counted in days.
   const date = removalWords(removalDate);
   const link = `${appBase()}/report`;
-  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
+  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. ${after}\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
     log.dev(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
   }
   await send({
     to: email,
-    subject: "We'll disconnect your banks soon | Jane",
+    subject,
     text,
-    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
+    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. ${after}</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
   });
 }
 
@@ -72,6 +74,7 @@ export async function runInactiveCleanup({
   send = sendEmail,
   remove = removePlaidItem,
   removeRobinhood = removeConnection,
+  removeMailboxes = removeAllMailboxes,
   userIds,
 }: {
   client?: PrismaClient;
@@ -79,11 +82,16 @@ export async function runInactiveCleanup({
   send?: typeof sendEmail;
   remove?: typeof removePlaidItem;
   removeRobinhood?: typeof removeConnection;
+  removeMailboxes?: typeof removeAllMailboxes;
 } & OnlyPeople = {}): Promise<InactiveRun> {
   // A system job across users: reads who has linked banks and when they were last active.
   const people = await systemDb(WHY, client).user.findMany({
     where: {
-      OR: [{ plaidItems: { some: {} } }, { robinhoodConnection: { isNot: null } }],
+      OR: [
+        { plaidItems: { some: {} } },
+        { robinhoodConnection: { isNot: null } },
+        { gmailMailboxes: { some: {} } },
+      ],
       ...peopleIn(userIds),
     },
     select: {
@@ -93,6 +101,9 @@ export async function runInactiveCleanup({
       plaidRemovalWarnedAt: true,
       plaidItems: { select: { id: true } },
       robinhoodConnection: { select: { id: true } },
+      // A count, not the ids: a second list here would send two queries at once down one
+      // connection, which pg is retiring.
+      _count: { select: { gmailMailboxes: true } },
     },
   });
   const last = await systemDb(WHY, client).analyticsEvent.groupBy({
@@ -131,11 +142,11 @@ export async function runInactiveCleanup({
           person.email,
           new Date(now.getTime() + REMOVAL_WARNING_DAYS * DAY_MS),
           send,
-          person.plaidItems.length === 0
-            ? "your Robinhood connection"
-            : person.robinhoodConnection
-              ? "your linked banks and Robinhood"
-              : "your linked banks",
+          inactivityWords({
+            banks: person.plaidItems.length > 0,
+            robinhood: person.robinhoodConnection !== null,
+            mailboxes: person._count.gmailMailboxes > 0,
+          }),
         );
         await systemDb(WHY, client).user.update({
           where: { id: person.id },
@@ -143,6 +154,12 @@ export async function runInactiveCleanup({
         });
         run.warned += 1;
       } else if (step === "remove") {
+        // Mailboxes first: a bank Plaid won't remove mustn't keep them being read, and a mailbox
+        // goes even when Google can't be reached. A bank that fails keeps the warning, so the
+        // next run tries it again.
+        if (person._count.gmailMailboxes > 0) {
+          await removeMailboxes(person.id, "inactive", { client, now, actor: SYSTEM_ACTOR });
+        }
         for (const item of person.plaidItems) {
           await remove(person.id, item.id, "inactive", { client, actor: SYSTEM_ACTOR });
         }

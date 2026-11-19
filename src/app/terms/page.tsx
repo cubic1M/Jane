@@ -1,4 +1,5 @@
 import { LegalPage } from "@/components/legal-page";
+import { gmailOffered } from "@/config/gmail";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
 import { robinhoodOffered } from "@/config/robinhood";
 import { TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
@@ -10,6 +11,8 @@ export const metadata = { title: `Terms of Service | ${COMPANY_NAME}` };
 // Written from what the code does today, not from the spec: keep them in step with
 // src/app/privacy/page.tsx.
 export default function TermsPage() {
+  // Said only while mailboxes are offered (docs/setup/gmail.md).
+  const gmail = gmailOffered();
   return (
     <LegalPage title="Terms of Service">
       <p>
@@ -52,6 +55,14 @@ export default function TermsPage() {
             place, change or cancel a trade. Robinhood&apos;s connection itself can trade if you
             open its agent account; Jane doesn&apos;t need one, and anything in it is between you
             and Robinhood.
+          </li>
+        )}
+        {gmail && (
+          <li>
+            If you connect a Gmail mailbox, Jane reads it, on your say-so on Google&apos;s own
+            sign-in page, to find emails about your money and show you what they say. Jane
+            can&apos;t send, delete or change email. Emails can be wrong or dishonest, and Jane can
+            misread them, so check with the company before you pay or call.
           </li>
         )}
         <li>
@@ -104,11 +115,14 @@ export default function TermsPage() {
       <h2>Your account</h2>
       <ul>
         <li>You must be 18 or older and only link accounts that are yours to share.</li>
+        {gmail && (
+          <li>Only connect a mailbox that&apos;s yours, and not one from work or school.</li>
+        )}
         <li>Keep your email secure: sign-in links go there.</li>
         <li>Don&apos;t share your invite code unless a founder says you can.</li>
         <li>
-          You can disconnect a bank, download your data, or delete everything at any time in
-          Settings.
+          You can disconnect a bank{gmail && " or a mailbox"}, download your data, or delete
+          everything at any time in Settings.
         </li>
         <li>We may suspend an account that misuses Jane or puts others at risk.</li>
       </ul>

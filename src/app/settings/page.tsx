@@ -52,6 +52,7 @@ import { importEnded } from "@/lib/books-fix";
 import { SETTINGS_ANCHORS, anchorFocus, itemId, settingsTree } from "@/lib/area-pages/settings";
 import { SettingsArea } from "./settings-area";
 import { PageShell } from "@/components/page-shell";
+import { gmailOffered } from "@/config/gmail";
 
 // Settings (spec step 79; docs/design/area-pages.md): the area's tree, one item per setting
 // with what it's set to, and the one thing picked below it. Each form sits in its item's detail
@@ -107,6 +108,7 @@ async function SettingsContent({
     documents,
     sessions,
     actsForYou,
+    mailboxCount,
   ] = await Promise.all([
     scopedFor(user.id).me.findUniqueOrThrow({
       where: { id: user.id },
@@ -161,6 +163,8 @@ async function SettingsContent({
     mine.documents.count(),
     listSessions(user.id, token),
     conciergeMode(user.id),
+    // Read even with Gmail switched off: someone who connected one before still needs Disconnect.
+    mine.gmailMailboxes.count(),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -215,6 +219,7 @@ async function SettingsContent({
     documents,
     twoFactor: twoFactor.enabledAt !== null,
     calendar: prefs.calendarCreatedAt !== null,
+    mailboxes: gmailOffered() || mailboxCount > 0 ? mailboxCount : undefined,
   });
 
   const accountantLinks = await mine.accountantLinks.count({
@@ -278,6 +283,11 @@ async function SettingsContent({
         Import a file
       </Link>
     </div>
+  );
+  details[itemId("banks", "mailboxes")] = (
+    <Link href="/settings/mailboxes" className={`self-start text-sm ${LINK}`}>
+      Mailboxes
+    </Link>
   );
 
   details[itemId("autopilot", "level")] = (

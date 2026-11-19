@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { LegalPage } from "@/components/legal-page";
+import { gmailOffered } from "@/config/gmail";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
 import { YourActivity } from "./your-activity";
 
 export const metadata = { title: `Security | ${COMPANY_NAME}` };
 
 export default function SecurityPage() {
+  // Mailboxes are named only while they're offered (docs/setup/gmail.md).
+  const gmail = gmailOffered();
   return (
     <LegalPage title="How we keep your data safe">
       <Suspense>
@@ -36,8 +39,9 @@ export default function SecurityPage() {
           is rate limited, and signing up is invite-only. Anyone can try Jane without an account.
         </li>
         <li>
-          <strong>Your control.</strong> Disconnect a bank or delete everything in Settings at any
-          time. Inactive bank connections are removed after 60 days.
+          <strong>Your control.</strong> Disconnect a bank{gmail && " or a Gmail mailbox"} or delete
+          everything in Settings at any time. Inactive bank connections{gmail && " and mailboxes"}{" "}
+          are removed after 60 days.
         </li>
         <li>
           <strong>Checks on every change.</strong> Automated tests, dependency vulnerability

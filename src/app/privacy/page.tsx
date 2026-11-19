@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { ACTIVITY_DISCLOSURE } from "@/config/activity";
+import { GMAIL_LIMITS, gmailOffered } from "@/config/gmail";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { INACTIVE_ITEM_DAYS, REMOVAL_WARNING_DAYS } from "@/config/retention";
 import { ROBINHOOD_NAME, robinhoodOffered } from "@/config/robinhood";
 import { STATEMENT_TRIAL_CHAT_ANSWERS, TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
@@ -16,6 +18,8 @@ export const metadata = { title: `Privacy Policy | ${COMPANY_NAME}` };
 export default function PrivacyPage() {
   // Said only while the connection is on (docs/setup/robinhood.md).
   const robinhood = robinhoodOffered();
+  // The same for Gmail mailboxes (docs/setup/gmail.md).
+  const gmail = gmailOffered();
   return (
     <LegalPage title="Privacy Policy">
       <p>
@@ -52,6 +56,19 @@ export default function PrivacyPage() {
             shows or sends them on.
           </li>
         )}
+        {gmail && (
+          <li>
+            If you connect a Gmail mailbox, read-only, on Google&apos;s own sign-in page: the
+            mailbox&apos;s address, which words about connecting you were shown and when you agreed,
+            and when Jane last read it. From each email about your money: what kind it is (a bill, a
+            receipt, a renewal, a price change or a refund), its amount, the day it&apos;s about,
+            the domain of the address it came from, when it arrived and Google&apos;s id for it.
+            Jane keeps no text from an email. To find those emails, Jane looks at who sent each new
+            email, its subject and its first line or two, and reads the whole email only when it
+            passes that check. When you connect, Jane starts with your newest emails from the last{" "}
+            {GMAIL_LIMITS.lookBackDays} days, {GMAIL_LIMITS.lookBackMessages} at most.
+          </li>
+        )}
         <li>
           CSV statements you upload. Each file is read once, in memory, and never stored as a file;
           we keep only the transactions read from it.
@@ -81,9 +98,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           For security: when you sign in or out, change two-factor, link or disconnect a bank,
-          download your data or delete your account, we record the time, your IP address, your
-          browser and roughly where it is (city and country). You can see your own on the Security
-          page.
+          {gmail && " connect or disconnect a mailbox,"} download your data or delete your account,
+          we record the time, your IP address, your browser and roughly where it is (city and
+          country). You can see your own on the Security page.
         </li>
       </ul>
 
@@ -101,6 +118,17 @@ export default function PrivacyPage() {
           To send the emails you ask for: sign-in links, and summaries, reminders and alerts you can
           turn off.
         </li>
+        {gmail && (
+          <li>
+            To list the money emails from a Gmail mailbox you connect, on its page in Settings.
+            Nothing else in Jane uses them yet. Jane&apos;s use of information received from Google
+            APIs follows Google&apos;s API Services User Data Policy, including its Limited Use
+            requirements. In plain words: it&apos;s used only to show you your money emails, never
+            for advertising or for lending or credit decisions, never sold and never used to train
+            AI models, and no person reads it unless you ask us to, to fix a bug or a security
+            problem, or because the law requires it.
+          </li>
+        )}
         <li>
           To run the beta and improve Jane: the founders look at counts and trends, and during the
           beta at how each person moves through the app, to find what&apos;s confusing.
@@ -125,6 +153,7 @@ export default function PrivacyPage() {
           orientation, ethnicity or immigration status, even when your transactions or your words
           hint at it. Your transactions, chats, documents and tax tags can still show those things
           (a medical bill, for example), and are kept as this page says.
+          {gmail && " So can a money email from a mailbox you connect."}
         </li>
         <li>
           Signed in, Settings has{" "}
@@ -184,12 +213,23 @@ export default function PrivacyPage() {
               When we check on a problem with the service: recent error reports, with personal
               details taken out.
             </li>
+            {gmail && (
+              <li>
+                When Jane reads an email from a mailbox you connected: the day it arrived, the
+                domain it came from, its subject and its text, with links, email addresses and long
+                numbers taken out, to pick out what kind it is, the amount and the date. An email
+                can hold anything its sender wrote, such as your name, your address, part of an
+                account number or what you bought.
+              </li>
+            )}
           </ul>
           {robinhood &&
             "If you connect Robinhood, it can receive your balances and the names and symbols of what you hold, never your account numbers or that connection. "}
-          It never receives your password, your bank sign-in or your Plaid connection. When you
-          chat, it can receive the description your bank wrote on a transaction, which can include
-          the name of a person or company, or part of a reference number.
+          It never receives your password, your bank sign-in or your Plaid connection.
+          {gmail &&
+            " An email from a mailbox you connect is the one exception: Jane drops emails that look like sign-in codes or password resets before Claude sees them, but can't promise a company never put a password or a code in a bill or a receipt."}{" "}
+          When you chat, it can receive the description your bank wrote on a transaction, which can
+          include the name of a person or company, or part of a reference number.
         </li>
         <li>
           <strong>Resend</strong> delivers our emails, so it receives your email address and each
@@ -204,6 +244,8 @@ export default function PrivacyPage() {
         <li>
           <strong>Google</strong>, if you choose to sign in with Google: it tells us your email
           address and that it has checked it, and knows you signed in to Jane.
+          {gmail &&
+            " If you connect a Gmail mailbox, Google knows Jane may read it, sees each request Jane makes for it, and can tell Jane when new email arrives."}
         </li>
         <li>
           <strong>Sentry</strong>, when we have it switched on, receives server errors: the kind of
@@ -239,6 +281,16 @@ export default function PrivacyPage() {
             Robinhood connection tokens are encrypted the same way, and never shown or logged.
           </li>
         )}
+        {gmail && (
+          <li>Gmail connection tokens are encrypted the same way, and never shown or logged.</li>
+        )}
+        {gmail && (
+          <li>
+            No team page shows your mailbox&apos;s address or what Jane read from your email, and we
+            don&apos;t look at either in the database unless you ask us to, to fix a bug or a
+            security problem, or because the law requires it.
+          </li>
+        )}
         <li>Documents you upload are encrypted (AES-256-GCM), and only you can open them.</li>
         <li>
           Each person&apos;s data is read for that person. A few jobs work across everyone, such as
@@ -265,6 +317,19 @@ export default function PrivacyPage() {
             Disconnecting Robinhood deletes Jane&apos;s access and everything read through it, as
             does a long time without using Jane, after an email first. Robinhood gives Jane no way
             to end the connection on its side, so ask Robinhood if you want it removed there too.
+          </li>
+        )}
+        {gmail && (
+          <li>
+            What Jane read from a mailbox stays until you disconnect it or delete your account.
+            Disconnecting a mailbox deletes its address, Jane&apos;s access and everything read from
+            it, and asks Google to end Jane&apos;s permission. If you don&apos;t use the app for{" "}
+            {INACTIVE_ITEM_DAYS} days, we disconnect your mailboxes too (we email you{" "}
+            {REMOVAL_WARNING_DAYS} days before). A mailbox can be connected to one Jane account at a
+            time: if it&apos;s connected to another, Jane stops reading it for the first, which
+            keeps what Jane read for it until it disconnects. Connecting or disconnecting a mailbox
+            is kept with the security records below, without the mailbox&apos;s address. What
+            Anthropic already received stays with Anthropic for its own retention period.
           </li>
         )}
         {retentionPolicy().map((line) => (
@@ -336,17 +401,23 @@ export default function PrivacyPage() {
       <h2>Deleting your data</h2>
       <p>
         In Settings, &quot;Delete all my data&quot; does it in one step. Jane first disconnects
-        every bank at Plaid{robinhood && " and deletes its Robinhood access"}, then deletes your
-        account and everything in it: transactions, balances, chats, answers, documents,
-        notifications, and practice and paper accounts. If Plaid can&apos;t be reached, nothing is
-        deleted and you can try again. Afterwards you see a page confirming your data is deleted. A
-        record that the deletion happened, with ids, the time and the IP address and browser it came
-        from, stays in our security log for the period listed above, along with the record of which
-        banks you linked and your sign-ins, two-factor changes and downloads, with the time, IP
-        address, browser and rough location of each. Companies that work for us (listed above) keep
-        what they already received for their own retention periods, and PostHog&apos;s product
-        analytics stay under your id, with no name or email, after your account is gone. You can
-        download a copy of your data in Settings first.
+        every bank at Plaid{robinhood && " and deletes its Robinhood access"}
+        {gmail && " and disconnects your mailboxes, asking Google to end Jane's permission"}, then
+        deletes your account and everything in it: transactions, balances, chats, answers,
+        documents, notifications, and practice and paper accounts. If Plaid can&apos;t be reached,
+        nothing is deleted and you can try again.
+        {gmail &&
+          " If Google doesn't confirm, Jane's own access is still deleted, and you can remove Jane in your Google Account."}{" "}
+        Afterwards you see a page confirming your data is deleted. A record that the deletion
+        happened, with ids, the time and the IP address and browser it came from, stays in our
+        security log for the period listed above, along with the record of which banks you linked
+        and your sign-ins, two-factor changes and downloads, with the time, IP address, browser and
+        rough location of each.
+        {gmail &&
+          " The records of when you connected or disconnected a mailbox stay there too, without its address."}{" "}
+        Companies that work for us (listed above) keep what they already received for their own
+        retention periods, and PostHog&apos;s product analytics stay under your id, with no name or
+        email, after your account is gone. You can download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>
@@ -374,8 +445,8 @@ export default function PrivacyPage() {
       <h2>Email</h2>
       <p>
         Summary and reminder emails can be turned off in Settings, or with one click from the email.
-        We note when you click a link in our emails. Before disconnecting banks you haven&apos;t
-        used for a while, we email you first.
+        We note when you click a link in our emails. Before disconnecting banks
+        {gmail && " or mailboxes"} you haven&apos;t used for a while, we email you first.
       </p>
 
       <h2>Contact</h2>

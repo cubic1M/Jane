@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { removeAllMailboxes } from "@/lib/gmail/mailbox";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { removeConnection } from "@/lib/robinhood/connection";
 import { deleteTrialPerson } from "@/lib/trial-delete";
@@ -29,6 +30,9 @@ export async function deleteAllData(
     await removePlaidItem(userId, item.id, "user_deleted_data", { client, api: given });
   }
   await removeConnection(userId, "user_deleted_data", { client });
+  // Unlike a bank, a mailbox Google doesn't confirm ending still goes: Jane's copy is deleted
+  // first, and /privacy says the person can remove Jane in their Google Account.
+  await removeAllMailboxes(userId, "user_deleted_data", { client });
   // Shared bills belong to the household, not the user row, so they're ended here, as when
   // someone leaves; the partner keeps the household and their own data.
   const membership = await scopedFor(userId, client).householdMembers.findUnique({
@@ -49,6 +53,11 @@ export async function deleteAllData(
       // Failing leaves everything in place, and trying again removes it.
       if ((await tx.plaidItem.count({ where: { userId } })) > 0) {
         throw new Error("A bank was linked while this account was being deleted");
+      }
+      // The same for a mailbox connected since: it would go with its permission still standing at
+      // Google.
+      if ((await tx.gmailMailbox.count({ where: { userId } })) > 0) {
+        throw new Error("A mailbox was connected while this account was being deleted");
       }
       // Their ids and any error text. One still running keeps its row, and ends as "person gone".
       await tx.$executeRaw`DELETE FROM jobs
