@@ -19,6 +19,7 @@ import { atLocal, type Flat } from "./diff";
 import { staleStatementsEnd } from "@/lib/report-state";
 import {
   areaCounts,
+  hiddenPageLinks,
   noneFromShortHistory,
   nowFromOldData,
   onePlurals,
@@ -138,5 +139,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 2: 2019, 2064, 2084, 2093, 2097.
   it("counts one thing in the singular", () => {
     expect(everyone(onePlurals)).toEqual([]);
+  });
+
+  // Class 9: 1886, 1894, 1907, 1909, 1931, 1986, 2060, 2079.
+  it("never links to a page the beta hides", () => {
+    expect(everyone(hiddenPageLinks)).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { isHiddenPage, promisesHiddenPage } from "@/config/hidden-pages";
 import type { Flat } from "./diff";
 
 // The walkers' bug classes as rules over what a person sees (debug 3, 11-19; the classes and the
@@ -194,5 +195,20 @@ export function onePlurals(flat: Flat): string[] {
   return shownTexts(flat).flatMap(([path, text]) => {
     const m = ONE_PLURAL.exec(text);
     return m ? [`${path}: "1 ${m[1]}" in "${text.slice(0, 120)}"`] : [];
+  });
+}
+
+// Class 9: a link goes where it says, never to a page the beta hides (src/config/hidden-pages.ts:
+// "nothing links to it"), unless it's a button that only promises a look ("See …"), which the
+// area page it lands on has (promisesHiddenPage). Walkers found buttons and links to hidden
+// pages on cards, trees and Home (#1886, #1894, #1909, #2060).
+export function hiddenPageLinks(flat: Flat): string[] {
+  return Object.entries(flat).flatMap(([path, href]) => {
+    if (!path.endsWith(".href") || typeof href !== "string" || !isHiddenPage(href)) return [];
+    const label = flat[`${path.slice(0, -".href".length)}.label`];
+    const button = { label: typeof label === "string" ? label : "", href };
+    return promisesHiddenPage(button)
+      ? [`${path}: "${button.label}" goes to ${href}, a page the beta hides`]
+      : [];
   });
 }
