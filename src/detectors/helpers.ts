@@ -156,6 +156,12 @@ export function nice(description: string): string {
     .replace(/\b([a-z])/g, (c) => c.toUpperCase());
 }
 
+// A charge as the cards name it: Jane's cleaned name for the merchant where the charge has one,
+// else its line made readable (debug 3, 11-19: "Target 00012345" from the bank's line; debug 2,
+// 11-19: "You paid rent to Zelle Payment To Jordan P" beside Bills' "Jordan P").
+export const nameOf = (t: Pick<ProfileTx, "merchantName" | "description">) =>
+  t.merchantName ?? nice(t.description);
+
 // "Netflix, Hulu and Disney Plus".
 export function listOf(names: readonly string[]): string {
   const n = names.map(nice);
