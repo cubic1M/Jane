@@ -1,5 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { CHEAPER_PLANS } from "@/config/student-money";
+import { CHEAPER_PLANS, FEE_WAIVERS } from "@/config/student-money";
 import { FINDING_KIND_OF_TOPIC } from "@/config/suggestions";
 import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
@@ -145,10 +145,21 @@ export const findingsSource: MessageSource = {
     const saidAsCheaperPlan = (finding: SnapshotFinding) =>
       finding.type === "subscription_review" &&
       cheaperPlanOf.some((p) => p.words.test(finding.title.toUpperCase()));
+    // A monthly fee the person's pay may already waive (fee_waiver_met) is that bank's fee card:
+    // "Ask about your waivable bank fee, save $144/yr" and "$60.00 in fees on Bank of America
+    // checking" in one dock (debug 2, 11-18). Only the bank it names; others' fee cards stay.
+    const waiverBanks = (snapshot.suggestions ?? [])
+      .filter((s) => s.topic === "fee_waiver_met")
+      .flatMap((s) =>
+        FEE_WAIVERS.filter((w) => `${s.title} ${s.short}`.includes(w.bank)).map((w) => w.bank),
+      );
+    const saidAsWaiver = (finding: SnapshotFinding) =>
+      finding.type === "bank_fees" && waiverBanks.some((bank) => finding.title.includes(bank));
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
       .filter((finding) => !suggested.has(finding.type))
       .filter((finding) => !saidAsCheaperPlan(finding))
+      .filter((finding) => !saidAsWaiver(finding))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(byPriority(snapshot))
       .filter((finding) => {
