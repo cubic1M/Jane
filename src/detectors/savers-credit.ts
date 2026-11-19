@@ -9,10 +9,8 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
-import { studentYearOf } from "@/planning/student-tax";
-import { rateMonthsOf } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
-import { factEvidence, headlineOf, weakest } from "./helpers";
+import { factEvidence, headlineOf, weakest, yearIncomeOf } from "./helpers";
 import { dayLabel } from "@/lib/day-label";
 
 // The Saver's Credit in its last year (connectors roadmap round 17, savers_credit_2026): someone
@@ -31,23 +29,9 @@ const statusOf = (filing: unknown, household: unknown, earners: unknown): Filing
   return "single";
 };
 
-// The year's income as the other tax credits estimate it (pay grossed up, gig pay and fellowship
-// money: studentYearOf), so "income near" is one figure on Taxes; a family member's transfers
-// aren't income for a return (debug 2, upload S6, 11-19: $27,444.46 here beside $18,744.80 on
-// California's renter's credit). With none of that seen (a pension), the profile's monthly income
-// grossed up.
-// What the person said they bring in wins over what Jane reads from deposits.
-function agiOf({ profile, data }: Parameters<Detector["detect"]>[0]): number {
-  const income = profile.facts.monthly_income;
-  const year =
-    income.source === "told"
-      ? 0
-      : studentYearOf(data, profile.facts, rateMonthsOf(profile)).agiCents;
-  if (year > 0) return year;
-  return typeof income.value === "number" && income.value > 0
-    ? Math.round(income.value * 12 * DETECTOR_RATES.tax.netToGross)
-    : 0;
-}
+// The year's income as every income-tested card reads it (yearIncomeOf), so "income near" is one
+// figure (debug 2, upload S6, 11-19).
+const agiOf = ({ profile, data }: Parameters<Detector["detect"]>[0]) => yearIncomeOf(profile, data);
 
 const saversCredit: Detector = {
   capability: "taxes",
