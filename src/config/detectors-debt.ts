@@ -2,10 +2,8 @@
 // Kept apart from src/config/detectors.ts so lanes adding detectors don't collide.
 
 export const DEBT_DETECTOR_RATES = {
-  // Student loans: an income-driven plan's payment is roughly this share of a month's income
-  // (the plans' own formulas are in src/config/student-loans.ts; this is the screen that asks
-  // whether to run them). A payment well above it is worth comparing.
-  studentIdrShare: 0.07,
+  // Student loans: a payment this far above the lowest income-driven plan's (the plans' own
+  // formulas, src/config/student-loans.ts) is worth comparing.
   studentPaymentsMin: 3,
   studentMinGapCents: 5_000,
   // A car payment this share of income or more is worth a look at the loan and its add-ons.

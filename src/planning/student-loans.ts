@@ -5,6 +5,7 @@ import {
   RAP,
   STANDARD_MIN_PAYMENT_CENTS,
   STANDARD_YEARS,
+  STUDENT_INCOME_MIN_DAYS,
 } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
 import { monthlyInterest } from "./debt";
@@ -69,6 +70,18 @@ export const inAll = (r: Pick<PlanResult, "totalPaidCents" | "leftCents">) =>
 export const povertyGuidelineCents = (familySize: number) =>
   POVERTY_GUIDELINE_CENTS.first + Math.max(0, familySize - 1) * POVERTY_GUIDELINE_CENTS.eachMore;
 
+// What the plans assume until the person says otherwise: one person, no dependants, first loans
+// on or after July 1, 2014.
+export const PLAN_DEFAULTS = { familySize: 1, dependants: 0, borrower: "new" } as const;
+
+// A year's pay from the last year's paychecks, paced over the days the statements cover when that's
+// under a year (debugger 11-06: six months of a teacher's pay read as a year's): the income the
+// plans use when the person hasn't given one.
+export const paycheckYearCents = (payCents: number, coveredDays: number) =>
+  Math.round(
+    (Math.abs(payCents) * 365) / Math.min(365, Math.max(STUDENT_INCOME_MIN_DAYS, coveredDays)),
+  );
+
 export const standardPaymentCents = (balanceCents: number, aprBps: number) =>
   Math.max(
     STANDARD_MIN_PAYMENT_CENTS,
@@ -94,6 +107,27 @@ export function rapPaymentCents(input: StudentInput): number {
     RAP.minPaymentCents,
     Math.round(yearly / 12) - input.dependants * RAP.perDependentCents,
   );
+}
+
+// The least an income-driven plan (IBR or RAP) would ask a month now, by the same rules and
+// defaults as the plans compared on /loans/student. Without the loan's rate IBR's cap can't be
+// worked out, so RAP alone.
+export function lowestIncomeDrivenCents(
+  balanceCents: number,
+  aprBps: number | null,
+  agiCents: number,
+): number {
+  const input: StudentInput = {
+    ...PLAN_DEFAULTS,
+    balanceCents,
+    aprBps: aprBps ?? 0,
+    currentPaymentCents: null,
+    agiCents,
+    publicService: false,
+    paymentsCounted: 0,
+  };
+  const rap = rapPaymentCents(input);
+  return aprBps === null ? rap : Math.min(rap, ibrPaymentCents(input));
 }
 
 // Month by month at a level payment until it's paid off or forgiven. RAP waives interest

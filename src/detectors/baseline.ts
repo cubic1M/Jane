@@ -36,6 +36,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "renters_insurance",
     // suggest-taxes 11-18: her federal student loan (5.5%, repaying) has deductible interest.
     "student_loan_interest",
+    // Debug 2, 11-18: by the plans' own rules RAP asks $98.67 at her $39,468 of pay, under her $160.
+    "student_repayment",
     "subscriptions",
     "trial_conversion",
   ],

@@ -2,7 +2,6 @@ import {
   IBR,
   PSLF_PAYMENTS,
   RAP,
-  STUDENT_INCOME_MIN_DAYS,
   STUDENT_PAYMENT_LOOKBACK_DAYS,
   STUDENT_STEPS,
 } from "@/config/student-loans";
@@ -17,6 +16,8 @@ import { debtsOr } from "@/lib/debts";
 import { parseMoneyToCents } from "@/lib/money";
 import {
   compareStudentPlans,
+  paycheckYearCents,
+  PLAN_DEFAULTS,
   type StudentComparison,
   type StudentInput,
 } from "@/planning/student-loans";
@@ -41,9 +42,7 @@ type StudentProfile = {
 
 const DEFAULT_PROFILE: StudentProfile = {
   agiCents: null,
-  familySize: 1,
-  dependants: 0,
-  borrower: "new",
+  ...PLAN_DEFAULTS,
   publicService: false,
   countedBefore: 0,
   stepsDone: 0,
@@ -125,18 +124,12 @@ export async function loadStudentLoans(
   // your paychecks)" with none in the accounts, and IBR at $0 a month).
   const agiFrom =
     profile.agiCents !== null ? "you" : (pay._sum.amountCents ?? 0) !== 0 ? "paychecks" : "none";
-  // A year's pay: under a year of statements, the paychecks paced over the days they cover (debugger
-  // 11-06: six months of a teacher's pay read as a year's, $26,572, and IBR came out $22 a month).
+  // A year's pay: under a year of statements, the paychecks paced over the days they cover.
   const coveredDays =
     seen._min.date && seen._max.date
       ? Math.round((seen._max.date.getTime() - seen._min.date.getTime()) / DAY_MS) + 1
       : 365;
-  const agiCents =
-    profile.agiCents ??
-    Math.round(
-      (Math.abs(pay._sum.amountCents ?? 0) * 365) /
-        Math.min(365, Math.max(STUDENT_INCOME_MIN_DAYS, coveredDays)),
-    );
+  const agiCents = profile.agiCents ?? paycheckYearCents(pay._sum.amountCents ?? 0, coveredDays);
   // One qualifying payment a month at most.
   const paymentsSeen = new Set(payments.map((p) => p.date.toISOString().slice(0, 7))).size;
   const paymentsCounted = profile.countedBefore + paymentsSeen;
