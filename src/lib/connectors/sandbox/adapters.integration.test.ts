@@ -117,6 +117,7 @@ describe("the sandbox adapters' definitions", () => {
       "stripe_fc",
       "canopy_connect",
       "signwell_permission",
+      "method_liabilities",
     ]);
   });
 

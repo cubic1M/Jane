@@ -19,6 +19,7 @@ import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { sandboxChartTranscripts } from "./chart/connector";
 import { sandboxSignwellPermission, signwellPermission } from "./signwell/connector";
 import { sandboxAlpacaAccount, sandboxAlpacaOrder } from "./alpaca/connector";
+import { methodLiabilities, sandboxMethodLiabilities } from "./method/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -88,6 +89,10 @@ const CONNECTORS: readonly Connector[] = [
   // Alpaca's Broker API. No real one while REAL_TRADING is false (./alpaca/).
   sandboxAlpacaAccount,
   sandboxAlpacaOrder,
+  // Real, read only, off until REAL_CONNECTORS and counsel's soft-pull text: loans and cards from
+  // the credit report through Method, and its sandbox twin for sample data (./method/).
+  methodLiabilities,
+  sandboxMethodLiabilities,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

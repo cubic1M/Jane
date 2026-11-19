@@ -214,6 +214,25 @@ export const ALPACA = {
   secretEnv: "ALPACA_BROKER_SECRET_KEY",
 } as const;
 
+// Method (read connectors, batch 2; docs.methodfi.com, read 2026-11-19): a person's loans and cards,
+// found through a soft-pull credit report on their verified identity, federal student loans
+// included. Bearer key and a Method-Version header. Method's "Sandbox" environment carries live
+// data; "Development" is the mocked one, so anything that isn't production uses Development.
+// Webhooks: HMAC-SHA256 of "<method-webhook-timestamp>:<body>", hex, in method-webhook-signature.
+export const METHOD = {
+  development: "https://dev.methodfi.com",
+  production: "https://production.methodfi.com",
+  version: "2026-03-30",
+  envEnv: "METHOD_ENV",
+  apiKeyEnv: "METHOD_API_KEY",
+  webhookSecretEnv: "METHOD_WEBHOOK_HMAC_SECRET",
+  signatureHeader: "method-webhook-signature",
+  timestampHeader: "method-webhook-timestamp",
+  // Accounts read per page, Method's maximum; and pages at most, so a bad answer can't loop.
+  pageLimit: 100,
+  maxPages: 10,
+} as const;
+
 export const STRIPE_FC = {
   historyDays: 180,
   balanceRefreshDays: 7,
