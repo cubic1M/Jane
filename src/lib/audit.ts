@@ -123,6 +123,9 @@ export type AuditEvent =
   // A read connector brought the person's data in (src/lib/connectors/read.ts): the connector and
   // a count, never the data.
   | "connector_data_read"
+  | "connector_connect_started"
+  | "connector_connect_returned"
+  | "connector_connect_declined"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"

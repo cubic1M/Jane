@@ -41,6 +41,31 @@ A real connector acts only when all of these hold. Each is tested.
 - **`src/lib/oauth-pkce.ts`**: the PKCE and state helpers Robinhood's sign-in used, shared so a
   connector's OAuth sign-in doesn't copy them.
 
+## Connecting one: the one flow every connector uses
+
+`src/lib/connectors/connect.ts` (section C1, 11-19). No connector builds its own.
+
+1. **The tap, in the card that needs it.** `<ConnectTap userId connectorIds={[real, sandboxTwin]} from
+   label />` (`src/components/connect-tap.tsx`) shows one optional link, only when connectors are on, one
+   of those connectors is usable for this person (`whyUnavailable`), it isn't connected, and they haven't
+   said "Not now" (kept as a `jane_preferences` row of kind `system`). The card must still be useful
+   without it. Never in sign-up or onboarding (founder rule: one step plus one bank link;
+   `src/app/onboarding-no-connectors.test.ts`). First use: the investing card "You put $X into
+   investing", offering SnapTrade read only.
+2. **The consent screen**, `/settings/connections/<id>`: what Jane gets (the scopes' words), from whom
+   (`Connector.from`, else its name), whether the partner has a step of its own, and how to stop
+   (Settings › Connections, Revoke). Allow or Not now. A legal scope without approved text shows
+   "not ready yet" and no Allow.
+3. **Allow** (`startConnect`): consent to every scope the connector asks for, then either the partner's
+   own step (`Connector.connect`, which returns an https page and gets Jane's own return address,
+   built from APP_URL or AUTH_URL, never from the request) or, without one, the read at once.
+4. **The way back**, `/settings/connections/<id>/return?from=`: reads if the consent still stands, then
+   back to the card (`safeReturnPath`: a path on Jane only) with `?connected=<id>`.
+5. **Audit**: `connector_consent_granted`, `connector_connect_started`, `connector_credential_stored`
+   (the partner's link kept in the vault), `connector_connect_returned`, `connector_data_read`,
+   `connector_connect_declined`, and on revoke `connector_consent_revoked` and
+   `connector_credential_deleted`.
+
 ## The action pipeline
 
 `src/lib/connectors/pipeline.ts` is the only way anything happens through a connector. The table
