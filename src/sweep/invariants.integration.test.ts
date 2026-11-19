@@ -86,6 +86,16 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
 
   // Class 3: 1889, 1907, 2079, 2101, 2113.
   it("adds up each area's counts, and says on its tile what its page says", () => {
+    // The area loaders swallow a failure (src/lib/hub/area-trees.ts): with no tree there'd be
+    // nothing to count, so every person's six areas must have read.
+    const areas = ["insurance", "loans", "taxes", "ahead", "investments", "money"];
+    expect(
+      [...seen].flatMap(([who, flat]) =>
+        areas
+          .filter((a) => typeof flat[`trees.${a}.tree.sub`] !== "string")
+          .map((a) => `${who} ${a}`),
+      ),
+    ).toEqual([]);
     expect(everyone(areaCounts)).toEqual([]);
   });
 });
