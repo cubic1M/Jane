@@ -66,6 +66,9 @@ export const SHORT_RUN_MIN_CHARGES = 2;
 // can rest on one, and a $48 dinner became a $576-a-year monthly bill (beta accuracy, production
 // fixtures). Counted in Plaid's list, not in the lookback, so a yearly plan still counts.
 export const PLAID_STREAM_MIN_CHARGES = 2;
+// A Plaid stream takes its charges' category or name over its own when more than this share of
+// them agree on it (debug 2, sweep 8: streams labelled transfers, named in the bank's capitals).
+export const PLAID_STREAM_CHARGES_AGREE = 0.5;
 // ...and only at these gaps: a month, or a quarter (a water bill or insurance paid every three
 // months, seen twice in a short history; CSV bench, second tuning set). A week apart is a second
 // purchase.

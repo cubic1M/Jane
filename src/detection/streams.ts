@@ -6,6 +6,7 @@ import {
   FALLBACK_AMOUNT_TOLERANCE,
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
+  PLAID_STREAM_CHARGES_AGREE,
   PLAID_STREAM_MIN_CHARGES,
   RUN_MIN_SHARE_OF_CHARGES,
   USAGE_BILL_DAY_SPREAD,
@@ -137,6 +138,33 @@ const PLAID_STATUS_CONFIDENCE: Record<string, ConfidenceLevel> = {
 // the 18th, a $200 card payment due Nov 17 and Dec 17 gone, the lowest balance $200 higher). It
 // stays active while its last charge is within ACTIVE_WITHIN_INTERVALS of its usual gap, as our
 // own streams do (detectRuns); a stream Plaid has tombstoned never is.
+// The category a stream's own charges agree on, when it isn't a transfer: what Spending shows them as.
+function chargesCategory(
+  charges: readonly DetectionTransaction[],
+): { primary: string; detailed: string | null } | null {
+  const counts = new Map<string, number>();
+  for (const c of charges) {
+    if (!c.pfcPrimary || c.pfcPrimary.startsWith("TRANSFER_")) continue;
+    const k = `${c.pfcPrimary}|${c.pfcDetailed ?? ""}`;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  if (!top || top[1] <= charges.length * PLAID_STREAM_CHARGES_AGREE) return null;
+  const [primary, detailed] = top[0].split("|");
+  return { primary: primary!, detailed: detailed || null };
+}
+
+// The merchant name most of these charges carry, if most carry one.
+function commonName(charges: readonly DetectionTransaction[]): string | null {
+  const counts = new Map<string, number>();
+  for (const c of charges) {
+    const name = c.merchantName?.trim();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  return top && top[1] > charges.length * PLAID_STREAM_CHARGES_AGREE ? top[0] : null;
+}
+
 export function fromPlaidStream(
   stream: DetectionRecurringStream,
   byPlaidId: Map<string, DetectionTransaction>,
@@ -158,10 +186,22 @@ export function fromPlaidStream(
     merchant !== null &&
     !/[a-z]/.test(named) &&
     named.toLowerCase() !== merchant.name.toLowerCase();
-  const shown = bankLine ? merchant.name : named;
+  // When the stream's name is the bank's line in capitals and its charges carry Plaid's own name
+  // for the merchant, that name (debug 2, sweep 8, 11-19: Bills listed "NELNET STUDENT LN PAYMENT",
+  // "TOYOTA FINANCIAL PMT" and "PROGRESSIVE INS PREM" for charges named Nelnet, Toyota Financial
+  // and Progressive Insurance). Only the name shown: the key stays the stream's.
+  const chargeName = commonName(charges);
+  const shown =
+    named !== null && !/[a-z]/.test(named) && chargeName
+      ? chargeName
+      : bankLine
+        ? merchant.name
+        : named;
   const merchantKey = merchant?.key ?? stream.plaidStreamId;
   const lastCharge = charges.at(-1);
   const frequency = isFrequency(stream.frequency) ? stream.frequency : null;
+  const transfer = (stream.pfcPrimary ?? "").startsWith("TRANSFER_");
+  const own = transfer ? chargesCategory(charges) : null;
   return {
     key: `merchant:${merchantKey}`,
     merchant:
@@ -175,8 +215,13 @@ export function fromPlaidStream(
     lastAmountCents: stream.lastAmountCents,
     ...priorStats(charges),
     annualCostCents: annualCost(stream.lastAmountCents, frequency),
-    pfcPrimary: stream.pfcPrimary,
-    pfcDetailed: stream.pfcDetailed,
+    // Plaid's stream can call itself an account transfer while its charges are a phone bill, rent
+    // or a loan payment (debug 2, sweep 8, Plaid sandbox + loans, 11-19: Bills said "Nothing
+    // expected in the next month yet" while the same page's low point took T-Mobile, rent, Nelnet
+    // and Toyota off as transfers). Then the charges' category, the one Spending shows, wins.
+    ...(transfer && own
+      ? { pfcPrimary: own.primary, pfcDetailed: own.detailed }
+      : { pfcPrimary: stream.pfcPrimary, pfcDetailed: stream.pfcDetailed }),
     active:
       stream.status !== "TOMBSTONED" &&
       (stream.isActive || (asOf !== undefined && withinUsualGap(charges, asOf))),
