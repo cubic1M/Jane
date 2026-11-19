@@ -10,7 +10,8 @@ import { snaptradeHoldings, userOf } from "./connector";
 // SnapTrade's Connection Portal link, for a person who may use the real connector now (its locks:
 // off for everyone until REAL_CONNECTORS) and whose consent covers it. Registers their SnapTrade user
 // the first time, under an id Jane makes up, and keeps it in the vault with that id as the link's ref;
-// then asks SnapTrade for a read-only connection. Not wired to a page yet.
+// then asks SnapTrade for a read-only connection, coming back to `customRedirect`. The connect flow
+// (../connect.ts) calls it as the connector's partner step.
 
 export async function snaptradeConnectLink(
   userId: string,
@@ -18,7 +19,8 @@ export async function snaptradeConnectLink(
     client = defaultClient,
     now = new Date(),
     api = snaptradeHttp(),
-  }: { client?: PrismaClient; now?: Date; api?: SnaptradeApi } = {},
+    customRedirect,
+  }: { client?: PrismaClient; now?: Date; api?: SnaptradeApi; customRedirect?: string } = {},
 ): Promise<string> {
   // Throws ConsentError with why it isn't available (off, switched off, trial, sample data).
   const connector = await usableConnector(userId, snaptradeHoldings.id, { client });
@@ -35,5 +37,5 @@ export async function snaptradeConnectLink(
     });
     return created;
   });
-  return api.connectLink(user);
+  return api.connectLink(user, customRedirect ? { customRedirect } : {});
 }

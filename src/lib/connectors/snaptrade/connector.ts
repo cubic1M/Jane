@@ -70,6 +70,7 @@ export const snaptradeHoldings: Connector = {
   category: "investing",
   capabilities: ["read"],
   scopes: ["read_holdings"],
+  from: "Your broker, through SnapTrade (read only: it can't trade)",
   sandbox: false,
   movesMoney: false,
   read: async ({ userId, client, now }) =>
@@ -85,6 +86,13 @@ export const snaptradeHoldings: Connector = {
         ),
       { client, now },
     ),
+  // SnapTrade's Connection Portal, read only (./link.ts, loaded here to keep the registry free of it).
+  connect: async ({ userId, client, now, returnUrl }) => {
+    const { snaptradeConnectLink } = await import("./link");
+    return {
+      redirectUrl: await snaptradeConnectLink(userId, { client, now, customRedirect: returnUrl }),
+    };
+  },
   webhook: {
     signing: {
       kind: "canonical_json_hmac",
@@ -102,6 +110,7 @@ export const sandboxSnaptradeHoldings: Connector = {
   category: "investing",
   capabilities: ["read"],
   scopes: ["read_holdings"],
+  from: "A sample brokerage account (SnapTrade's own example)",
   sandbox: true,
   movesMoney: false,
   read: async ({ userId, client, now }) => {

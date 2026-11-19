@@ -37,6 +37,7 @@ import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
 import { requireUser } from "@/lib/session";
+import { ConnectTap } from "@/components/connect-tap";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import { loadPanicSells } from "@/lib/investments/panic-sells";
 import { panicSummary } from "@/planning/panic-sells";
@@ -159,7 +160,11 @@ async function RuleReplays({ userId }: { userId: string }) {
 
 // "What's in your Robinhood account today?" (read-only beta): money sent to an investing app is
 // moved, not spent, so Jane says how much went in and asks what is in each one.
-async function BrokerageAsks({ user }: { user: Parameters<typeof canImportHoldings>[0] }) {
+async function BrokerageAsks({
+  user,
+}: {
+  user: Parameters<typeof canImportHoldings>[0] & { id: string };
+}) {
   if (!canImportHoldings(user)) return null;
   const { asks, inLast3MonthsCents } = await brokerageAsks(await scopedDb());
   if (inLast3MonthsCents === 0) return null;
@@ -178,6 +183,13 @@ async function BrokerageAsks({ user }: { user: Parameters<typeof canImportHoldin
           sentText={`You sent ${formatCents(a.inCents)} to ${a.app} in ${a.count} ${a.count === 1 ? "transfer" : "transfers"}.`}
         />
       ))}
+      {/* Optional, once: the account itself, read only (src/lib/connectors/connect.ts). */}
+      <ConnectTap
+        userId={user.id}
+        connectorIds={["snaptrade_holdings", "sandbox_snaptrade_holdings"]}
+        from="/investments"
+        label="Or bring in the account itself, read only"
+      />
     </section>
   );
 }

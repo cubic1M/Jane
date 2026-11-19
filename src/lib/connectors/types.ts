@@ -151,6 +151,13 @@ export type Connector = {
   act?: (draft: ActionDraft, context: ActContext) => Promise<ActResult>;
   // Takes it back at the partner, while ActResult.cancelUntil allows. Gated.
   cancel?: (externalRef: string, context: ActContext) => Promise<boolean>;
+  // Who the data comes from, in the person's words, for the consent screen ("your broker, through
+  // SnapTrade"). The connector's name when unset.
+  from?: string;
+  // The partner's own step, when it has one (a sign-in at the broker, the payroll company): where to
+  // send the person once they've said yes, coming back to `returnUrl`. Without it, Jane reads at once
+  // (./connect.ts).
+  connect?: (context: CheckContext & { returnUrl: string }) => Promise<{ redirectUrl: string }>;
   webhook?: {
     signing: WebhookSigning;
     // Reads a body whose signature already checked out. Null for one the connector doesn't know.

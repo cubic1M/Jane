@@ -52,7 +52,10 @@ export type SnaptradePositions = {
 export interface SnaptradeApi {
   registerUser(userId: string): Promise<SnaptradeUser>;
   // The Connection Portal URL, for a read-only connection.
-  connectLink(user: SnaptradeUser, options?: { broker?: string }): Promise<string>;
+  connectLink(
+    user: SnaptradeUser,
+    options?: { broker?: string; customRedirect?: string },
+  ): Promise<string>;
   accounts(user: SnaptradeUser): Promise<SnaptradeAccount[]>;
   positions(user: SnaptradeUser, accountId: string): Promise<SnaptradePositions>;
 }
@@ -144,12 +147,16 @@ export function snaptradeHttp({
       }
       return { userId, userSecret: body.userSecret };
     },
-    async connectLink(user, { broker } = {}) {
+    async connectLink(user, { broker, customRedirect } = {}) {
       if (broker !== undefined && !BROKER.test(broker))
         throw new SnaptradeError(null, "BAD_BROKER");
+      if (customRedirect !== undefined && !/^https?:\/\/\S+$/.test(customRedirect)) {
+        throw new SnaptradeError(null, "BAD_REDIRECT");
+      }
       const body = (await call("POST", "/snapTrade/login", as(user), {
         connectionType: SNAPTRADE.connectionType,
         ...(broker ? { broker } : {}),
+        ...(customRedirect ? { customRedirect } : {}),
       })) as { redirectURI?: unknown };
       const url = typeof body.redirectURI === "string" ? body.redirectURI : "";
       if (!url.startsWith("https://")) throw new SnaptradeError(null, "SHAPE");
