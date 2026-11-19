@@ -35,8 +35,9 @@ function callsTo(text: string, callee: RegExp): string[] {
   return calls;
 }
 
+// Robinhood and Gmail also hold refresh tokens and a sealed value of them, and Gmail a client secret.
 const SECRET_NAMES =
-  /accessToken|access_token|mfaSecret|encryptedBytes|TOKEN_ENCRYPTION_KEY|PLAID_SECRET|decrypt\(|dataKey|wrapped\b/;
+  /accessToken|access_token|refreshToken|refresh_token|secretsEncrypted|clientSecret|client_secret|CLIENT_SECRET|mfaSecret|encryptedBytes|TOKEN_ENCRYPTION_KEY|PLAID_SECRET|decrypt\(|dataKey|wrapped\b/;
 const ALL = sources();
 
 describe("secret leak check (source)", () => {
@@ -69,7 +70,9 @@ describe("secret leak check (source)", () => {
     const readers = ALL.filter(
       ({ path, text }) =>
         path.startsWith(`app${"/"}`) &&
-        /accessTokenEncrypted|mfaSecretEncrypted|encryptedBytes:\s*true/.test(text),
+        /accessTokenEncrypted|mfaSecretEncrypted|secretsEncrypted|encryptedBytes:\s*true/.test(
+          text,
+        ),
     ).map((f) => f.path);
     expect(readers).toEqual([]);
   });
