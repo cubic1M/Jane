@@ -87,8 +87,11 @@ const HOLDINGS = new RegExp(
     "\\bmy (?:investments|holdings|portfolio|funds|stocks|shares)\\b",
     `\\bwhat'?s in my (?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bwhat'?s in my (?:${BROKERS})\\b`,
-    `\\bhow much (?:do i have |is there |money is |is |have i got )?(?:in|on) (?:my )?(?:${ACCOUNT_WORDS}|investments?)\\b`,
-    `\\bhow (?:much|big) is my (?:${ACCOUNT_WORDS})\\b`,
+    `\\bhow much (?:do i have |is there |money is |is |have i got )?(?:in|on) (?:my )?(?:${ACCOUNT_WORDS}|${BROKERS}|investments?)\\b`,
+    `\\bhow (?:much|big) is my (?:${ACCOUNT_WORDS}|${BROKERS})\\b`,
+    // "What's my Fidelity account worth?" (debugger 11-19: read as spending on "fidelity account
+    // worth" beside $7,634.78 of Fidelity holdings).
+    `\\bwhat(?:'s| is) my (?:${ACCOUNT_WORDS}|${BROKERS}|investments?)(?: account)? worth\\b`,
     "\\bhow much (?:money )?(?:do i have|have i got|have i|is|i have) invested\\b",
     "\\b(?:total|all) (?:of )?(?:my )?investments\\b",
     "^(?:investments|holdings|portfolio|my 401\\(?k\\)?)$",
