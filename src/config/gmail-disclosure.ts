@@ -6,14 +6,18 @@ import { GMAIL_APP_VERIFIED, GMAIL_LIMITS } from "./gmail";
 // ./gmail-disclosure.test.ts fails until it has one. Words only: nothing here decides what is read.
 
 // A new date each time the words below change.
-export const GMAIL_DISCLOSURE_VERSION = "2026-11-18";
+export const GMAIL_DISCLOSURE_VERSION = "2026-11-19";
 
 export function gmailDisclosure(): readonly string[] {
   return [
     "You sign in on Google's own page. Jane never sees your Google password.",
     'Google will ask to let Jane "view your email messages and settings". That covers the whole mailbox. Jane can only read: it can\'t send, delete or change anything.',
-    "Jane looks at who sent each email, its subject and its first line or two. It reads the whole email only when it comes from a company or other organization, not a personal address like gmail.com or icloud.com, and looks like it's about money. That check is rough, so some emails that aren't about money are read too, and Jane keeps nothing from them. Emails that look like sign-in codes or password resets are skipped.",
-    "Claude, the AI from Anthropic, reads each email that passes that check and picks out what kind it is, the amount and the date. Jane saves those, with the address the email came from and when it arrived. It saves no text from the email.",
+    // Skipped as personal: whatever is on PERSONAL_MAIL_DOMAINS (./gmail.ts), so the words promise
+    // only the services Jane knows. No list knows every one, and a person's own domain can't be
+    // told from a company's.
+    "Jane looks at who sent each email, its subject and its first line or two. It reads the whole email only when it looks like it's about money and doesn't come from a free email service Jane knows, like gmail.com, outlook.com or icloud.com. An email someone sends from their own domain, or from a service Jane doesn't know, can't be told from a company's, so it can be read too. That check is rough, so some emails that aren't about money are read as well, and Jane keeps nothing from them. Emails that look like sign-in codes or password resets are skipped.",
+    // What a reading keeps (GmailReading): the sender's domain and Gmail's id, never an address.
+    "Claude, the AI from Anthropic, reads each email that passes that check and picks out what kind it is, the amount and the date. Jane saves those, with the domain the email came from (like amazon.com), when it arrived and Gmail's id for it. It saves no text from the email.",
     "Jane lists what it finds on this page: bills, receipts, renewals, price changes and refunds. Nothing else in Jane uses it yet.",
     `Jane starts with your newest emails from the last ${GMAIL_LIMITS.lookBackDays} days, ${GMAIL_LIMITS.lookBackMessages} at most, then reads new email until you disconnect.`,
     "Disconnect any time. Jane deletes what it read from that mailbox and asks Google to end its permission.",

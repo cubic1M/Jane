@@ -20,15 +20,17 @@ const WITHOUT_MAILBOXES: Record<Linking, InactivityWords> = {
   both: { subject: BANKS_SUBJECT, what: "your linked banks and Robinhood", after: LINKED_AFTER },
 };
 
+// Google is asked to end the permission, never promised to: it may not answer, and nothing is sent
+// for a mailbox another Jane account holds now (src/lib/gmail/mailbox.ts).
 const MAILBOXES_ONLY: InactivityWords = {
   subject: "We'll disconnect your mailboxes soon | Jane",
   what: "your Gmail mailboxes",
   after:
-    "That deletes what Jane read from them and ends Jane's permission at Google. You can connect them again later.",
+    "That deletes what Jane read from them and asks Google to end Jane's permission. You can connect them again later.",
 };
 
 const MAILBOXES_TOO =
-  "Disconnecting your mailboxes deletes what Jane read from them and ends Jane's permission at Google. You can connect the mailboxes again later.";
+  "Disconnecting your mailboxes deletes what Jane read from them and asks Google to end Jane's permission. You can connect the mailboxes again later.";
 
 // Banks or Robinhood beside mailboxes: each is named, with what disconnecting it does.
 const BESIDE_MAILBOXES: Record<Linking, InactivityWords> = {

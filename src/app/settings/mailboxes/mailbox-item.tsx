@@ -10,10 +10,11 @@ const QUIET =
   "relative inline-flex min-h-11 w-fit items-center border border-zinc-300 px-4 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
 // Google is asked to end the permission only while Jane still holds it: a mailbox Google stopped
-// accepting, or one connected to another Jane account since, has nothing left to end.
+// accepting, or one connected to another Jane account since, has nothing left to end here, and that
+// other account's copy isn't touched.
 const CONFIRM =
   "This deletes what Jane read from this mailbox and asks Google to end Jane's permission.";
-const CONFIRM_NO_ACCESS = "This deletes what Jane read from this mailbox.";
+const CONFIRM_NO_ACCESS = "This deletes what Jane read from this mailbox for this account.";
 
 export function MailboxItem({
   id,

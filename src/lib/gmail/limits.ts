@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { GMAIL_MONTH_SHARE } from "@/config/gmail";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { llmEnabled } from "@/lib/anthropic";
@@ -11,8 +11,9 @@ import { giveBack, hit, wouldPass } from "@/lib/rate-limit";
 // person's mail at all right now, and a count of the emails it reads for them, per day and per 30
 // days, and per sender per day. Mail is never let use up what the rest of Jane needs: it stops once
 // the month's spend for all of Claude passes GMAIL_MONTH_SHARE of the cap. The counters are the
-// rate limits' own (src/config/rate-limits.ts). No key names a mailbox or a sender: a sender's
-// domain is hashed. Nothing here calls Claude or Google.
+// rate limits' own (src/config/rate-limits.ts). No key names a mailbox or a sender, in any form a
+// list of domains could find again: a sender's is keyed with a secret. Nothing here calls Claude or
+// Google.
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -38,10 +39,24 @@ export async function readerReady(
   return { ok: true };
 }
 
-// One sender's counter for one person. The domain is hashed, so no key says who wrote to them, and
-// the key ends with their id, so deleting their account clears it (src/lib/account-deletion.ts).
-const senderSubject = (userId: string, senderDomain: string): string =>
-  `${createHash("sha256").update(`sender:${senderDomain}`).digest("hex").slice(0, 32)}:${userId}`;
+// Without AUTH_SECRET (most tests: a deployment has it, as the launch check asks), a key made when
+// this process started and kept nowhere. A sender's counts then last as long as the process, and
+// still name nobody. An empty AUTH_SECRET is none: a key everyone knows would make the HMAC a plain
+// hash again.
+const PROCESS_KEY = randomBytes(32);
+
+// One sender's counter for one person: an HMAC keyed with the site's secret, as unsubscribe links
+// are (src/lib/digest/unsubscribe.ts). A plain hash of a domain is found again by hashing a list of
+// domains, so it would say who wrote to them. The person is in what is keyed, so one sender's
+// counters for two people don't match either. The key ends with the person's id, so deleting their
+// account clears it (src/lib/account-deletion.ts).
+function senderSubject(userId: string, senderDomain: string): string {
+  const keyed = createHmac("sha256", process.env.AUTH_SECRET || PROCESS_KEY)
+    .update(`gmail_sender:${userId}:${senderDomain}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `${keyed}:${userId}`;
+}
 
 // One more use, kept only when the limit allows it: a refused one goes back at once, so a counter
 // only ever holds emails that were read.

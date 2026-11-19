@@ -19,7 +19,7 @@ const BEFORE_MAILBOXES_AFTER =
   "That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.";
 
 const MAILBOXES_TOO =
-  "Disconnecting your mailboxes deletes what Jane read from them and ends Jane's permission at Google. You can connect the mailboxes again later.";
+  "Disconnecting your mailboxes deletes what Jane read from them and asks Google to end Jane's permission. You can connect the mailboxes again later.";
 
 describe("the inactivity warning's words", () => {
   it.each([
@@ -39,7 +39,7 @@ describe("the inactivity warning's words", () => {
       subject: "We'll disconnect your mailboxes soon | Jane",
       what: "your Gmail mailboxes",
       after:
-        "That deletes what Jane read from them and ends Jane's permission at Google. You can connect them again later.",
+        "That deletes what Jane read from them and asks Google to end Jane's permission. You can connect them again later.",
     });
   });
 
@@ -92,11 +92,19 @@ describe("the inactivity warning's words", () => {
     }
   });
 
-  it("say Google's permission ends only with mailboxes, and linking may not work again only with a bank or Robinhood", () => {
+  it("say Google is asked to end the permission only with mailboxes, and linking may not work again only with a bank or Robinhood", () => {
     for (const linked of SEVEN) {
       const { after } = inactivityWords(linked);
-      expect(after.includes("ends Jane's permission at Google")).toBe(linked.mailboxes);
+      expect(after.includes("asks Google to end Jane's permission")).toBe(linked.mailboxes);
       expect(after.includes("may not be able to link")).toBe(linked.banks || linked.robinhood);
+    }
+  });
+
+  // Removal asks Google once and goes on whatever it answers, and asks nothing for a mailbox
+  // another Jane account holds now (src/lib/gmail/mailbox.ts): the permission may still stand.
+  it("never promise that the permission at Google ends", () => {
+    for (const linked of SEVEN) {
+      expect(inactivityWords(linked).after, JSON.stringify(linked)).not.toMatch(/\bend(?:s|ed)\b/);
     }
   });
 

@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { createServer, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MODEL_PRICES_CENTS } from "@/config/answer-checks";
 import { GMAIL_KINDS, GMAIL_LIMITS, GMAIL_READER_MODEL } from "@/config/gmail";
@@ -9,6 +11,15 @@ import { readMoneyMail } from "./read-mail";
 // Claude reading one money email into a kind, an amount and a day, with a played-back Claude. What
 // is kept never depends on what Claude wrote: each field is checked against a list, the email's
 // own text, or the day it arrived.
+
+// A copy of the limits, so a test can give a request to Claude less time than it really gets.
+vi.mock("@/config/gmail", async (original) => {
+  const real = await original<typeof import("@/config/gmail")>();
+  return { ...real, GMAIL_LIMITS: { ...real.GMAIL_LIMITS } };
+});
+const limits = GMAIL_LIMITS as { -readonly [K in keyof typeof GMAIL_LIMITS]: number };
+const READER_TIMEOUT_MS = GMAIL_LIMITS.readerTimeoutMs;
+const READER_MOST_MS = GMAIL_LIMITS.readerMostMs;
 
 const MAIL = {
   received: "2026-11-18",
@@ -62,6 +73,8 @@ const about = (body: string, subject = "A subject") => ({ ...MAIL, subject, body
 const logged: unknown[][] = [];
 
 beforeEach(() => {
+  limits.readerTimeoutMs = READER_TIMEOUT_MS;
+  limits.readerMostMs = READER_MOST_MS;
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
   vi.stubEnv("KILL_CLAUDE", "");
   vi.stubEnv("ANTHROPIC_GMAIL_MODEL", "");
@@ -75,6 +88,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("the request", () => {
   it("asks for the three fields, briefly, with the reader's own limits", async () => {
     const { create, claude } = playing(BILL);
+    const signalFor = vi.spyOn(AbortSignal, "timeout");
     await readMoneyMail(MAIL, { claude });
     expect(create).toHaveBeenCalledTimes(1);
     const [params, options] = create.mock.calls[0];
@@ -82,7 +96,17 @@ describe("the request", () => {
     expect(params.max_tokens).toBe(GMAIL_LIMITS.readerMaxTokens);
     expect(params.output_config.effort).toBe("low");
     expect(params.output_config.format.type).toBe("json_schema");
-    expect(options).toEqual({ timeout: GMAIL_LIMITS.readerTimeoutMs, maxRetries: 1 });
+    // One try, and a signal that ends the whole request (the tests with the real client below).
+    expect(options).toEqual({
+      timeout: GMAIL_LIMITS.readerTimeoutMs,
+      maxRetries: 0,
+      signal: expect.any(AbortSignal),
+    });
+    const signal = options?.signal;
+    expect(signal instanceof AbortSignal && !signal.aborted).toBe(true);
+    // It ends the request at readerMostMs: the time the routes' and the daily job's sums give it.
+    expect(signalFor.mock.calls).toEqual([[GMAIL_LIMITS.readerMostMs]]);
+    expect(signalFor.mock.results[0]?.value).toBe(signal);
   });
 
   it("sends no thinking setting and no sampling setting", async () => {
@@ -644,6 +668,75 @@ describe("when Claude can't be asked at all", () => {
       const reading = await readMoneyMail(MAIL, { claude: failing(error).claude });
       expect(reading.outcome === "later" && reading.reason).toMatch(/^[A-Z0-9_]{1,20}$/);
     }
+  });
+});
+
+// The SDK's own timeout covers only the wait for an answer to begin, and between tries it sleeps for
+// whatever the API asks. So these use the real client, against a stand-in for Claude's API on this
+// machine that answers every request the same way.
+describe("the time one email may take", () => {
+  let stop: (() => Promise<void>) | null = null;
+  afterEach(async () => {
+    await stop?.();
+    stop = null;
+  });
+
+  async function apiAnswering(answer: (response: ServerResponse) => void) {
+    let asked = 0;
+    const server = createServer((_request, response) => {
+      asked += 1;
+      answer(response);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    stop = () => {
+      server.closeAllConnections();
+      return new Promise((resolve) => server.close(() => resolve()));
+    };
+    const baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const client = new Anthropic({ apiKey: "test-key", baseURL });
+    return { claude: () => client, asked: () => asked };
+  }
+
+  // Claude's API asks to be left for an hour.
+  it.each([429, 503, 529])(
+    "asks a busy API (%i) once and waits for nothing it asks: the email is read later",
+    async (status) => {
+      const api = await apiAnswering((response) => {
+        response.writeHead(status, {
+          "content-type": "application/json",
+          "retry-after": "3600",
+          "retry-after-ms": "3600000",
+        });
+        response.end(JSON.stringify({ type: "error", error: { type: "overloaded_error" } }));
+      });
+      expect(await readMoneyMail(MAIL, { claude: api.claude })).toEqual({
+        outcome: "later",
+        reason: String(status),
+      });
+      expect(api.asked()).toBe(1);
+    },
+  );
+
+  // The answer begins at once, so the timeout is spent: only the signal can end it.
+  it("lets go of an answer that begins and never ends: the email is read later", async () => {
+    limits.readerMostMs = 300;
+    const api = await apiAnswering((response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.write('{"id":"msg_01","type":"message",');
+    });
+    expect(await readMoneyMail(MAIL, { claude: api.claude })).toEqual({
+      outcome: "later",
+      reason: "ERROR",
+    });
+    expect(api.asked()).toBe(1);
+  });
+
+  it("asks once when no answer begins in time, and skips that one email", async () => {
+    limits.readerTimeoutMs = 100;
+    limits.readerMostMs = 10_000;
+    const api = await apiAnswering(() => {});
+    expect(await readMoneyMail(MAIL, { claude: api.claude })).toEqual({ outcome: "unread" });
+    expect(api.asked()).toBe(1);
   });
 });
 

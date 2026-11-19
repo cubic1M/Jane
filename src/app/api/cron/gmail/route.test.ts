@@ -16,6 +16,7 @@ vi.mock("@/lib/gmail/sync", () => ({
 }));
 
 import { GMAIL_LIMITS } from "@/config/gmail";
+import { HEARTBEAT_TIMEOUT_MS, OPS_SWITCH_FIRST_READ_TIMEOUT_MS } from "@/config/health";
 import { refreshAllGmail } from "@/lib/gmail/sync";
 import { recordRun } from "@/lib/health";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -83,17 +84,23 @@ describe("GET /api/cron/gmail", () => {
     expect(crons.filter((cron) => cron.schedule === "15 11 * * *")).toHaveLength(1);
   });
 
-  // A mailbox may start just before the job's budget ends, with a budget of its own, and the calls
-  // it is in when that ends still run their course: two to Google with every retry, and Claude's
-  // one with its retry. All of it has to end inside Vercel's limit.
+  // A mailbox's budget ends inside the job's, and a read looks at its clock between one email and
+  // the next, so when the job's time is up the last read can still be in one email: its first look
+  // and its body from Gmail, every try of each running to its timeout with the waits between them,
+  // one of the two turned away and sent again after a renewal, and Claude's one request. Before the
+  // job, the switches and the first heartbeat; after it, the last heartbeat. All of it has to end
+  // inside Vercel's limit with 20 seconds to spare (DESIGN §17.4).
   it("stops starting mailboxes in time for the last one to end inside Vercel's limit", () => {
-    const { cronBudgetMs, nightMailboxBudgetMs, callTimeoutMs, callRetries, readerTimeoutMs } =
+    const { callRetries, callRetryWaitMs, callTimeoutMs, cronBudgetMs, readerMostMs } =
       GMAIL_LIMITS;
-    expect(
-      cronBudgetMs +
-        nightMailboxBudgetMs +
-        2 * callTimeoutMs * (1 + callRetries) +
-        2 * readerTimeoutMs,
-    ).toBeLessThan(maxDuration * 1000);
+    const waits = callRetryWaitMs * ((callRetries * (1 + callRetries)) / 2);
+    const oneFetch = callTimeoutMs * (1 + callRetries) + waits;
+    const renewedFetch = oneFetch + callTimeoutMs + oneFetch;
+    const oneEmail = oneFetch + renewedFetch + readerMostMs;
+    const before = OPS_SWITCH_FIRST_READ_TIMEOUT_MS + HEARTBEAT_TIMEOUT_MS;
+    const after = HEARTBEAT_TIMEOUT_MS;
+    expect(before + cronBudgetMs + oneEmail + after + 20_000).toBeLessThanOrEqual(
+      maxDuration * 1000,
+    );
   });
 });

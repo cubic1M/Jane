@@ -189,11 +189,12 @@ function dateOf(answer: unknown, received: string): Date | null {
   return days >= -GMAIL_LIMITS.dateBackDays && days <= GMAIL_LIMITS.dateAheadDays ? day : null;
 }
 
-// Why Claude gave no answer. A request that ran out of time is that email's own trouble. Anything
-// else means Claude can't be asked at all, and says nothing about the email: a busy or failing API,
-// this person's or everyone's limit, a wrong key, billing or model name, and a 400 or a 413 as well.
-// Every request is cut to a size the API takes, so no one email brings either about: they mean the
-// request itself is wrong (a setting, a model), for every email alike.
+// Why Claude gave no answer. An answer that didn't begin in time is that email's own trouble.
+// Anything else means Claude can't be asked at all, and says nothing about the email: a busy or
+// failing API, an answer that began and didn't end in time, this person's or everyone's limit, a
+// wrong key, billing or model name, and a 400 or a 413 as well. Every request is cut to a size the
+// API takes, so no one email brings either about: they mean the request itself is wrong (a setting,
+// a model), for every email alike.
 function notAnswered(error: unknown): MailReading {
   if (error instanceof Anthropic.APIConnectionTimeoutError) {
     log.warn("Gmail reader: no answer", { why: "timeout" });
@@ -224,7 +225,15 @@ export async function readMoneyMail(
         messages: [{ role: "user", content: JSON.stringify({ received, from, subject, body }) }],
         output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       },
-      { timeout: GMAIL_LIMITS.readerTimeoutMs, maxRetries: 1 },
+      // One try: a busy API is Claude being unavailable, and the email is read when the read is
+      // tried again (readerRetryMinutes), never after a wait the API asks for. The timeout is for
+      // the answer to begin; the signal ends the request whatever it is still waiting on, the rest
+      // of the answer included, so one email can't hold a read past its time.
+      {
+        timeout: GMAIL_LIMITS.readerTimeoutMs,
+        maxRetries: 0,
+        signal: AbortSignal.timeout(GMAIL_LIMITS.readerMostMs),
+      },
     );
     text = finishedText(response);
     // Claude declined this email, or its answer was cut short.

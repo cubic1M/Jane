@@ -37,6 +37,7 @@ const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 
 const TOO_MANY = `You've connected ${GMAIL_LIMITS.mailboxesMost} mailboxes, the most Jane reads for one person. Disconnect one to add another.`;
+const PAUSED_CONNECTING = "Connecting is paused for now. Please try again later.";
 
 // What a connect or a disconnect sent the person back to say, once.
 const NOTICES: Record<NoticeWord, string> = {
@@ -47,7 +48,7 @@ const NOTICES: Record<NoticeWord, string> = {
     "That mailbox wasn't connected. You can try again. If Google now lists Jane under the apps with access to your account, you can remove it there.",
   not_allowed:
     "Google didn't give Jane permission to read that mailbox, so it wasn't connected. You can try again.",
-  paused: "Connecting is paused for now. Please try again later.",
+  paused: PAUSED_CONNECTING,
   too_many: TOO_MANY,
   start_here:
     "That link didn't start anything. Before you connect a mailbox, check the account named below.",
@@ -55,20 +56,37 @@ const NOTICES: Record<NoticeWord, string> = {
     "Disconnected. Jane deleted what it read from that mailbox, and Google ended Jane's permission.",
   disconnected_unconfirmed:
     "Disconnected. Jane deleted its own access and what it read from that mailbox. Google didn't confirm that it ended Jane's permission. To be sure, open your Google Account, find Jane under the apps with access, and remove it.",
+  // Google stopped accepting it, or another Jane account connected it since and may still hold it:
+  // true whatever that account does next.
   disconnected_no_access:
-    "Disconnected. Jane had already lost its access, and has deleted what it read from that mailbox.",
+    "Disconnected. This account had already lost its access to that mailbox, and Jane has deleted what it read from it here. If you didn't connect it to another Jane account, remove Jane in your Google Account.",
 };
 
 // One line for each mailbox: the first that applies, in this order.
 const SWITCHED_OFF =
   "Mailboxes are switched off for now. Jane isn't reading this mailbox. Disconnect to delete what Jane read from it.";
-const ELSEWHERE =
-  "This mailbox is now connected to a different Jane account, so Jane stopped reading it here. What Jane read before is still listed below. If that wasn't you, connect it again, or remove Jane in your Google Account.";
-const RECONNECT =
-  "Google stopped accepting this connection, so Jane isn't reading this mailbox. That happens when you change your Google password or take back Jane's permission. What Jane read before is still listed below. Connect it again to carry on, or disconnect to delete it.";
+// A mailbox Jane no longer reads: what happened, then what the person can do. Said in the past for
+// another account: nothing changes this row when that account disconnects it later.
+const ELSEWHERE = [
+  "This mailbox was connected to a different Jane account, so Jane stopped reading it here.",
+  "If that wasn't you, connect it again, or remove Jane in your Google Account.",
+] as const;
+const RECONNECT = [
+  "Google stopped accepting this connection, so Jane isn't reading this mailbox. That happens when you change your Google password or take back Jane's permission.",
+  "Connect it again to carry on, or disconnect to delete it.",
+] as const;
+// Between those two, only when it is true: a mailbox can stop being read before anything was read
+// from it.
+const STILL_LISTED = "What Jane read before is still listed below.";
 const PAUSED = "Reading is paused for now.";
 const FIRST_READ = `Reading your newest emails from the last ${GMAIL_LIMITS.lookBackDays} days. This takes a minute or two. Come back to this page to see what Jane read.`;
+const PART_READ = "Jane has read part of this mailbox and will read the rest by itself.";
 const NEVER_READ = "Jane hasn't been able to read this mailbox yet. It will try again by itself.";
+
+// Codes a read leaves on the row (src/lib/gmail/sync.ts) while reading goes on: a failed watch
+// changes only how soon new email is read, and mail a read didn't get to is read at the next notice
+// or by the daily job.
+const NOT_A_FAILURE: ReadonlySet<string> = new Set(["watch_failed", "unfinished"]);
 
 type Context = {
   offered: boolean;
@@ -79,28 +97,34 @@ type Context = {
   timezone: string;
 };
 
+function noLongerRead(mailbox: MailboxView, [happened, next]: readonly [string, string]): string {
+  return [happened, ...(mailbox.readings > 0 ? [STILL_LISTED] : []), next].join(" ");
+}
+
 function stateLine(mailbox: MailboxView, { offered, open, readerOk, now, timezone }: Context) {
   // First: the lines below ask for a connection, and none can be made with the switch off.
   if (!offered) return SWITCHED_OFF;
-  if (mailbox.status === "elsewhere") return ELSEWHERE;
-  if (mailbox.status === "reconnect") return RECONNECT;
+  if (mailbox.status === "elsewhere") return noLongerRead(mailbox, ELSEWHERE);
+  if (mailbox.status === "reconnect") return noLongerRead(mailbox, RECONNECT);
   // Not one of the three words (only a row a test planted holds another): nothing reads it.
   if (mailbox.status === null) return NEVER_READ;
   if (!open) return PAUSED;
   if (mailbox.lastCheckedAt === null) {
-    // Timed from when they last connected it, since connecting again keeps createdAt. While Claude
-    // can't be asked, a read stops before it reads anything (src/lib/gmail/sync.ts), so nothing is
-    // under way.
+    // Timed from when they last connected it, since connecting again keeps createdAt. Under way only
+    // while nothing has stopped it (a failed watch doesn't) and Claude can be asked: while it can't,
+    // a read stops before it reads anything (src/lib/gmail/sync.ts).
     const justNow =
       now.getTime() - mailbox.agreedAt.getTime() < GMAIL_LIMITS.firstReadMinutes * MINUTE;
-    return justNow && readerOk ? FIRST_READ : NEVER_READ;
+    const stopped = mailbox.lastErrorCode !== null && mailbox.lastErrorCode !== "watch_failed";
+    if (justNow && !stopped && readerOk) return FIRST_READ;
+    // Not under way now. Readings from it mean a read got part of the way.
+    return mailbox.readings > 0 ? PART_READ : NEVER_READ;
   }
   const time = momentTimeLabel(mailbox.lastCheckedAt, timezone);
   if (!readerOk) {
     return `Jane isn't reading new email right now. It will carry on by itself. Last read ${time}.`;
   }
-  // A watch that failed doesn't stop reading: only how soon new email is read changes.
-  if (mailbox.lastErrorCode !== null && mailbox.lastErrorCode !== "watch_failed") {
+  if (mailbox.lastErrorCode !== null && !NOT_A_FAILURE.has(mailbox.lastErrorCode)) {
     return `The last read didn't work; Jane will try again. Last checked ${time}.`;
   }
   return mailbox.watchExpiresAt !== null && mailbox.watchExpiresAt > now
@@ -116,17 +140,29 @@ function missedLine(mailbox: MailboxView, now: Date, timezone: string): string |
   return `Jane couldn't read this mailbox for a while, so some emails before ${momentLabel(at, timezone)} weren't read.`;
 }
 
+// Why the person can't connect one (whyCantConnect), in the words the connect route answers with.
+// Someone with only the demo bank isn't a sample: they can connect once they link a bank or upload a
+// statement.
+const CANT_CONNECT: Record<"trial" | "demo", string> = {
+  trial: "A sample account can't connect a mailbox.",
+  demo: "This account only has the demo bank's sample data, so it can't connect a mailbox. Link your bank or upload a statement first.",
+};
+
 // Whether the Connect link shows, and the line beside it or instead of it: the first that applies.
 function connectState(
   mailboxes: MailboxView[],
   why: "trial" | "demo" | null,
 ): { link: boolean; line: string | null } {
   if (!gmailSetUp()) return { link: false, line: "Connecting isn't set up yet." };
-  if (why !== null) return { link: false, line: "A sample account can't connect a mailbox." };
+  if (why !== null) return { link: false, line: CANT_CONNECT[why] };
   if (!gmailOpen()) {
+    // Disconnect is offered only for a mailbox there is.
     return {
       link: false,
-      line: "Reading is paused for now. Jane isn't reading any mailbox. You can still disconnect.",
+      line:
+        mailboxes.length > 0
+          ? "Reading is paused for now. Jane isn't reading any mailbox. You can still disconnect."
+          : PAUSED_CONNECTING,
     };
   }
   if (mailboxes.length < GMAIL_LIMITS.mailboxesMost) return { link: true, line: null };
@@ -164,8 +200,9 @@ async function MailboxesContent() {
   ]);
 
   const connect = offered ? connectState(mailboxes, why) : { link: false, line: null };
-  // At the most mailboxes the line by the Connect part says this already: once is enough.
-  const shown = word === "too_many" && connect.line === TOO_MANY ? null : said;
+  // At the most mailboxes, or paused with none, the line by the Connect part says this already:
+  // once is enough.
+  const shown = said === connect.line ? null : said;
   // Tied to this browser's session (src/lib/gmail/connect-ticket.ts): the connect route goes on
   // only with it, so a link someone else sent can't lead straight to Google's page.
   const token = sessionTokenFrom(jar);
@@ -252,6 +289,7 @@ async function MailboxesContent() {
           readings={readings}
           more={more}
           stillReading={rows.some((row) => row.line === FIRST_READ)}
+          beingRead={offered && open && active}
           several={mailboxes.length > 1}
           timezone={timezone}
         />

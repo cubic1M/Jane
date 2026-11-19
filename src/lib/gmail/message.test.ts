@@ -268,8 +268,22 @@ describe("the part of a domain that is saved and shown", () => {
     ["more than three hyphens over its two labels", "pay-the-fee.xn--p1ai"],
     ["more characters than a name has", `${"a".repeat(GMAIL_LIMITS.shownDomainChars)}.example`],
     ["only an ending many companies share", "co.uk"],
+    // Letters that pass for digits, where they stand in a row with one.
+    ["a phone number with an o for a 0", "call-888-555-o142.example"],
+    ["a phone number with a capital O for a 0", "888-555-O142.example"],
+    ["a phone number with an l for a 1", "refund-888-555-0l42.example"],
+    ["a phone number with a capital I for a 1", "888-555-0I42.example"],
+    ["one digit in a row of such letters", "pay-oo1o.example"],
   ])("refuses a domain that is %s", (_what, domain) => {
     expect(sentFrom(domain)).toBeNull();
+  });
+
+  it("takes a name whose letters stand beside a few digits, or none", () => {
+    expect(sentFrom("go2bank.example")).toBe("go2bank.example");
+    // "il1": three in a row, the most a name may have.
+    expect(sentFrom("mail1.example")).toBe("mail1.example");
+    expect(sentFrom("o2.example")).toBe("o2.example");
+    expect(sentFrom("pool-hall.example")).toBe("pool-hall.example");
   });
 
   it("takes a domain right at each limit", () => {
@@ -280,9 +294,40 @@ describe("the part of a domain that is saved and shown", () => {
   });
 });
 
+// A header a sender wrote in Google's name, saying DMARC passed.
+const CLAIMED = `mx.google.com; dmarc=pass header.from=${FROM}`;
+
+// Google's own header for an email that failed, made one that is never trusted by what the sender
+// controls: the envelope address Google copies into it, or the signatures it lists. None of these
+// may stop it counting as Google's, or the header the sender wrote would be the only one.
+const UNTRUSTED_OWN: [string, string][] = [
+  [
+    "holds a quote from the envelope address",
+    `mx.google.com; spf=pass (google.com: domain of "x y"@evil.example designates 198.51.100.7 as permitted sender) smtp.mailfrom="x y"@evil.example; dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=${FROM}`,
+  ],
+  [
+    "holds a bracket from the envelope address that never closes",
+    `mx.google.com; spf=pass (google.com: domain of a(b@evil.example designates 198.51.100.7 as permitted sender) smtp.mailfrom=a(b@evil.example; dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=${FROM}`,
+  ],
+  [
+    "is past the limit, with a signature listed over and over",
+    `mx.google.com; ${"dkim=pass header.i=@evil.example header.s=s1 header.b=AbC; ".repeat(80)}dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=${FROM}`,
+  ],
+];
+
 // Each row is an email Google did not vouch for, written to look as if it had.
 describe("a sender Google didn't vouch for", () => {
   const forged: [string, Partial<MailMeta>][] = [
+    ...UNTRUSTED_OWN.flatMap(([what, own]): [string, Partial<MailMeta>][] => [
+      [
+        `Google's own header ${what}, and one the sender wrote follows it`,
+        { authResults: [own, CLAIMED] },
+      ],
+      [
+        `Google's own header ${what}, and one the sender wrote comes first`,
+        { authResults: [CLAIMED, own] },
+      ],
+    ]),
     [
       "the envelope address spells dmarc=pass, and Google's verdict is fail",
       {
@@ -422,10 +467,6 @@ describe("a sender Google didn't vouch for", () => {
     [
       "a second header that names Google in other letters",
       { authResults: [googleSays(), ` MX.Google.Com (relay) 1; dmarc=pass header.from=${FROM}`] },
-    ],
-    [
-      "a second header that names Google in quotes",
-      { authResults: [googleSays(), `"mx.google.com"; dmarc=pass header.from=${FROM}`] },
     ],
     [
       "no header of Google's, only the sender's own server",
@@ -662,6 +703,63 @@ describe("a sender Google didn't vouch for", () => {
         meta({ from: ["billing@chase.example"], authResults: [googleSays("chase.example")] }),
       ),
     ).toBe("chase.example");
+    // The header the sender wrote passes when it is the only one in Google's name, and Google's own
+    // in those rows is never trusted, even saying pass: they are refused only because it counts.
+    expect(verifiedSender(meta({ authResults: [CLAIMED] }))).toBe(FROM);
+    for (const [, own] of UNTRUSTED_OWN) {
+      const passed = own.replace("dmarc=fail", "dmarc=pass");
+      expect(verifiedSender(meta({ authResults: [passed] }))).toBeNull();
+    }
+  });
+
+  it.each([
+    ["as Google writes it", CLAIMED],
+    ["in capitals", `MX.GOOGLE.COM; dmarc=pass header.from=${FROM}`],
+    ["in mixed case", `Mx.GooGle.CoM; dmarc=pass header.from=${FROM}`],
+    ["after spaces", `   mx.google.com; dmarc=pass header.from=${FROM}`],
+    ["after a comment", `(relay) mx.google.com; dmarc=pass header.from=${FROM}`],
+    ["before a comment", `mx.google.com (relay); dmarc=pass header.from=${FROM}`],
+    ["with a word after it", `mx.google.com 1; dmarc=pass header.from=${FROM}`],
+    ["folded before its first clause", `mx.google.com;\r\n dmarc=pass header.from=${FROM}`],
+    ["folded before its semicolon", `mx.google.com\r\n ; dmarc=pass header.from=${FROM}`],
+    ["with a tab after it", `mx.google.com\t; dmarc=pass header.from=${FROM}`],
+    ["with no clause at all", "mx.google.com"],
+    ["with a quote later on", `${CLAIMED}; x="y"`],
+    ["with a bracket later on that never closes", `${CLAIMED}; x=(y`],
+    ["past the limit", `${CLAIMED}; x=${"y".repeat(GMAIL_LIMITS.headerChars)}`],
+  ])(
+    "is refused when a second header claims Google's name %s, before or after Google's own",
+    (_what, second) => {
+      expect(verifiedSender(meta({ authResults: [googleSays(), second] }))).toBeNull();
+      expect(verifiedSender(meta({ authResults: [second, googleSays()] }))).toBeNull();
+    },
+  );
+});
+
+// A header that only looks like Google's counts for nothing, and is never trusted: the email is
+// what Google's own header says, wherever the look-alike stands.
+describe("a look-alike of Google's header", () => {
+  it.each([
+    ["the name in quotes", `"mx.google.com"; dmarc=pass header.from=${FROM}`],
+    ["more after the name", `mx.google.com.evil.example; dmarc=pass header.from=${FROM}`],
+    ["more before the name", `x.mx.google.com; dmarc=pass header.from=${FROM}`],
+    ["the name in a comment", `evil.example (mx.google.com); dmarc=pass header.from=${FROM}`],
+    [
+      "the name after another server's",
+      `evil.example mx.google.com; dmarc=pass header.from=${FROM}`,
+    ],
+    ["a dot after the name", `mx.google.com.; dmarc=pass header.from=${FROM}`],
+    ["another ending", `mx.google.co; dmarc=pass header.from=${FROM}`],
+    ["a letter of another alphabet", `mx.g${char(0x43e)}ogle.com; dmarc=pass header.from=${FROM}`],
+    ["a comment that never closes", `mx.google.com (relay; dmarc=pass header.from=${FROM})`],
+    ["a backslash in the name", `mx.google.com\\; dmarc=pass header.from=${FROM}`],
+  ])("with %s, beside Google's own", (_what, lookalike) => {
+    expect(verifiedSender(meta({ authResults: [lookalike] }))).toBeNull();
+    expect(verifiedSender(meta({ authResults: [googleSays(), lookalike] }))).toBe(FROM);
+    expect(verifiedSender(meta({ authResults: [lookalike, googleSays()] }))).toBe(FROM);
+    const failed = googleSays(FROM, "fail");
+    expect(verifiedSender(meta({ authResults: [failed, lookalike] }))).toBeNull();
+    expect(verifiedSender(meta({ authResults: [lookalike, failed] }))).toBeNull();
   });
 });
 
@@ -889,11 +987,16 @@ describe("the body of a message", () => {
 // position (src/lib/connectors/tax-upload-crafted-text.test.ts). An email is written by anyone who
 // can send one, so each of these has to be read in one pass, or refused at once.
 const LONG = 100_000;
+// Counted as work, this process's time on a processor, not as time passed: a busy machine keeping
+// the test waiting adds nothing. One pass over any of these takes tens of milliseconds, and starting
+// over from every position takes seconds, so the limit sits far from both.
+const WORK_MS_MOST = 2_000;
 
-function elapsedMs(read: () => unknown): number {
-  const start = performance.now();
+function workMs(read: () => unknown): number {
+  const since = process.cpuUsage();
   read();
-  return performance.now() - start;
+  const { user, system } = process.cpuUsage(since);
+  return (user + system) / 1_000;
 }
 
 describe("a crafted message is read in one pass", () => {
@@ -905,8 +1008,13 @@ describe("a crafted message is read in one pass", () => {
     ["dmarc clauses", `mx.google.com${"; dmarc=pass".repeat(LONG / 10)}`],
     ["one long word", `mx.google.com; dmarc=pass header.from=${"a".repeat(LONG)}`],
     ["folded lines", `mx.google.com;${"\r\n ".repeat(LONG / 3)}dmarc=pass header.from=${FROM}`],
+    ["comments before Google's name", `${"(a)".repeat(LONG / 3)} ${CLAIMED}`],
+    ["Google's name and no semicolon", `mx.google.com${" x".repeat(LONG / 2)}`],
+    ["comments that open before the first semicolon", `mx.google.com ${"(".repeat(LONG)};`],
   ])("an Authentication-Results header of %s", (_what, header) => {
-    expect(elapsedMs(() => verifiedSender(meta({ authResults: [header] })))).toBeLessThan(250);
+    expect(workMs(() => verifiedSender(meta({ authResults: [header] })))).toBeLessThan(
+      WORK_MS_MOST,
+    );
     expect(verifiedSender(meta({ authResults: [header] }))).toBeNull();
   });
 
@@ -919,7 +1027,7 @@ describe("a crafted message is read in one pass", () => {
     const header = `mx.google.com; ${filler}`;
     expect(header.length).toBeLessThanOrEqual(GMAIL_LIMITS.headerChars);
     const many = meta({ authResults: [header], from: [`${filler} <billing@${FROM}>`] });
-    expect(elapsedMs(() => verifiedSender(many))).toBeLessThan(250);
+    expect(workMs(() => verifiedSender(many))).toBeLessThan(WORK_MS_MOST);
   });
 
   it.each([
@@ -928,14 +1036,21 @@ describe("a crafted message is read in one pass", () => {
     ["dots after an address", `billing@${"a.".repeat(LONG / 2)}example`],
     ["angle brackets", "<".repeat(LONG)],
   ])("a From header of %s", (_what, from) => {
-    expect(elapsedMs(() => verifiedSender(meta({ from: [from] })))).toBeLessThan(250);
+    expect(workMs(() => verifiedSender(meta({ from: [from] })))).toBeLessThan(WORK_MS_MOST);
     expect(verifiedSender(meta({ from: [from] }))).toBeNull();
   });
 
   it("a thousand headers in Google's name", () => {
     const headers = Array.from({ length: 1_000 }, () => googleSays());
-    expect(elapsedMs(() => verifiedSender(meta({ authResults: headers })))).toBeLessThan(250);
+    expect(workMs(() => verifiedSender(meta({ authResults: headers })))).toBeLessThan(WORK_MS_MOST);
     expect(verifiedSender(meta({ authResults: headers }))).toBeNull();
+  });
+
+  it("a thousand look-alikes beside Google's own header", () => {
+    const lookalikes = Array.from({ length: 1_000 }, () => `"mx.google.com"; ${"x".repeat(90)}`);
+    const headers = [...lookalikes, googleSays()];
+    expect(workMs(() => verifiedSender(meta({ authResults: headers })))).toBeLessThan(WORK_MS_MOST);
+    expect(verifiedSender(meta({ authResults: headers }))).toBe(FROM);
   });
 
   it("a message with a hundred thousand headers", () => {
@@ -944,21 +1059,21 @@ describe("a crafted message is read in one pass", () => {
       value: "x",
     }));
     const raw = { id: "m", payload: { headers } };
-    expect(elapsedMs(() => mailMeta(raw))).toBeLessThan(250);
+    expect(workMs(() => mailMeta(raw))).toBeLessThan(WORK_MS_MOST);
     expect(mailMeta(raw)?.from).toHaveLength(LONG / 2);
   });
 
   it("a message with a hundred thousand parts", () => {
     const parts = Array.from({ length: LONG }, () => ({ mimeType: "multipart/mixed", parts: [] }));
     const raw = { payload: several("multipart/mixed", [...parts, part("text/plain", RECEIPT)]) };
-    expect(elapsedMs(() => rawBody(raw))).toBeLessThan(250);
+    expect(workMs(() => rawBody(raw))).toBeLessThan(WORK_MS_MOST);
     expect(rawBody(raw)).toBeNull();
   });
 
   it("parts nested ten thousand deep", () => {
     let inner: unknown = part("text/plain", RECEIPT);
     for (let i = 0; i < 10_000; i++) inner = several("multipart/mixed", [inner]);
-    expect(elapsedMs(() => rawBody({ payload: inner }))).toBeLessThan(250);
+    expect(workMs(() => rawBody({ payload: inner }))).toBeLessThan(WORK_MS_MOST);
     expect(rawBody({ payload: inner })).toBeNull();
   });
 
@@ -972,12 +1087,12 @@ describe("a crafted message is read in one pass", () => {
       headers: [{ name: "Content-Type", value: type }],
       body: { data: encoded(RECEIPT) },
     };
-    expect(elapsedMs(() => rawBody({ payload: crafted }))).toBeLessThan(250);
+    expect(workMs(() => rawBody({ payload: crafted }))).toBeLessThan(WORK_MS_MOST);
     expect(rawBody({ payload: crafted })?.text).toBe(RECEIPT);
   });
 
   it("a body as large as an email may be", () => {
     const large = part("text/html", "<".repeat(GMAIL_LIMITS.mailBytesMost));
-    expect(elapsedMs(() => rawBody({ payload: large }))).toBeLessThan(250);
+    expect(workMs(() => rawBody({ payload: large }))).toBeLessThan(WORK_MS_MOST);
   });
 });

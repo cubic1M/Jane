@@ -3,10 +3,10 @@ import { GMAIL_LIMITS } from "@/config/gmail";
 // An email's words, made ready for the reader: HTML turned into text, what Claude may see of it,
 // and whether it gives away a code or a password. Pure. Every function here runs over text an
 // email's sender wrote, at the length they chose, so each cuts the text (or refuses it) first and
-// then reads it in one pass: a pattern below is a run of one kind of character or has a fixed
-// length, and none can be made to start over from every position (./text.test.ts times crafted
-// input, as src/lib/connectors/tax-upload-crafted-text.test.ts does). Nothing here keeps or logs
-// what it reads.
+// then reads it in one pass: a pattern below is a run of one kind of character, has a fixed length,
+// or takes a run of digit groups whole, and none can be made to start over from every position
+// (./text.test.ts times crafted input, as src/lib/connectors/tax-upload-crafted-text.test.ts does).
+// Nothing here keeps or logs what it reads.
 
 const GREATER_THAN = 62;
 const SLASH = 47;
@@ -196,6 +196,64 @@ const LONG_NUMBER = new RegExp(
   `(?<!\\d)\\d{4}(?:[ -]\\d{4}){3,}(?!\\d)(?:[.,]\\d{1,2}(?!\\d))?|\\d{${GMAIL_LIMITS.longNumberDigits},}(?:[.,]\\d+)*`,
   "g",
 );
+// Groups of digits, each joined to the next by one space, dot, slash or dash: "3782 822463 10005",
+// "123-45-6789", and also "2026-11-03 15.49". The dashes include those an email sets a number with
+// to keep it on one line (a non-breaking hyphen, a figure dash, an en dash, a minus sign). A run is
+// matched from its first digit to its last, once, and a match never fails once it holds a digit, so
+// nothing is tried again from inside a run, whatever comes before the pattern. A lone group matches
+// too and goes back as written: one shorter than a long row is left alone below, and LONG_NUMBER
+// has already replaced any longer one.
+const DIGIT_RUN = /(?<!\d)\d+(?:[ ./\u2010-\u2013\u2212-]\d+)*/g;
+
+// Digits written in groups, replaced whole when the groups one mark joins hold as many digits as a
+// long row: "123-45-6789" and "4111.1111.1111.1111" are replaced. Where the mark changes the count
+// starts again, so two dates joined by another mark ("10/19/2026-11/18/2026") stay two dates.
+function ifLong(written: string): string {
+  const groups = written.split(/\D/);
+  const marks = written.replace(/\d+/g, "");
+  let digits = groups[0].length;
+  for (let i = 0; i < marks.length && digits < GMAIL_LIMITS.longNumberDigits; i++) {
+    digits = (marks[i] === marks[i - 1] ? digits : groups[i].length) + groups[i + 1].length;
+  }
+  return digits >= GMAIL_LIMITS.longNumberDigits ? "[number]" : written;
+}
+
+// A run of digit groups with each long number in it replaced: a card, an account or a Social
+// Security number printed in a shape the card rule above doesn't take ("3782 822463 10005",
+// "123-45-6789", "4111.1111.1111.1111"). A word with a dot, a slash or a dash in it is judged by
+// itself, and words of digits alone are judged together while single spaces join them. A date
+// ("2026-11-03") and an amount ("15.49") are words of their own, so neither is counted into the
+// number beside it, and neither is long: a date has eight digits, and an amount written with nine
+// is a million dollars. The one exception is a group of four digits or more with cents written on
+// it, right after two plain groups or more ("3782 822463 10005.00", "1234 5678 9012.50"): it is
+// counted as their last group, as the card rule takes a card's cents, so that no digit of the
+// number is left to pass for an amount.
+function withoutGroupedNumbers(run: string): string {
+  const words: string[] = [];
+  let digits: string[] = [];
+  const endDigits = () => {
+    if (digits.length > 0) words.push(ifLong(digits.join(" ")));
+    digits = [];
+  };
+  for (const word of run.split(" ")) {
+    const withCents = /^(\d{4,})\.\d{1,2}$/.exec(word);
+    if (/^\d+$/.test(word)) {
+      digits.push(word);
+    } else if (
+      withCents &&
+      digits.length >= 2 &&
+      ifLong([...digits, withCents[1]].join(" ")) === "[number]"
+    ) {
+      words.push("[number]");
+      digits = [];
+    } else {
+      endDigits();
+      words.push(ifLong(word));
+    }
+  }
+  endDigits();
+  return words.join(" ");
+}
 
 // Whether a run of characters between spaces holds an email address: a name, an "@", and a host
 // with a dot in it.
@@ -206,7 +264,7 @@ function addressShaped(token: string): boolean {
 
 // The replacements every text gets before Claude may see it. No digit of a masked number is kept,
 // so no part of one can pass for an amount. A date ("2026-11-18") and an amount ("$1,234.56") go
-// through as written.
+// through as written. The card rule goes first, as it takes a card's cents with it.
 function masked(text: string): string {
   return text
     .slice(0, GMAIL_LIMITS.htmlCharsMost)
@@ -214,7 +272,8 @@ function masked(text: string): string {
     .replace(INVISIBLE, "")
     .replace(LINK, "[link]")
     .replace(/\S+/g, (token) => (addressShaped(token) ? "[address]" : token))
-    .replace(LONG_NUMBER, "[number]");
+    .replace(LONG_NUMBER, "[number]")
+    .replace(DIGIT_RUN, withoutGroupedNumbers);
 }
 
 // The start of a text up to a limit, ending between two words where it can: half a figure would
@@ -269,9 +328,24 @@ const SECURITY =
   "verif[a-z]{1,10}|authenticat[a-z]{1,5}|security|log-?in|sign-?in|one-?time|access|2fa|two-factor|two-step";
 // One of them, or a code's own name: "PIN code", "OTP code".
 const SECURITY_WORD = new RegExp(`^(?:${SECURITY}|otp|passcode|pin)$`);
-// "code to sign in", "code for two-step verification".
+// What a code given to its owner alone lets them do: "Use code 482913 to approve your $500.00
+// payment", "code 482913 for payment approval". Not "confirmation": "code 4521 for confirmation of
+// your order" is a receipt's words, as a confirmation code is. Looked for after a code: before one,
+// "approval code" and "authorization code" are what a card receipt prints for a charge, so there
+// only "to approve", "to authorize" and "to confirm" count (TO_APPROVE below).
+const APPROVES = "approv(?:e|al|ing)|authori[sz](?:e|ation|ing)|confirm(?:ing)?";
+// "code to sign in", "code for two-step verification", "code 482913 to approve your payment".
 const SECURITY_AFTER = new RegExp(
-  `^ (?:to|for)(?: [a-z'\u2019-]{1,15}){0,3} (?:${SECURITY})(?![a-z0-9])`,
+  `^ (?:to|for)(?: [a-z'\u2019-]{1,15}){0,3} (?:${SECURITY}|${APPROVES})(?![a-z0-9])`,
+);
+// The same, asked for before the code in its own sentence: "To approve your $500.00 payment, enter
+// code 482913". Only with "to": a receipt's "approval code" never says it.
+const TO_APPROVE = /\bto (?:approve|authori[sz]e|confirm)\b/;
+// What a card receipt or a notice prints beside what it reports. Before one of these, "to confirm"
+// is about what was done, not the code ("This is to confirm your payment, authorization code
+// 004521"), so only a security word makes it a secret.
+const PRINTED_CODES = new Set(
+  "approval auth authorization authorisation reference transaction".split(" "),
 );
 // The digits of a code: four to eight on their own, or six written "482 913" or "482-913". Never
 // part of a longer number, an amount or a date.
@@ -287,14 +361,23 @@ const THEN_DIGITS = new RegExp(
 const DIGITS_FIRST = new RegExp(
   `${CODE_DIGITS} is your (?:[^ .!?]{1,20} ){0,3}(?:(?:${SECURITY}) (?:pass)?code|passcode|pin|otp)(?![a-z0-9])`,
 );
-// A password given in the email itself. One that is only mentioned ("never share your password")
-// is not.
-const GIVES_PASSWORD = /\btemporary password\b|\byour (?:new |temporary )?password is\b/;
+// A password given in the email itself: a temporary one, "your password is" ("your new password
+// is"), or one after a colon or an equals sign ("WiFi network: HOME-1234, password:
+// correcthorse42"). One that is only mentioned ("never share your password") is not, and neither
+// is a label followed by what was taken out ("Reset your password: [link]"). A dash after the word,
+// and "the password is" or "your <a word or two> password is", start a footer's sentence as often
+// as they give a password ("Protect your password - never share it", "Your online banking password
+// is never sent by email"), so after those what follows counts only when it holds a digit or a
+// symbol, as a password does and a footer's next word doesn't: "Password - Xy7kq2", "your router's
+// password is hunter2".
+const GIVES_PASSWORD =
+  /\btemporary password\b|\byour (?:new |temporary )?password is\b|\bpassword ?[:=] ?(?!\[)\S|(?:\b(?:your|the) (?:[a-z0-9'\u2019-]{1,15} ){0,2}password is:?|\bpassword [-\u2013\u2014]) ?(?=\S*[\d!@#$%^&*])/;
 
-// Whether the word found is a code that signs someone in: a passcode, a PIN or an OTP by name, or
-// a "code" with a security word in the three words before it, or after "to" or "for", whether that
-// comes right after the word or after its digits ("code 482913 to sign in"). A zip code, a promo
-// code and a confirmation code are not.
+// Whether the word found is a code that signs someone in or approves something: a passcode, a PIN
+// or an OTP by name, or a "code" with a security word in the three words before it, or "to
+// approve", "to authorize" or "to confirm" earlier in its sentence, or a security word or approve,
+// authorize or confirm after "to" or "for", whether that comes right after the word or after its
+// digits ("code 482913 to sign in"). A zip code, a promo code and a confirmation code are not.
 function isSecret(word: string, before: string, after: string, afterDigits: string): boolean {
   if (word !== "code" && word !== "codes") return true;
   const lead = before
@@ -302,17 +385,22 @@ function isSecret(word: string, before: string, after: string, afterDigits: stri
     .map((w) => w.replace(/^[^a-z0-9]{0,3}/, "").replace(/[^a-z0-9]{0,3}$/, ""))
     .filter(Boolean)
     .slice(-3);
-  if (EVERYDAY_CODES.has(lead[lead.length - 1])) return false;
+  const named = lead[lead.length - 1];
+  if (EVERYDAY_CODES.has(named)) return false;
+  const sentence = before.slice(
+    Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), before.lastIndexOf("? ")) + 1,
+  );
   return (
     lead.some((w) => SECURITY_WORD.test(w)) ||
+    (!PRINTED_CODES.has(named) && TO_APPROVE.test(sentence)) ||
     SECURITY_AFTER.test(after) ||
     SECURITY_AFTER.test(afterDigits)
   );
 }
 
-// Whether a text gives a code or a password that signs someone in: an email carrying one is never
-// sent to Claude. Run over everything that would be sent. A text that only mentions codes or
-// passwords, as the foot of a bank's email does, carries none.
+// Whether a text gives a code or a password that signs someone in or approves a payment: an email
+// carrying one is never sent to Claude. Run over everything that would be sent. A text that only
+// mentions codes or passwords, as the foot of a bank's email does, carries none.
 export function carriesSecret(text: string): boolean {
   // Far longer than anything Jane sends: not looked through, so not to be sent either.
   if (text.length > GMAIL_LIMITS.htmlCharsMost) return true;

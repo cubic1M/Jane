@@ -243,8 +243,14 @@ describe("a sender domain made to read like words", () => {
     "refund-desk-call-888-555-0142.example",
     "1-888-555-0142.example",
     "8885550142.example",
+    // Letters that pass for digits beside them: o or O for 0, l or I for 1.
+    "call-888-555-o142.example",
+    "888-555-O142.example",
+    "refund-888-555-0l42.example",
+    "888-555-0I42.example",
   ])("a phone number is refused: %s", (domain) => {
     expect(shown(domain).sender).toBeNull();
+    expect(shown(domain).screened).toEqual({ keep: false, why: "unverified" });
   });
 
   it("the name beside the address is never kept, whatever it says", () => {
@@ -347,6 +353,28 @@ describe("a hostile email from end to end", () => {
     expect(sent).toContain("[number]");
     expect(sent).toContain("Amount due: $499.00 by 2026-11-25.");
   });
+
+  it("sends Claude no number of nine digits or more, however its groups are printed", async () => {
+    answers({ kind: "none", amount: "", date: "" });
+    await listed(hostile("Card 3782 822463 10005, SSN 123-45-6789, card 6011.0009.9013.9424."));
+    expect(create).toHaveBeenCalledTimes(1);
+    const sent = JSON.stringify(create.mock.calls[0][0]);
+    expect(sent).not.toMatch(/3782|822463|10005|123-45|6789|6011|9424/);
+    expect(sent).toContain("Amount due: $499.00 by 2026-11-25.");
+  });
+
+  it.each([
+    "Your WiFi network: HOME-1234, password: correcthorse42",
+    "Use code 482913 to approve your $500.00 payment.",
+    "To approve your $500.00 payment, enter code 482913.",
+  ])(
+    "is never sent to Claude when its body gives a password or a code to approve: %s",
+    async (words) => {
+      answers({ kind: "bill", amount: "499.00", date: DUE });
+      expect(await listed(hostile(words, "Invoice 4471 due: $499.00"))).toBeNull();
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
 
   it("is never sent to Claude when it carries a sign-in code, whatever else it says", async () => {
     answers({ kind: "bill", amount: "499.00", date: DUE });

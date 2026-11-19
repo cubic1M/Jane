@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import { GMAIL_KINDS, GMAIL_LIMITS, type GmailKind } from "@/config/gmail";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
-import { logAudit, type AuditActor } from "@/lib/audit";
+import { logAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { systemDb, systemTransaction } from "@/lib/system-db";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -26,6 +27,8 @@ type MailboxStatus = (typeof STATUS)[keyof typeof STATUS];
 const STATUSES: readonly MailboxStatus[] = Object.values(STATUS);
 
 type Options = { client?: PrismaClient };
+
+const kindOf = (error: unknown): string => (error instanceof Error ? error.name : typeof error);
 
 // Trial people are sample data and never reach a company, and sample accounts beside a real
 // mailbox would blur which numbers are real. Someone with nothing linked yet is welcome.
@@ -122,9 +125,12 @@ export async function saveMailbox(
     client,
   );
   if (!saved) return { refused: "too_many" };
+  // The system's record, under the earlier holder's mailbox. It names them, so it is never among
+  // the new holder's own records (their gmail_connected says they took it over), and it goes when
+  // the earlier holder deletes their account, not when the new holder does.
   for (const earlier of saved.movedFrom) {
     await logAudit(
-      { type: "user", id: userId },
+      SYSTEM_ACTOR,
       "gmail_taken_over",
       { type: "gmail_mailbox", id: earlier.id },
       { user_id: earlier.userId },
@@ -148,6 +154,19 @@ export async function heldByAnyone(
   return holders > 0;
 }
 
+// The same question as removal asks it: not knowing counts as held, as in the callback. An answer
+// that never came can't end another person's copy, and the page then says Google didn't confirm.
+async function heldOrUnknown(address: string, client: PrismaClient): Promise<boolean> {
+  try {
+    return await heldByAnyone(address, { client });
+  } catch (error) {
+    log.error("Gmail removal couldn't tell whether anyone holds the mailbox", {
+      kind: kindOf(error),
+    });
+    return true;
+  }
+}
+
 // A mailbox as the page shows it: never its tokens or the place reading has reached.
 export type MailboxView = {
   id: string;
@@ -162,6 +181,8 @@ export type MailboxView = {
   lastErrorCode: string | null;
   missedAt: Date | null;
   watchExpiresAt: Date | null;
+  // How many money emails were read through it: all of them, where the page lists only the newest.
+  readings: number;
 };
 
 // The person's mailboxes, in the order they connected them.
@@ -180,12 +201,14 @@ export async function mailboxesView(
       lastErrorCode: true,
       missedAt: true,
       watchExpiresAt: true,
+      _count: { select: { readings: true } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  return rows.map((row) => ({
+  return rows.map(({ _count, ...row }) => ({
     ...row,
     status: STATUSES.find((known) => known === row.status) ?? null,
+    readings: _count.readings,
   }));
 }
 
@@ -256,8 +279,10 @@ function tokensIn(sealed: string): GmailSecrets {
 
 // Deletes the mailbox and what was read through it (ON DELETE CASCADE), and only then asks Google
 // to end the permission: a slow Google, or a sealed value that won't open, can't leave the row
-// here. Google is asked only when no active row holds the address any more. Null when the person
-// has no such mailbox. Works with the switch off and while reading is paused.
+// here. Google is asked only when no active row holds the address any more, checked before the
+// notices are stopped and again right before the permission ends. Once the row is gone, nothing
+// makes the removal an error: the caller always learns what it did. Null when the person has no
+// such mailbox. Works with the switch off and while reading is paused.
 export async function removeMailbox(
   userId: string,
   mailboxId: string,
@@ -308,19 +333,31 @@ export async function removeMailbox(
   // The refresh token ends the whole permission; the access token goes only when it's all there is.
   const ending = secrets.refreshToken ?? secrets.accessToken;
   let endedAtGoogle = false;
-  if (ending !== null && !(await heldByAnyone(row.address, { client }))) {
+  if (ending !== null && !(await heldOrUnknown(row.address, client))) {
     // Best effort, and before the permission ends, since Gmail would turn the token away after.
     const accessGood = accessExpiresAt !== null && accessExpiresAt > now;
     if (secrets.accessToken !== null && accessGood) await stopWatch(secrets.accessToken);
-    endedAtGoogle = await revokeTokens([ending]);
+    // Someone may have connected the address while Google was stopping its notices, and ending the
+    // permission would end theirs too.
+    if (!(await heldOrUnknown(row.address, client))) endedAtGoogle = await revokeTokens([ending]);
   }
-  await logAudit(
-    actor,
-    "gmail_disconnected",
-    { type: "gmail_mailbox", id: row.id },
-    { user_id: userId, reason, ended_at_google: endedAtGoogle },
-  );
-  await track(userId, "gmail_disconnected", { reason });
+  // The row is gone, so this is what happened whatever comes next: a record that can't be written
+  // now is logged, and the caller still learns it (the page's words after Disconnect depend on it).
+  try {
+    await logAudit(
+      actor,
+      "gmail_disconnected",
+      { type: "gmail_mailbox", id: row.id },
+      { user_id: userId, reason, ended_at_google: endedAtGoogle },
+    );
+  } catch (error) {
+    log.error("Gmail removal not recorded", { mailboxId: row.id, kind: kindOf(error) });
+  }
+  try {
+    await track(userId, "gmail_disconnected", { reason });
+  } catch (error) {
+    log.error("Gmail removal not counted", { mailboxId: row.id, kind: kindOf(error) });
+  }
   return { endedAtGoogle, hadAccess };
 }
 

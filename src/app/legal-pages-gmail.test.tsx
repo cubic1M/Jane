@@ -27,7 +27,9 @@ const text = (page: () => React.ReactElement) =>
     .replace(/&#x27;|&apos;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    // A link ending before a comma leaves a space no reader sees.
+    .replace(/ ([.,])/g, "$1");
 const source = (path: string) => readFileSync(path, "utf8");
 const PAGES = { PrivacyPage, TermsPage, SecurityPage, GoodbyePage };
 
@@ -115,8 +117,14 @@ describe("Gmail mailboxes on the legal pages", () => {
     expect(privacy).toContain(
       "Jane's use of information received from Google APIs follows Google's API Services User Data Policy, including its Limited Use requirements.",
     );
+    // Google's policy forbids creating, training or improving a model with the data, not only
+    // training one.
     expect(privacy).toMatch(
-      /never for advertising or for lending or credit decisions, never sold and never used to train AI models/,
+      /never for advertising or for lending or credit decisions, never sold and never used to create, train or improve AI models/,
+    );
+    // The policy's name is a link to Google's own page for it.
+    expect(renderToStaticMarkup(PrivacyPage())).toMatch(
+      /<a href="https:\/\/developers\.google\.com\/terms\/api-services-user-data-policy"[^>]*>API Services User Data Policy<\/a>/,
     );
     expect(privacy).toMatch(/No team page shows your mailbox's address or what Jane read/);
     const admin = (dir: string): string[] =>

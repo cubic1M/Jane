@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CLAUDE_BACKGROUND_DAILY_CAP_CENTS } from "@/config/agent-chat";
 import { GMAIL_MONTH_SHARE } from "@/config/gmail";
@@ -31,8 +31,18 @@ const system = () => systemDb("Test: looks at and clears this file's own counter
 
 describe.runIf(url)("the limits on Claude reading mail", () => {
   const people: string[] = [];
-  // A month nobody else's test writes the spend of everyone into, cleared after.
-  const FAR = new Date("2233-05-10T12:00:00.000Z");
+  // A month nobody else's test writes the spend of everyone into, and this run's own: a row a run
+  // killed half way left behind, or one a run going on at the same time writes, is in another month.
+  // Cleared after.
+  const FAR = new Date(Date.UTC(2300 + randomInt(700), randomInt(12), 10, 12));
+  const monthRow = { key: "chatmonth:total", windowStart: monthStartUtc(FAR) };
+  // Sets that month's spend for all of Claude, whether or not its row is there already.
+  const spent = (count: number) =>
+    system().rateLimit.upsert({
+      where: { key_windowStart: monthRow },
+      create: { ...monthRow, count },
+      update: { count },
+    });
 
   async function person(): Promise<string> {
     const user = await db.user.create({
@@ -64,6 +74,7 @@ describe.runIf(url)("the limits on Claude reading mail", () => {
     countRead(userId, sender, { client: db, now });
 
   beforeEach(() => {
+    vi.stubEnv("AUTH_SECRET", "site-secret-one");
     vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
     vi.stubEnv("KILL_CLAUDE", "");
     vi.stubEnv("OPS_SWITCHES", "");
@@ -78,9 +89,7 @@ describe.runIf(url)("the limits on Claude reading mail", () => {
         where: { OR: people.map((id) => ({ key: { endsWith: `:${id}` } })) },
       });
     }
-    await system().rateLimit.deleteMany({
-      where: { key: "chatmonth:total", windowStart: monthStartUtc(FAR) },
-    });
+    await system().rateLimit.deleteMany({ where: monthRow });
     await system().user.deleteMany({ where: { id: { in: people } } });
   });
 
@@ -102,13 +111,12 @@ describe.runIf(url)("the limits on Claude reading mail", () => {
       const userId = await person();
       vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "1000");
       const share = 1000 * GMAIL_MONTH_SHARE * 100;
-      const month = { key: "chatmonth:total", windowStart: monthStartUtc(FAR) };
-      await system().rateLimit.create({ data: { ...month, count: share - 1 } });
+      // The month's row as a run killed before its clean-up leaves it: this run sets its own spend
+      // over it rather than failing on a row that is there already.
+      await spent(share);
+      await spent(share - 1);
       expect(await ready(userId, FAR)).toEqual({ ok: true });
-      await system().rateLimit.update({
-        where: { key_windowStart: month },
-        data: { count: share },
-      });
+      await spent(share);
       expect(await ready(userId, FAR)).toEqual({ ok: false, why: "everyone" });
       // Another person is stopped the same way: it is everyone's.
       expect(await ready(await person(), FAR)).toEqual({ ok: false, why: "everyone" });
@@ -236,6 +244,79 @@ describe.runIf(url)("the limits on Claude reading mail", () => {
       const month = `gmailReadsMonth:${userId}`;
       expect(Object.keys(await counters(userId))).toContain(month);
       expect(KEEP_RATE_LIMIT_PREFIXES.some((prefix) => month.startsWith(prefix))).toBe(true);
+    });
+  });
+
+  describe("a sender's counter", () => {
+    // What anyone holding the database could make from a list of domains: the plain SHA-256 of each,
+    // alone or in the shapes these keys have had or could have, whole or cut as a key cuts it.
+    const plainHashes = (userId: string, domain: string): string[] =>
+      [domain, `sender:${domain}`, `gmail_sender:${domain}`, `gmail_sender:${userId}:${domain}`]
+        .map((text) => createHash("sha256").update(text).digest("hex"))
+        .flatMap((hex) => [hex, hex.slice(0, 32)]);
+
+    // This person's sender counters: the keyed part of each key, and its count.
+    async function senders(userId: string): Promise<[string, number][]> {
+      return Object.entries(await counters(userId)).flatMap(([key, n]): [string, number][] => {
+        const [name, keyed] = key.split(":");
+        return name === "gmailSenderReads" ? [[keyed, n]] : [];
+      });
+    }
+
+    it("is keyed with the site's secret: no plain SHA-256 of the sender's domain finds it", async () => {
+      const userId = await person();
+      await count(userId, "clinic.example");
+      const found = await senders(userId);
+      expect(found).toHaveLength(1);
+      const [[keyed]] = found;
+      expect(keyed).toMatch(/^[0-9a-f]{32}$/);
+      expect(plainHashes(userId, "clinic.example")).not.toContain(keyed);
+    });
+
+    it("depends on the site's secret, and is the same counter each time under one secret", async () => {
+      const userId = await person();
+      await count(userId, "clinic.example");
+      await count(userId, "clinic.example");
+      vi.stubEnv("AUTH_SECRET", "site-secret-two");
+      await count(userId, "clinic.example");
+      expect((await senders(userId)).map(([, n]) => n).sort()).toEqual([1, 2]);
+    });
+
+    it("differs between two people for one sender, so their counters can't be matched", async () => {
+      const one = await person();
+      const two = await person();
+      await count(one, "clinic.example");
+      await count(two, "clinic.example");
+      const [[keyedOne]] = await senders(one);
+      const [[keyedTwo]] = await senders(two);
+      expect(keyedOne).not.toBe(keyedTwo);
+    });
+
+    it("without AUTH_SECRET, or with an empty one, is still no plain hash, and still holds the sender's limit", async () => {
+      const userId = await person();
+      const limit = RATE_LIMITS.gmailSenderReads.limit;
+      vi.stubEnv("AUTH_SECRET", undefined);
+      for (let n = 1; n < limit; n++) expect(await count(userId, "clinic.example")).toBe("ok");
+      // An empty secret is none: the same counter, never one keyed with an empty key.
+      vi.stubEnv("AUTH_SECRET", "");
+      expect(await count(userId, "clinic.example")).toBe("ok");
+      expect(await count(userId, "clinic.example")).toBe("sender_limit");
+      const found = await senders(userId);
+      expect(found.map(([, n]) => n)).toEqual([limit]);
+      const [[keyed]] = found;
+      expect(plainHashes(userId, "clinic.example")).not.toContain(keyed);
+    });
+
+    it("without AUTH_SECRET, is keyed with one made when the module loads, never one written down", async () => {
+      const userId = await person();
+      vi.stubEnv("AUTH_SECRET", undefined);
+      expect(await count(userId, "clinic.example")).toBe("ok");
+      // A fresh load stands in for a new process. A key written in the source, or an empty one,
+      // would be the same in it, and anyone could hash a list of domains with that key.
+      vi.resetModules();
+      const fresh = await import("./limits");
+      expect(await fresh.countRead(userId, "clinic.example", { client: db, now: NOW })).toBe("ok");
+      expect((await senders(userId)).map(([, n]) => n)).toEqual([1, 1]);
     });
   });
 });

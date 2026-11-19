@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { GMAIL_LIMITS, gmailOffered, gmailOpen } from "@/config/gmail";
+import { mailboxAddress } from "@/lib/gmail/api";
 import { syncFromNotice } from "@/lib/gmail/sync";
 import { verifyGmailWebhook } from "@/lib/gmail/webhook-verify";
 import { log } from "@/lib/log";
@@ -12,22 +13,19 @@ import { cappedText } from "@/lib/robinhood/capped";
 // notice names a mailbox and nothing else, and is only a hint: the read starts from the place Jane
 // saved, so a notice sent again, or one whose body someone else wrote, can at most cause a read.
 // Once verified, every notice is acknowledged, whatever it says, because Google would only send
-// again what Jane can't use. The read runs after the answer, so Google isn't kept waiting.
+// again what Jane can't use. The read runs after the answer, so Google isn't kept waiting, in what
+// is left of GMAIL_LIMITS.runBudgetMs since the notice arrived (routes.integration.test.ts in
+// src/lib/gmail adds up the most it can take).
 export const maxDuration = 300;
-
-// A mailbox's address, as far as it matters here: one @, no spaces, no longer than one can be. It
-// must stay the rule getProfile saves addresses by (ADDRESS in src/lib/gmail/api.ts): a notice for
-// an address saved there and refused here would be dropped, and that mailbox read only by the
-// daily job.
-const ADDRESS = /^[^\s@]{1,64}@[^\s@]{1,255}$/;
 
 const fieldsOf = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 
 const received = () => NextResponse.json({ received: true });
 
-// The mailbox a notice names, lowercased, or null when the body isn't one: Pub/Sub's envelope holds
-// Gmail's JSON in base64, in either alphabet, and only its address is used.
+// The mailbox a notice names, or null when the body isn't one: Pub/Sub's envelope holds Gmail's JSON
+// in base64, in either alphabet, and only its address is used, by the rule every mailbox's address
+// was saved by (mailboxAddress), so a notice can name any of them.
 function addressIn(body: string): string | null {
   let envelope: unknown;
   let notice: unknown;
@@ -39,13 +37,12 @@ function addressIn(body: string): string | null {
   } catch {
     return null;
   }
-  const { emailAddress } = fieldsOf(notice);
-  if (typeof emailAddress !== "string") return null;
-  const address = emailAddress.toLowerCase();
-  return ADDRESS.test(address) ? address : null;
+  return mailboxAddress(fieldsOf(notice).emailAddress);
 }
 
 export async function POST(request: Request) {
+  // One deadline for everything this notice starts: what the answer spent comes out of the read's.
+  const startedAt = Date.now();
   if (!gmailOffered()) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // 1. Size: what the sender says, then what arrived, read no further than the limit.
@@ -77,7 +74,9 @@ export async function POST(request: Request) {
   // 5. The read, after the answer. An unknown address reads nothing, and is answered the same.
   after(async () => {
     try {
-      await syncFromNotice(address);
+      await syncFromNotice(address, {
+        budgetMs: Math.max(0, GMAIL_LIMITS.runBudgetMs - (Date.now() - startedAt)),
+      });
     } catch (error) {
       log.error("Gmail read from a notice broke", {
         kind: error instanceof Error ? error.name : typeof error,

@@ -203,12 +203,19 @@ export function fromDomain(meta: MailMeta): string | null {
 
 const GOOGLE = "mx.google.com";
 
-// Whether a header says Google's servers wrote it. Loose on purpose (any spelling, anything around
-// the name): this decides which headers count, and a header that only looks like Google's must
-// count, so that it can't sit beside the real one unseen.
+// Whether a header is written in the name of Google's servers: the first word before its first
+// ";", with comments taken out, is mx.google.com in any case. That is the server id dmarcPass
+// below trusts, so every header it could trust counts here, and a second one in Google's name
+// leaves the email unverified whatever order they come in. A look-alike (the name in quotes or in
+// a comment, "mx.google.com.evil.example") counts for nothing and is never trusted either. Nothing
+// after the first ";" is read, and no limit applies: Google writes its name first, before the
+// envelope address it copies in, so no quote, bracket or length a sender gives that address can
+// stop Google's own header from counting.
 function namesGoogle(header: string): boolean {
   const end = header.indexOf(";");
-  return (end === -1 ? header : header.slice(0, end)).toLowerCase().includes(GOOGLE);
+  const server = withoutComments(end === -1 ? header : header.slice(0, end));
+  const [first = ""] = server?.split(" ").filter(Boolean) ?? [];
+  return first.toLowerCase() === GOOGLE;
 }
 
 // The domain Google's header says passed DMARC, lowered, or null. Strict on purpose: the header
@@ -223,8 +230,8 @@ function dmarcPass(header: string): string | null {
   if (text === null) return null;
   const [server, ...clauses] = text.split(";").map((part) => part.split(" ").filter(Boolean));
   if (server.length !== 1 || server[0].toLowerCase() !== GOOGLE) return null;
-  // Counted loosely, as Google's name is: a verdict written any other way ("dmarc/1=fail",
-  // "dmarc = fail") is still a second verdict, and never a pass.
+  // Counted loosely: a verdict written any other way ("dmarc/1=fail", "dmarc = fail") is still a
+  // second verdict, and never a pass.
   const dmarc = clauses.filter(([first = ""]) => first.toLowerCase().startsWith("dmarc"));
   if (dmarc.length !== 1 || dmarc[0].length !== 2) return null;
   const [method, result, ...rest] = dmarc[0][0].split("=");
@@ -240,7 +247,18 @@ function dmarcPass(header: string): string | null {
 // that reaches the page.
 const SHOWN_DIGITS_IN_A_ROW = 3;
 const SHOWN_HYPHENS = 3;
-const TOO_MANY_DIGITS = new RegExp(`\\d{${SHOWN_DIGITS_IN_A_ROW + 1}}`);
+
+// The most characters in a row that read as digits: digits, and the letters that pass for them (o
+// for 0, l and i for 1) in a row that holds a digit, so "888-555-o142" has four in a row. The
+// domain is lowered already, and shownPart refuses one longer than a shown name before asking, so
+// no crafted length ever reaches this.
+function digitsInARow(domain: string): number {
+  let most = 0;
+  for (const row of domain.split(/[^\doli]+/)) {
+    if (/\d/.test(row)) most = Math.max(most, row.length);
+  }
+  return most;
+}
 
 // The part of a domain a company registers: its last two labels, or three where the last two are
 // an ending many companies share (co.uk). What stands before it costs a sender nothing to write,
@@ -252,7 +270,7 @@ function shownPart(domain: string): string | null {
   const shown = labels.slice(-keep).join(".");
   const reads =
     shown.length <= GMAIL_LIMITS.shownDomainChars &&
-    !TOO_MANY_DIGITS.test(shown) &&
+    digitsInARow(shown) <= SHOWN_DIGITS_IN_A_ROW &&
     shown.split("-").length - 1 <= SHOWN_HYPHENS;
   return reads ? shown : null;
 }

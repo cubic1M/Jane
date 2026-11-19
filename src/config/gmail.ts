@@ -103,8 +103,9 @@ export const GMAIL_MONTH_SHARE = 0.5;
 export const GMAIL_APP_VERIFIED = false;
 
 export const GMAIL_LIMITS = {
-  // One request to Google.
-  callTimeoutMs: 10_000,
+  // One try of a request to Google, its answer read to the end. Short: when a read's time is up,
+  // the email it is still in can be waiting on several of these.
+  callTimeoutMs: 8_000,
   // More tries a request gets after a 429, a 5xx or no answer, with a short wait between.
   callRetries: 2,
   // That wait before the second try; it grows with each try after.
@@ -125,15 +126,17 @@ export const GMAIL_LIMITS = {
   webhookBytes: 64 * 1024,
   // Mailboxes one person may connect.
   mailboxesMost: 5,
-  // Everything one notice or one connect starts.
+  // Everything one notice or one connect starts, counted from when its request arrived: the route's
+  // own calls come out of it.
   runBudgetMs: 150_000,
   // Emails one read asks Google for before it stops; the next read carries on from there.
   runMessages: 60,
   // One mailbox in the daily job: it gets the smaller of this and what is left of the run.
   nightMailboxBudgetMs: 20_000,
   // One run of the daily job; mailboxes it doesn't reach wait for the next. Set so that the last
-  // read, and the calls it is still waiting on, end inside the function's five minutes.
-  cronBudgetMs: 170_000,
+  // read, the calls it is still waiting on and the job's own end inside the function's five
+  // minutes, with time to spare.
+  cronBudgetMs: 165_000,
   // Mailboxes the daily job takes on in one run.
   cronMailboxes: 500,
   // A mailbox checked more recently than this waits for tomorrow's job.
@@ -148,8 +151,13 @@ export const GMAIL_LIMITS = {
   backoffMostHours: 12,
   // The most Claude may write back about one email.
   readerMaxTokens: 2_000,
-  // One request to Claude, for one email.
+  // One request to Claude, for one email: how long its answer may take to begin. One that doesn't
+  // begin in time is that email's own trouble, and it is skipped.
   readerTimeoutMs: 20_000,
+  // The most that request may take in all, its answer read to the end: past this it is let go, and
+  // the email is read later. A little over readerTimeoutMs, so an answer that didn't begin in time
+  // is still that email's own trouble.
+  readerMostMs: 22_000,
   // A read that stopped because Claude couldn't be asked tries again after this.
   readerRetryMinutes: 30,
   // Emails in a row Claude wouldn't read before the read stops as if Claude were down.
@@ -220,7 +228,8 @@ export const SKIPPED_LABELS: ReadonlySet<string> = new Set([
 ]);
 
 // Mail anyone can sign up for: a person writing, not a company. Matched exactly, never by suffix,
-// so a company whose domain only ends like one of these is still a company.
+// so a company whose domain only ends like one of these is still a company. The large free services
+// and internet providers only: a person's own domain can't be told from a company's.
 export const PERSONAL_MAIL_DOMAINS: ReadonlySet<string> = new Set([
   ...SHARED_MAIL_DOMAINS,
   "ymail.com",
@@ -238,4 +247,42 @@ export const PERSONAL_MAIL_DOMAINS: ReadonlySet<string> = new Set([
   "bellsouth.net",
   "cox.net",
   "charter.net",
+  // Yahoo's older name, and its addresses in other countries.
+  "rocketmail.com",
+  "yahoo.co.uk",
+  "yahoo.ca",
+  "yahoo.com.au",
+  "yahoo.co.nz",
+  "yahoo.co.in",
+  "yahoo.in",
+  "yahoo.ie",
+  "yahoo.fr",
+  "yahoo.de",
+  "yahoo.it",
+  "yahoo.es",
+  "yahoo.com.br",
+  "yahoo.com.mx",
+  "yahoo.com.ar",
+  "yahoo.com.sg",
+  "yahoo.com.hk",
+  "yahoo.com.tw",
+  "yahoo.com.ph",
+  "yahoo.co.id",
+  "yahoo.co.jp",
+  // Large providers in other countries.
+  "btinternet.com",
+  "gmx.de",
+  "web.de",
+  "t-online.de",
+  "orange.fr",
+  "rogers.com",
+  "shaw.ca",
+  "bigpond.com",
+  // And in the US: internet providers' mail, a free service, and DuckDuckGo's forwarding addresses.
+  "earthlink.net",
+  "optonline.net",
+  "frontier.com",
+  "windstream.net",
+  "juno.com",
+  "duck.com",
 ]);

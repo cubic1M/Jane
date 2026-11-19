@@ -3,7 +3,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 // The mailbox store against a real database and the fake Google: who may connect, saving a
 // sign-in with take-over and the cap, what the page is given, and removing, with exactly what
-// reaches Google each time. Nothing here talks to Google.
+// reaches Google each time, also when the database fails part of the way. Nothing here talks to
+// Google.
 
 vi.mock("@/lib/db", async () => {
   const { PrismaClient: Client } = await import("@/generated/prisma/client");
@@ -12,11 +13,22 @@ vi.mock("@/lib/db", async () => {
     db: new Client({ adapter: new Adapter({ connectionString: process.env.TEST_DATABASE_URL }) }),
   };
 });
+// The records a removal writes, as they are, watched, so a test can make one fail.
+vi.mock("@/lib/audit", async (original) => {
+  const real = await original<typeof import("@/lib/audit")>();
+  return { ...real, logAudit: vi.fn(real.logAudit) };
+});
+vi.mock("@/lib/analytics", async (original) => {
+  const real = await original<typeof import("@/lib/analytics")>();
+  return { ...real, track: vi.fn(real.track) };
+});
 
 import { GMAIL_LIMITS } from "@/config/gmail";
 import { GMAIL_DISCLOSURE_VERSION } from "@/config/gmail-disclosure";
-import { SYSTEM_ACTOR } from "@/lib/audit";
+import { track } from "@/lib/analytics";
+import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { encrypt, keyIdOf } from "@/lib/crypto";
+import { exportUserData } from "@/lib/data-export";
 import { db } from "@/lib/db";
 import { rotateKeys } from "@/lib/key-rotation";
 import { systemDb } from "@/lib/system-db";
@@ -52,6 +64,7 @@ const MAILBOX_FIELDS: (keyof MailboxView)[] = [
   "lastCheckedAt",
   "lastErrorCode",
   "missedAt",
+  "readings",
   "status",
   "watchExpiresAt",
 ];
@@ -133,6 +146,15 @@ describe.runIf(url)("the mailbox store", () => {
   const readingsOf = (mailboxId: string) => system().gmailReading.count({ where: { mailboxId } });
   // What the fake Google was asked, in order: the method and the last part of the path.
   const asked = () => fake.requests.map((r) => `${r.method} ${r.path.split("/").at(-1)}`);
+
+  // What the code logs as errors from here to the end of the test, as one text.
+  function errorsLogged(): () => string {
+    const lines: unknown[][] = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      lines.push(args);
+    });
+    return () => JSON.stringify(lines);
+  }
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", KEY);
@@ -336,15 +358,33 @@ describe.runIf(url)("the mailbox store", () => {
         where: { event: "gmail_taken_over", targetId: held.id },
       });
       expect(audits).toHaveLength(1);
+      // The system's record, naming the earlier holder and only them: who connected it is in their
+      // own gmail_connected record.
       expect(audits[0]).toMatchObject({
-        actorType: "user",
-        actorId: newer,
+        actorType: "system",
+        actorId: null,
         targetType: "gmail_mailbox",
-        metadata: { user_id: earlier },
       });
+      expect(audits[0]?.metadata).toEqual({ user_id: earlier });
+      expect(JSON.stringify(audits)).not.toContain(newer);
       expect(JSON.stringify(audits)).not.toContain(address);
       expect(JSON.stringify(audits)).not.toMatch(/fake-access|fake-refresh/);
       expect(fake.requests).toEqual([]);
+    });
+
+    it("keeps the take-over out of the new holder's own records: their Download my data names no one who held it before", async () => {
+      const [earlier, newer] = [await person(), await person()];
+      const address = newAddress();
+      const held = await connected(earlier, address);
+      const taken = await connected(newer, address);
+      expect(taken.tookOver).toBe(true);
+
+      const theirs = JSON.stringify(await exportUserData(newer, { client: db, now: NOW }));
+
+      // Their own mailbox is in it, and nothing of the earlier holder's.
+      expect(theirs).toContain(taken.id);
+      expect(theirs).not.toContain(earlier);
+      expect(theirs).not.toContain(held.id);
     });
 
     it("two people saving one address at the same moment leave exactly one active row", async () => {
@@ -440,6 +480,7 @@ describe.runIf(url)("the mailbox store", () => {
         lastErrorCode: "watch_failed",
         missedAt: at(-60),
         watchExpiresAt: null,
+        readings: 0,
       });
       const shown = JSON.stringify(view);
       for (const row of await system().gmailMailbox.findMany({ where: { userId } })) {
@@ -490,6 +531,34 @@ describe.runIf(url)("the mailbox store", () => {
         where: { mailboxId: one.id, receivedAt: minutesAgo[most] },
       });
       expect(await readingsView(userId, { client: db })).toMatchObject({ more: false });
+    });
+
+    it("counts each mailbox's money emails, all of them, not only the newest the page lists", async () => {
+      const [userId, other] = [await person(), await person()];
+      const busy = await connected(userId, newAddress());
+      const quiet = await connected(userId, newAddress(), { now: at(1) });
+      const none = await connected(userId, newAddress(), { now: at(2) });
+      const most = GMAIL_LIMITS.shownReadings;
+      await addReadings(
+        userId,
+        busy.id,
+        Array.from({ length: most + 1 }, (_, i) => at(-i)),
+      );
+      await addReadings(userId, quiet.id, [at(-24 * 60), at(-25 * 60)]);
+      const theirs = await connected(other, newAddress());
+      await addReadings(other, theirs.id, [at(60), at(61)]);
+
+      const view = await mailboxesView(userId, { client: db });
+
+      expect(view.map(({ id, readings }) => ({ id, readings }))).toEqual([
+        { id: busy.id, readings: most + 1 },
+        { id: quiet.id, readings: 2 },
+        { id: none.id, readings: 0 },
+      ]);
+      // The page's list holds only the newest, every one from the busy mailbox: the count is what
+      // says the quiet one was read.
+      const { readings } = await readingsView(userId, { client: db });
+      expect(readings.filter((reading) => reading.mailbox === quiet.address)).toEqual([]);
     });
 
     it("shows and removes a row planted with marker words, as the access proof plants it, sending nothing", async () => {
@@ -711,6 +780,134 @@ describe.runIf(url)("the mailbox store", () => {
 
       expect(await rowOf(id)).toBeNull();
       expect(fake.requests).toEqual([]);
+    });
+
+    it("leaves the permission at Google when another person connects the mailbox while its notices are being stopped", async () => {
+      const [userId, newer] = [await person(), await person()];
+      const address = newAddress();
+      const { id } = await connected(userId, address);
+      const stopping = fake.hold("stop");
+
+      const removing = removeMailbox(userId, id, "user_disconnected", { client: db, now: NOW });
+      await stopping.reached;
+      // Their sign-in finishes while Google is stopping the notices. The row is gone by then, so
+      // nothing is taken over.
+      const theirs = await connected(newer, address);
+      stopping.release();
+      const removed = await removing;
+
+      expect(theirs.tookOver).toBe(false);
+      // Google still holds their permission, so the page can't say it ended.
+      expect(removed).toEqual({ endedAtGoogle: false, hadAccess: true });
+      expect(asked()).toEqual(["POST stop"]);
+      expect(fake.revokedTokens).toEqual([]);
+      expect((await rowOf(theirs.id))?.status).toBe("active");
+      const access = {
+        token: async () => theirs.tokens.accessToken,
+        renew: async () => theirs.tokens.accessToken,
+      };
+      await expect(getProfile(access)).resolves.toMatchObject({ address });
+      await expect(refreshTokens(theirs.tokens.refreshToken, { now: NOW })).resolves.toMatchObject({
+        accessToken: expect.any(String),
+      });
+    });
+
+    // The client removal goes through, with its count of who holds the address failing at the given
+    // turn (1: before the notices are stopped, 2: right before the permission is ended), as a
+    // database dropping the connection would.
+    function countFailsAt(failing: number) {
+      const counts = { made: 0 };
+      return db.$extends({
+        query: {
+          gmailMailbox: {
+            async count({ args, query }) {
+              counts.made += 1;
+              if (counts.made === failing) throw new Error("Connection terminated unexpectedly");
+              return query(args);
+            },
+          },
+        },
+      }) as unknown as PrismaClient;
+    }
+
+    it.each([
+      { when: "before its notices are stopped", failing: 1, google: [] as string[] },
+      { when: "right before the permission is ended", failing: 2, google: ["POST stop"] },
+    ])(
+      "doesn't end the permission when it can't tell whether anyone holds the mailbox ($when), and still records the Disconnect",
+      async ({ failing, google }) => {
+        const userId = await person();
+        const { id } = await connected(userId, newAddress());
+        const logged = errorsLogged();
+
+        const removed = await removeMailbox(userId, id, "user_disconnected", {
+          client: countFailsAt(failing),
+          now: NOW,
+        });
+
+        // The page then says Google didn't confirm, and how to end it there.
+        expect(removed).toEqual({ endedAtGoogle: false, hadAccess: true });
+        expect(await rowOf(id)).toBeNull();
+        expect(asked()).toEqual(google);
+        expect(fake.revokedTokens).toEqual([]);
+        const audit = await system().auditLog.findFirstOrThrow({
+          where: { event: "gmail_disconnected", targetId: id },
+        });
+        expect(audit.metadata).toMatchObject({ user_id: userId, ended_at_google: false });
+        // What kind of error it was, never what it said.
+        expect(logged()).toContain("Gmail removal couldn't tell whether anyone holds the mailbox");
+        expect(logged()).not.toContain("terminated");
+      },
+    );
+
+    it("still says what it did, and still counts it, when the security record can't be written after the delete", async () => {
+      const userId = await person();
+      const { id, tokens } = await connected(userId, newAddress());
+      vi.mocked(logAudit).mockRejectedValueOnce(new Error("Connection terminated unexpectedly"));
+      const logged = errorsLogged();
+
+      const removed = await removeMailbox(userId, id, "user_disconnected", {
+        client: db,
+        now: NOW,
+      });
+
+      expect(removed).toEqual({ endedAtGoogle: true, hadAccess: true });
+      expect(await rowOf(id)).toBeNull();
+      expect(asked()).toEqual(["POST stop", "POST revoke"]);
+      expect(fake.revokedTokens).toEqual([tokens.refreshToken]);
+      expect(
+        await system().auditLog.count({ where: { event: "gmail_disconnected", targetId: id } }),
+      ).toBe(0);
+      expect(
+        await system().analyticsEvent.count({ where: { userId, name: "gmail_disconnected" } }),
+      ).toBe(1);
+      expect(logged()).toContain("Gmail removal not recorded");
+      expect(logged()).not.toContain("terminated");
+    });
+
+    it("still says what it did, and still records it, when the count of Disconnects can't be written after the delete", async () => {
+      const userId = await person();
+      const { id, tokens } = await connected(userId, newAddress());
+      vi.mocked(track).mockRejectedValueOnce(new Error("Connection terminated unexpectedly"));
+      const logged = errorsLogged();
+
+      const removed = await removeMailbox(userId, id, "user_disconnected", {
+        client: db,
+        now: NOW,
+      });
+
+      expect(removed).toEqual({ endedAtGoogle: true, hadAccess: true });
+      expect(await rowOf(id)).toBeNull();
+      expect(fake.revokedTokens).toEqual([tokens.refreshToken]);
+      const audit = await system().auditLog.findFirstOrThrow({
+        where: { event: "gmail_disconnected", targetId: id },
+      });
+      expect(audit.metadata).toMatchObject({ ended_at_google: true });
+      expect(
+        await system().analyticsEvent.count({ where: { userId, name: "gmail_disconnected" } }),
+      ).toBe(0);
+      expect(logged()).toContain("Gmail removal not counted");
+      expect(logged()).not.toContain("terminated");
     });
 
     // The client removal goes through, with a change landing between its read of the row and its

@@ -17,6 +17,12 @@ const ZERO_WIDTH_JOINER = char(0x200d);
 const SOFT_HYPHEN = char(0xad);
 const RIGHT_TO_LEFT = char(0x202e);
 const BYTE_ORDER_MARK = char(0xfeff);
+const NON_BREAKING_HYPHEN = char(0x2011);
+const FIGURE_DASH = char(0x2012);
+const EN_DASH = char(0x2013);
+const EM_DASH = char(0x2014);
+const MINUS = char(0x2212);
+const RIGHT_QUOTE = char(0x2019);
 
 const { bodyHeadChars: HEAD, bodyTailChars: TAIL, htmlCharsMost: MOST } = GMAIL_LIMITS;
 
@@ -256,12 +262,122 @@ describe("what Claude may see of a body", () => {
     "Order 4521 2026-11-03 15.49",
     "Due 2026-12-01 150.00",
     "Paid 11/18/2026 at 10:32 AM",
-    "Call 1-800-555-0199 or (415) 555-0142",
-    "Card ending 1234, three groups 4111 1111 1111",
     "Total: $84.20 (12345678 points, 3.5% back)",
-    "ZIP 94105-1234, order #12345678",
+    // A number beside a date or an amount is never counted together with it.
+    "Invoice 44712 2026-11-03 $15.49",
+    "Statement 4521 11/18/2026 1234.56",
+    "Paid 11/18/2026 10:32 AM",
+    "Due 18.11.2026 150.00",
+    "Paid on 2026/11/18, total $1,234,567.89",
+    "Call (415) 555-0142, ZIP 94105, order #12345678",
+    "Card ending 1234, two groups 4111 1111",
+    `Due 2026${EN_DASH}11${EN_DASH}03, plans from $15${EN_DASH}20, a credit of ${MINUS}$4.50`,
+    // Two dates joined by another mark are two dates, however many digits they hold together.
+    "Billing period 10/19/2026-11/18/2026, due 2026-12-01, total $45.67",
+    "Service 2026-10-19/2026-11-18 $45.00",
+    `Period 10/19/26${EN_DASH}11/18/26`,
+    // An amount after one number, or a short amount after any: neither is a number's last group.
+    "Invoice 44712 1234.56",
+    "Order 1234567 15.49",
   ])("leaves dates, amounts and short numbers as written: %s", (text) => {
     expect(forReader(text)).toBe(text);
+  });
+
+  it.each([
+    [
+      "a card in groups of four, six and five",
+      "Card number 3782 822463 10005 was charged $12.00",
+      "Card number [number] was charged $12.00",
+    ],
+    [
+      "a card in groups of four, six and four",
+      "Card 3056 930902 5904 charged $12.00",
+      "Card [number] charged $12.00",
+    ],
+    [
+      "an account in three groups of four",
+      "Account 1234 5678 9012 is past due $40.00",
+      "Account [number] is past due $40.00",
+    ],
+    [
+      "a Social Security number",
+      "Your SSN 123-45-6789 is on file. Amount $40.00",
+      "Your SSN [number] is on file. Amount $40.00",
+    ],
+    ["a Social Security number with spaces", "SSN 123 45 6789 on file", "SSN [number] on file"],
+    ["a card with dots", "Card 4111.1111.1111.1111 charged $12.00", "Card [number] charged $12.00"],
+    ["a card with slashes", "Card 4111/1111/1111/1111 charged", "Card [number] charged"],
+    [
+      "a card with non-breaking hyphens",
+      `Card ${["4111", "1111", "1111", "1111"].join(NON_BREAKING_HYPHEN)} charged`,
+      "Card [number] charged",
+    ],
+    [
+      "a Social Security number with en dashes",
+      `SSN 123${EN_DASH}45${EN_DASH}6789 on file`,
+      "SSN [number] on file",
+    ],
+    [
+      "a phone number with figure dashes",
+      `Call 1${FIGURE_DASH}800${FIGURE_DASH}555${FIGURE_DASH}0199 now`,
+      "Call [number] now",
+    ],
+    ["nine digits in two groups", "EIN 12-3456789 on file", "EIN [number] on file"],
+    [
+      "a number joined to a date by another mark",
+      "Account 1234-5678-9012/2026 on file",
+      "Account [number] on file",
+    ],
+    [
+      "a number beside a date and an amount, which stay",
+      "Card 3782 822463 10005 2026-11-03 15.49, SSN 123-45-6789 11/18/2026 $40.00",
+      "Card [number] 2026-11-03 15.49, SSN [number] 11/18/2026 $40.00",
+    ],
+    // Left as written before these shapes were masked; each holds nine digits or more.
+    [
+      "a phone number of eleven digits",
+      "Call 1-800-555-0199 or (415) 555-0142",
+      "Call [number] or (415) 555-0142",
+    ],
+    [
+      "three groups of four",
+      "Card ending 1234, three groups 4111 1111 1111",
+      "Card ending 1234, three groups [number]",
+    ],
+    [
+      "a ZIP code with its four more digits",
+      "ZIP 94105-1234, order #12345678",
+      "ZIP [number], order #12345678",
+    ],
+    // Cents written on the last group: the number goes whole, and no digit of it is left behind.
+    [
+      "a card in groups with cents on its last",
+      "Card 3782 822463 10005.00 charged",
+      "Card [number] charged",
+    ],
+    [
+      "an account in groups of four with cents on its last",
+      "Account 1234 5678 9012.50 is due",
+      "Account [number] is due",
+    ],
+    [
+      "a number in groups with an amount after it, which stays",
+      "Account 1234 5678 9012 15.49 is due",
+      "Account [number] 15.49 is due",
+    ],
+  ])("replaces a number of nine digits or more printed in groups: %s", (_what, text, seen) => {
+    expect(forReader(text)).toBe(seen);
+    expect(subjectForReader(text)).toBe(seen);
+  });
+
+  it("keeps no digit of a number it replaced, in any of those shapes", () => {
+    const text = forReader(
+      "Cards 3782 822463 10005, 3056 930902 5904, 4111.1111.1111.1111 and 4111/1111/1111/1111, account 1234 5678 9012, SSN 123-45-6789",
+    );
+    expect(text).toBe(
+      "Cards [number], [number], [number] and [number], account [number], SSN [number]",
+    );
+    expect(text).not.toMatch(/\d/);
   });
 
   it("makes every kind of space a plain space", () => {
@@ -421,6 +537,37 @@ describe("a code or a password given in the text", () => {
     "We set a temporary password for you.",
     "Your password is Xy7!abc",
     "Your new password is: hunter2",
+    // A password after a label.
+    "Your first bill is $79.99. Your WiFi network: HOME-1234, password: correcthorse42",
+    "Your account is ready. Username: jdoe Password: Xy7kq2LmP. Your first invoice is $20.00.",
+    "Wi-Fi password:correcthorse42",
+    "PASSWORD = hunter2",
+    "Password:\n  Xy7kq2LmP",
+    // A code given to approve, authorize or confirm something.
+    "Use code 482913 to approve your $500.00 payment.",
+    "Enter code 482913 to authorize this transfer of $250.00.",
+    "Enter code 48291375 to authorise this payment",
+    "Code 482913 to confirm your purchase of $12.00",
+    "Your code to confirm your $500.00 payment is 482913",
+    "Use code 482913 to securely approve the charge",
+    "Use code 482913 for payment approval of $500.00",
+    "Enter code 482913 for authorization of this $250.00 transfer",
+    // A password after a label set off with a dash, and "your password is" with a word between.
+    "Username - jdoe, Password - Xy7kq2LmP. Your first bill is $20.00.",
+    "Your Wi-Fi password is correcthorse42. Your first bill is $79.99.",
+    "Your online banking password is Xy7kq2LmP",
+    // "the password is", and words with an apostrophe or a digit before the word.
+    "Your Wi-Fi network is HOME-1234 and the password is correcthorse42. First bill $79.99",
+    "The password is correcthorse42",
+    "Your router's password is correcthorse42",
+    `Your router${RIGHT_QUOTE}s password is correcthorse42`,
+    "Your 5G Wi-Fi password is correcthorse42",
+    // A code asked for after what it approves, authorizes or confirms, in the same sentence.
+    "To approve your $500.00 payment, enter code 482913.",
+    "To approve, enter code 482913",
+    "To confirm your $500.00 payment, enter code 482913",
+    "To authorize this $250.00 transfer, enter code 482913",
+    "Approve your payment\nTo approve your $500.00 payment, enter code 482913.",
   ])("is found in: %s", (text) => {
     expect(carriesSecret(text)).toBe(true);
   });
@@ -457,6 +604,35 @@ describe("a code or a password given in the text", () => {
     "Your security code was sent on November 18, 2026",
     "Security code expires 2026-11-18",
     "Your access code is valid until 12/31/2026",
+    // A password label with nothing given after it but what was taken out, or none at all.
+    "Reset your password: [link]",
+    "Your password: [number]",
+    "Forgot your password? Reset it any time.",
+    "Passwords: never share them.",
+    "Your password-protected statement is attached.",
+    "Password - [link]",
+    // What a card receipt prints for a charge, and a code that only says a payment went through.
+    "Approval code: 004521",
+    "Authorization code: 004521",
+    "Code 482913 confirms your payment of $20.00",
+    // A code nothing says the use of. Treating every code as a secret would skip receipts too.
+    "Here's your code: 482913",
+    // A footer that only mentions a password, and a receipt that only mentions a confirmation.
+    "Never share your password - we will never ask for it.",
+    `Protect your password ${EM_DASH} never share it with anyone.`,
+    `Keep your password ${EN_DASH} and your PIN ${EN_DASH} safe.`,
+    "Your online banking password is never requested by email.",
+    "Your Acme password is never sent by email.",
+    "Your account password is safe with us.",
+    "Remember, the password is case sensitive.",
+    "The password is never sent by email.",
+    "Reference code 4521 for confirmation of your order. Total $45.00",
+    // What a receipt prints for a charge, after words that confirm the payment, not the code.
+    "This is to confirm your payment of $45.00, authorization code 004521.",
+    "Payment received\nWe're writing to confirm your recent payment\nAmount: $45.00\nAuthorization code: 004521",
+    "Reply YES to confirm your appointment, reference code 4521",
+    // ... and in the sentence before the one that gives a code.
+    "We're writing to confirm your payment of $45.00. Your receipt code is 004521.",
     // Digits that aren't a code.
     "Total $4829.00, security code on file",
     "Security code: $4829",
@@ -513,11 +689,16 @@ describe("a code or a password given in the text", () => {
 // One long run of one character made earlier readers in this repository start over from every
 // position (src/lib/connectors/tax-upload-crafted-text.test.ts). These are each read in one pass.
 const LONG = 100_000;
+// Counted as work, this process's time on a processor, not as time passed: a busy machine keeping
+// the test waiting adds nothing. One pass over any of these takes tens of milliseconds, and starting
+// over from every position takes seconds, so the limit sits far from both.
+const WORK_MS_MOST = 2_000;
 
-function elapsedMs(read: () => unknown): number {
-  const start = performance.now();
+function workMs(read: () => unknown): number {
+  const since = process.cpuUsage();
   read();
-  return performance.now() - start;
+  const { user, system } = process.cpuUsage(since);
+  return (user + system) / 1_000;
 }
 
 describe("crafted text is read in one pass", () => {
@@ -542,7 +723,7 @@ describe("crafted text is read in one pass", () => {
     ["spaces and line breaks", " \n".repeat(LONG / 2)],
     ["line break tags", "<br>".repeat(LONG / 4)],
   ])("HTML of %s", (_what, html) => {
-    expect(elapsedMs(() => htmlToText(html))).toBeLessThan(250);
+    expect(workMs(() => htmlToText(html))).toBeLessThan(WORK_MS_MOST);
   });
 
   it.each([
@@ -560,6 +741,21 @@ describe("crafted text is read in one pass", () => {
     ["digits and points", "1.".repeat(LONG / 2)],
     ["long numbers with decimals", "123456789.12 ".repeat(LONG / 13)],
     ["a long number and a row of decimals", `123456789${".1".repeat(LONG / 2)}`],
+    ["digits joined by spaces", "1 ".repeat(LONG / 2)],
+    ["digits joined by slashes", "1/".repeat(LONG / 2)],
+    ["digits joined by dashes", "1-".repeat(LONG / 2)],
+    ["digits joined by every mark in turn", "1 1.1/1-".repeat(LONG / 8)],
+    ["dates and amounts, one after another", "2026-11-03 15.49 ".repeat(LONG / 17)],
+    ["groups that end in a mark and no digit", "1234- ".repeat(LONG / 6)],
+    ["groups of eight digits joined by spaces", "12345678 ".repeat(LONG / 9)],
+    ["digits on their own between words", "1 a ".repeat(LONG / 4)],
+    ["groups with cents on the last, one after another", "1234 5678 9012.50 ".repeat(LONG / 18)],
+    ["plain groups, then one with cents", `${"1 ".repeat(LONG / 2)}1234.56`],
+    [
+      "digits joined by every kind of dash",
+      `1${NON_BREAKING_HYPHEN}1${EN_DASH}1${MINUS}`.repeat(LONG / 6),
+    ],
+    ["dates joined by other marks, one after another", "10/19/2026-".repeat(LONG / 11)],
     ["the start of a link", "http://".repeat(LONG / 7)],
     ["links run on from a word", "receipthttps://a.example ".repeat(LONG / 25)],
     ["www", "www.".repeat(LONG / 4)],
@@ -571,8 +767,8 @@ describe("crafted text is read in one pass", () => {
     ["line breaks", "\n".repeat(LONG)],
     ["half characters", char(0xd83d).repeat(LONG)],
   ])("a body or a subject of %s", (_what, text) => {
-    expect(elapsedMs(() => forReader(text))).toBeLessThan(250);
-    expect(elapsedMs(() => subjectForReader(text))).toBeLessThan(250);
+    expect(workMs(() => forReader(text))).toBeLessThan(WORK_MS_MOST);
+    expect(workMs(() => subjectForReader(text))).toBeLessThan(WORK_MS_MOST);
   });
 
   it.each([
@@ -594,8 +790,26 @@ describe("crafted text is read in one pass", () => {
     ["one long word", "a".repeat(LONG)],
     ["spaces", " ".repeat(LONG)],
     ["full stops", "pin. ".repeat(LONG / 5)],
+    ["password labels with nothing given", "password: [".repeat(LONG / 11)],
+    ["passwords with a colon", "passwords: x ".repeat(LONG / 13)],
+    [
+      "codes given, and approve too many words after them",
+      "code 1234 to a b c d approve ".repeat(LONG / 29),
+    ],
+    ["the word approve", "approve ".repeat(LONG / 8)],
+    ["password labels with a dash and nothing given", "password - [".repeat(LONG / 12)],
+    ["your, and words before password", "your a b password ".repeat(LONG / 18)],
+    ["password labels with a dash and words after them", "password - a ".repeat(LONG / 13)],
+    ["a password label with a dash and one long word", `password - ${"a".repeat(LONG)}`],
+    ["your, words, and password is", "your a b password is a ".repeat(LONG / 23)],
+    ["the, words, and password is, and one long word", `the a b password is ${"a".repeat(LONG)}`],
+    [
+      "codes, each after a sentence that says to approve",
+      "to approve. code 1234. ".repeat(LONG / 23),
+    ],
+    ["codes a receipt prints, after to confirm", "to confirm, auth code 1234. ".repeat(LONG / 28)],
   ])("a text of %s, looked through for a code", (_what, text) => {
-    expect(elapsedMs(() => carriesSecret(text))).toBeLessThan(250);
+    expect(workMs(() => carriesSecret(text))).toBeLessThan(WORK_MS_MOST);
     expect(carriesSecret(text)).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GMAIL_APP_VERIFIED, GMAIL_LIMITS } from "./gmail";
+import { GMAIL_APP_VERIFIED, GMAIL_LIMITS, PERSONAL_MAIL_DOMAINS } from "./gmail";
 import { GMAIL_CONSENT, GMAIL_DISCLOSURE_VERSION, gmailDisclosure } from "./gmail-disclosure";
 
 // What a person reads before connecting a mailbox is what they agreed to, and their mailbox row
@@ -15,6 +16,9 @@ const sha256 = (words: readonly string[]) =>
 // people have agreed under it: new words get a new version and a new line.
 const WORDS_OF: Record<string, string> = {
   "2026-11-18": "a2c55fcfdcce840e8e34c90cc39e53e392f222fb49bc564579a9ce70a7a6c33e",
+  // Only the free services Jane knows are said to be skipped as personal; a reading keeps the
+  // sender's domain and Gmail's id, not an address.
+  "2026-11-19": "9559f47a55d641f1c245ee95362bcfa0e8603aba47c0e5dfe724f182299a1fd0",
 };
 
 const WARNING =
@@ -89,5 +93,36 @@ describe("what a person is told before connecting a mailbox", () => {
     expect(GMAIL_CONSENT).toBe(
       "By connecting, you agree to Jane reading this mailbox as described above.",
     );
+  });
+
+  it("promises to skip only the free email services Jane knows, and knows each one it names", () => {
+    const all = gmailDisclosure().join(" ");
+    expect(all).toMatch(
+      /only when it looks like it's about money and doesn't come from a free email service Jane knows, like gmail\.com, outlook\.com or icloud\.com\./,
+    );
+    // No list knows every service, and a person's own domain can't be told from a company's, so no
+    // word says either is skipped.
+    expect(all).not.toMatch(/personal address|comes from a company|large free/);
+    expect(all).toMatch(
+      /An email someone sends from their own domain, or from a service Jane doesn't know, can't be told from a company's, so it can be read too\./,
+    );
+    // Every service the words name as known is one the screen skips.
+    const like = /a free email service Jane knows, like (.+?)\. /.exec(all)?.[1] ?? "";
+    const named = like.match(/[a-z0-9-]+(?:\.[a-z]+)+/g) ?? [];
+    expect(named).toEqual(["gmail.com", "outlook.com", "icloud.com"]);
+    for (const domain of named) expect(PERSONAL_MAIL_DOMAINS.has(domain), domain).toBe(true);
+  });
+
+  it("says a reading keeps the domain an email came from and Gmail's id, as the table does", () => {
+    const all = gmailDisclosure().join(" ");
+    expect(all).toMatch(
+      /Jane saves those, with the domain the email came from \(like amazon\.com\), when it arrived and Gmail's id for it\./,
+    );
+    expect(all).not.toMatch(/the address the email came from/);
+    const schema = readFileSync("prisma/schema.prisma", "utf8");
+    const model = schema.slice(schema.indexOf("model GmailReading {")).split("\n}")[0];
+    const columns = [...model.matchAll(/^ {2}(\w+)\s/gm)].map((m) => m[1]);
+    expect(columns).toEqual(expect.arrayContaining(["senderDomain", "receivedAt", "messageRef"]));
+    expect(columns.filter((column) => /address|from/i.test(column))).toEqual([]);
   });
 });

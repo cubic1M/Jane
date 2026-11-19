@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { after, NextResponse } from "next/server";
-import { GMAIL_CALLBACK_PATH, gmailOffered, gmailOpen } from "@/config/gmail";
+import { GMAIL_CALLBACK_PATH, GMAIL_LIMITS, gmailOffered, gmailOpen } from "@/config/gmail";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { getProfile, type Access } from "@/lib/gmail/api";
@@ -22,7 +22,9 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { backToMailboxes } from "../back";
 
-// Connecting reads the newest emails after the answer, within GMAIL_LIMITS.runBudgetMs.
+// Connecting reads the newest emails after the answer, in what is left of GMAIL_LIMITS.runBudgetMs
+// since the way back arrived (routes.integration.test.ts in src/lib/gmail adds up the most it can
+// take).
 export const maxDuration = 300;
 
 const kindOf = (error: unknown): string => (error instanceof Error ? error.name : typeof error);
@@ -68,6 +70,8 @@ async function endUnlessHeld(address: string, tokens: Tokens): Promise<void> {
 // a fixed status or the mailboxes page with one sealed word: nothing from the address bar is shown
 // or stored, and no address, token or code goes into a log, an audit record or the way back.
 export async function GET(request: Request) {
+  // One deadline for everything this request starts: the sign-in's calls come out of the read's.
+  const startedAt = Date.now();
   if (!gmailOffered()) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -158,7 +162,9 @@ export async function GET(request: Request) {
   // row for the page; only the database failing before then lands here.
   after(async () => {
     try {
-      await syncMailbox(user.id, id);
+      await syncMailbox(user.id, id, {
+        budgetMs: Math.max(0, GMAIL_LIMITS.runBudgetMs - (Date.now() - startedAt)),
+      });
     } catch (error) {
       log.error("Gmail first read broke", { kind: kindOf(error) });
     }

@@ -10,15 +10,16 @@ import {
   gmailDisclosure,
 } from "@/config/gmail-disclosure";
 import { momentLabel } from "@/lib/day-label";
-import { ticketHolds } from "@/lib/gmail/connect-ticket";
+import { makeTicket, ticketHolds } from "@/lib/gmail/connect-ticket";
 import type { MailboxView, ReadingView } from "@/lib/gmail/mailbox";
 import { NOTICE_COOKIE, sealNotice, type NoticeWord } from "@/lib/gmail/notice";
 import { momentTimeLabel } from "@/lib/moment-time";
 
 // /settings/mailboxes (DESIGN section 11): what the page says for each state of a mailbox, when
-// it offers the Connect link, and that nothing reaches it from the address bar or leaves it that
-// shouldn't. The store's views are stand-ins here; mailbox.integration.test.ts holds them to the
-// database, and that they never carry tokens or the cursor.
+// it offers the Connect link (and that the link's route refuses in the page's words), and that
+// nothing reaches it from the address bar or leaves it that shouldn't. The store's views are
+// stand-ins here; mailbox.integration.test.ts holds them to the database, and that they never carry
+// tokens or the cursor.
 
 const ME = "person_me";
 const SESSION = "session-token-of-this-browser";
@@ -36,7 +37,10 @@ const mocks = vi.hoisted(() => ({
   readerReady: vi.fn(),
   jar: new Map<string, string>(),
 }));
-vi.mock("next/server", () => ({ connection: async () => undefined }));
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  connection: async () => undefined,
+}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => {
@@ -45,14 +49,18 @@ vi.mock("next/headers", () => ({
     },
   }),
 }));
-vi.mock("@/lib/session", () => ({
-  requireUser: async () => ({
+vi.mock("@/lib/session", () => {
+  const me = async () => ({
     id: "person_me",
     email: "person@jane.test",
     role: "user",
-    termsVersion: "current",
-  }),
-}));
+    termsVersion: (await import("@/config/legal")).TERMS_VERSION,
+  });
+  return { requireUser: me, getCurrentUser: me };
+});
+// What the connect route asks before it gets to who may connect.
+vi.mock("@/lib/rate-limit", () => ({ limitOrNull: async () => null }));
+vi.mock("@/lib/ops-switches", () => ({ freshSwitches: async () => undefined }));
 vi.mock("@/lib/gmail/mailbox", () => ({
   mailboxesView: mocks.mailboxesView,
   readingsView: mocks.readingsView,
@@ -64,6 +72,7 @@ vi.mock("@/lib/gmail/limits", () => ({ readerReady: mocks.readerReady }));
 vi.mock("@/lib/today", () => ({ timezoneOf: async () => "America/Los_Angeles" }));
 vi.mock("@/components/app-header", () => ({ AppHeader: () => null }));
 
+import { GET as connect } from "@/app/api/gmail/connect/route";
 import MailboxesPage from "./page";
 
 const mailbox = (over: Partial<MailboxView> = {}): MailboxView => ({
@@ -76,6 +85,7 @@ const mailbox = (over: Partial<MailboxView> = {}): MailboxView => ({
   lastErrorCode: null,
   missedAt: null,
   watchExpiresAt: new Date(NOW.getTime() + 5 * DAY_MINUTES * 60_000),
+  readings: 0,
   ...over,
 });
 
@@ -110,6 +120,12 @@ const words = (html: string) =>
     .replace(/\s+/g, " ")
     .replace(/ ([.,])/g, "$1");
 
+// Why someone can't connect, as the page and the connect route both say it.
+const CANT_CONNECT: Record<"trial" | "demo", string> = {
+  trial: "A sample account can't connect a mailbox.",
+  demo: "This account only has the demo bank's sample data, so it can't connect a mailbox. Link your bank or upload a statement first.",
+};
+
 const CONNECT_LINK = /href="\/api\/gmail\/connect\?ticket=([^"]+)"/;
 const ticketIn = (html: string) => {
   const found = CONNECT_LINK.exec(html)?.[1];
@@ -120,10 +136,11 @@ const LINES = {
   switchedOff:
     "Mailboxes are switched off for now. Jane isn't reading this mailbox. Disconnect to delete what Jane read from it.",
   elsewhere:
-    "This mailbox is now connected to a different Jane account, so Jane stopped reading it here.",
+    "This mailbox was connected to a different Jane account, so Jane stopped reading it here.",
   reconnect: "Google stopped accepting this connection, so Jane isn't reading this mailbox.",
   paused: "Reading is paused for now.",
   firstRead: `Reading your newest emails from the last ${GMAIL_LIMITS.lookBackDays} days. This takes a minute or two. Come back to this page to see what Jane read.`,
+  partRead: "Jane has read part of this mailbox and will read the rest by itself.",
   neverRead: "Jane hasn't been able to read this mailbox yet. It will try again by itself.",
   reader: "Jane isn't reading new email right now. It will carry on by itself. Last read",
   failing: "The last read didn't work; Jane will try again. Last checked",
@@ -253,10 +270,48 @@ describe("each mailbox's line", () => {
       line: "firstRead",
     },
     {
+      name: "connected minutes ago, some read already and the rest under way",
+      over: { lastCheckedAt: null, agreedAt: ago(1), readings: 2 },
+      line: "firstRead",
+    },
+    {
+      // Google not sending notices doesn't stop a read.
+      name: "connected minutes ago, the watch failed and the first read goes on",
+      over: { lastCheckedAt: null, agreedAt: ago(1), lastErrorCode: "watch_failed" },
+      line: "firstRead",
+    },
+    {
+      name: "connected minutes ago, Claude stopped the first read after it read some",
+      over: { lastCheckedAt: null, agreedAt: ago(1), lastErrorCode: "reader_later", readings: 2 },
+      readerDown: true,
+      line: "partRead",
+    },
+    {
+      name: "never read through, longer ago, with some read",
+      over: { lastCheckedAt: null, agreedAt: ago(GMAIL_LIMITS.firstReadMinutes + 1), readings: 3 },
+      line: "partRead",
+    },
+    {
       // A read stops before it reads anything then, so none is under way.
       name: "connected minutes ago while Claude can't be asked",
       over: { lastCheckedAt: null, agreedAt: ago(GMAIL_LIMITS.firstReadMinutes - 1) },
       readerDown: true,
+      line: "neverRead",
+    },
+    {
+      name: "connected minutes ago, the first read failed",
+      over: { lastCheckedAt: null, agreedAt: ago(1), lastErrorCode: "http_503" },
+      line: "neverRead",
+    },
+    {
+      name: "connected minutes ago, Claude stopped the first read",
+      over: { lastCheckedAt: null, agreedAt: ago(1), lastErrorCode: "reader_later" },
+      line: "neverRead",
+    },
+    {
+      // Nothing is reading it until the next notice or the daily job.
+      name: "connected minutes ago, the first read ran out of time",
+      over: { lastCheckedAt: null, agreedAt: ago(1), lastErrorCode: "unfinished" },
       line: "neverRead",
     },
     {
@@ -287,6 +342,17 @@ describe("each mailbox's line", () => {
     {
       name: "the watch failed but the read went on",
       over: { lastErrorCode: "watch_failed", watchExpiresAt: null },
+      line: "daily",
+    },
+    {
+      // What it didn't get to is read at the next notice or by the daily job.
+      name: "the last read didn't get to everything",
+      over: { lastErrorCode: "unfinished" },
+      line: "arriving",
+    },
+    {
+      name: "the last read didn't get to everything, and no notices come",
+      over: { lastErrorCode: "unfinished", watchExpiresAt: null },
       line: "daily",
     },
   ];
@@ -362,8 +428,55 @@ describe("each mailbox's line", () => {
     for (const status of ["reconnect", "elsewhere"] as const) {
       mocks.mailboxesView.mockResolvedValue([mailbox({ status })]);
       const text = words(await render());
-      expect(text).toContain("This deletes what Jane read from this mailbox.");
+      // Another Jane account may hold it now: what it read for that account stays.
+      expect(text).toContain("This deletes what Jane read from this mailbox for this account.");
       expect(text).not.toContain(ASKS);
+    }
+  });
+
+  it("says a mailbox another account took was connected there, not that it still is", async () => {
+    mocks.mailboxesView.mockResolvedValue([mailbox({ status: "elsewhere", readings: 2 })]);
+    const text = words(await render());
+    expect(text).toContain(
+      "This mailbox was connected to a different Jane account, so Jane stopped reading it here. What Jane read before is still listed below. If that wasn't you, connect it again, or remove Jane in your Google Account.",
+    );
+    expect(text).not.toMatch(/is now connected to a different Jane account/);
+  });
+
+  it("says what Jane read before is still listed only when it read some", async () => {
+    const LISTED = "What Jane read before is still listed below.";
+    const SAID: Record<"elsewhere" | "reconnect", readonly [string, string]> = {
+      elsewhere: [
+        "This mailbox was connected to a different Jane account, so Jane stopped reading it here.",
+        "If that wasn't you, connect it again, or remove Jane in your Google Account.",
+      ],
+      reconnect: [
+        "Google stopped accepting this connection, so Jane isn't reading this mailbox. That happens when you change your Google password or take back Jane's permission.",
+        "Connect it again to carry on, or disconnect to delete it.",
+      ],
+    };
+    for (const status of ["elsewhere", "reconnect"] as const) {
+      const [happened, next] = SAID[status];
+      // Stopped before its first read saved anything: the list under it is empty, and says so.
+      mocks.mailboxesView.mockResolvedValue([
+        mailbox({ status, lastCheckedAt: null, agreedAt: ago(1), readings: 0 }),
+      ]);
+      mocks.readingsView.mockResolvedValue({ readings: [], more: false });
+      let text = words(await render());
+      expect(text, status).toContain(`${happened} ${next}`);
+      expect(text, status).not.toContain(LISTED);
+      expect(text, status).toContain(
+        "Nothing here. Jane isn't reading any of these mailboxes right now.",
+      );
+      // Read from before: the list holds it, and the line says so.
+      mocks.mailboxesView.mockResolvedValue([mailbox({ status, readings: 2 })]);
+      mocks.readingsView.mockResolvedValue({
+        readings: [reading(), reading({ id: "creadingtwo0000000000000" })],
+        more: false,
+      });
+      text = words(await render());
+      expect(text, status).toContain(`${happened} ${LISTED} ${next}`);
+      expect(text, status).toContain("power-company.com");
     }
   });
 });
@@ -407,16 +520,23 @@ describe("the Connect link", () => {
     expect(words(html)).toContain("Connecting isn't set up yet.");
   });
 
-  it.each(["trial", "demo"] as const)(
+  it.each(Object.entries(CANT_CONNECT))(
     "isn't there for a %s person: one line instead",
-    async (why) => {
+    async (why, line) => {
       mocks.whyCantConnect.mockResolvedValue(why);
       const html = await render();
       expect(ticketIn(html)).toBeNull();
-      expect(words(html)).toContain("A sample account can't connect a mailbox.");
+      expect(words(html)).toContain(line);
       expect(words(html)).not.toContain(GMAIL_CONSENT);
     },
   );
+
+  it("tells someone with only the demo bank how they can connect, and doesn't call them a sample", async () => {
+    mocks.whyCantConnect.mockResolvedValue("demo");
+    const text = words(await render());
+    expect(text).toContain("Link your bank or upload a statement first.");
+    expect(text).not.toContain("A sample account");
+  });
 
   it("isn't there while reading is paused, and Disconnect still is", async () => {
     vi.stubEnv("KILL_BANKS", "1");
@@ -428,6 +548,15 @@ describe("the Connect link", () => {
       "Reading is paused for now. Jane isn't reading any mailbox. You can still disconnect.",
     );
     expect(text).toContain("Yes, disconnect");
+  });
+
+  it("while paused, offers no Disconnect to someone with no mailbox", async () => {
+    vi.stubEnv("KILL_BANKS", "1");
+    const html = await render();
+    expect(ticketIn(html)).toBeNull();
+    const text = words(html);
+    expect(text).toContain("Connecting is paused for now. Please try again later.");
+    expect(text).not.toContain("You can still disconnect");
   });
 
   it("stays at the most mailboxes only while one of them can be connected again", async () => {
@@ -462,6 +591,22 @@ describe("the Connect link", () => {
     mocks.jar.clear();
     expect(ticketIn(await render())).toBeNull();
   });
+
+  // A page loaded before the account could no longer connect still has a link: the route answers
+  // it with the line the page would say now.
+  it.each(Object.entries(CANT_CONNECT))(
+    "is refused at the route for a %s person in the page's words",
+    async (why, line) => {
+      mocks.whyCantConnect.mockResolvedValue(why);
+      const ticket = encodeURIComponent(makeTicket(ME, SESSION, NOW));
+      const answer = await connect(
+        new Request(`http://localhost/api/gmail/connect?ticket=${ticket}`),
+      );
+      expect(answer.status).toBe(403);
+      expect(await answer.json()).toEqual({ error: line });
+      expect(words(await render())).toContain(line);
+    },
+  );
 });
 
 describe("what just happened", () => {
@@ -482,7 +627,7 @@ describe("what just happened", () => {
     disconnected_unconfirmed:
       "Disconnected. Jane deleted its own access and what it read from that mailbox. Google didn't confirm that it ended Jane's permission. To be sure, open your Google Account, find Jane under the apps with access, and remove it.",
     disconnected_no_access:
-      "Disconnected. Jane had already lost its access, and has deleted what it read from that mailbox.",
+      "Disconnected. This account had already lost its access to that mailbox, and Jane has deleted what it read from it here. If you didn't connect it to another Jane account, remove Jane in your Google Account.",
   };
   const status = (html: string) => /<p role="status"[^>]*>([^<]*)<\/p>/.exec(html)?.[1] ?? null;
   const said = async () => {
@@ -521,6 +666,12 @@ describe("what just happened", () => {
       ),
     );
     expect(words(await render()).split(SENTENCES.too_many)).toHaveLength(2);
+  });
+
+  it("says paused once, when the Connect part already says it", async () => {
+    vi.stubEnv("KILL_BANKS", "1");
+    mocks.jar.set(NOTICE_COOKIE, sealNotice(ME, "paused", NOW));
+    expect(words(await render()).split(SENTENCES.paused)).toHaveLength(2);
   });
 
   it("says connected only while a mailbox is", async () => {
@@ -621,6 +772,45 @@ describe("money emails Jane read", () => {
     expect(text).toContain(
       "Nothing found yet. New emails about your money will show here after Jane reads them.",
     );
+  });
+
+  it.each(["http_503", "reader_later", "reader_unread", "unfinished"])(
+    "doesn't say it's still reading once the first read stopped (%s)",
+    async (lastErrorCode) => {
+      mocks.mailboxesView.mockResolvedValue([
+        mailbox({ lastCheckedAt: null, agreedAt: ago(1), lastErrorCode }),
+      ]);
+      const text = words(await render());
+      expect(text).not.toContain("Jane is still reading");
+      expect(text).not.toContain(LINES.firstRead);
+    },
+  );
+
+  it.each([
+    ["Google stopped accepting it", { status: "reconnect" }, false],
+    ["another Jane account connected it", { status: "elsewhere" }, false],
+    ["reading is paused", {}, true],
+  ] as const)("says nothing is being read when no mailbox is: %s", async (_case, over, paused) => {
+    if (paused) vi.stubEnv("KILL_BANKS", "1");
+    mocks.mailboxesView.mockResolvedValue([
+      mailbox({ lastCheckedAt: null, agreedAt: ago(1), ...over }),
+    ]);
+    const text = words(await render());
+    expect(text).toContain("Nothing here. Jane isn't reading any of these mailboxes right now.");
+    expect(text).not.toContain("after Jane reads them");
+    expect(text).not.toContain("Jane is still reading");
+  });
+
+  it("says new emails will show while one of several mailboxes is still read", async () => {
+    mocks.mailboxesView.mockResolvedValue([
+      mailbox({ status: "reconnect" }),
+      mailbox({ id: "c2", address: "work@example.org" }),
+    ]);
+    const text = words(await render());
+    expect(text).toContain(
+      "Nothing found yet. New emails about your money will show here after Jane reads them.",
+    );
+    expect(text).not.toContain("Jane isn't reading any of these mailboxes");
   });
 
   it("isn't there before a mailbox is connected", async () => {

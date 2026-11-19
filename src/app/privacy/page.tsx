@@ -11,6 +11,9 @@ import { retentionPolicy } from "@/lib/retention";
 
 export const metadata = { title: `Privacy Policy | ${COMPANY_NAME}` };
 
+// The policy Google's Limited Use sentence names, where Google publishes it.
+const GOOGLE_USER_DATA_POLICY = "https://developers.google.com/terms/api-services-user-data-policy";
+
 // The closed beta's privacy policy (a draft for counsel; the claims to check are in
 // docs/legal/README.md). Written from what the code does today, not from the spec: keep it in
 // step with src/app/terms/page.tsx. The retention list comes from src/config/retention.ts, so
@@ -122,11 +125,14 @@ export default function PrivacyPage() {
           <li>
             To list the money emails from a Gmail mailbox you connect, on its page in Settings.
             Nothing else in Jane uses them yet. Jane&apos;s use of information received from Google
-            APIs follows Google&apos;s API Services User Data Policy, including its Limited Use
-            requirements. In plain words: it&apos;s used only to show you your money emails, never
-            for advertising or for lending or credit decisions, never sold and never used to train
-            AI models, and no person reads it unless you ask us to, to fix a bug or a security
-            problem, or because the law requires it.
+            APIs follows Google&apos;s{" "}
+            <a href={GOOGLE_USER_DATA_POLICY} className="underline" rel="noreferrer">
+              API Services User Data Policy
+            </a>
+            , including its Limited Use requirements. In plain words: it&apos;s used only to show
+            you your money emails, never for advertising or for lending or credit decisions, never
+            sold and never used to create, train or improve AI models, and no person reads it unless
+            you ask us to, to fix a bug or a security problem, or because the law requires it.
           </li>
         )}
         <li>

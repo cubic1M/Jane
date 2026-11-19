@@ -60,6 +60,7 @@ export function MoneyEmails({
   readings,
   more,
   stillReading,
+  beingRead,
   several,
   timezone,
 }: {
@@ -67,6 +68,9 @@ export function MoneyEmails({
   more: boolean;
   // A mailbox's first read is still under way.
   stillReading: boolean;
+  // Jane reads one of these mailboxes now: one is connected, and reading isn't paused or off. A
+  // mailbox Google stopped accepting, or that another Jane account connected since, isn't read.
+  beingRead: boolean;
   // The person has more than one mailbox, so each row says which it was read in.
   several: boolean;
   timezone: string;
@@ -85,7 +89,9 @@ export function MoneyEmails({
         <p className={MUTED}>
           {stillReading
             ? "Nothing yet. Jane is still reading."
-            : "Nothing found yet. New emails about your money will show here after Jane reads them."}
+            : beingRead
+              ? "Nothing found yet. New emails about your money will show here after Jane reads them."
+              : "Nothing here. Jane isn't reading any of these mailboxes right now."}
         </p>
       ) : (
         <ul aria-labelledby="money-emails" className="flex flex-col">

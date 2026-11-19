@@ -7,7 +7,8 @@ import type { NoticeWord } from "./notice";
 // Connect link, the way back from Google's page, and Google's notices. Each check of each route
 // has a test that fails without it, and one that fails when it moves past the check after it.
 // Claude is off in this file (no key), so a read a route starts stops where it would ask. Nothing
-// here talks to Google or Anthropic.
+// here talks to Google or Anthropic. First, with no database, the most the two routes that read can
+// take.
 
 vi.mock("@/lib/db", async () => {
   const { PrismaClient: Client } = await import("@/generated/prisma/client");
@@ -77,6 +78,11 @@ vi.mock("./sync", async (original) => {
     syncFromNotice: vi.fn(real.syncFromNotice),
   };
 });
+// Gmail's calls as they are, and the address rule watched, so a test sees a notice go through it.
+vi.mock("./api", async (original) => {
+  const real = await original<typeof import("./api")>();
+  return { ...real, mailboxAddress: vi.fn(real.mailboxAddress) };
+});
 // Without the wait between tries, so Gmail failing three times in a row costs no time.
 vi.mock("@/config/gmail", async (original) => {
   const real = await original<typeof import("@/config/gmail")>();
@@ -85,9 +91,15 @@ vi.mock("@/config/gmail", async (original) => {
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { GET as callbackRoute } from "@/app/api/gmail/callback/route";
+import {
+  GET as callbackRoute,
+  maxDuration as callbackMaxDuration,
+} from "@/app/api/gmail/callback/route";
 import { GET as connectRoute } from "@/app/api/gmail/connect/route";
-import { POST as webhookRoute } from "@/app/api/gmail/webhook/route";
+import {
+  POST as webhookRoute,
+  maxDuration as webhookMaxDuration,
+} from "@/app/api/gmail/webhook/route";
 import {
   GMAIL_CALLBACK_PATH,
   GMAIL_LIMITS,
@@ -96,6 +108,7 @@ import {
   googleServer,
 } from "@/config/gmail";
 import { GMAIL_DISCLOSURE_VERSION } from "@/config/gmail-disclosure";
+import { OPS_SWITCH_FIRST_READ_TIMEOUT_MS } from "@/config/health";
 import { encrypt } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { recordOpsEvent } from "@/lib/ops-alerts";
@@ -103,7 +116,7 @@ import { freshSwitches } from "@/lib/ops-switches";
 import { limitOrNull } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 import { FakeGoogle } from "./__fixtures__/fake-google";
-import { getProfile } from "./api";
+import { getProfile, mailboxAddress } from "./api";
 import { makeTicket } from "./connect-ticket";
 import { heldByAnyone, saveMailbox } from "./mailbox";
 import { NOTICE_COOKIE, openNotice } from "./notice";
@@ -181,6 +194,48 @@ const noticeFor = (address: string, alphabet?: BufferEncoding) =>
 let otherKey: KeyObject | null = null;
 const anotherKey = (): KeyObject =>
   (otherKey ??= generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey);
+
+// DESIGN §17.4. A route's read is given what is left of runBudgetMs since its request arrived, so
+// what the route spent first comes out of the read's budget. A read looks at its clock between one
+// email and the next, so when its time is up it can still be in one email: its first look and its
+// body from Gmail, every try of each running to its timeout with the waits between them, one of the
+// two turned away and sent again after a renewal, and Claude's one request. Nothing else a read does
+// between two looks takes as long. All of it ends inside the route's limit with 20 seconds to
+// spare, for the database and a function just woken.
+describe("the most a route that reads can take", () => {
+  // The limits as they are: this file runs with no wait between Google's tries.
+  async function sums() {
+    const real = await vi.importActual<typeof import("@/config/gmail")>("@/config/gmail");
+    const { callRetries, callRetryWaitMs, callTimeoutMs, readerMostMs, runBudgetMs } =
+      real.GMAIL_LIMITS;
+    const waits = callRetryWaitMs * ((callRetries * (1 + callRetries)) / 2);
+    const oneFetch = callTimeoutMs * (1 + callRetries) + waits;
+    const renewedFetch = oneFetch + callTimeoutMs + oneFetch;
+    return {
+      oneCall: callTimeoutMs,
+      oneFetch,
+      oneEmail: oneFetch + renewedFetch + readerMostMs,
+      runBudgetMs,
+    };
+  }
+
+  it("ends the way back from Google, and the first read it starts, in time", async () => {
+    const { oneCall, oneFetch, oneEmail, runBudgetMs } = await sums();
+    // The switches, Google's answer for the code (asked once) and the profile, with its retries: a
+    // token turned away there isn't renewed, the sign-in failed.
+    const before = OPS_SWITCH_FIRST_READ_TIMEOUT_MS + oneCall + oneFetch;
+    const read = Math.max(0, runBudgetMs - before);
+    expect(before + read + oneEmail + 20_000).toBeLessThanOrEqual(callbackMaxDuration * 1000);
+  });
+
+  it("ends a notice from Google, and the read it starts, in time", async () => {
+    const { oneCall, oneEmail, runBudgetMs } = await sums();
+    // Google's keys, asked for once when Jane doesn't hold the one that signed, and the switches.
+    const before = oneCall + OPS_SWITCH_FIRST_READ_TIMEOUT_MS;
+    const read = Math.max(0, runBudgetMs - before);
+    expect(before + read + oneEmail + 20_000).toBeLessThanOrEqual(webhookMaxDuration * 1000);
+  });
+});
 
 describe.runIf(url)("the Gmail routes", () => {
   let fake: FakeGoogle;
@@ -303,6 +358,13 @@ describe.runIf(url)("the Gmail routes", () => {
       targetId,
       metadata,
     }));
+  // The take-over records kept under a mailbox, whoever wrote them.
+  const takeOversOf = async (mailboxId: string) =>
+    (
+      await system().auditLog.findMany({
+        where: { event: "gmail_taken_over", targetType: "gmail_mailbox", targetId: mailboxId },
+      })
+    ).map(({ actorType, actorId, metadata }) => ({ actorType, actorId, metadata }));
   const eventsOf = async (userId: string) =>
     (
       await system().analyticsEvent.findMany({
@@ -310,6 +372,18 @@ describe.runIf(url)("the Gmail routes", () => {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       })
     ).map(({ name, properties }) => ({ name, properties }));
+  // What a route hands the read it starts: its share of the time (the clock tests pin the number).
+  const withBudget = { budgetMs: expect.any(Number) };
+  // Jane's clock, moved only by the test, so it can say how long Google took over a call.
+  function heldClock(): { pass(ms: number): void } {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    return {
+      pass: (ms) => {
+        now += ms;
+      },
+    };
+  }
   // A failed connection's one audit record, with its code.
   const connectFailed = (userId: string, code: string) => ({
     event: "gmail_connect_failed",
@@ -626,7 +700,7 @@ describe.runIf(url)("the Gmail routes", () => {
       ]);
       await settled();
       expect(syncMailbox).toHaveBeenCalledTimes(1);
-      expect(syncMailbox).toHaveBeenCalledWith(userId, row.id);
+      expect(syncMailbox).toHaveBeenCalledWith(userId, row.id, withBudget);
       // Claude is off in this file, so the read stops where it would ask.
       await expect(vi.mocked(syncMailbox).mock.results[0]?.value).resolves.toBe("waiting");
       expect((await rowOf(row.id)).syncingSince).toBeNull();
@@ -659,18 +733,56 @@ describe.runIf(url)("the Gmail routes", () => {
       expect((await rowOf(theirs.id)).status).toBe("elsewhere");
       const [mine] = await mailboxesOf(userId);
       expect(mine).toMatchObject({ address: theirs.address, status: "active" });
-      expect(await auditOf(userId)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ event: "gmail_taken_over", targetId: theirs.id }),
-          expect.objectContaining({
-            event: "gmail_connected",
-            targetId: mine.id,
-            metadata: expect.objectContaining({ took_over: true }),
-          }),
-        ]),
-      );
+      // The new holder's own records say they connected it and took it over, and nothing more.
+      expect(await auditOf(userId)).toEqual([
+        {
+          event: "gmail_connected",
+          targetType: "gmail_mailbox",
+          targetId: mine.id,
+          metadata: expect.objectContaining({ user_id: userId, took_over: true }),
+        },
+      ]);
+      // The take-over is the system's record, under the earlier holder's mailbox: it names the
+      // earlier holder, so it is never among the new holder's own records.
+      expect(await takeOversOf(theirs.id)).toEqual([
+        { actorType: "system", actorId: null, metadata: { user_id: earlier } },
+      ]);
       // Their tokens were wiped here; the permission at Google is the new holder's too.
       expect(fake.revokedTokens).toEqual([]);
+    });
+
+    // One deadline for the whole request: the switches and the sign-in's own calls come out of the
+    // first read's time.
+    it.each([
+      [
+        "what is left of the run's time since the way back arrived",
+        5_000,
+        9_000,
+        GMAIL_LIMITS.runBudgetMs - 15_000,
+      ],
+      ["no time once the sign-in's calls used it all", 5_000, GMAIL_LIMITS.runBudgetMs, 0],
+    ])("gives the first read %s", async (_what, overCode, overProfile, budgetMs) => {
+      const userId = await person();
+      fake.options.address = newAddress();
+      const back = await toGoogleAndBack(userId);
+      const clock = heldClock();
+      // Reading the switches takes a second, and the clock was already running.
+      vi.mocked(freshSwitches).mockImplementationOnce(async () => {
+        clock.pass(1_000);
+      });
+      const exchange = fake.hold("/token");
+      const profile = fake.hold("/profile");
+      const answering = comeBack(back);
+      await exchange.reached;
+      clock.pass(overCode);
+      exchange.release();
+      await profile.reached;
+      clock.pass(overProfile);
+      profile.release();
+      expect(noticeIn(await answering, userId)).toBe("connected");
+      await settled();
+      const [row] = await mailboxesOf(userId);
+      expect(syncMailbox).toHaveBeenCalledWith(userId, row.id, { budgetMs });
     });
 
     it("switched off, answers 404 before asking who is signed in", async () => {
@@ -1055,7 +1167,7 @@ describe.runIf(url)("the Gmail routes", () => {
       expect(await answer.json()).toEqual({ received: true });
       await settled();
       expect(syncFromNotice).toHaveBeenCalledTimes(1);
-      expect(syncFromNotice).toHaveBeenCalledWith(address);
+      expect(syncFromNotice).toHaveBeenCalledWith(address, withBudget);
       // Claude is off in this file, so the read stops where it would ask.
       await expect(vi.mocked(syncFromNotice).mock.results[0]?.value).resolves.toBe("waiting");
     });
@@ -1072,7 +1184,59 @@ describe.runIf(url)("the Gmail routes", () => {
       expect((await push(standard)).status).toBe(200);
       expect((await push(urlSafe)).status).toBe(200);
       await settled();
-      expect(vi.mocked(syncFromNotice).mock.calls).toEqual([[address], [address]]);
+      expect(vi.mocked(syncFromNotice).mock.calls).toEqual([
+        [address, withBudget],
+        [address, withBudget],
+      ]);
+    });
+
+    it("goes by the rule a mailbox's address was saved by", async () => {
+      const { address } = await holding(await person());
+      const written = address.toUpperCase();
+      expect((await push(noticeFor(written))).status).toBe(200);
+      await settled();
+      expect(mailboxAddress).toHaveBeenCalledWith(written);
+      expect(syncFromNotice).toHaveBeenCalledWith(address, withBudget);
+    });
+
+    // Where the rule draws its lines, the notice is read or dropped with it.
+    it.each([
+      ["the longest name before the @ there can be", `${"a".repeat(64)}@Fake-Mailbox.test`, true],
+      ["a name before the @ one too long", `${"a".repeat(65)}@fake-mailbox.test`, false],
+      ["a name with a plus in it", "first+tag@fake-mailbox.test", true],
+      ["two @", "a@b@fake-mailbox.test", false],
+      ["a number", 42, false],
+    ])("takes or drops a notice naming %s as that rule does", async (_what, emailAddress, read) => {
+      expect((await push(noticeBody({ emailAddress }))).status).toBe(200);
+      await settled();
+      expect(mailboxAddress).toHaveBeenCalledWith(emailAddress);
+      if (read) {
+        expect(syncFromNotice).toHaveBeenCalledWith(String(emailAddress).toLowerCase(), withBudget);
+      } else {
+        expect(syncFromNotice).not.toHaveBeenCalled();
+        expect(said).toEqual(["Gmail notice not understood"]);
+      }
+    });
+
+    // One deadline for everything a notice starts: fetching Google's keys comes out of the read's.
+    it.each([
+      [
+        "what is left of the run's time since the notice arrived",
+        7_000,
+        GMAIL_LIMITS.runBudgetMs - 7_000,
+      ],
+      ["no time once fetching the keys used it all", GMAIL_LIMITS.runBudgetMs + 1, 0],
+    ])("gives the read %s", async (_what, overKeys, budgetMs) => {
+      const { address } = await holding(await person());
+      const clock = heldClock();
+      const keys = fake.hold("/oauth2/v3/certs");
+      const answering = push(noticeFor(address));
+      await keys.reached;
+      clock.pass(overKeys);
+      keys.release();
+      expect((await answering).status).toBe(200);
+      await settled();
+      expect(syncFromNotice).toHaveBeenCalledWith(address, { budgetMs });
     });
 
     it("acknowledges a notice for an address nobody connected, and reads nothing", async () => {
@@ -1161,7 +1325,7 @@ describe.runIf(url)("the Gmail routes", () => {
       const at = await push(notice.padEnd(GMAIL_LIMITS.webhookBytes, " "));
       expect(at.status).toBe(200);
       await settled();
-      expect(syncFromNotice).toHaveBeenCalledWith(address);
+      expect(syncFromNotice).toHaveBeenCalledWith(address, withBudget);
     });
 
     it("counts a notice it can't read even while reading is paused", async () => {

@@ -96,6 +96,13 @@ describe("rule 2: mail Google didn't vouch for", () => {
         authResults: [googleSays("call-8885550142.example")],
       },
     ],
+    [
+      "the domain reads like a phone number with a letter for a digit",
+      {
+        from: ["billing@call-888-555-o142.example"],
+        authResults: [googleSays("call-888-555-o142.example")],
+      },
+    ],
   ])("skips an email when %s", (_what, over) => {
     expect(screenMail(meta(over))).toEqual(skipped("unverified"));
   });
@@ -343,11 +350,16 @@ describe("the first rule that applies decides", () => {
 
 // The screen runs on every email that arrives, over text its sender wrote.
 const LONG = 100_000;
+// Counted as work, this process's time on a processor, not as time passed: a busy machine keeping
+// the test waiting adds nothing. One pass over any of these takes tens of milliseconds, and starting
+// over from every position takes seconds, so the limit sits far from both.
+const WORK_MS_MOST = 2_000;
 
-function elapsedMs(read: () => unknown): number {
-  const start = performance.now();
+function workMs(read: () => unknown): number {
+  const since = process.cpuUsage();
   read();
-  return performance.now() - start;
+  const { user, system } = process.cpuUsage(since);
+  return (user + system) / 1_000;
 }
 
 describe("a crafted email is screened in one pass", () => {
@@ -362,7 +374,9 @@ describe("a crafted email is screened in one pass", () => {
     ["half a phrase", "your order of your ".repeat(LONG / 19)],
     ["line breaks", "\n".repeat(LONG)],
   ])("a subject and first lines of %s", (_what, text) => {
-    expect(elapsedMs(() => screenMail(meta({ subject: text, snippet: text })))).toBeLessThan(250);
+    expect(workMs(() => screenMail(meta({ subject: text, snippet: text })))).toBeLessThan(
+      WORK_MS_MOST,
+    );
   });
 
   it.each([
@@ -371,12 +385,12 @@ describe("a crafted email is screened in one pass", () => {
     ["semicolons", ";".repeat(LONG)],
   ])("headers of %s", (_what, header) => {
     const crafted = meta({ from: [header], authResults: [header, `mx.google.com; ${header}`] });
-    expect(elapsedMs(() => screenMail(crafted))).toBeLessThan(250);
+    expect(workMs(() => screenMail(crafted))).toBeLessThan(WORK_MS_MOST);
     expect(screenMail(crafted)).toEqual(skipped("unverified"));
   });
 
   it("a hundred thousand labels", () => {
     const labelIds = Array.from({ length: LONG }, (_, i) => `Label_${i}`);
-    expect(elapsedMs(() => screenMail(meta({ labelIds })))).toBeLessThan(250);
+    expect(workMs(() => screenMail(meta({ labelIds })))).toBeLessThan(WORK_MS_MOST);
   });
 });

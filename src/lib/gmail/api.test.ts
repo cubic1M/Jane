@@ -6,6 +6,7 @@ import {
   getProfile,
   listHistory,
   listRecent,
+  mailboxAddress,
   stopWatch,
   watch,
   type Access,
@@ -121,6 +122,59 @@ describe("the mailbox's address and place", () => {
   it("takes a place sent as a plain number, while it is one JSON carries whole", async () => {
     fake.answerWith("/profile", 200, { body: { emailAddress: "A@C.example", historyId: 123456 } });
     expect(await getProfile(access)).toEqual({ address: "a@c.example", historyId: "123456" });
+  });
+});
+
+// The rule the address a mailbox is saved under and the one a notice from Google names both go by
+// (the webhook's side is in routes.integration.test.ts).
+describe("a mailbox's address", () => {
+  const LONGEST = `${"a".repeat(64)}@${"b".repeat(251)}.com`;
+
+  it.each([
+    ["a@c.example", "a@c.example"],
+    ["Some.Person@Fake-Mailbox.TEST", "some.person@fake-mailbox.test"],
+    ["first+tag@sub.c.example", "first+tag@sub.c.example"],
+    ["o'neil@c.example", "o'neil@c.example"],
+    [LONGEST, LONGEST],
+  ])("is %j, in small letters", (value, address) => {
+    expect(mailboxAddress(value)).toBe(address);
+  });
+
+  it.each([
+    ["nothing", undefined],
+    ["null", null],
+    ["a number", 5],
+    ["a list", ["a@c.example"]],
+    ["an object", { address: "a@c.example" }],
+    ["an empty string", ""],
+    ["no @", "someone.example"],
+    ["two @", "a@b@c.example"],
+    ["nothing before the @", "@c.example"],
+    ["nothing after it", "a@"],
+    ["a space", "a b@c.example"],
+    ["a space before it", " a@c.example"],
+    ["a space after it", "a@c.example "],
+    ["a tab", "a@c.example\t"],
+    ["a line break", "a@c.example\nBcc: x"],
+    ["a part before the @ too long to be one", `${"a".repeat(65)}@c.example`],
+    ["a part after it too long to be one", `a@${"b".repeat(256)}`],
+  ])("is null for %s", (_what, value) => {
+    expect(mailboxAddress(value)).toBeNull();
+  });
+
+  // Whatever Google's profile says, getProfile saves exactly what the rule makes of it, or nothing.
+  it.each([
+    "A@C.example",
+    LONGEST.toUpperCase(),
+    `${"a".repeat(65)}@c.example`,
+    "a b@c.example",
+    "a@b@c.example",
+    5,
+  ])("is what getProfile saves for %j, or getProfile refuses it", async (emailAddress) => {
+    fake.answerWith("/profile", 200, { body: { emailAddress, historyId: "12" } });
+    const address = mailboxAddress(emailAddress);
+    if (address === null) expect(await codeOf(getProfile(access))).toBe("shape");
+    else expect(await getProfile(access)).toEqual({ address, historyId: "12" });
   });
 });
 

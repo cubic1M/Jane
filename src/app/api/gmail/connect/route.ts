@@ -14,6 +14,14 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { backToMailboxes } from "../back";
 
+// The mailboxes page's own words for who can't connect (src/app/settings/mailboxes/page.tsx): a
+// trial is sample data, and an account with only the demo bank can connect once it links a bank or
+// uploads a statement.
+const CANT_CONNECT: Record<"trial" | "demo", string> = {
+  trial: "A sample account can't connect a mailbox.",
+  demo: "This account only has the demo bank's sample data, so it can't connect a mailbox. Link your bank or upload a statement first.",
+};
+
 // The Connect link on the mailboxes page: starts a Google sign-in for one Gmail mailbox and sends the
 // browser to Google's page, keeping what proves the answer coming back belongs to this person in a
 // cookie only the way back reads. A link, because the site's security policy stops a form being sent
@@ -47,12 +55,8 @@ export async function GET(request: Request) {
   // Not a click on the mailboxes page in this session: nothing starts, and that page says so beside
   // the name of the account they are signed in to.
   if (!ticket) return back("start_here");
-  if (await whyCantConnect(user.id)) {
-    return NextResponse.json(
-      { error: "A sample account can't connect a mailbox." },
-      { status: 403 },
-    );
-  }
+  const why = await whyCantConnect(user.id);
+  if (why) return NextResponse.json({ error: CANT_CONNECT[why] }, { status: 403 });
 
   const { url, cookie } = startSignIn(user.id, origin, ticket.disclosure);
   await track(user.id, "gmail_connect_started");

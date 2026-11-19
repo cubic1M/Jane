@@ -84,15 +84,19 @@ a change in one breaks the test until the pages say it too.
     consent enough, and what must the policy say about Anthropic's retention and training terms?
     **Google's Limited Use wording:** `/privacy` carries Google's sentence ("Jane's use of
     information received from Google APIs follows Google's API Services User Data Policy, including
-    its Limited Use requirements.") and a plain list: only to show the money emails, never for
-    advertising or lending or credit decisions, never sold, never used to train AI models, and no
-    person reads it unless asked, for a bug or a security problem, or by law. Does it meet Google's
-    policy (whose own wordings `docs/setup/gmail.md` quotes), and can we keep each promise, since
-    the founders can read the database? **The take-over sentence:** a mailbox can be connected to
-    one Jane account at a time, and connecting it to another stops it for the first, which keeps
-    what Jane read for it until it disconnects. Is that fair to the first account, and is its page's
-    notice enough? Also: "Only connect a mailbox that's yours, and not one from work or school", and
-    whether `TERMS_VERSION` should be bumped (it wasn't, as for Robinhood).
+    its Limited Use requirements.", the policy's name linked to Google's page for it) and a plain
+    list: only to show the money emails, never for advertising or lending or credit decisions, never
+    sold, never used to create, train or improve AI models, and no person reads it unless asked, for
+    a bug or a security problem, or by law. Does it meet Google's policy (whose own wordings
+    `docs/setup/gmail.md` quotes), and can we keep each promise, since the founders can read the
+    database? Google's Workspace wording forbids using the data "to create, train, or improve" a
+    machine learning or AI model beyond the person's own: is "never used to create, train or
+    improve AI models" the statement its review looks for? **The take-over sentence:** a mailbox
+    can be connected to one Jane account at a time, and connecting it to another stops it for the
+    first, which keeps what Jane read for it until it disconnects. Is that fair to the first
+    account, and is its page's notice enough? Also: "Only connect a mailbox that's yours, and not
+    one from work or school", and whether `TERMS_VERSION` should be bumped (it wasn't, as for
+    Robinhood).
 
 ## Open questions for the lawyer
 

@@ -27,6 +27,16 @@ const MILLISECONDS = /^\d{1,14}$/;
 // A mailbox's address, as far as it matters here: one @, no spaces, no longer than one can be.
 const ADDRESS = /^[^\s@]{1,64}@[^\s@]{1,255}$/;
 
+// A mailbox's address as Google writes it, in small letters, or null when it isn't one. The one
+// rule for the address a mailbox is saved under (getProfile) and the one a notice from Google names
+// (src/app/api/gmail/webhook/route.ts): an address one took and the other refused would be a
+// mailbox no notice could reach, read only by the daily job.
+export function mailboxAddress(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const address = value.toLowerCase();
+  return ADDRESS.test(address) ? address : null;
+}
+
 // The headers the first look at an email needs (./message.ts): who sent it, what it is about, what
 // Google's own check of the sender found, and whether Gmail fetched it from another mailbox.
 const FIRST_LOOK_HEADERS = ["From", "Subject", "Authentication-Results", "X-Gmail-Fetch-Info"];
@@ -104,8 +114,8 @@ async function answerOf(response: Response): Promise<Record<string, unknown>> {
 // Whose mailbox the tokens are for, as Google says, and the place reading starts from.
 export async function getProfile(access: Access): Promise<{ address: string; historyId: string }> {
   const body = await answerOf(await ask(access, `${googleServer().api}/profile`));
-  const address = typeof body.emailAddress === "string" ? body.emailAddress.toLowerCase() : "";
-  if (!ADDRESS.test(address)) throw new GoogleCallError("shape");
+  const address = mailboxAddress(body.emailAddress);
+  if (address === null) throw new GoogleCallError("shape");
   return { address, historyId: digitsOf(body.historyId, HISTORY_ID) };
 }
 

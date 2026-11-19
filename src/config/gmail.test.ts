@@ -17,6 +17,7 @@ import {
   googleAddressAllowed,
   googleServer,
 } from "./gmail";
+import { HEARTBEAT_TIMEOUT_MS, OPS_SWITCH_FIRST_READ_TIMEOUT_MS } from "./health";
 import { KILL_SWITCH_VARS, rememberStoredSwitches } from "./kill-switches";
 import { KEEP_RATE_LIMIT_PREFIXES, RATE_LIMITS, RATE_LIMIT_RETENTION_HOURS } from "./rate-limits";
 
@@ -285,6 +286,48 @@ describe("mail from a person, not a company", () => {
     },
   );
 
+  // The large free services and internet providers the final review found missing: Yahoo's older
+  // name and its addresses in other countries, large providers abroad, and more in the US.
+  it.each([
+    "rocketmail.com",
+    "yahoo.co.uk",
+    "yahoo.ca",
+    "yahoo.com.au",
+    "yahoo.co.nz",
+    "yahoo.co.in",
+    "yahoo.in",
+    "yahoo.ie",
+    "yahoo.fr",
+    "yahoo.de",
+    "yahoo.it",
+    "yahoo.es",
+    "yahoo.com.br",
+    "yahoo.com.mx",
+    "yahoo.com.ar",
+    "yahoo.com.sg",
+    "yahoo.com.hk",
+    "yahoo.com.tw",
+    "yahoo.com.ph",
+    "yahoo.co.id",
+    "yahoo.co.jp",
+    "btinternet.com",
+    "gmx.de",
+    "web.de",
+    "t-online.de",
+    "orange.fr",
+    "rogers.com",
+    "shaw.ca",
+    "bigpond.com",
+    "earthlink.net",
+    "optonline.net",
+    "frontier.com",
+    "windstream.net",
+    "juno.com",
+    "duck.com",
+  ])("counts %s, a large free service or internet provider", (domain) => {
+    expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(true);
+  });
+
   // Each only ends, starts or reads like a listed one.
   it.each([
     "email.com",
@@ -298,13 +341,26 @@ describe("mail from a person, not a company", () => {
     "GMAIL.COM",
     "they.com",
     "",
+    // A company's own mail at one of the providers, or a domain only like one.
+    "mail.yahoo.co.uk",
+    "alerts.rogers.com",
+    "billing.frontier.com",
+    "yahoo.co",
+    "yahoo.co.uk.evil.example",
+    "notyahoo.ca",
+    "YAHOO.CO.UK",
+    "myduck.com",
+    "duck.com.evil.example",
+    "eweb.de",
+    "web.de.",
+    "orange.fr.example",
   ])("matches exactly, so %j is not one", (domain) => {
     expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(false);
   });
 
-  it("is every address anyone can sign up for that the agent knows, and fifteen more", () => {
+  it("is every address anyone can sign up for that the agent knows, and fifty more", () => {
     for (const domain of SHARED_MAIL_DOMAINS) expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(true);
-    expect(PERSONAL_MAIL_DOMAINS.size).toBe(SHARED_MAIL_DOMAINS.length + 15);
+    expect(PERSONAL_MAIL_DOMAINS.size).toBe(SHARED_MAIL_DOMAINS.length + 50);
     for (const domain of PERSONAL_MAIL_DOMAINS) expect(domain).toMatch(/^[a-z0-9-]+(\.[a-z]+)+$/);
   });
 });
@@ -439,14 +495,28 @@ describe("limits that stand on each other", () => {
     expect(GMAIL_LIMITS.nightMailboxBudgetMs).toBeLessThan(GMAIL_LIMITS.cronBudgetMs);
   });
 
-  // A read looks at its clock only between one email and the next, so one email can still be under
-  // way when the time is up: two fetches from Google with their retries, and Claude's request with
-  // its one retry. One mailbox's time is counted in full on top of the job's, to be safe.
+  // A read looks at its clock between one email and the next, so when its time is up it can still be
+  // in one email: its first look and its body from Gmail, every try of each running to its timeout
+  // with the waits between them, one of the two turned away and sent again after a renewal, and
+  // Claude's one request. Nothing else a read does between two looks takes as long (a renewal and a
+  // watch before it starts, a gap in the history). Each mailbox's budget ends inside the job's.
+  // Around the job, the switches and its two heartbeats have a few seconds each. All of it ends with
+  // 20 seconds to spare (DESIGN §17.4): for the database, and a function just woken.
   it("ends the daily job, and the last email it took on, before the function is ended", () => {
-    const { callRetries, callTimeoutMs, cronBudgetMs, nightMailboxBudgetMs, readerTimeoutMs } =
+    const { callRetries, callRetryWaitMs, callTimeoutMs, cronBudgetMs, readerMostMs } =
       GMAIL_LIMITS;
-    const oneEmail = 2 * callTimeoutMs * (1 + callRetries) + 2 * readerTimeoutMs;
-    expect(cronBudgetMs + nightMailboxBudgetMs + oneEmail).toBeLessThan(FUNCTION_MS);
+    const waits = callRetryWaitMs * ((callRetries * (1 + callRetries)) / 2);
+    const oneFetch = callTimeoutMs * (1 + callRetries) + waits;
+    const renewedFetch = oneFetch + callTimeoutMs + oneFetch;
+    const oneEmail = oneFetch + renewedFetch + readerMostMs;
+    const theJobsOwn = OPS_SWITCH_FIRST_READ_TIMEOUT_MS + 2 * HEARTBEAT_TIMEOUT_MS;
+    expect(theJobsOwn + cronBudgetMs + oneEmail + 20_000).toBeLessThanOrEqual(FUNCTION_MS);
+  });
+
+  // An answer from Claude that didn't begin in time is that email's own trouble, and it is skipped:
+  // the request as a whole is let go only after that.
+  it("lets a request to Claude go only after its answer was due to begin", () => {
+    expect(GMAIL_LIMITS.readerMostMs).toBeGreaterThan(GMAIL_LIMITS.readerTimeoutMs);
   });
 
   it("keeps a read's lock longer than any function can run", () => {

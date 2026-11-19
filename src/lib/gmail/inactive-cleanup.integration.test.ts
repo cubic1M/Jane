@@ -183,8 +183,8 @@ describe.runIf(url)("the inactivity clean-up with mailboxes", () => {
         {
           to: email,
           subject: "We'll disconnect your mailboxes soon | Jane",
-          text: `You haven't used Jane in a while, so on ${date} we'll disconnect your Gmail mailboxes. That deletes what Jane read from them and ends Jane's permission at Google. You can connect them again later.\n\nWant to keep them connected? Just open your report: ${LINK}`,
-          html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your Gmail mailboxes. That deletes what Jane read from them and ends Jane's permission at Google. You can connect them again later.</p><p>Want to keep them connected? <a href="${LINK}">Open your report</a>.</p>`,
+          text: `You haven't used Jane in a while, so on ${date} we'll disconnect your Gmail mailboxes. That deletes what Jane read from them and asks Google to end Jane's permission. You can connect them again later.\n\nWant to keep them connected? Just open your report: ${LINK}`,
+          html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your Gmail mailboxes. That deletes what Jane read from them and asks Google to end Jane's permission. You can connect them again later.</p><p>Want to keep them connected? <a href="${LINK}">Open your report</a>.</p>`,
         },
       ],
     ]);
@@ -242,8 +242,8 @@ describe.runIf(url)("the inactivity clean-up with mailboxes", () => {
     expect(send.mock.calls[0]?.[0]).toEqual({
       to: email,
       subject: "We'll disconnect your banks and mailboxes soon | Jane",
-      text: `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks and your Gmail mailboxes. Disconnecting your banks removes their accounts and transactions and what was worked out from them. While Jane is in beta you may not be able to link them again. Disconnecting your mailboxes deletes what Jane read from them and ends Jane's permission at Google. You can connect the mailboxes again later.\n\nWant to keep them connected? Just open your report: ${LINK}`,
-      html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks and your Gmail mailboxes. Disconnecting your banks removes their accounts and transactions and what was worked out from them. While Jane is in beta you may not be able to link them again. Disconnecting your mailboxes deletes what Jane read from them and ends Jane's permission at Google. You can connect the mailboxes again later.</p><p>Want to keep them connected? <a href="${LINK}">Open your report</a>.</p>`,
+      text: `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks and your Gmail mailboxes. Disconnecting your banks removes their accounts and transactions and what was worked out from them. While Jane is in beta you may not be able to link them again. Disconnecting your mailboxes deletes what Jane read from them and asks Google to end Jane's permission. You can connect the mailboxes again later.\n\nWant to keep them connected? Just open your report: ${LINK}`,
+      html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks and your Gmail mailboxes. Disconnecting your banks removes their accounts and transactions and what was worked out from them. While Jane is in beta you may not be able to link them again. Disconnecting your mailboxes deletes what Jane read from them and asks Google to end Jane's permission. You can connect the mailboxes again later.</p><p>Want to keep them connected? <a href="${LINK}">Open your report</a>.</p>`,
     });
     expect(itemRemove).not.toHaveBeenCalled();
     expect(fake.requests).toEqual([]);
