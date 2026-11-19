@@ -39,6 +39,7 @@ const LIMITED_BY: Record<string, string> = {
   "src/lib/explain.ts": "metered by its callers",
   "src/lib/read-fields.ts": "metered by its callers",
   "src/lib/subscription-check.ts": "metered by its callers",
+  "src/lib/gmail/read-mail.ts": "metered by its callers",
   // The limit itself: every metered call goes through it.
   "src/lib/claude-budget.ts": "backgroundCapHit",
   // No person: its own monthly cap (NEWS_MONTHLY_CAP_CENTS) and calls a day.
@@ -64,6 +65,7 @@ const CALLERS: [file: string, shows: RegExp][] = [
   ["src/lib/tax-notices/index.ts", /claude = meteredClaude\(userId\)/],
   ["src/lib/draft-return/index.ts", /claude = meteredClaude\(userId\)/],
   ["src/lib/prior-return/index.ts", /claude = meteredClaude\(userId\)/],
+  ["src/lib/gmail/sync.ts", /claude = meteredClaude\(userId\)/],
   ["src/lib/insurance/readings.ts", /meteredClaude\(userId\)/],
   ["src/detection/engine.ts", /subscriptionMerchantKeys\([\s\S]{0,80}meteredClaude\(db\.userId/],
   [

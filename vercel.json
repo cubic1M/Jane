@@ -41,6 +41,10 @@
     {
       "path": "/api/cron/offers",
       "schedule": "45 12 * * *"
+    },
+    {
+      "path": "/api/cron/gmail",
+      "schedule": "15 11 * * *"
     }
   ],
   "git": {

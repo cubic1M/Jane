@@ -17,6 +17,9 @@ export const DAILY_JOBS: readonly string[] = [
   "accuracy",
   // The offers catalog (src/lib/offers/catalog.ts): hourly from the probe's workflow, daily as backstop.
   "offers",
+  // Gmail mailboxes due a read (src/lib/gmail/sync.ts): the backstop for Google's notices. It runs and
+  // records a run whether or not mailboxes are switched on (GMAIL_LINK).
+  "gmail",
 ];
 // A daily job counts as missed once its last good run is this old (a day plus slack for
 // Vercel's scheduling).

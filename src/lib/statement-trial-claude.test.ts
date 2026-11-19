@@ -19,6 +19,8 @@ const GATED = {
   // Everything that reads an uploaded document: the upload action refuses them.
   "src/lib/documents/extract.ts": "src/app/documents/actions.ts",
   "src/lib/read-fields.ts": "src/app/documents/actions.ts",
+  // Reading a Gmail mailbox's money emails: syncMailbox never reads a trial person's.
+  "src/lib/gmail/read-mail.ts": "src/lib/gmail/sync.ts",
 } as const;
 
 // Reached only through the agent, the team, or a cron with no person in it. A temporary person's
