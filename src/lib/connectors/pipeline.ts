@@ -96,6 +96,7 @@ const REFUSED_WORDS: Record<RefuseReason, string> = {
   key_reused: "That was already asked for, differently.",
   no_real_money: "Jane doesn't move real money yet.",
   needs_review: "That needs a qualified person's review before Jane can suggest it.",
+  needs_counsel: "That needs a lawyer's sign-off before Jane can ask for it.",
 };
 
 export class ConnectorRefused extends Error {

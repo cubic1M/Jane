@@ -186,7 +186,8 @@ describe("who Method reaches", () => {
 
   it("is off for real people and trials, and the twin is for sample data only", () => {
     expect(whyUnavailable(methodLiabilities, real, {})).toBe("off");
-    expect(whyUnavailable(methodLiabilities, real, on)).toBe("switched_off");
+    // The soft-pull lock answers before REAL_CONNECTORS (soft-pull-lock.test.ts).
+    expect(whyUnavailable(methodLiabilities, real, on)).toBe("needs_counsel");
     expect(whyUnavailable(methodLiabilities, trial, on)).toBe("trial");
     expect(whyUnavailable(sandboxMethodLiabilities, sample, on)).toBeNull();
     expect(whyUnavailable(sandboxMethodLiabilities, real, on)).toBe("sandbox_for_samples");

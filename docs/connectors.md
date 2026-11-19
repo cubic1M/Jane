@@ -357,6 +357,11 @@ haven't given, so nobody can consent to it; it also reaches nobody until
 "Sandbox" environment carries live data, so anything but production uses its mocked Development
 environment.
 
+**The soft-pull lock.** `COUNSEL_SOFT_PULL` (`src/config/connectors.ts`, code only) holds any real connector
+that asks for `soft_credit_pull` back from every real person, answering `needs_counsel`, even if
+`REAL_CONNECTORS` lists it. It opens only when counsel's sign-off is recorded there and the approved
+words are added as the connector's `consentText` (`soft-pull-lock.test.ts`).
+
 ## IRS transcripts (Chart), sandbox only
 
 `sandbox_chart_transcripts` (`src/lib/connectors/chart/`, built from developer.trychart.com and its
