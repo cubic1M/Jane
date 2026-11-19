@@ -147,7 +147,7 @@ const SAYS_NOW = [
   // Not a cover's monthly benefit ("you have $0/mo" of disability cover), which isn't cash.
   /\b[Yy]ou (?:keep|have|pay) \$[\d,.]+(?!k?\/mo)\b/,
   /\$[\d,]+(?:\.\d{2})? today\b/,
-  /\bNothing coming up\b/,
+  /\bNothing (?:is )?(?:coming up|due)\b/,
 ];
 const SAYS_WHEN =
   /\b(?:statements?|which) end\b|\bas of\b|\bon (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}\b/;

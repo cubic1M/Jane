@@ -87,6 +87,8 @@ export type CashFlowInput = {
   // Days from the person's first transaction to their last: how much history there is to see
   // bills in (an old statement's 26 days stay 26, however long ago it ended).
   historyDays?: number;
+  // Where the statements end, when that's too long ago to say what's due now (staleStatementsEnd).
+  statementsEnd?: string | null;
 };
 
 export type AreasInput = {
@@ -562,9 +564,13 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
   return {
     days,
     events,
-    empty: shortHistory
-      ? "Too little history to see your bills yet: they show once about two months of transactions are in."
-      : "Nothing due in the next month.",
+    // Debug 3, 11-19: statements that ended in September read "Nothing due in the next month." in
+    // November: nothing is known about the next month, not nothing due.
+    empty: input.statementsEnd
+      ? `Your statements end ${dayLabel(input.statementsEnd, { year: true })}: upload newer ones to see what's due now.`
+      : shortHistory
+        ? "Too little history to see your bills yet: they show once about two months of transactions are in."
+        : "Nothing due in the next month.",
   };
 }
 

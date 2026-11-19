@@ -164,6 +164,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const answer = comingUpReply(intent, home?.comingUp ?? [], {
         drawn: block !== null && rows.length <= CHAT_BLOCK_ROWS,
         payday,
+        statementsEnd: rows.length === 0 ? await statementsEndOf(userId, client, asOf) : null,
       });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
