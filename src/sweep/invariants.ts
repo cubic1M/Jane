@@ -1,3 +1,5 @@
+import { isHiddenPage } from "@/config/hidden-pages";
+import { landing } from "@/lib/area-pages/landing";
 import type { Flat } from "./diff";
 
 // The walkers' bug classes as rules over what a person sees (debug 3, 11-19; the classes and the
@@ -159,4 +161,21 @@ export function nowFromOldData(flat: Flat, statementsEnd: string | null): string
       ? [`${path}: says now from statements that end ${statementsEnd}: "${text.slice(0, 120)}"`]
       : [],
   );
+}
+
+// Class 9: a link goes where it says, never to a page the beta hides (src/config/hidden-pages.ts:
+// "nothing links to it"), wherever it's shown. A suggestion's button and the chat's links are
+// drawn through landing() (src/lib/area-pages/landing.ts), which sends a hidden page to its area
+// page; every other link is drawn as it is. Walkers found links to hidden pages on cards, trees
+// and Home (#1886, #1894, #1909, #2060); debug 3 (11-19) found Home's strip linking every payday
+// to /transfers and an open-enrollment deadline to /insurance/benefits. Rendered pages are
+// crawled for the same (e2e/crawl.ts, "hidden-link").
+const DRAWN_THROUGH_LANDING = /^(?:suggestions|chat)\./;
+
+export function hiddenPageLinks(flat: Flat): string[] {
+  return Object.entries(flat).flatMap(([path, href]) => {
+    if (!path.endsWith(".href") || typeof href !== "string") return [];
+    const drawn = DRAWN_THROUGH_LANDING.test(path) ? landing(href) : href;
+    return isHiddenPage(drawn) ? [`${path}: goes to ${drawn}, a page the beta hides`] : [];
+  });
 }

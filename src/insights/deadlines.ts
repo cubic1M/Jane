@@ -41,6 +41,7 @@ import { debtSummary, type DebtAccount } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 import { seenConfidence } from "./sure";
+import { shownHref } from "@/config/hidden-pages";
 
 // Deadlines (spec step 71): return windows, trials, renewals, card and loan payments and
 // the person's own dates (FSA, card benefits, warranties), in one list. Each source here is
@@ -410,6 +411,9 @@ export function upcomingDeadlines(deadlines: Deadline[], asOf: string): Deadline
       .filter((d) => d.date <= until && (d.date >= asOf || d.source === "entered"))
       .filter((d) => !seen.has(d.key) && Boolean(seen.add(d.key)))
       .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
+      // Never a link to a page the beta hides, wherever the list is shown (debug 3, 11-19: an
+      // open-enrollment deadline linked to /insurance/benefits on Home and in the chat).
+      .map((d) => (d.href ? { ...d, href: shownHref(d.href) } : d))
   );
 }
 
