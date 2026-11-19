@@ -46,10 +46,15 @@ export const monthlyPaymentOf = (payments: readonly ProfileTx[]): number => {
 const income = (profile: Profile) =>
   typeof profile.facts.monthly_income.value === "number" ? profile.facts.monthly_income.value : 0;
 
-// The last year's paychecks as a year, the way /loans/student works it out: wages in the last 365
-// days, paced over the days the statements cover.
+// The last year's paychecks as a year, the way /loans/student works it out: wages in the 365 days
+// back from where the statements end, paced over the days they cover. From their end, not today:
+// counted from today, statements that stopped coming lost a paycheck every two weeks and the
+// figure moved with the calendar (debug 3's calendar sweep, 11-19: $760, $752, $749 a year on the
+// same frozen data).
 function paycheckYear(data: Parameters<Detector["detect"]>[0]["data"]): number {
-  const yearAgo = new Date(Date.parse(`${data.today}T00:00:00Z`) - 365 * DAY_MS)
+  const end = data.transactions.reduce((last, t) => (t.date > last ? t.date : last), "");
+  if (!end) return 0;
+  const yearAgo = new Date(Date.parse(`${end}T00:00:00Z`) - 365 * DAY_MS)
     .toISOString()
     .slice(0, 10);
   const lastYear = data.transactions.filter((t) => t.date >= yearAgo);
