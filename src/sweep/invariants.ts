@@ -215,3 +215,71 @@ export function onePlurals(flat: Flat): string[] {
     return m ? [`${path}: "1 ${m[1]}" in "${text.slice(0, 120)}"`] : [];
   });
 }
+
+// Class 8: only what's owed is added up as owed. Home's loans tile ("$23k", "Owed on 4 accounts")
+// is the debts on the Loans page added up, each at most a rounding apart, and counts the accounts
+// with a balance (of all of them, "5 of 6", when one isn't known); the chat's "N are coming up,
+// $X in all" adds up the rows it lists, never a return window's purchase. Walkers found a return
+// window counted as owed (#2043), a liability with no limit read as $0 (#2018), fees counted as
+// yearly bills (#1965), a payment that never pays off said as a total (#1942).
+const DOLLARS = (text: unknown) => {
+  const m = typeof text === "string" ? /\$([\d,]+(?:\.\d+)?)(k|m)?\b/.exec(text) : null;
+  if (!m) return null;
+  return Number(m[1]!.replace(/,/g, "")) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : 1);
+};
+// A shown figure's rounding: "$4.7k" is within $50, "$13k" within $500, "$312k" within $500.
+const SLACK = (text: unknown) => {
+  const m = typeof text === "string" ? /\$[\d,]+(\.\d+)?(k|m)?/.exec(text) : null;
+  if (!m?.[2]) return 0.5;
+  const unit = m[2] === "k" ? 1e3 : 1e6;
+  return (m[1] ? unit / 10 ** (m[1].length - 1) : unit) / 2;
+};
+
+export function owedTotals(flat: Flat): string[] {
+  const found: string[] = [];
+  const debts = `trees.loans.tree.branches.debts.items`;
+  // Each debt (an account or a pay-later plan) says its kind on its line; a row like "Installments
+  // coming" doesn't.
+  const accounts = childrenOf(flat, debts).filter(
+    (i) => typeof flat[`${debts}.${i}.line`] === "string",
+  );
+  const owed = accounts.map((i) => flat[`${debts}.${i}.figure`]).filter((f) => DOLLARS(f) !== null);
+  const value = flat["tiles.loans.value"];
+  if (typeof value === "string" && DOLLARS(value) !== null) {
+    const sum = owed.reduce<number>((a, f) => a + DOLLARS(f)!, 0);
+    const slack = SLACK(value) + owed.reduce<number>((a, f) => a + SLACK(f), 0);
+    if (Math.abs(sum - DOLLARS(value)!) > slack) {
+      found.push(`tiles.loans.value: ${value}, the Loans page's debts add up to $${sum}`);
+    }
+  }
+  const caption = flat["tiles.loans.caption"];
+  const counted =
+    typeof caption === "string" ? /^Owed on (\d+)(?: of (\d+))? accounts?$/.exec(caption) : null;
+  if (counted) {
+    const [n, of] = [Number(counted[1]), counted[2] ? Number(counted[2]) : owed.length];
+    if (n !== owed.length || of !== accounts.length) {
+      found.push(
+        `tiles.loans.caption: "${caption}", the Loans page: ${owed.length} with a balance of ${accounts.length}`,
+      );
+    }
+  }
+  const chat = flat["chat.what bills are coming up.body"];
+  const total = typeof chat === "string" ? /, (\$[\d,]+\.\d{2}) in all\./.exec(chat) : null;
+  if (total) {
+    const rows = childrenOf(flat, "home.summary.comingUp").map((r) => `home.summary.comingUp.${r}`);
+    const sum = rows
+      .filter((r) => flat[`${r}.kind`] !== "return")
+      .reduce(
+        (a, r) =>
+          a +
+          (typeof flat[`${r}.amountCents`] === "number" ? (flat[`${r}.amountCents`] as number) : 0),
+        0,
+      );
+    if (Math.round(DOLLARS(total[1])! * 100) !== sum) {
+      found.push(
+        `chat.what bills are coming up.body: ${total[1]} in all, what's owed in its rows: $${(sum / 100).toFixed(2)}`,
+      );
+    }
+  }
+  return found;
+}

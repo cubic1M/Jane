@@ -23,6 +23,7 @@ import {
   noneFromShortHistory,
   nowFromOldData,
   onePlurals,
+  owedTotals,
   rawNames,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
@@ -144,5 +145,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 2: 2019, 2064, 2084, 2093, 2097.
   it("counts one thing in the singular", () => {
     expect(everyone(onePlurals)).toEqual([]);
+  });
+
+  // Class 8: 1942, 1965, 2018, 2050, 2070, 2096, 2043.
+  it("adds up as owed only what's owed", () => {
+    expect(everyone(owedTotals)).toEqual([]);
   });
 });
