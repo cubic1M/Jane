@@ -25,6 +25,7 @@ import {
   onePlurals,
   owedTotals,
   rawNames,
+  saidTwice,
   sameFigures,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
@@ -156,5 +157,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 4: 1900, 1904, 1938, 2011, 2014, 2016, 2027, 2063, 2097, 2114.
   it("reads the same figure the same everywhere it's shown", () => {
     expect(everyone(sameFigures)).toEqual([]);
+  });
+
+  // Class 7: 1882, 1886, 1897, 1906, 1911, 1917, 1920, 1928, 1947, 1948, 1982, 2060, 2086, 2088.
+  it("says each figure once in a sentence", () => {
+    expect(everyone(saidTwice)).toEqual([]);
   });
 });

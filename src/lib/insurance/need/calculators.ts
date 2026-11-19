@@ -127,9 +127,13 @@ export function disabilityNeedFor(input: NeedInput): Need {
     gapCents: gap,
     lines,
     summary:
-      gap > 0
-        ? `A benefit of ${formatCents(need)} a month, after a ${DISABILITY_NEED.waitingDays}-day wait, until ${DISABILITY_NEED.benefitUntilAge}: ${formatCents(gap)} a month short.`
-        : `Your disability cover pays ${formatCents(have)} a month, enough for ${formatCents(need)}.`,
+      // With no cover on file the gap is the whole benefit: said once (debug 3, 11-19: "A benefit
+      // of $3,050.10 a month, … until 65: $3,050.10 a month short.").
+      gap > 0 && have === 0
+        ? `A benefit of ${formatCents(need)} a month, after a ${DISABILITY_NEED.waitingDays}-day wait, until ${DISABILITY_NEED.benefitUntilAge}, and none is on file.`
+        : gap > 0
+          ? `A benefit of ${formatCents(need)} a month, after a ${DISABILITY_NEED.waitingDays}-day wait, until ${DISABILITY_NEED.benefitUntilAge}: ${formatCents(gap)} a month short.`
+          : `Your disability cover pays ${formatCents(have)} a month, enough for ${formatCents(need)}.`,
     policyId: null,
   };
 }
