@@ -741,7 +741,16 @@ function usualMonthLine(
 export function comingUpReply(
   intent: Extract<Intent, { kind: "coming_up" }>,
   rows: ComingUpRow[],
-  { drawn = false, payday = null }: { drawn?: boolean; payday?: string | null } = {},
+  {
+    drawn = false,
+    payday = null,
+    statementsEnd = null,
+  }: {
+    drawn?: boolean;
+    payday?: string | null;
+    // Where the statements end, when that's too long ago to say what's coming up now.
+    statementsEnd?: string | null;
+  } = {},
 ): Reply {
   // Before payday: what's due before the next pay, when Jane knows when that is (debugger 11-17).
   const until = intent.beforePayday ? payday : null;
@@ -756,6 +765,14 @@ export function comingUpReply(
     : intent.days === null
       ? "coming up"
       : "due this week";
+  // Debug 3, 11-19: statements that ended in September heard "Nothing is coming up that I can
+  // see." in November: nothing is known about now, not nothing due.
+  if (shown.length === 0 && statementsEnd) {
+    return reply(
+      `Your statements end ${dayLabel(statementsEnd, { year: true })}, so I can't say what's ${span} now. Upload newer statements and I'll check.`,
+      [openLink("Upload newer statements", "/import")],
+    );
+  }
   if (shown.length === 0) return reply(`Nothing is ${span} that I can see.`, open);
   // Spec step 89: how many and how much first, then the list. A return window is listed with its
   // purchase but isn't money owed, so it isn't in the total (debug 3, 11-18: "$1,053.92 in all"

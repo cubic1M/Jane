@@ -16,7 +16,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { EVERYONE, makePerson, type OwnRows, type Who } from "./__fixtures__/people";
 import { atLocal, type Flat } from "./diff";
-import { areaCounts, rawNames } from "./invariants";
+import { staleStatementsEnd } from "@/lib/report-state";
+import { areaCounts, nowFromOldData, rawNames } from "./invariants";
 import { snapshotAt } from "./snapshot";
 
 // The walkers' bug classes as checks on every push (debug 3, 11-19; the classes, and the PRs
@@ -35,6 +36,8 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   let client: PrismaClient;
   const made: string[] = [];
   const seen = new Map<Who, Flat>();
+  // Where each person's statements end, when that's too long ago to say what's held now.
+  const ended = new Map<Who, string | null>();
 
   // The test's own rows, written here so they go through the database's owner
   // (./__fixtures__/people.ts).
@@ -62,6 +65,12 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
       const afternoon = atLocal(DAY, 15, ZONE);
       vi.setSystemTime(afternoon);
       seen.set(who, await snapshotAt(userId, { client, now: afternoon }));
+      const newest = await client.transaction.findFirst({
+        where: { userId },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      });
+      ended.set(who, staleStatementsEnd(newest?.date ?? null, DAY));
     }
   }, 900_000);
 
@@ -97,5 +106,14 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
       ),
     ).toEqual([]);
     expect(everyone(areaCounts)).toEqual([]);
+  });
+
+  // Class 5: 1876, 1938, 1975, 1997, 2002, 2004, 2028, 2047, 2095.
+  it("says nothing about now from statements that ended long ago, without saying when", () => {
+    expect(
+      [...seen].flatMap(([who, flat]) =>
+        nowFromOldData(flat, ended.get(who) ?? null).map((found) => `${who} ${found}`),
+      ),
+    ).toEqual([]);
   });
 });

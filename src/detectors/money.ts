@@ -335,6 +335,9 @@ const idleCash: Detector = {
   topic: "idle_cash",
   needs: [],
   detect({ profile, data }) {
+    // "You keep $X in cash" says what's held now: not from statements that ended long ago, as the
+    // cushion card (debug 3's invariants, 11-19: "You keep $8,450.00 in cash" two months on).
+    if (statementsTooOld(data)) return null;
     // The one definition (src/planning/idle-cash.ts), the same as the Today card and the chat.
     const idle = idleCashOf({
       asOf: data.today,

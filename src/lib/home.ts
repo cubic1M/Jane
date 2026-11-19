@@ -12,6 +12,7 @@ import { loadInsightTransactions } from "@/insights/load";
 import { moneyFoundParts } from "@/detection/engine";
 import { loadDetectionInput } from "@/detection/input";
 import { historyDaysOf } from "@/lib/history-days";
+import { staleStatementsEnd } from "@/lib/report-state";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
@@ -92,6 +93,11 @@ export async function homeSummary(
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
+  // The newest day the statements reach, to say when that's too long ago to see what's due.
+  const lastDay = input.transactions.reduce<string | null>(
+    (last, t) => (last === null || t.date > last ? t.date : last),
+    null,
+  );
   const [budgetRows, { bills, deposits, deadlines }, verified, taxAside] = await Promise.all([
     budgets.length === 0 ? null : loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
@@ -193,6 +199,7 @@ export async function homeSummary(
       deadlines,
       // How much history there is to see bills in (src/lib/hub/view.ts cashFlowView).
       historyDays: historyDaysOf(input),
+      statementsEnd: staleStatementsEnd(lastDay ? new Date(`${lastDay}T00:00:00Z`) : null, asOf),
     },
     lastUpdated: updated ?? null,
     // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
