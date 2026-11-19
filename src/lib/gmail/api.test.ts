@@ -389,6 +389,19 @@ describe("the newest messages", () => {
     expect(await look()).toEqual([recent.id]);
   });
 
+  // What the fixture's comments tell a later test: mail delivered with no time of its own arrived
+  // at one fixed moment, and a fake whose clock is set past the look-back from it leaves it out.
+  it("finds mail given no time only while the fake's clock is near its fixed day", async () => {
+    const sent = box().deliver();
+    const arrived = Date.parse("2026-11-03T17:00:00Z");
+    expect(sent.internalDate).toBe(String(arrived));
+    const day = 24 * 60 * 60 * 1000;
+    fake.options.now = new Date(arrived + (GMAIL_LIMITS.lookBackDays - 1) * day);
+    expect(await look()).toEqual([sent.id]);
+    fake.options.now = new Date(arrived + (GMAIL_LIMITS.lookBackDays + 1) * day);
+    expect(await look()).toEqual([]);
+  });
+
   it("gives no more than the number wanted, even if Gmail sends more", async () => {
     const sent = [box().deliver(), box().deliver(), box().deliver()].map((message) => message.id);
     expect(await listRecent(access, { days: 14, most: 2 })).toEqual([sent[2], sent[1]]);
@@ -577,6 +590,23 @@ describe("when Gmail turns the token away", () => {
     expect(await codeOf(getProfile(access))).toBe("token_http_500");
     expect(to("/profile")).toHaveLength(1);
   });
+
+  // Leaving a message fetch, "too_large" means that one email, and makes it a skip. A renewal's
+  // own answer being too large is the token address's trouble: read as the email's, an email
+  // nobody fetched would be passed over.
+  it.each(["metadata", "full"] as const)(
+    "never calls an email too large when it was the renewal's answer that was (%s)",
+    async (format) => {
+      const sent = box().deliver();
+      fake.expireAccessTokens();
+      fake.answerWith("/token", 200, {
+        body: { access_token: "x", more: "y".repeat(GMAIL_LIMITS.signInAnswerBytes) },
+      });
+      expect(await codeOf(getMessage(access, sent.id, format))).toBe("token_answer");
+      // Asked for once: no new token came to repeat it with.
+      expect(to(`/messages/${sent.id}`)).toHaveLength(1);
+    },
+  );
 
   it("does the same for every read", async () => {
     const sent = box().deliver();

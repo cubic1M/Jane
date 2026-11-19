@@ -395,6 +395,18 @@ describe("a sender Google didn't vouch for", () => {
       "a second dmarc clause written with spaces",
       { authResults: [`mx.google.com; dmarc=pass header.from=${FROM}; dmarc = fail`] },
     ],
+    [
+      "a second dmarc clause written with a version",
+      {
+        authResults: [
+          `mx.google.com; dmarc/1=fail header.from=${FROM}; dmarc=pass header.from=${FROM}`,
+        ],
+      },
+    ],
+    [
+      "the one dmarc clause is written with a version",
+      { authResults: [`mx.google.com; dmarc/1=pass header.from=${FROM}`] },
+    ],
     ["two From headers", { from: [`billing@${FROM}`, "x@evil.example"] }],
     ["the same From header twice", { from: [`billing@${FROM}`, `billing@${FROM}`] }],
     ["no From header", { from: [] }],
@@ -577,6 +589,8 @@ describe("a sender Google didn't vouch for", () => {
     ["two pairs of brackets", { from: [`Acme <billing@${FROM}> <x@evil.example>`] }],
     ["words after the address", { from: [`<billing@${FROM}> via evil.example`] }],
     ["a closing bracket with no opening one", { from: [`billing@${FROM}>`] }],
+    ["a closing bracket before the at sign, with no opening one", { from: [`bill>ing@${FROM}`] }],
+    ["an opening bracket before the address, with no closing one", { from: [`<billing@${FROM}`] }],
     ["brackets the wrong way round", { from: [`>billing@${FROM}<`] }],
     ["a quoted string inside the address", { from: [`billing@"x"${FROM}`] }],
     ["a bracket that never closes in the From header", { from: [`Acme <billing@${FROM}`] }],
@@ -809,6 +823,15 @@ describe("the body of a message", () => {
     [
       "the one named is very long",
       [{ name: "Content-Type", value: `text/plain; charset=${"z".repeat(50_000)}` }],
+    ],
+    [
+      "the one named stands past the length a header is read to",
+      [
+        {
+          name: "Content-Type",
+          value: `text/plain; x=${"y".repeat(GMAIL_LIMITS.headerChars)}; charset=iso-8859-1`,
+        },
+      ],
     ],
   ])("decodes as UTF-8 when %s", (_what, headers) => {
     const plain = { mimeType: "text/plain", headers, body: { data: encoded("Café: $4.50") } };

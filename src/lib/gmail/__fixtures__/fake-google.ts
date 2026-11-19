@@ -24,6 +24,11 @@ import { GMAIL_CALLBACK_PATH, GMAIL_SCOPE, googleServer } from "@/config/gmail";
 // A test points the app at it with vi.stubEnv: GMAIL_API_URL to `origin`, GMAIL_CLIENT_ID and
 // GMAIL_CLIENT_SECRET to `clientId` and `clientSecret`, and for notices GMAIL_PUSH_AUDIENCE and
 // GMAIL_PUSH_SERVICE_ACCOUNT to `pushAudience` and `pushServiceAccount`.
+//
+// A test that sends a notice also calls clearGmailWebhookKeysForTests() (../webhook-verify.ts) in
+// its beforeEach. The keys Jane holds outlive a fake, each fake signs under a key id of its own,
+// and a key id Jane doesn't hold causes a fetch only so often (GMAIL_LIMITS.keysRefetchSeconds):
+// without that call, a later fake's notices are refused until that wait is over.
 
 type FakeOptions = {
   // The Google account the next sign-in is for: the one the person picks on Google's page. Each
@@ -43,7 +48,9 @@ type FakeOptions = {
   // When a watch is said to end. Unset: a week after `now` below, or after the clock's own time.
   watchExpiresAt?: Date;
   // The time a test runs at, when it passes one to the app. The search for recent mail counts its
-  // newer_than days back from it; unset, no message is too old.
+  // newer_than days back from it; unset, no message is too old. A test that sets it gives each
+  // message a time too (receivedAt, below): a message given none arrived on one fixed day, and the
+  // search leaves it out, with no error, once this is far enough past that day.
   now?: Date;
   // Every request answers a redirect to this address.
   redirectTo?: string;
@@ -91,8 +98,9 @@ type FakeMail = {
   authResults?: string[];
   // Any other headers, such as X-Gmail-Fetch-Info.
   headers?: Header[];
-  // When Google took it in. null: the message comes without internalDate. Left out: a fixed
-  // moment, so no test depends on the day it runs.
+  // When Google took it in. null: the message comes without internalDate. Left out: 2026-11-03,
+  // 17:00 UTC, a fixed moment, so no test depends on the day it runs. Once the fake's `now` is
+  // more than the search's days past that, the search for recent mail leaves the message out.
   receivedAt?: Date | null;
   // Gmail's own estimate of its size. null: left out. Left out: what the payload weighs.
   sizeEstimate?: number | null;

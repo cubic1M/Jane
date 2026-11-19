@@ -223,7 +223,9 @@ function dmarcPass(header: string): string | null {
   if (text === null) return null;
   const [server, ...clauses] = text.split(";").map((part) => part.split(" ").filter(Boolean));
   if (server.length !== 1 || server[0].toLowerCase() !== GOOGLE) return null;
-  const dmarc = clauses.filter(([first = ""]) => first.split("=")[0].toLowerCase() === "dmarc");
+  // Counted loosely, as Google's name is: a verdict written any other way ("dmarc/1=fail",
+  // "dmarc = fail") is still a second verdict, and never a pass.
+  const dmarc = clauses.filter(([first = ""]) => first.toLowerCase().startsWith("dmarc"));
   if (dmarc.length !== 1 || dmarc[0].length !== 2) return null;
   const [method, result, ...rest] = dmarc[0][0].split("=");
   const [property, domain = "", ...more] = dmarc[0][1].split("=");

@@ -158,7 +158,18 @@ async function tokenRequest(
     if (name === "invalid_client") throw new GoogleCallError("client");
     throw new GoogleCallError(`token_http_${response.status}`);
   }
-  const body = await jsonOf(response, GMAIL_LIMITS.signInAnswerBytes);
+  let body: Record<string, unknown>;
+  try {
+    body = await jsonOf(response, GMAIL_LIMITS.signInAnswerBytes);
+  } catch (error) {
+    // An answer over its limit leaves under a code of this address's own. A renewal runs inside a
+    // message fetch (./api.ts), where "too_large" means that one email and makes it a skip: read
+    // as that, an email nobody fetched would be passed over.
+    if (error instanceof GoogleCallError && error.code === "too_large") {
+      throw new GoogleCallError("token_answer");
+    }
+    throw error;
+  }
   const accessToken = body.access_token;
   if (!isOAuthValue(accessToken)) throw new GoogleCallError("token_answer");
   const expiresIn = typeof body.expires_in === "number" ? body.expires_in : null;

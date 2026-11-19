@@ -182,12 +182,17 @@ const SPACES = /[\t\v\f\r\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000
 // is one long number again, and is masked like any other.
 const INVISIBLE =
   /[\u0000-\u0008\u000e-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufe00-\ufe0f\ufeff]/g;
-// A web address, or anything else written as "scheme://".
-const LINK = /\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+/gi;
-// An account or card number: digits in a long row, or groups of four as a card prints them, four
-// groups or more.
+// A web address, or anything else written as "scheme://", wherever it starts: one that runs on from
+// the word or the number before it ("Order 4521https://...") is a link all the same. A scheme is
+// short, so what is tried at each letter has a fixed length, however long the word it stands in.
+// It runs to the next space, "<", ">" or double quote: an apostrophe can be part of an address, and
+// what comes after one ("?name=O'Brien&token=...") must go with the rest.
+const LINK = /[a-z][a-z0-9+.-]{1,20}:\/\/[^\s<>"]+|(?<![a-z])www\.[^\s<>"]+/gi;
+// An account or card number: groups of four as a card prints them, four groups or more, or digits
+// in a long row, with any decimals written after them ("000123456789.00"), so that no part of one
+// is left to be read as an amount.
 const LONG_NUMBER = new RegExp(
-  `(?<!\\d)\\d{4}(?:[ -]\\d{4}){3,}(?!\\d)|\\d{${GMAIL_LIMITS.longNumberDigits},}`,
+  `(?<!\\d)\\d{4}(?:[ -]\\d{4}){3,}(?!\\d)|\\d{${GMAIL_LIMITS.longNumberDigits},}(?:[.,]\\d+)*`,
   "g",
 );
 
@@ -257,8 +262,8 @@ const CODE_WORD = /(?<![a-z0-9])(?:(?:pass)?codes?|pin|otp)(?![a-z0-9])/g;
 const EVERYDAY_CODES = new Set(
   "confirmation promo promotional zip postal order booking discount area coupon".split(" "),
 );
-// The words that make a code a secret. "Sign in", "one time" and the like are joined with a hyphen
-// before these are looked for.
+// The words that make a code a secret. "Sign in", "signing in", "one time" and the like are joined
+// with a hyphen before these are looked for.
 const SECURITY =
   "verif[a-z]{1,10}|authenticat[a-z]{1,5}|security|log-?in|sign-?in|one-?time|access|2fa|two-factor|two-step";
 // One of them, or a code's own name: "PIN code", "OTP code".
@@ -308,7 +313,7 @@ export function carriesSecret(text: string): boolean {
   const said = text
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/\b(sign|log) in\b/g, "$1-in")
+    .replace(/\b(sign|log)(?:g?ing)? in\b/g, "$1-in")
     .replace(/\bone time\b/g, "one-time")
     .replace(/\btwo (factor|step)\b/g, "two-$1");
   if (GIVES_PASSWORD.test(said) || DIGITS_FIRST.test(said)) return true;

@@ -466,6 +466,20 @@ describe("the day", () => {
     expect(await dated("2026-11-18")).toEqual(new Date("2026-11-18T00:00:00.000Z"));
   });
 
+  it.each(["America/Los_Angeles", "Asia/Tokyo", "Pacific/Kiritimati"])(
+    "is midnight UTC, and counted from the day received, with the server's clock set to %s",
+    async (zone) => {
+      vi.stubEnv("TZ", zone);
+      const { dateBackDays, dateAheadDays } = GMAIL_LIMITS;
+      expect((await dated("2026-12-01"))?.toISOString()).toBe("2026-12-01T00:00:00.000Z");
+      expect((await dated(day(-dateBackDays)))?.toISOString()).toBe(
+        `${day(-dateBackDays)}T00:00:00.000Z`,
+      );
+      expect(await dated(day(-dateBackDays - 1))).toBeNull();
+      expect(await dated(day(dateAheadDays + 1))).toBeNull();
+    },
+  );
+
   it("may be as far back and as far ahead as the limits, and no further", async () => {
     const { dateBackDays, dateAheadDays } = GMAIL_LIMITS;
     expect(await dated(day(-dateBackDays))).toEqual(new Date(`${day(-dateBackDays)}T00:00:00Z`));

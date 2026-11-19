@@ -145,10 +145,33 @@ describe("what Claude may see of a body", () => {
     expect(forReader('<https://a.example/b> "https://c.example"')).toBe('<[link]> "[link]"');
   });
 
+  it("replaces all of a link that holds an apostrophe", () => {
+    expect(forReader("Reset: https://pay.example/r?name=O'Brien&token=abc now")).toBe(
+      "Reset: [link] now",
+    );
+    expect(forReader("See www.acme.example/o'brien/pay?token=abc now")).toBe("See [link] now");
+  });
+
+  it("replaces a link that runs on from the word or the number before it", () => {
+    expect(forReader("Order 12345https://track.example/t?token=abc shipped")).toBe(
+      "Order 12345[link] shipped",
+    );
+    expect(forReader("see_http://a.example/x, 2026-11-18www.acme.example/pay?id=1 now")).toBe(
+      "see_[link] 2026-11-18[link] now",
+    );
+    expect(forReader("View your receipthttps://pay.example/r?token=abc")).toBe("View your [link]");
+    // A word longer than any scheme: the link still goes, with as much of the word as a scheme holds.
+    const run = forReader("confirmationnumberhttps://pay.example/reset?token=abc now");
+    expect(run).toBe("co[link] now");
+    expect(forReader(`${"a".repeat(60)}://token-abc now`)).not.toMatch(/token|:\/\//);
+  });
+
   it("leaves a company's bare name alone", () => {
     expect(forReader("Thanks for shopping at acme.example today.")).toBe(
       "Thanks for shopping at acme.example today.",
     );
+    // A word that only ends in the letters a web address starts with.
+    expect(forReader("Awww... thanks for your payment!")).toBe("Awww... thanks for your payment!");
   });
 
   it("replaces every address, whoever's it is", () => {
@@ -207,6 +230,16 @@ describe("what Claude may see of a body", () => {
     );
     expect(text).toBe("Account [number], card [number], ref [number], [number]");
     expect(text).not.toMatch(/\d/);
+  });
+
+  it("replaces a long number with the decimals written after it, so none can pass for an amount", () => {
+    const text = forReader("Account 000123456789.00 paid $123456789.49, ref 987654321,12.");
+    expect(text).toBe("Account [number] paid $[number], ref [number].");
+    expect(text).not.toMatch(/\d/);
+    // A full stop or a comma that only ends a sentence or a clause is left where it is.
+    expect(forReader("Your account is 123456789. $15.49 is due, on card 123456789, today.")).toBe(
+      "Your account is [number]. $15.49 is due, on card [number], today.",
+    );
   });
 
   it.each([
@@ -313,6 +346,14 @@ describe("what Claude may see of a subject", () => {
     expect(subject.slice(0, subjectChars)).toMatch(/\$1,2$/);
     expect(subjectForReader(subject)).not.toMatch(/\d/);
   });
+
+  it("never leaves half of a two-part character", () => {
+    const { subjectChars } = GMAIL_LIMITS;
+    const subject = `${"z".repeat(subjectChars - 1)}😀 and more`;
+    expect(subject.slice(0, subjectChars).isWellFormed()).toBe(false);
+    expect(subjectForReader(subject).isWellFormed()).toBe(true);
+    expect(subjectForReader(`Receipt ${char(0xd83d)} lone`).isWellFormed()).toBe(true);
+  });
 });
 
 describe("a code or a password given in the text", () => {
@@ -330,6 +371,8 @@ describe("a code or a password given in the text", () => {
     `Verification code:${NO_BREAK_SPACE}482913`,
     "Use verification code 482913 to finish signing in.",
     "Use this code to sign in: 123456",
+    "Use this code to finish signing in: 482913",
+    "Your code for logging in is 482913",
     "Enter this code to verify your identity: 482913",
     "Your code for two-step verification is 482913",
     "Your code to log in to Acme: 482913",
@@ -432,8 +475,12 @@ describe("a code or a password given in the text", () => {
     const html =
       "<p>Use this code to finish signing in:</p><table><tr><td><b>482913</b></td></tr></table>" +
       "<p>If you didn't ask for a verification code, ignore this email.</p>";
-    expect(carriesSecret(forReader(htmlToText(html)))).toBe(false);
-    const named = html.replace("Use this code", "Use this verification code");
+    expect(carriesSecret(forReader(htmlToText(html)))).toBe(true);
+    // The same email about an order: the code it gives signs no one in, and the one it only
+    // mentions is given nowhere.
+    const order = html.replace("to finish signing in", "to track your order");
+    expect(carriesSecret(forReader(htmlToText(order)))).toBe(false);
+    const named = order.replace("Use this code", "Use this verification code");
     expect(carriesSecret(forReader(htmlToText(named)))).toBe(true);
   });
 });
@@ -484,7 +531,11 @@ describe("crafted text is read in one pass", () => {
     ["groups of four digits", "1234 ".repeat(LONG / 5)],
     ["groups of four digits with dashes", "1234-".repeat(LONG / 5)],
     ["three digits and a space", "123 ".repeat(LONG / 4)],
+    ["digits and points", "1.".repeat(LONG / 2)],
+    ["long numbers with decimals", "123456789.12 ".repeat(LONG / 13)],
+    ["a long number and a row of decimals", `123456789${".1".repeat(LONG / 2)}`],
     ["the start of a link", "http://".repeat(LONG / 7)],
+    ["links run on from a word", "receipthttps://a.example ".repeat(LONG / 25)],
     ["www", "www.".repeat(LONG / 4)],
     ["a scheme that never ends", `${"a".repeat(LONG)}://`],
     ["colons and slashes", "a://".repeat(LONG / 4)],

@@ -638,13 +638,15 @@ describe("an answer that isn't what a token answer should be", () => {
   const good = { access_token: "an-access-token", refresh_token: "r", scope: GMAIL_SCOPE };
   const signIn = { redirectUri: `${ORIGIN}/api/gmail/callback`, verifier: "v" };
 
+  // Not "too_large": a renewal runs inside a message fetch, and there that code means the one
+  // email (./api.test.ts). Read to its end, this answer would be "not_json".
   it("isn't read into memory when it is huge", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response(" ".repeat(GMAIL_LIMITS.signInAnswerBytes + 1))),
     );
-    expect(await codeOf(exchangeCode(signIn, "code"))).toBe("too_large");
-    expect(await codeOf(refreshTokens("r"))).toBe("too_large");
+    expect(await codeOf(exchangeCode(signIn, "code"))).toBe("token_answer");
+    expect(await codeOf(refreshTokens("r"))).toBe("token_answer");
   });
 
   it("isn't taken when it isn't JSON", async () => {

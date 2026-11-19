@@ -25,6 +25,10 @@ type MoneyMail = {
   body: string;
 };
 
+// Why Claude couldn't be asked: a code of ours for the team, or the API's status as a number. Never
+// anyone's words.
+type LaterReason = "OFF" | "CONNECTION" | "ERROR" | `${number}`;
+
 type MailReading =
   | {
       outcome: "read";
@@ -35,7 +39,7 @@ type MailReading =
   // Claude gave no answer for this one email. It is skipped; the next may be fine.
   | { outcome: "unread" }
   // Claude can't be asked right now. Nothing is wrong with the email: it is read later.
-  | { outcome: "later"; reason: string };
+  | { outcome: "later"; reason: LaterReason };
 
 const SYSTEM = `You read one email a company sent to a customer, and say whether it is about the customer's money, using only what the email says.
 
@@ -178,7 +182,8 @@ function notAnswered(error: unknown): MailReading {
     return { outcome: "unread" };
   }
   const connection = error instanceof Anthropic.APIConnectionError;
-  const reason = status !== undefined ? String(status) : connection ? "CONNECTION" : "ERROR";
+  const reason: LaterReason =
+    status !== undefined ? `${status}` : connection ? "CONNECTION" : "ERROR";
   log.warn("Gmail reader: can't be asked", { reason });
   return { outcome: "later", reason };
 }
