@@ -37,6 +37,13 @@ export type PaidLoan = {
   nextDate: string;
 };
 
+// The lender as a person says it: the bank's words for the payment come off ("NELNET LOAN PAYMENT
+// STUDENT LN" read "Nelnet Loan Payment Student Ln" on Home, Loans and in the chat; debugger
+// 11-19). Only where a payment word is there to say so, so a lender's own name stays whole.
+const PAYMENT_WORDS =
+  /\s+(?:(?:student|auto|car|home|mortgage|title)\s+)?(?:loan|ln|mtg)?\s*\b(?:payments?|pmts?|pymts?)\b.*$/i;
+export const lenderName = (name: string) => name.replace(PAYMENT_WORDS, "").trim() || name;
+
 export function paidLoans(payments: readonly PaidLoanPayment[], asOf: string): PaidLoan[] {
   const groups = new Map<string, { kind: PaidLoanKind; lender: string; rows: PaidLoanPayment[] }>();
   for (const p of payments) {
@@ -45,7 +52,7 @@ export function paidLoans(payments: readonly PaidLoanPayment[], asOf: string): P
     const merchant = normalizeMerchant(p.merchantName ?? p.description);
     if (!merchant) continue;
     const key = `${kind}:${merchant.key}`;
-    const group = groups.get(key) ?? { kind, lender: merchant.name, rows: [] };
+    const group = groups.get(key) ?? { kind, lender: lenderName(merchant.name), rows: [] };
     group.rows.push(p);
     groups.set(key, group);
   }

@@ -6,6 +6,7 @@ import {
 } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { netWorth, netWorthLine, type NetWorth, type Unbalanced } from "@/insights/net-worth";
+import { lenderName } from "@/insights/paid-loans";
 import { monthsEnding } from "@/insights/spending";
 import { withoutCopies } from "@/lib/account-copies";
 import { cryptoTotal } from "@/lib/crypto/crypto";
@@ -172,5 +173,6 @@ export async function loansSeenWithoutBalance(
     },
     select: { merchantName: true, description: true },
   });
-  return [...new Set(rows.map((r) => r.merchantName ?? r.description))].sort();
+  // Named as Loans names them, without the bank's words for the payment (debugger 11-19).
+  return [...new Set(rows.map((r) => lenderName(r.merchantName ?? r.description)))].sort();
 }
