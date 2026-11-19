@@ -1,3 +1,4 @@
+import { sinceStatementNote } from "@/planning/since-statement";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
@@ -819,6 +820,14 @@ export async function runInvestmentTool(
           name: p.name,
           kind: p.kind,
           balance: money(p.balanceCents),
+          // Checking walked forward from a statement: say it's an estimate, with the note.
+          ...(p.today
+            ? {
+                balanceToday: money(p.today.cents),
+                estimated: true,
+                note: `Estimated: ${sinceStatementNote(p.today.since)}. Say "estimated" with it.`,
+              }
+            : {}),
           ratePercent: p.rateBps / 100,
         })),
         monthlySpending: money(view.monthlySpendingCents),

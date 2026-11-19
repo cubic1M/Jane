@@ -420,3 +420,33 @@ export function twoCardsOneHolding(flat: Flat): string[] {
     .filter(([, cards]) => cards.length > 1)
     .map(([fund, cards]) => `${fund}: one holding, ${cards.length} cards (${cards.join(", ")})`);
 }
+
+// And a balance walked forward from a statement is said as an estimate, wherever it's shown. Today's
+// checking is a statement's balance with the pay and bills expected since its day added (#1099); a
+// text that shows that figure says "estimated" (#2142's "In checking now, estimated · +$1,568 of
+// pay and bills expected since your Nov 12 statement") or, as Money and Bills say it after the
+// statement's own figure and day, "about $X today". The cash page and the chat's cash answer gave
+// it as a plain balance (debug 3, 11-19).
+const SAYS_ESTIMATE = /\bestimated\b|\babout \$/i;
+const dollars = (cents: number) =>
+  `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+export function walkedUnlabelled(flat: Flat): string[] {
+  const walked = new Set<string>();
+  const since = flat["home.summary.safeToSpend.sinceStatement.cents"];
+  const home = flat["home.summary.safeToSpend.balanceCents"];
+  if (typeof since === "number" && since !== 0 && typeof home === "number")
+    walked.add(dollars(home));
+  for (const [path, cents] of Object.entries(flat)) {
+    if (/^cash\.places\.\d+\.today\.cents$/.test(path) && typeof cents === "number") {
+      walked.add(dollars(cents));
+    }
+  }
+  if (walked.size === 0) return [];
+  return shownTexts(flat).flatMap(([path, text]) =>
+    [...walked].some((w) => new RegExp(`${w.replace(/[$.]/g, "\\$&")}(?![\\d])`).test(text)) &&
+    !SAYS_ESTIMATE.test(text)
+      ? [`${path}: a balance walked forward from a statement, unlabelled: "${text.slice(0, 140)}"`]
+      : [],
+  );
+}

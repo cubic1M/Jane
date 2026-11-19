@@ -81,7 +81,12 @@ export async function snapshotAt(
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
     chat,
     cash: {
-      places: cash.places.map(({ name, kind, balanceCents }) => ({ name, kind, balanceCents })),
+      places: cash.places.map(({ name, kind, balanceCents, today }) => ({
+        name,
+        kind,
+        balanceCents,
+        today: today ?? null,
+      })),
     },
   });
 }

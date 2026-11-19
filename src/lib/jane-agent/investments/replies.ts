@@ -1,3 +1,4 @@
+import { placeLine } from "@/planning/since-statement";
 import type { BrokerageAsks } from "@/lib/investing/brokerage-balance";
 import { listOf } from "@/planning/tax-profile";
 import {
@@ -823,15 +824,17 @@ export function cashReply(view: CashView): Reply {
   }
   const plan = view.plan;
   if (!view.advice) {
-    const where = view.places.map((p) => `${formatCents(p.balanceCents)} in ${p.name}`).join(", ");
+    const where = view.places.map(placeLine).join(", ");
     return {
       body: `Your cash: ${where}. I don't give recommendations on real accounts yet.`,
       actions: [CASH_LINK],
       refs: {},
     };
   }
+  // The plan works from the statements' balances; checking today, walked forward, is said apart.
+  const walked = view.places.filter((p) => p.today);
   return {
-    body: cashLine(plan),
+    body: `${cashLine(plan)}${walked.length > 0 ? ` That's from your statements; today: ${walked.map(placeLine).join(", ")}.` : ""}`,
     actions: [...moveButtons(plan), CASH_LINK],
     refs: { advice: true, ...(plan.moves.length > 0 ? { cashPlan: plan.key } : {}) },
   };

@@ -27,6 +27,7 @@ import {
   rawNames,
   saidTwice,
   twoCardsOneHolding,
+  walkedUnlabelled,
   sameFigures,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
@@ -168,5 +169,11 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // And one holding, one card (the fee card and the 401(k) menu card, 11-19; #2090, #2094).
   it("raises one card for one holding", () => {
     expect(everyone(twoCardsOneHolding)).toEqual([]);
+  });
+
+  // And a balance walked forward from a statement says it's an estimate (#2142; the cash page and
+  // the chat's cash answer, 11-19).
+  it("says estimated wherever it shows a balance walked forward from a statement", () => {
+    expect(everyone(walkedUnlabelled)).toEqual([]);
   });
 });

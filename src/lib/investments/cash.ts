@@ -77,11 +77,17 @@ export async function loadCash(
       }),
       loadDetectionInput(userId, { client, now }),
     ]);
-  // Checking as every figure says it today: a statement's balance walked forward by the pay and
-  // bills expected since its day (#1099). Read as the statement's, the chat gave "$3,022.33" in
-  // checking and "Your cash is $3,087.33" in one answer (walk, upload S4, 11-18).
-  const today = new Map(
-    forecastAccounts(detection, FORECAST_DAYS).map((f) => [f.accountId, f.todayCents]),
+  // Checking today as every figure says it: a statement's balance walked forward by the pay and
+  // bills expected since its day (#1099), an estimate said with what it added (#2142). The walk
+  // read "$3,022.33" in checking and "Your cash is $3,087.33" in one answer (upload S4, 11-18).
+  // The plan and what it suggests keep the statement's balance: what Jane sees.
+  const walked = new Map(
+    forecastAccounts(detection, FORECAST_DAYS)
+      .filter((f) => f.todayCents !== f.startCents)
+      .map((f) => [
+        f.accountId,
+        { cents: f.todayCents, since: { day: f.startOn, cents: f.todayCents - f.startCents } },
+      ]),
   );
   const shift = new Map<string, number>();
   for (const m of moved) {
@@ -96,8 +102,16 @@ export async function loadCash(
         id: a.id,
         name: a.name,
         kind: kind as CashPlaceKind,
-        balanceCents: (today.get(a.id) ?? a.currentBalanceCents ?? 0) + (shift.get(a.id) ?? 0),
+        balanceCents: (a.currentBalanceCents ?? 0) + (shift.get(a.id) ?? 0),
         rateBps: CURRENT_CASH_RATE_BPS[kind],
+        ...(walked.has(a.id)
+          ? {
+              today: {
+                cents: walked.get(a.id)!.cents + (shift.get(a.id) ?? 0),
+                since: walked.get(a.id)!.since,
+              },
+            }
+          : {}),
       };
     });
   // The brokerage's uninvested cash (its sweep), taxable accounts only.

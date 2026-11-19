@@ -1,3 +1,4 @@
+import { sinceStatementNote } from "@/planning/since-statement";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -77,7 +78,18 @@ async function CashContent({
               {view.places.map((p) => (
                 <tr key={`${p.id}-${p.kind}`}>
                   <td>{p.name}</td>
-                  <td className="text-right">{formatCents(p.balanceCents)}</td>
+                  <td className="text-right">
+                    {p.today ? (
+                      <>
+                        {formatCents(p.today.cents)}, estimated
+                        <span className="block text-xs text-zinc-500">
+                          {sinceStatementNote(p.today.since)}
+                        </span>
+                      </>
+                    ) : (
+                      formatCents(p.balanceCents)
+                    )}
+                  </td>
                   <td className="text-right">{formatRate(p.rateBps)}</td>
                 </tr>
               ))}

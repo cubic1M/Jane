@@ -1,3 +1,4 @@
+import type { SinceStatement } from "@/planning/since-statement";
 import {
   CASH_HOMES,
   CASH_MIN_MOVE_CENTS,
@@ -18,8 +19,12 @@ export type CashPlace = {
   id: string;
   name: string;
   kind: CashPlaceKind;
+  // As the statement or bank shows it; the plan reads this.
   balanceCents: number;
   rateBps: number;
+  // Checking walked forward from a statement to today, an estimate, with what it added
+  // (src/planning/since-statement.ts). Shown, never planned on.
+  today?: { cents: number; since: SinceStatement };
 };
 
 type CashBucket = {
