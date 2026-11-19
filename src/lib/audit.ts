@@ -111,6 +111,7 @@ export type AuditEvent =
   // Connectors (src/lib/connectors/): consent and the vault. Scopes and ids only, never a secret.
   | "connector_consent_granted"
   | "connector_consent_revoked"
+  | "connector_data_forgotten"
   | "connector_credential_stored"
   | "connector_credential_deleted"
   // The person's own credit report, saved as derived numbers (src/lib/connectors/credit-upload.ts).
@@ -126,7 +127,6 @@ export type AuditEvent =
   | "connector_connect_started"
   | "connector_connect_returned"
   | "connector_connect_declined"
-  | "connector_data_forgotten"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"
