@@ -21,8 +21,22 @@ function sameText(a: string, b: string): boolean {
 // What a sign-in keeps in its cookie, at least. Encrypt it whole (src/lib/crypto.ts) before it goes.
 type SignInStart = { state: string; userId: string; at: number };
 
+// Anything else the app seals with the same key decrypts too, so what comes out is checked, not
+// assumed: a value of another shape would otherwise throw below instead of being refused.
+function isSignInStart(value: unknown): value is SignInStart {
+  if (typeof value !== "object" || value === null) return false;
+  const { state, userId, at } = value as Record<string, unknown>;
+  return (
+    typeof state === "string" &&
+    typeof userId === "string" &&
+    typeof at === "number" &&
+    Number.isFinite(at)
+  );
+}
+
 // The sign-in this browser started, if this answer belongs to it: the same person, within the time
-// and with the state that went out. Anything else, including a cookie that won't decrypt, is null.
+// and with the state that went out. Anything else, including a cookie that won't decrypt or that
+// holds something other than a sign-in, is null.
 export function openSignIn<T extends SignInStart>(
   cookie: string | undefined,
   {
@@ -33,12 +47,13 @@ export function openSignIn<T extends SignInStart>(
   }: { userId: string; state: string | null; maxAgeMs: number; now?: number },
 ): T | null {
   if (!cookie || !state) return null;
-  let signIn: T;
+  let signIn: unknown;
   try {
-    signIn = JSON.parse(decrypt(cookie)) as T;
+    signIn = JSON.parse(decrypt(cookie));
   } catch {
     return null;
   }
+  if (!isSignInStart(signIn)) return null;
   const fresh = now - signIn.at < maxAgeMs;
-  return fresh && signIn.userId === userId && sameText(signIn.state, state) ? signIn : null;
+  return fresh && signIn.userId === userId && sameText(signIn.state, state) ? (signIn as T) : null;
 }
