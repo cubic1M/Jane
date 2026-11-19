@@ -341,14 +341,28 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
+  // Statements that end before this month have none of it: "$0.00 of $40.00 this month" isn't
+  // known (debug 2, sweep 8, upload S7, 11-19: a Bank of America statement to Oct 20 read Nov 19).
+  const notInYet =
+    input.spending?.current === false && input.spending.endsOn ? input.spending.endsOn : null;
   for (const p of input.budgets.progress) {
     items.budgets.push(
       item("budgets", p.category, {
         label: p.category,
-        status: p.over ? "act" : "good",
-        figure: p.over ? `${shortMoney(-p.leftCents)} over` : `${shortMoney(p.leftCents)} left`,
-        summary: `${formatCents(p.spentCents)} of ${formatCents(p.budgetCents)} this month, ${plural(input.budgets.daysLeft, "day")} left.`,
-        cents: p.over ? -p.leftCents : undefined,
+        ...(notInYet
+          ? {
+              status: "look" as const,
+              figure: `${shortMoney(p.budgetCents)}/mo`,
+              summary: `A ${formatCents(p.budgetCents)} monthly budget. This month's spending isn't in yet: your statements end on ${dayLabel(notInYet)}.`,
+            }
+          : {
+              status: p.over ? ("act" as const) : ("good" as const),
+              figure: p.over
+                ? `${shortMoney(-p.leftCents)} over`
+                : `${shortMoney(p.leftCents)} left`,
+              summary: `${formatCents(p.spentCents)} of ${formatCents(p.budgetCents)} this month, ${plural(input.budgets.daysLeft, "day")} left.`,
+              cents: p.over ? -p.leftCents : undefined,
+            }),
       }),
     );
   }
