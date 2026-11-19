@@ -244,8 +244,11 @@ const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+(?:\d{6,}|X{3,}\d{2,})(?:\s.*)?)$/;
 // bank abbreviates it, and T-Mobile's "PCS SVC" (debugger 11-12: "Maple Court Apts Rent Web
 // Pmts" on a student's cards). Saved keys moved in prisma/migrations/
 // 20270516000000_merchant_without_ach_entry_words: keep them in step.
+// Also an ACH line's own code at the end ("AVALON BAY RENT ACH WEB": debug 2, 11-19, "Avalon Bay
+// Rent Ach Web" in a student's bills). Saved keys moved in prisma/migrations/
+// 20270520000000_merchant_without_ach_tail: keep them in step.
 const ACH_ENTRY =
-  /(?<!^CHASE)\s+(?:BILL ?(?:PAY|PAYMT|PYMT|PMT)|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) (?:PMTS?|PYMTS?)|PCS SVC)$/;
+  /(?<!^CHASE)\s+(?:BILL ?(?:PAY|PAYMT|PYMT|PMT)|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) (?:PMTS?|PYMTS?)|PCS SVC|ACH(?: (?:WEB|PPD|CCD|TEL))?)$/;
 
 // The answer depends only on the text, and a page reads the same few hundred descriptions many
 // times: Home spent about 300 ms of each render here (speed round, 11-15). So each answer is kept,
