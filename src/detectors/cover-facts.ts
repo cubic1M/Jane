@@ -109,8 +109,14 @@ const carCoverCost: Detector = {
     );
     if (paid.length < 2) return null;
     // A year of it: the last 12 months summed when the data reaches back a year; else the latest
-    // charge at its own rhythm (monthly, every six months, or once a year).
-    const yearAgo = addDays(data.today, -365);
+    // charge at its own rhythm (monthly, every six months, or once a year). The 12 months end where
+    // the data does, not today: with no new lines, each day after dropped a premium from "a year"
+    // (debug 3, 11-19, gate C: $3,850.00 a year one day, $3,500.00 the next, nothing new seen).
+    const newest = data.transactions.reduce(
+      (m, t) => (t.date <= data.today && t.date > m ? t.date : m),
+      "",
+    );
+    const yearAgo = addDays(newest || data.today, -365);
     const sorted = [...paid].sort((a, b) => b.date.localeCompare(a.date));
     const first = data.transactions.reduce((m, t) => (t.date < m ? t.date : m), data.today);
     const gap = daysBetween(sorted[1]!.date, sorted[0]!.date);

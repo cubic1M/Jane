@@ -1,3 +1,4 @@
+import { STALE_UPLOAD_DAYS } from "@/config/import";
 import { DATA_ENDED_AFTER_DAYS } from "@/config/insights";
 import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
 import { addDays } from "@/detection/units";
@@ -114,6 +115,17 @@ export const DATED: readonly Reason[] = [
     paths: /^chat\.how much did I spend this month\./,
     on: daysAfter("lastLine", DATA_ENDED_AFTER_DAYS + 1),
   },
+  // Statements that end more than STALE_UPLOAD_DAYS ago say nothing about now (statementsTooOld,
+  // staleStatementsEnd): the cushion card ("You keep $X in cash") waits for newer ones, and the
+  // chat's net worth says when its figure is from (gate C, debug 3, 11-19: the frozen demo data's
+  // 46th day).
+  {
+    name: "statements too old to say what's now",
+    paths: /^(suggestions\.safe_to_spend:emergency_fund\.|chat\.what's my net worth\.body$)/,
+    on: daysAfter("lastLine", STALE_UPLOAD_DAYS + 1),
+  },
+  // The return's due date counted down: "due April 15, 2027, 37 days from now".
+  { name: "the return's countdown", paths: /^suggestions\.taxes:filing_extension\.why$/ },
   // A balance older than STALE_AFTER_DAYS isn't today's: safe to spend is left out (an upload's,
   // whose balance is its statement's). Each account's own: an old checking file beside a recent
   // card's (debug 3, 11-16).
