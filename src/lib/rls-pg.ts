@@ -104,6 +104,12 @@ function switchOf(config: Config): { step: "reading" | "writing"; to: Switch } |
 
 export class RlsClient extends pg.Client {
   private state: State = { step: "idle" };
+  // The statement before, on this connection. Prisma loads a read's relations side by side
+  // (decisions, its user and its messages at once, inside the read's transaction): pg runs one
+  // statement at a time on a connection anyway, but holding the rest in its own queue is
+  // deprecated in pg 8 (it warns) and an error in pg 9. So each waits here for the one before:
+  // the same order (first asked, first sent) and the same time (pg never sent two at once).
+  private last: Promise<unknown> = Promise.resolve();
 
   // Prisma's driver calls query(config) and awaits the promise; every other form (the pool's
   // own calls, callbacks) goes straight through.
@@ -116,7 +122,10 @@ export class RlsClient extends pg.Client {
       typeof (config as Config).text === "string" &&
       typeof (config as { submit?: unknown }).submit !== "function";
     if (!plain) return (super.query as (...a: unknown[]) => never)(config, values, callback);
-    return this.next(config as Config) as never;
+    const run = () => this.next(config as Config);
+    const result = this.last.then(run, run);
+    this.last = result.catch(() => undefined);
+    return result as never;
   }
 
   // Counted toward the render that asked (src/lib/render-timing.ts).
