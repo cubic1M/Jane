@@ -54,5 +54,13 @@
   "when": "merged",
   "since": "2026-11-18T08:46:35.834Z",
   "expires": "2026-11-21T08:46:35.834Z"
+ },
+ {
+  "on": 2112,
+  "lane": "lane:connectors",
+  "task": "claude/connect-flow",
+  "when": "merged",
+  "since": "2026-11-19T06:50:56.518Z",
+  "expires": "2026-11-22T06:50:56.518Z"
  }
 ]
