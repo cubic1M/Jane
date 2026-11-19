@@ -21,8 +21,22 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import { formatRate } from "@/lib/percent";
 import type { ProfileTx } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
-import { clip, evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
+import {
+  clip,
+  evidence,
+  factEvidence,
+  headlineOf,
+  nice,
+  statementsTooOld,
+  weakest,
+} from "./helpers";
 import { atStanford } from "./student-money";
+
+// The newest line up to today: where the data ends. A window counted back from it stays put while
+// no new lines come; one counted back from today slides with the calendar.
+const newestLine = (data: { transactions: readonly { date: string }[]; today: string }) =>
+  data.transactions.reduce((m, t) => (t.date <= data.today && t.date > m ? t.date : m), "") ||
+  data.today;
 
 // Facts for real accounts where the recommendation is demo advice only (suggest-money lane, phase
 // 2, 11-18): what Jane sees, the published figure beside it with its source, and the person's own
@@ -112,11 +126,7 @@ const carCoverCost: Detector = {
     // charge at its own rhythm (monthly, every six months, or once a year). The 12 months end where
     // the data does, not today: with no new lines, each day after dropped a premium from "a year"
     // (debug 3, 11-19, gate C: $3,850.00 a year one day, $3,500.00 the next, nothing new seen).
-    const newest = data.transactions.reduce(
-      (m, t) => (t.date <= data.today && t.date > m ? t.date : m),
-      "",
-    );
-    const yearAgo = addDays(newest || data.today, -365);
+    const yearAgo = addDays(newestLine(data), -365);
     const sorted = [...paid].sort((a, b) => b.date.localeCompare(a.date));
     const first = data.transactions.reduce((m, t) => (t.date < m ? t.date : m), data.today);
     const gap = daysBetween(sorted[1]!.date, sorted[0]!.date);
@@ -202,7 +212,11 @@ const cheaperTier: Detector = {
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    const since = addDays(data.today, -CHEAPER_PLAN_SEEN_DAYS);
+    // "You pay $17.99" says what's paid now: not from statements that ended long ago. Seen lately
+    // is counted back from where the data ends, as car cover's year is (gate C, debug 3, 11-19:
+    // with no new lines the card went 46 days after the last charge, a day nothing named).
+    if (statementsTooOld(data)) return null;
+    const since = addDays(newestLine(data), -CHEAPER_PLAN_SEEN_DAYS);
     const found = CHEAPER_PLANS.flatMap((p) => {
       const charges = data.transactions
         .filter(

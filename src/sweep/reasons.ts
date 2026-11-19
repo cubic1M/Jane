@@ -1,6 +1,7 @@
 import { STALE_UPLOAD_DAYS } from "@/config/import";
 import { DATA_ENDED_AFTER_DAYS } from "@/config/insights";
 import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
+import { FILING, W4 } from "@/config/student-taxes";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import type { Reason } from "./diff";
@@ -116,16 +117,24 @@ export const DATED: readonly Reason[] = [
     on: daysAfter("lastLine", DATA_ENDED_AFTER_DAYS + 1),
   },
   // Statements that end more than STALE_UPLOAD_DAYS ago say nothing about now (statementsTooOld,
-  // staleStatementsEnd): the cushion card ("You keep $X in cash") waits for newer ones, and the
-  // chat's net worth says when its figure is from (gate C, debug 3, 11-19: the frozen demo data's
-  // 46th day).
+  // staleStatementsEnd): the cushion, idle-cash and cheaper-plan cards ("You keep $X in cash",
+  // "you pay $17.99") wait for newer ones, and Money's and the chat's net worth say when it's
+  // from (gate C, debug 3, 11-19: the frozen demo data's 46th day).
   {
     name: "statements too old to say what's now",
-    paths: /^(suggestions\.safe_to_spend:emergency_fund\.|chat\.what's my net worth\.body$)/,
+    paths:
+      /^(suggestions\.(safe_to_spend:emergency_fund|investing:idle_cash|subscriptions:cheaper_tier)\.|chat\.what's my net worth\.body$|trees\.money\.summaries\.have:net-worth$)/,
     on: daysAfter("lastLine", STALE_UPLOAD_DAYS + 1),
   },
-  // The return's due date counted down: "due April 15, 2027, 37 days from now".
+  // The return's due date counted down: "due April 15, 2027, 37 days from now". The card is the
+  // filing season's own: it comes on W4.extensionFrom and goes the day after the return is due.
   { name: "the return's countdown", paths: /^suggestions\.taxes:filing_extension\.why$/ },
+  {
+    name: "the filing season",
+    paths: /^suggestions\.taxes:filing_extension\./,
+    on: (day) =>
+      day.slice(5) === W4.extensionFrom || day.slice(5) === addDays(FILING.due, 1).slice(5),
+  },
   // A balance older than STALE_AFTER_DAYS isn't today's: safe to spend is left out (an upload's,
   // whose balance is its statement's). Each account's own: an old checking file beside a recent
   // card's (debug 3, 11-16).

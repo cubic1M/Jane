@@ -18,6 +18,8 @@ describe("statements too old to say what's now", () => {
     expect(day).toBe("2027-03-11");
     expect(old.paths.test("suggestions.safe_to_spend:emergency_fund.short")).toBe(true);
     expect(old.paths.test("chat.what's my net worth.body")).toBe(true);
+    expect(old.paths.test("suggestions.investing:idle_cash.short")).toBe(true);
+    expect(old.paths.test("trees.money.summaries.have:net-worth")).toBe(true);
     expect(old.on!(day, person)).toBe(true);
     expect(old.on!(addDays(day, -1), person)).toBe(false);
     expect(old.on!(addDays(day, 1), person)).toBe(false);
@@ -34,5 +36,15 @@ describe("the return's countdown", () => {
     const countdown = reason("the return's countdown");
     expect(countdown.paths.test("suggestions.taxes:filing_extension.why")).toBe(true);
     expect(countdown.paths.test("suggestions.taxes:filing_extension.short")).toBe(false);
+  });
+});
+
+describe("the filing season", () => {
+  it("brings the filing-extension card on March 1 and takes it the day after April 15", () => {
+    const season = reason("the filing season");
+    expect(season.paths.test("suggestions.taxes:filing_extension.headline")).toBe(true);
+    expect(season.on!("2028-03-01", person)).toBe(true);
+    expect(season.on!("2028-04-16", person)).toBe(true);
+    expect(season.on!("2028-03-02", person)).toBe(false);
   });
 });
