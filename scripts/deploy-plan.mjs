@@ -7,6 +7,7 @@ import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEPLOY_ID, decide, lastGood, newestGreen, recorded } from "./deploy-plan-core.mjs";
+import { writeNoDeploy } from "./no-deploy.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
 const BRANCH = "ci-deploy";
@@ -36,7 +37,7 @@ try {
 
 function save(message) {
   writeFileSync(join(dir, "state.json"), `${JSON.stringify(state, null, 1)}\n`);
-  git("add", "state.json");
+  git("add", "state.json", ...writeNoDeploy(dir));
   git(
     "-c",
     "user.name=github-actions[bot]",

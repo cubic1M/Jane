@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { activeClaims, releaseClaim, takeClaim } from "./loop-core.mjs";
 import { dropWait, takeWait } from "./loop-waits-core.mjs";
+import { writeNoDeploy } from "./no-deploy.mjs";
 
 const BRANCH = "claude/task-claims";
 const TRIES = 5;
@@ -44,7 +45,7 @@ function readWaits() {
 
 function write(claims, message, waits = null) {
   writeFileSync(file, `${JSON.stringify(claims, null, 1)}\n`);
-  git("add", "claims.json");
+  git("add", "claims.json", ...writeNoDeploy(dir));
   if (waits) {
     writeFileSync(join(dir, "waits.json"), `${JSON.stringify(waits, null, 1)}\n`);
     git("add", "waits.json");

@@ -18,6 +18,7 @@ import {
   wakeText,
 } from "./loop-core.mjs";
 import { prsToLookUp, renderWaits, waitWakes } from "./loop-waits-core.mjs";
+import { writeNoDeploy } from "./no-deploy.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
 const [OWNER, NAME] = REPO.split("/");
@@ -339,7 +340,7 @@ if (process.env.GITHUB_STEP_SUMMARY && existsSync(process.env.GITHUB_STEP_SUMMAR
 }
 
 // One commit, replaced each time, as with ci-flakes: the secret scan reads every branch.
-git("add", "state.json", "LOOP.md");
+git("add", "state.json", "LOOP.md", ...writeNoDeploy(dir));
 git(
   "-c",
   "user.name=github-actions[bot]",

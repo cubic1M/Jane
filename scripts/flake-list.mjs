@@ -16,6 +16,7 @@ import {
   renderFlakes,
   timingsFrom,
 } from "./flake-list-core.mjs";
+import { writeNoDeploy } from "./no-deploy.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
 const BRANCH = "ci-flakes";
@@ -130,6 +131,7 @@ const kept = keepRecent(records, now);
 writeFileSync(join(dir, "records.jsonl"), kept.map((r) => JSON.stringify(r)).join("\n") + "\n");
 writeFileSync(join(dir, "FLAKES.md"), renderFlakes(list, REPO, now));
 writeFileSync(join(dir, "timings.json"), `${JSON.stringify(timings, null, 0)}\n`);
+git("add", ...writeNoDeploy(dir));
 if (process.env.GITHUB_STEP_SUMMARY && existsSync(process.env.GITHUB_STEP_SUMMARY)) {
   writeFileSync(
     process.env.GITHUB_STEP_SUMMARY,
