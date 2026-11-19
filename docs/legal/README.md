@@ -18,6 +18,7 @@ a change in one breaks the test until the pages say it too.
 | Bank access is read-only through Plaid; Jane never moves money | Plaid Transactions, with Liabilities and Investments optional (`src/lib/plaid/link.ts`); no Auth, Transfer or Payment Initiation product |
 | Real accounts: you make changes yourself; Jane and the team don't contact companies | `CONCIERGE_ACTIONS.realAccounts = false` (`src/config/concierge.ts`), `src/lib/concierge-mode.ts` |
 | When `ROBINHOOD_LINK=1`: Robinhood is read-only by Jane's own list of tools; account numbers thrown away; tokens encrypted; deleted on disconnect, inactivity and account deletion | `src/lib/robinhood/mcp-client.ts`, `src/lib/robinhood/parse.ts`, `src/lib/robinhood/secrets.ts`, `src/lib/robinhood/connection.ts`, `docs/setup/robinhood.md` |
+| When `GMAIL_LINK=1`: a Gmail mailbox is read-only (`gmail.readonly` alone); from each money email Jane keeps the kind, amount, day, the sender's domain, when it arrived and Google's id, and no text; the first read is the newest 30 emails of 14 days; Anthropic receives the day, the domain, and the subject and text with links, addresses and long numbers taken out, and an email is the one exception to "never receives your password"; Google's Limited Use sentence and its plain words; no team page shows a mailbox; tokens encrypted; disconnect, inactivity and account deletion delete it and ask Google to end the permission unless another Jane account holds that mailbox; a mailbox connected to another account leaves what was read with the first until it disconnects. **Not reviewed by a lawyer yet** | `GMAIL_SCOPE`, `GMAIL_LIMITS` (`src/config/gmail.ts`), `src/config/gmail-disclosure.ts`, `src/lib/gmail/read-message.ts`, `src/lib/gmail/text.ts`, `src/lib/gmail/read-mail.ts`, `src/lib/gmail/secrets.ts`, `src/lib/gmail/mailbox.ts`, `src/lib/account-deletion.ts`, `src/lib/plaid/inactive.ts`, `docs/setup/gmail.md`; checked by `src/app/legal-pages-gmail.test.tsx` |
 | Plaid tokens and uploaded documents encrypted with AES-256-GCM | `TOKEN_ENCRYPTION_KEY`, `src/lib/crypto.ts`; `src/lib/documents/store.ts` |
 | CSV uploads parsed in memory, never stored as a file | `src/app/import/` |
 | What Anthropic receives (chat, card text, check-in, weekly review, uploaded documents, merchant names) and never (passwords, bank sign-in, Plaid connection, account numbers, raw descriptions) | `src/lib/jane-agent/claude.ts`, `src/lib/ask/tools.ts`, `src/lib/explain.ts`, `src/lib/check-in.ts`, `src/lib/strategist.ts`, `src/lib/documents/extract.ts`, `src/lib/tax-notices/read.ts`, `src/lib/prior-return/read.ts`, `src/lib/draft-return/read.ts`, `src/lib/subscription-check.ts` |
@@ -75,6 +76,23 @@ a change in one breaks the test until the pages say it too.
     as written? Is an arbitration clause or class-action waiver advisable?
 15. **GLBA and state privacy laws.** Does reading bank data through Plaid make us a financial
     institution needing a GLBA notice? Which state laws apply to an invite-only beta?
+16. **Gmail mailboxes (when `GMAIL_LINK=1`).** Three things are new in kind. **Email text goes to
+    Anthropic:** for each email that passes Jane's check, Claude receives its subject and text, with
+    links, addresses and long numbers taken out, and an email can hold anything its sender wrote
+    (other people's names, a medical or legal bill, part of an account number). The page names
+    Anthropic and what it's sent before the Connect link, and the person agrees there: is that
+    consent enough, and what must the policy say about Anthropic's retention and training terms?
+    **Google's Limited Use wording:** `/privacy` carries Google's sentence ("Jane's use of
+    information received from Google APIs follows Google's API Services User Data Policy, including
+    its Limited Use requirements.") and a plain list: only to show the money emails, never for
+    advertising or lending or credit decisions, never sold, never used to train AI models, and no
+    person reads it unless asked, for a bug or a security problem, or by law. Does it meet Google's
+    policy (whose own wordings `docs/setup/gmail.md` quotes), and can we keep each promise, since
+    the founders can read the database? **The take-over sentence:** a mailbox can be connected to
+    one Jane account at a time, and connecting it to another stops it for the first, which keeps
+    what Jane read for it until it disconnects. Is that fair to the first account, and is its page's
+    notice enough? Also: "Only connect a mailbox that's yours, and not one from work or school", and
+    whether `TERMS_VERSION` should be bumped (it wasn't, as for Robinhood).
 
 ## Open questions for the lawyer
 

@@ -54,6 +54,12 @@ src/lib/jane-agent/snapshot.ts  (the person's numbers, in one place)
 - **Getting data in.** A bank linked through Plaid syncs on its webhook and again daily
   (`/api/cron/plaid-sync`). A CSV or OFX upload is parsed in memory, shown for a check, then
   saved. The demo bank fills the same tables from `src/data-sources/demo`.
+- **Reading mail.** With `GMAIL_LINK=1`, a person can connect Gmail mailboxes read-only
+  (`src/lib/gmail`, [docs/setup/gmail.md](setup/gmail.md)): Google's notice of new mail reaches
+  `/api/gmail/webhook`, and Jane reads on from where it stopped. Only an email a company sent about
+  money, by Google's own check of the sender, goes to Claude, which picks out a kind, an amount and
+  a date; no text is kept, and only the person's own mailboxes page and data download show what was
+  read.
 - **Finding things.** `runDetection` runs every rule on the person's data and saves findings;
   running it twice on the same data changes nothing. The detectors in `src/detectors` cover
   the sectors (debt, insurance, investing, taxes, planning) and feed the ranked list of what
@@ -118,6 +124,7 @@ $CRON_SECRET`:
 | `/api/cron/practice-scan` | 21:30 daily | Scans every practice portfolio and runs its autopilot, in the practice ledger only. |
 | `/api/cron/paper-run` | 22:00 daily | Values every paper account at the day's closes and leaves its trades in the trade pop-up. |
 | `/api/cron/events` | 22:30 daily | Refreshes the events the paper account's overlay reads. |
+| `/api/cron/gmail` | 11:15 daily | Reads the Gmail mailboxes due a read: the backstop for Google's notices of new mail, and the only reader when they're off. With `GMAIL_LINK` unset or `KILL_BANKS` on, it reads nothing. |
 
 Slow work that can fail goes through the jobs queue (`src/lib/jobs.ts`, the `jobs` table):
 claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on

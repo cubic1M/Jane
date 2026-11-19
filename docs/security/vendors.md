@@ -109,6 +109,66 @@ failed jobs are sent. Failures caught and logged with `log.error` reach the logs
 **What Jane sends** (`src/lib/robinhood/`): the tokens, and an account number in a request about that
 account. It calls only the tools on the list in `mcp-client.ts`. See `docs/setup/robinhood.md`.
 
+## Gmail (a person's mailboxes, off unless `GMAIL_LINK=1`)
+
+[Gmail scopes](https://developers.google.com/workspace/gmail/api/auth/scopes),
+[messages.get](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get),
+[users.watch](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/watch),
+[unverified apps](https://support.google.com/cloud/answer/7454865),
+[restricted scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification),
+[Gmail API quota](https://developers.google.com/workspace/gmail/api/reference/quota),
+[revoking a token](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke),
+[Workspace API user data policy](https://developers.google.com/workspace/workspace-api-user-data-developer-policy),
+[API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy).
+Read on 2026-11-18, with the quotes checked word for word against the pages.
+
+- **Not in use.** The switch is off, and `/privacy` and `/terms` mention mailboxes only when it's on.
+  Setting it up, the founder's test and turning it off: `docs/setup/gmail.md`.
+- **What the connection can see:** the whole mailbox. Jane asks for `gmail.readonly` alone, which
+  Google lists as a restricted scope, and which `messages.get` and `messages.attachments.get`
+  accept: every email, attachments included. Jane looks at the sender, subject and first lines of
+  each new email, fetches a whole email only when a company wrote about money, and never fetches an
+  attachment.
+- **What it can do:** read, and ask Google to send word of new mail (`users.watch` accepts
+  `gmail.readonly`) and to stop sending it. Jane's code makes no other call to Gmail
+  (`src/lib/gmail/api.ts`), so it sends, deletes and changes nothing.
+- **Google's check of the app:** until Google verifies it, Google's sign-in page warns people first,
+  and the project can take "100 new users in total, after the app presents the unverified app
+  screen", for its whole life. Verifying a restricted scope includes a security assessment, repeated
+  "at least every 12 months". For projects made from 2026-05-01, quota is counted in units
+  (`messages.get` 20, or 60 for a whole email; 6,000 a minute for one Google account), and
+  "Exceeding the quota request limits is planned to incur charges to your Google Cloud billing
+  account later in 2026."
+- **Revoking:** when a mailbox is disconnected, removed for inactivity or deleted with the account,
+  Jane posts its refresh token to Google's revoke address, unless another Jane account's active
+  mailbox holds the same address. "Revocation removes all OAuth 2.0 scopes previously granted to a
+  project, invalidating any issued access or refresh tokens for all clients registered under that
+  project", which is why Gmail has a Google Cloud project of its own. A person can also remove Jane
+  in their Google Account, and changing their Google password ends it too.
+- **Terms on data, "Limited Use":** use is limited to "providing or improving your appropriate use
+  case or features that are visible and prominent in the requesting application's user interface";
+  data goes to another company only for that, "and only with the user's consent" (or for security,
+  the law or a merger); "Do not allow humans to read user data, unless" the person consents for
+  specific messages, it's for security or the law, or it's aggregated and anonymized; and never for
+  ads, "to determine credit-worthiness or for lending purposes", or "to create, train, or improve a
+  machine learning or artificial intelligence model beyond that specific user's personalized model".
+  The Workspace policy (updated 2026-09-03) also asks for tokens "encrypted at rest", protection
+  against prompt injection, and a disclosure in the app that "Cannot be placed only in a privacy
+  policy or terms of service". `/privacy` carries Google's sentence while the switch is on.
+- **Anthropic:** Google's pages don't address sending email text to an outside AI provider in those
+  words. By their text it's a transfer: allowed for the feature people see, with their consent, and
+  the provider mustn't train on it. So Anthropic's terms on training and retention need to be on
+  file before switching on.
+
+**What Jane sends** (`src/lib/gmail/`): to Google, the sign-in's code and the tokens, and requests
+about that one mailbox, only to the addresses in `src/config/gmail.ts`. To Anthropic, for each email
+that passes the screen and carries no code or password (`src/lib/gmail/read-mail.ts`): the day it
+arrived, the sender's domain as Google checked it, and the subject and text with links, email
+addresses and long numbers taken out, at most the first 2,500 and the last 1,500 characters. An email
+can still hold anything its sender wrote, such as a name, a home address, part of an account number
+or what was bought. Claude answers with a kind, an amount and a date, and only those, once code has
+checked them, are kept.
+
 ## The hourly probe's host
 
 GitHub Actions rather than Checkly: free on a public repository, nothing to sign up for, and the
