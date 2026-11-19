@@ -8,7 +8,7 @@ import { SIMULATED, sandboxRef, text } from "./shared";
 // Letters to a company (a cancellation by written notice, a stop-payment notice), shaped like
 // PostGrid's print-and-mail API in test mode (roadmap round 4 mock spec): certified by default, a
 // letter can be stopped until midnight Eastern, and its status arrives by webhook signed
-// "PostGrid-Signature: t=<seconds>,v1=<hex>". This sandbox mails nothing and calls nobody; its
+// "PostGrid-Signature: t=<milliseconds>,v1=<hex>". This sandbox mails nothing and calls nobody; its
 // webhook parser reads PostGrid's own payloads, so the real adapter can reuse it.
 
 // PostGrid stops a letter only while it's "ready": until 12 AM Eastern the next day for one sent as
@@ -186,6 +186,7 @@ export const sandboxLetters: Connector = {
       kind: "hmac_sha256_tv",
       secretEnv: "SANDBOX_LETTERS_WEBHOOK_SECRET",
       header: "PostGrid-Signature",
+      timestampUnit: "ms",
     },
     parse: parsePostGridEvent,
   },

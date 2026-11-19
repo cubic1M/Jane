@@ -18,6 +18,7 @@ import { stripeFc } from "./stripe-fc/connector";
 import { sandboxSnaptradeHoldings, snaptradeHoldings } from "./snaptrade/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { sandboxChartTranscripts } from "./chart/connector";
+import { sandboxPostgridLetters } from "./postgrid/connector";
 import { sandboxSignwellPermission, signwellPermission } from "./signwell/connector";
 import { sandboxAlpacaAccount, sandboxAlpacaOrder } from "./alpaca/connector";
 import { methodLiabilities, sandboxMethodLiabilities } from "./method/connector";
@@ -86,6 +87,9 @@ const CONNECTORS: readonly Connector[] = [
   sandboxCanopyConnect,
   // Sandbox only: IRS transcripts through Chart. No real one until counsel answers (./chart/).
   sandboxChartTranscripts,
+  // Sandbox only: the sandbox's letters made in PostGrid's test mode, previewed and never mailed. No
+  // real one until a person's mailing address and a live key (./postgrid/).
+  sandboxPostgridLetters,
   // Real, off until REAL_CONNECTORS: letters the person signs to let Jane act for them through
   // SignWell, and its sandbox twin for sample data (./signwell/).
   signwellPermission,

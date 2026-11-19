@@ -30,7 +30,8 @@ const SECRET = "sandbox-letters-secret-for-tests";
 const MINUTE = 60 * 1000;
 
 const sign = (raw: string, at = new Date(), secret = SECRET) => {
-  const t = Math.floor(at.getTime() / 1000);
+  // PostGrid's t is Unix milliseconds ("Manually Verifying Webhook Signatures").
+  const t = at.getTime();
   const v1 = createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex");
   return new Headers({ "PostGrid-Signature": `t=${t},v1=${v1}` });
 };
@@ -68,6 +69,15 @@ describe("PostGrid's signature and events", () => {
     expect(signatureValid(signing, raw, rotated, { env, now })).toBe(true);
     expect(
       signatureValid(signing, raw, new Headers({ "PostGrid-Signature": "v1=abc" }), { env, now }),
+    ).toBe(false);
+    // A t in seconds reads as 1970 in milliseconds: refused.
+    const t = Math.floor(now.getTime() / 1000);
+    const v1 = createHmac("sha256", SECRET).update(`${t}.${raw}`).digest("hex");
+    expect(
+      signatureValid(signing, raw, new Headers({ "PostGrid-Signature": `t=${t},v1=${v1}` }), {
+        env,
+        now,
+      }),
     ).toBe(false);
   });
 

@@ -66,7 +66,14 @@ export type WebhookSigning =
   // One header "t=<unix seconds>,v1=<hex>" over `${t}.${body}` (PostGrid, Stripe's Stripe-Signature;
   // several v1 while a secret rotates). `field` names the signature part when it isn't "v1"
   // (Canopy's "s").
-  | { kind: "hmac_sha256_tv"; secretEnv: string; header: string; field?: string }
+  // `timestampUnit` "ms" when t is in milliseconds (PostGrid's: "unix milliseconds"); seconds otherwise.
+  | {
+      kind: "hmac_sha256_tv";
+      secretEnv: string;
+      header: string;
+      field?: string;
+      timestampUnit?: "s" | "ms";
+    }
   // SignWell's event hash, in the body: HMAC-SHA256 keyed by the webhook's id over
   // "<event.type>@<event.time>". It doesn't cover which document, so its connector confirms with
   // the partner before relying on one (./signwell).
