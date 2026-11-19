@@ -8,5 +8,10 @@
   "task": "oauth-pkce-open-sign-in",
   "lane": "lane:general",
   "expires": "2026-11-19T05:53:26.194Z"
+ },
+ {
+  "task": "chat-cron-quiet-hours",
+  "lane": "lane:chat",
+  "expires": "2026-11-19T05:53:47.471Z"
  }
 ]
