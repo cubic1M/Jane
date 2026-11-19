@@ -380,7 +380,9 @@ const trialConversion: Detector = {
         "charges after a trial",
       ),
       urgency: "soon",
-      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}${c.paced ? "" : " (charged once since, so how often isn't known yet)"}`).join("; ")}: ${total}.`,
+      // The total only when there's more than one: one conversion's total is its price, already
+      // said (debug 3, 11-19: "now costs $120.00 (…): $120.00.").
+      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}${c.paced ? "" : " (charged once since, so how often isn't known yet)"}`).join("; ")}${converted.length > 1 ? `: ${total} in all` : ""}.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
       watch: {
         kind: "charge_stops",

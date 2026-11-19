@@ -367,3 +367,17 @@ export function sameFigures(flat: Flat): string[] {
   ]);
   return found;
 }
+
+// Class 7: one fact is said once. A sentence never ends on a clause that is only a figure it
+// already said ("now costs $120.00 (…): $120.00.", "A benefit of $3,050.10 a month, … until 65:
+// $3,050.10 a month short."). Walkers found a figure said twice in one answer (#1897, #1917,
+// #1947, #2088) and a list said twice (#1906, #1920).
+const RESTATED =
+  /(\$[\d,]+\.\d{2})\b.*[:;] (?:about )?\1(?: (?:a|per) (?:month|year))?(?: short)?\.$/;
+
+export function saidTwice(flat: Flat): string[] {
+  return shownTexts(flat).flatMap(([path, text]) => {
+    const sentence = text.split(/(?<=[.!?])\s+(?=[A-Z$])/).find((s) => RESTATED.test(s.trim()));
+    return sentence ? [`${path}: says a figure twice in "${sentence.trim().slice(0, 140)}"`] : [];
+  });
+}
