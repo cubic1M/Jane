@@ -1,3 +1,4 @@
+import { sinceStatementNote, type SinceStatement } from "@/planning/since-statement";
 import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import {
   AFFORD_GOAL_MONTHS,
@@ -824,6 +825,8 @@ export function safeReply(
     budgetsLeftCents?: number;
     goalsCents?: number;
     setAsideCents?: number;
+    // What the checking balance adds to a statement's, walked forward (#2142).
+    sinceStatement?: SinceStatement | null;
   } | null,
   asOf: string | null = null,
   // Why there's no figure, when Jane knows: statements too old to say what's in checking today.
@@ -876,8 +879,14 @@ export function safeReply(
               ? "no bills are due before then, and nothing is held back for budgets or goals."
               : "I don't see any bills coming up, and nothing is held back for budgets or goals."
         }`;
+  // Checking walked forward from a statement is an estimate, said with what it added (debug 3,
+  // 11-19: "That's your whole checking balance" of $10,714.84 where the statement said $8,450.00).
+  const estimated =
+    safe.sinceStatement && safe.sinceStatement.cents !== 0
+      ? ` Checking is estimated: ${sinceStatementNote(safe.sinceStatement)}.`
+      : "";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${leftOut}`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${estimated}${leftOut}`,
     [openLink("See today", "/home")],
   );
 }

@@ -1,5 +1,5 @@
 import { dayLabel } from "@/lib/day-label";
-import { formatWholeDollars } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 
 export type SinceStatement = { day: string; cents: number };
 
@@ -9,4 +9,16 @@ export type SinceStatement = { day: string; cents: number };
 export function sinceStatementNote(since: SinceStatement): string {
   const sign = since.cents < 0 ? "−" : "+";
   return `${sign}${formatWholeDollars(Math.abs(since.cents))} of pay and bills expected since your ${dayLabel(since.day)} statement`;
+}
+
+// A cash place as it's said: its balance, or checking walked forward to today, "estimated", with
+// what it added (the cash page, the chat's cash answer and its tool; debug 3, 11-19).
+export function placeLine(p: {
+  name: string;
+  balanceCents: number;
+  today?: { cents: number; since: SinceStatement };
+}): string {
+  return p.today
+    ? `${formatCents(p.today.cents)} in ${p.name} (estimated: ${sinceStatementNote(p.today.since)})`
+    : `${formatCents(p.balanceCents)} in ${p.name}`;
 }

@@ -359,6 +359,25 @@ export function sameFigures(flat: Flat): string[] {
   const owe = /owe (\$[\d,]+\.\d{2})/.exec(
     String(flat["chat.what's my net worth.body"] ?? ""),
   )?.[1];
+  // Checking in the chat's cash answer ("$3,087.33 in Chase Checking", each checking place) is
+  // Home's "In checking now", walked forward from a statement as every figure is (#1099). The
+  // walk found "$3,022.33" in checking and "Your cash is $3,087.33" in one answer (upload S4).
+  const cashBody = String(flat["chat.how much cash do I have.body"] ?? "");
+  const checkingNames = Object.keys(flat)
+    .filter((k) => /^cash\.places\.\d+\.kind$/.test(k) && flat[k] === "checking")
+    .map((k) => flat[k.replace(/kind$/, "name")]);
+  const inChecking = checkingNames.map(
+    (name) =>
+      new RegExp(
+        `(\\$[\\d,]+\\.\\d{2}) in ${String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      ).exec(cashBody)?.[1],
+  );
+  if (inChecking.length > 0 && inChecking.every((f) => f !== undefined)) {
+    const sum = inChecking.reduce((s, f) => s + (CENTS(f!) ?? 0), 0);
+    check("in checking now", flat["home.summary.safeToSpend.balanceCents"], [
+      ["chat.how much cash do I have.body (checking)", `$${(sum / 100).toFixed(2)}`],
+    ]);
+  }
   check("what's owed", owe === undefined ? undefined : CENTS(owe), [
     ["tiles.loans.value", flat["tiles.loans.value"]],
     [
@@ -400,4 +419,35 @@ export function twoCardsOneHolding(flat: Flat): string[] {
   return [...named]
     .filter(([, cards]) => cards.length > 1)
     .map(([fund, cards]) => `${fund}: one holding, ${cards.length} cards (${cards.join(", ")})`);
+}
+
+// And a balance walked forward from a statement is said as an estimate, wherever it's shown. Today's
+// checking is a statement's balance with the pay and bills expected since its day added (#1099); a
+// text that shows that figure says "estimated" (#2142's "In checking now, estimated · +$1,568 of
+// pay and bills expected since your Nov 12 statement") or, as Money and Bills say it after the
+// statement's own figure and day, "about $X today". The cash page and the chat's cash answer gave
+// it as a plain balance (debug 3, 11-19).
+const SAYS_ESTIMATE = /\bestimated\b|\babout \$/i;
+const dollars = (cents: number) =>
+  `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+export function walkedUnlabelled(flat: Flat): string[] {
+  const walked = new Set<string>();
+  const since = flat["home.summary.safeToSpend.sinceStatement.cents"];
+  const home = flat["home.summary.safeToSpend.balanceCents"];
+  if (typeof since === "number" && since !== 0 && typeof home === "number")
+    walked.add(dollars(home));
+  for (const [path, cents] of Object.entries(flat)) {
+    if (/^cash\.places\.\d+\.today\.cents$/.test(path) && typeof cents === "number") {
+      walked.add(dollars(cents));
+    }
+  }
+  if (walked.size === 0) return [];
+  return shownTexts(flat).flatMap(([path, text]) =>
+    [...walked].some((w) =>
+      new RegExp(`${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\d])`).test(text),
+    ) && !SAYS_ESTIMATE.test(text)
+      ? [`${path}: a balance walked forward from a statement, unlabelled: "${text.slice(0, 140)}"`]
+      : [],
+  );
 }
