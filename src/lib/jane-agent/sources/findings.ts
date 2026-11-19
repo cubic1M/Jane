@@ -3,6 +3,7 @@ import { CHEAPER_PLANS, FEE_WAIVERS } from "@/config/student-money";
 import { FINDING_KIND_OF_TOPIC } from "@/config/suggestions";
 import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
+import type { OfferedSuggestion } from "@/lib/suggestions";
 import { type Candidate, type MessageAction, openLink } from "../types";
 import type { Snapshot, SnapshotFinding } from "../snapshot";
 import { rankedFor } from "../priorities";
@@ -107,6 +108,34 @@ export function findingCandidate(finding: SnapshotFinding, concierge = true): Ca
   };
 }
 
+// What one of the day's suggestions already says, so the finding's own card would say it twice.
+// A cheaper plan of one service (cheaper_tier) is that service's subscription card: Netflix had
+// "Note Netflix's Standard with ads plan, save $78/yr" and "Review your Netflix subscription" in one
+// dock (debug 2, 11-18). A monthly fee the person's pay may already waive (fee_waiver_met) is that
+// bank's fee card: "Ask about your waivable bank fee, save $144/yr" and "$60.00 in fees on Bank of
+// America checking" (debug 2, 11-18). Only the service or bank it names; the others' cards stay.
+// Live arrivals ask it too (src/lib/live/arrivals.ts).
+export function saidBySuggestion(
+  finding: Pick<SnapshotFinding, "type" | "title">,
+  suggestions: readonly Pick<OfferedSuggestion, "topic" | "title" | "short">[],
+): boolean {
+  const said = (topic: string) =>
+    suggestions.filter((s) => s.topic === topic).map((s) => `${s.title} ${s.short}`);
+  if (finding.type === "subscription_review") {
+    return said("cheaper_tier").some((text) =>
+      CHEAPER_PLANS.some(
+        (p) => text.includes(p.service) && p.words.test(finding.title.toUpperCase()),
+      ),
+    );
+  }
+  if (finding.type === "bank_fees") {
+    return said("fee_waiver_met").some((text) =>
+      FEE_WAIVERS.some((w) => text.includes(w.bank) && finding.title.includes(w.bank)),
+    );
+  }
+  return false;
+}
+
 export const findingsSource: MessageSource = {
   key: "findings",
   gather(snapshot) {
@@ -136,30 +165,10 @@ export const findingsSource: MessageSource = {
         return kind ? [kind] : [];
       }),
     );
-    // A cheaper plan of one service (cheaper_tier) is that service's subscription card: Netflix had
-    // "Note Netflix's Standard with ads plan, save $78/yr" and "Review your Netflix subscription"
-    // in one dock (debug 2, 11-18). Only the services it names; the others' cards stay.
-    const cheaperPlanOf = (snapshot.suggestions ?? [])
-      .filter((s) => s.topic === "cheaper_tier")
-      .flatMap((s) => CHEAPER_PLANS.filter((p) => `${s.title} ${s.short}`.includes(p.service)));
-    const saidAsCheaperPlan = (finding: SnapshotFinding) =>
-      finding.type === "subscription_review" &&
-      cheaperPlanOf.some((p) => p.words.test(finding.title.toUpperCase()));
-    // A monthly fee the person's pay may already waive (fee_waiver_met) is that bank's fee card:
-    // "Ask about your waivable bank fee, save $144/yr" and "$60.00 in fees on Bank of America
-    // checking" in one dock (debug 2, 11-18). Only the bank it names; others' fee cards stay.
-    const waiverBanks = (snapshot.suggestions ?? [])
-      .filter((s) => s.topic === "fee_waiver_met")
-      .flatMap((s) =>
-        FEE_WAIVERS.filter((w) => `${s.title} ${s.short}`.includes(w.bank)).map((w) => w.bank),
-      );
-    const saidAsWaiver = (finding: SnapshotFinding) =>
-      finding.type === "bank_fees" && waiverBanks.some((bank) => finding.title.includes(bank));
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
       .filter((finding) => !suggested.has(finding.type))
-      .filter((finding) => !saidAsCheaperPlan(finding))
-      .filter((finding) => !saidAsWaiver(finding))
+      .filter((finding) => !saidBySuggestion(finding, snapshot.suggestions ?? []))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(byPriority(snapshot))
       .filter((finding) => {

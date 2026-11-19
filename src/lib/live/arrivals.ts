@@ -25,7 +25,8 @@ import { queueChatNotificationsSafely } from "@/lib/jane-agent/notify";
 import { inQuietHours } from "@/lib/jane-agent/quiet-hours";
 import { chatting } from "@/lib/jane-agent/run";
 import { findingFingerprint, type SnapshotFinding } from "@/lib/jane-agent/snapshot";
-import { findingCandidate } from "@/lib/jane-agent/sources/findings";
+import { findingCandidate, saidBySuggestion } from "@/lib/jane-agent/sources/findings";
+import { offeredToday } from "@/lib/suggestions";
 
 // Jane's 24/7 engine, step one: a scan set off by a change (a bank's webhook, a sync, an offer
 // that moved) has just created findings. Each is recorded once, with what set it off and how long
@@ -44,6 +45,8 @@ type Notice =
   | "quiet_hours"
   | "chatting"
   | "today_used"
+  // One of the day's suggestions already says it (saidBySuggestion).
+  | "suggested"
   | "sample"
   | "demo"
   | "failed";
@@ -119,6 +122,11 @@ async function questionAbout(userId: string, finding: Arrived, client: PrismaCli
         }
       : null,
   };
+  // Not a card the day's suggestions already say, as the findings source holds it back (debug 2,
+  // sweep 8, 11-19: a refresh posted "Review your Netflix subscription" beside the day's "Note
+  // Netflix's Standard with ads plan").
+  if (saidBySuggestion(snapshotFinding, await offeredToday(userId, { client, now })))
+    return "suggested" as const;
   const candidate = findingCandidate(snapshotFinding, await conciergeMode(userId, { client }));
   // A real account is never told to act (src/lib/real-account-text.ts), as the brain filters it.
   if (!(await adviceMode(userId, { client })) && tellsThemToAct(candidate.body)) return null;
@@ -211,8 +219,8 @@ export async function recordArrivals(
   }
   try {
     const question = await questionAbout(userId, best, client, now);
-    if (!question) {
-      await settle("below_bar");
+    if (question === "suggested" || !question) {
+      await settle(question === "suggested" ? "suggested" : "below_bar");
       return { recorded: inserted.length, posted: null };
     }
     await postMessages(userId, [question], { client, now });
