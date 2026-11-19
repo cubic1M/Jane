@@ -128,6 +128,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
     what: () => "Looked at the screenshot you sent with your feedback",
   },
   admin_viewed_costs: notOnePerson,
+  admin_viewed_connectors: notOnePerson,
   admin_viewed_activity: {
     shown: true,
     whose: "person",

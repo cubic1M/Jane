@@ -134,6 +134,14 @@ SnapTrade and Retell have one host for test and live keys, so they're checked by
 `--names` skips the calls. The names are held to `src/config` and `.env.example` by
 `env-check.test.ts`.
 
+## Admin: every connector's status
+
+`/admin/connectors` (section C5, `src/lib/connectors/status.ts`), beside "what Plaid granted" on
+/admin/costs: for each registered connector, who it's open to now (real people, sample people) by the
+same `whyUnavailable` the app uses; its vendor's key names, set or missing, never a value; how many
+people have it connected; its last good read (`connector_data_read`); and its last failed or refused
+action with the reason. Viewing it is audited (`admin_viewed_connectors`).
+
 ## Sandbox adapters
 
 `src/lib/connectors/sandbox/adapters.ts`: four simulated partners, each shaped like the partner the
