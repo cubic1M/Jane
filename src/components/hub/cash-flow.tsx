@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatCents } from "@/lib/money";
 import { cashGroups, type CashEvent, type CashFlowView, type CashGroup } from "@/lib/hub/view";
 import { dayLabel } from "@/lib/day-label";
@@ -42,6 +42,9 @@ const describeGroup = (g: CashGroup) =>
 export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: string }) {
   const [active, setActive] = useState(0);
   const [shown, setShown] = useState<number | null>(null);
+  // The card the pointer's arrival opened: the click that comes with it keeps the card rather than
+  // closing it (debugger 11-19: a click, or a phone tap on a neighbouring marker, showed nothing).
+  const openedOnArrival = useRef<number | null>(null);
   const events = view.events;
   const groups = cashGroups(events);
   const bills = events.filter((e) => e.kind === "bill").length;
@@ -84,7 +87,10 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
           role="group"
           aria-label={`Next 30 days: ${bills} ${bills === 1 ? "bill" : "bills"}, ${pays} ${pays === 1 ? "payday" : "paydays"}`}
           className="relative h-28 select-none"
-          onMouseLeave={() => setShown(null)}
+          onMouseLeave={() => {
+            openedOnArrival.current = null;
+            setShown(null);
+          }}
           // A tap that misses the small markers opens the nearest within reach (mobile pass
           // 11-16): each marker is a whole strip tall to a finger.
           onClick={(event) => {
@@ -140,12 +146,19 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                 tabIndex={i === active ? 0 : -1}
                 aria-label={describeGroup(e)}
                 aria-describedby={shown === i ? "cash-tip" : undefined}
-                onMouseEnter={() => setShown(i)}
+                onMouseEnter={() => {
+                  openedOnArrival.current = i;
+                  setShown(i);
+                }}
                 onFocus={() => {
                   setActive(i);
                   setShown(i);
                 }}
-                onClick={() => setShown(shown === i ? null : i)}
+                onClick={() => {
+                  const arrived = openedOnArrival.current === i;
+                  openedOnArrival.current = null;
+                  setShown(arrived || shown !== i ? i : null);
+                }}
                 data-kind={e.kind}
                 className="hub-pop absolute flex -translate-x-1/2 items-center justify-center p-1 outline-offset-2"
                 style={{ left: markAt(e.day), ...pos, animationDelay: `${Math.min(i, 20) * 20}ms` }}
