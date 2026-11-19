@@ -359,6 +359,25 @@ export function sameFigures(flat: Flat): string[] {
   const owe = /owe (\$[\d,]+\.\d{2})/.exec(
     String(flat["chat.what's my net worth.body"] ?? ""),
   )?.[1];
+  // Checking in the chat's cash answer ("$3,087.33 in Chase Checking", each checking place) is
+  // Home's "In checking now", walked forward from a statement as every figure is (#1099). The
+  // walk found "$3,022.33" in checking and "Your cash is $3,087.33" in one answer (upload S4).
+  const cashBody = String(flat["chat.how much cash do I have.body"] ?? "");
+  const checkingNames = Object.keys(flat)
+    .filter((k) => /^cash\.places\.\d+\.kind$/.test(k) && flat[k] === "checking")
+    .map((k) => flat[k.replace(/kind$/, "name")]);
+  const inChecking = checkingNames.map(
+    (name) =>
+      new RegExp(
+        `(\\$[\\d,]+\\.\\d{2}) in ${String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      ).exec(cashBody)?.[1],
+  );
+  if (inChecking.length > 0 && inChecking.every((f) => f !== undefined)) {
+    const sum = inChecking.reduce((s, f) => s + (CENTS(f!) ?? 0), 0);
+    check("in checking now", flat["home.summary.safeToSpend.balanceCents"], [
+      ["chat.how much cash do I have.body (checking)", `$${(sum / 100).toFixed(2)}`],
+    ]);
+  }
   check("what's owed", owe === undefined ? undefined : CENTS(owe), [
     ["tiles.loans.value", flat["tiles.loans.value"]],
     [

@@ -6,7 +6,9 @@ import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { loadCash } from "@/lib/investments/cash";
 import { answerByRules } from "@/lib/jane-agent/answer";
+import { cashReply } from "@/lib/jane-agent/investments/replies";
 import { parseIntent } from "@/lib/jane-agent/intents";
 import { detectFor } from "@/lib/suggestions";
 import { chatToday } from "@/lib/today";
@@ -20,6 +22,7 @@ import { flatten, type Flat } from "./diff";
 // go to the rules, as with no key.
 
 // Questions a student asks about their own money, answered without Claude.
+export const CASH_QUESTION = "how much cash do I have";
 export const SWEEP_QUESTIONS = [
   "what's safe to spend",
   "how much did I spend this month",
@@ -59,6 +62,10 @@ export async function snapshotAt(
     );
     chat[question] = reply;
   }
+  // The chat's cash answer (cashReply, as "how much cash do I have" gets it), with the places it
+  // adds up: class 4 holds its checking to Home's (src/sweep/invariants.ts sameFigures).
+  const cash = await loadCash(userId, { client, now });
+  chat[CASH_QUESTION] = cashReply(cash);
   const trees = await loadAreaTrees(userId);
   return flatten({
     asOf,
@@ -73,5 +80,8 @@ export async function snapshotAt(
     trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
     chat,
+    cash: {
+      places: cash.places.map(({ name, kind, balanceCents }) => ({ name, kind, balanceCents })),
+    },
   });
 }

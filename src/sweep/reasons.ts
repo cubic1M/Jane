@@ -29,11 +29,12 @@ export const DATED: readonly Reason[] = [
   // The person's day itself.
   { name: "today's date", paths: /(^asOf$|\.asOf$|\.today$)/ },
   // What's ahead: bills, paydays, deadlines and the money before payday. Each counts down, drops
-  // off when its day passes and a new one comes within reach.
+  // off when its day passes and a new one comes within reach; and checking today, a statement's
+  // balance walked forward past them (the chat's cash answer).
   {
     name: "what's coming up",
     paths:
-      /^(home\.summary\.(comingUp|deadlines|cashFlow|safeToSpend)|home\.(cashFlow|hero\.safe)\.|trees\.ahead\.|trees\.money\.(chips\.|summaries\.coming:|tree\.branches\.coming\.)|chat\.(what bills are coming up|when do I get paid|how much is my paycheck|what's safe to spend)\.)/,
+      /^(home\.summary\.(comingUp|deadlines|cashFlow|safeToSpend)|home\.(cashFlow|hero\.safe)\.|trees\.ahead\.|trees\.money\.(chips\.|summaries\.coming:|tree\.branches\.coming\.)|chat\.(what bills are coming up|when do I get paid|how much is my paycheck|what's safe to spend|how much cash do I have)\.|cash\.places\.)/,
   },
   // The net worth chart: a point for every day, ending today.
   { name: "a day on the chart", paths: /^(netWorth\.|home\.hero\.netWorth\.)/ },

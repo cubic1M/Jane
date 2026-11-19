@@ -21,6 +21,9 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { cashPlan, type CashPlace, type CashPlan } from "@/planning/cash";
 import { loadInvestments, type Investments } from "./holdings";
 import { DAY_MS } from "@/lib/dates";
+import { FORECAST_DAYS } from "@/config/detection";
+import { loadDetectionInput } from "@/detection/input";
+import { forecastAccounts } from "@/detection/forecast";
 import { todayOf } from "@/lib/today";
 
 // Cash done right (spec step 162), for its page, Jane's answers, its buttons and tools.
@@ -52,26 +55,34 @@ export async function loadCash(
   }: Options & { investments?: Investments } = {},
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
-  const [advice, accounts, investments, monthlySpendingCents, goals, moved] = await Promise.all([
-    adviceMode(userId, { client }),
-    db.accounts.findMany({
-      where: { type: "depository", subtype: { in: ["checking", "savings"] } },
-      select: { id: true, name: true, subtype: true, currentBalanceCents: true },
-      orderBy: { name: "asc" },
-    }),
-    loaded ?? loadInvestments(userId, { client, now }),
-    loadCushionSpendCents(userId, { client, now }),
-    db.savingsGoals.findMany({ select: { name: true, targetCents: true } }),
-    // Cash Jane moved lately: the demo bank's balances don't show stand-in transfers.
-    db.moneyTransfers.findMany({
-      where: {
-        purpose: "cash",
-        status: { not: "cancelled" },
-        createdAt: { gte: new Date(now.getTime() - CASH_MOVE_DAYS * DAY_MS) },
-      },
-      select: { fromAccountId: true, toAccountId: true, amountCents: true },
-    }),
-  ]);
+  const [advice, accounts, investments, monthlySpendingCents, goals, moved, detection] =
+    await Promise.all([
+      adviceMode(userId, { client }),
+      db.accounts.findMany({
+        where: { type: "depository", subtype: { in: ["checking", "savings"] } },
+        select: { id: true, name: true, subtype: true, currentBalanceCents: true },
+        orderBy: { name: "asc" },
+      }),
+      loaded ?? loadInvestments(userId, { client, now }),
+      loadCushionSpendCents(userId, { client, now }),
+      db.savingsGoals.findMany({ select: { name: true, targetCents: true } }),
+      // Cash Jane moved lately: the demo bank's balances don't show stand-in transfers.
+      db.moneyTransfers.findMany({
+        where: {
+          purpose: "cash",
+          status: { not: "cancelled" },
+          createdAt: { gte: new Date(now.getTime() - CASH_MOVE_DAYS * DAY_MS) },
+        },
+        select: { fromAccountId: true, toAccountId: true, amountCents: true },
+      }),
+      loadDetectionInput(userId, { client, now }),
+    ]);
+  // Checking as every figure says it today: a statement's balance walked forward by the pay and
+  // bills expected since its day (#1099). Read as the statement's, the chat gave "$3,022.33" in
+  // checking and "Your cash is $3,087.33" in one answer (walk, upload S4, 11-18).
+  const today = new Map(
+    forecastAccounts(detection, FORECAST_DAYS).map((f) => [f.accountId, f.todayCents]),
+  );
   const shift = new Map<string, number>();
   for (const m of moved) {
     shift.set(m.fromAccountId, (shift.get(m.fromAccountId) ?? 0) - m.amountCents);
@@ -85,7 +96,7 @@ export async function loadCash(
         id: a.id,
         name: a.name,
         kind: kind as CashPlaceKind,
-        balanceCents: (a.currentBalanceCents ?? 0) + (shift.get(a.id) ?? 0),
+        balanceCents: (today.get(a.id) ?? a.currentBalanceCents ?? 0) + (shift.get(a.id) ?? 0),
         rateBps: CURRENT_CASH_RATE_BPS[kind],
       };
     });
