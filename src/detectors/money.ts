@@ -21,6 +21,7 @@ import {
   cashKnown,
   liquidCents,
   outCents,
+  statementsTooOld,
   tx,
   weakest,
   headlineOf,
@@ -365,6 +366,8 @@ const emergencyFund: Detector = {
   topic: "emergency_fund",
   needs: ["income_pattern"],
   detect({ profile, data }) {
+    // "You keep $X in cash" says what's held now: not from statements that ended long ago.
+    if (statementsTooOld(data)) return null;
     const spend = cushionSpendCents(data);
     const pattern = profile.facts.income_pattern;
     const trouble = profile.facts.debt_trouble;

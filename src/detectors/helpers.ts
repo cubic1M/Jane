@@ -7,6 +7,8 @@ import { monthsForRate, type Fact, type ProfileInput, type ProfileTx } from "@/p
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 import { withoutAchDetails, withoutAchEntry } from "@/data-sources/merchant";
 import { formatCents, formatWholeDollars } from "@/lib/money";
+import { STALE_UPLOAD_DAYS } from "@/config/import";
+import { daysBetween } from "@/lib/dates";
 
 // What detectors share. Pure.
 
@@ -112,6 +114,18 @@ export function cashLine(cents: number, verb: "keep" | "hold" = "keep"): string 
   return cents < 0
     ? `You're ${formatCents(-cents)} overdrawn`
     : `You ${verb} ${formatCents(cents)} in cash`;
+}
+
+// Statements whose newest line is too old to say what's paid or held now, by the report's rule
+// (STALE_UPLOAD_DAYS, the report's "Your statements end …"): a card about now waits for newer ones
+// (debugger 11-18: "You pay Xfinity about $55.00 a month" and "You keep $1,950.16 in cash" from
+// statements that ended Sep 28, under a report that said it was too long ago to tell).
+export function statementsTooOld(data: Pick<ProfileInput, "transactions" | "today">): boolean {
+  const newest = data.transactions.reduce<string | null>(
+    (m, t) => (t.date <= data.today && (m === null || t.date > m) ? t.date : m),
+    null,
+  );
+  return newest !== null && daysBetween(newest, data.today) > STALE_UPLOAD_DAYS;
 }
 
 // A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus,
