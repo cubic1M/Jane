@@ -17,7 +17,7 @@ import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { EVERYONE, makePerson, type OwnRows, type Who } from "./__fixtures__/people";
 import { atLocal, type Flat } from "./diff";
 import { staleStatementsEnd } from "@/lib/report-state";
-import { areaCounts, nowFromOldData, rawNames } from "./invariants";
+import { areaCounts, hiddenPageLinks, nowFromOldData, rawNames } from "./invariants";
 import { snapshotAt } from "./snapshot";
 
 // The walkers' bug classes as checks on every push (debug 3, 11-19; the classes, and the PRs
@@ -115,5 +115,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
         nowFromOldData(flat, ended.get(who) ?? null).map((found) => `${who} ${found}`),
       ),
     ).toEqual([]);
+  });
+
+  // Class 9: 1886, 1894, 1907, 1909, 1931, 1986, 2060, 2079.
+  it("never links to a page the beta hides", () => {
+    expect(everyone(hiddenPageLinks)).toEqual([]);
   });
 });

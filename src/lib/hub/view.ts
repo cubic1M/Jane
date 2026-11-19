@@ -19,6 +19,7 @@ import { AREA_TABS } from "@/config/navigation";
 import { formatWholeDollars } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel, monthLabel } from "@/lib/day-label";
+import { shownHref } from "@/config/hidden-pages";
 import { plural } from "@/lib/plural";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
@@ -526,7 +527,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       label: b.merchant,
       amountCents: b.amountCents,
       weight: b.amountCents / maxBill,
-      href: "/bills",
+      href: shownHref("/bills"),
     })),
     ...pays.map((p, i) => ({
       key: `pay-${i}-${p.date}`,
@@ -536,7 +537,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       label: p.merchant,
       amountCents: p.amountCents,
       weight: p.amountCents / maxPay,
-      href: "/transfers",
+      href: shownHref("/transfers"),
     })),
     ...input.deadlines
       .filter((d) => inWindow(d.date))
@@ -555,9 +556,11 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
         label: d.title,
         amountCents: null,
         weight: 0.5,
-        href: d.href ?? "/deadlines",
+        href: shownHref(d.href ?? "/deadlines"),
       })),
   ];
+  // Each link through shownHref: a page the beta hides is never linked to (debug 3, 11-19: every
+  // payday's "Open" went to /transfers, an open-enrollment deadline to /insurance/benefits).
   events.sort((a, b) => a.day - b.day || a.kind.localeCompare(b.kind));
   const shortHistory =
     input.historyDays !== undefined && input.historyDays < CASH_FLOW_MIN_HISTORY_DAYS;

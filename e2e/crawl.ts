@@ -1,9 +1,10 @@
 import type { Page } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { framesDrawn } from "./waits";
 
 // The "no dead ends" crawl (gate A, mvp-ready.md in the lanes' notes): from Home, every page a
 // signed-in person can reach by a link, with every tree item and fold on it opened, checked for
-// the ways a page can leave someone stuck. Only links are followed and only tree items and folds
+// the ways a page can leave someone stuck, and for links to pages the read-only beta hides. Only links are followed and only tree items and folds
 // are pressed, so nothing is answered, saved or deleted on the way.
 
 export type FindingKind =
@@ -16,7 +17,9 @@ export type FindingKind =
   // A link to the very item it sits on: it only reopens itself.
   | "self-link"
   // Nothing on the page to press or follow.
-  | "no-way-on";
+  | "no-way-on"
+  // A link to a page the read-only beta hides (src/config/hidden-pages.ts: nothing links to it).
+  | "hidden-link";
 
 export type Finding = { kind: FindingKind; page: string; detail: string };
 
@@ -247,6 +250,8 @@ export async function crawl(
         // A jump within the page ("#start") is a way down it, not back to itself.
         const jump = new URL(l.href).hash !== "";
         if (target === here && !l.current && !jump) add("self-link", at, `"${l.text}" → ${target}`);
+        const goes = new URL(l.href).pathname;
+        if (isHiddenPage(goes)) add("hidden-link", at, `"${l.text}" → ${goes}`);
         const next = pageKey(l.href, origin);
         if (next && crawlable(next) && !links.has(next)) links.set(next, l.text);
       }
