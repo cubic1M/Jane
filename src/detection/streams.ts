@@ -6,6 +6,7 @@ import {
   FALLBACK_AMOUNT_TOLERANCE,
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
+  PLAID_STREAM_CHARGES_AGREE,
   PLAID_STREAM_MIN_CHARGES,
   RUN_MIN_SHARE_OF_CHARGES,
   USAGE_BILL_DAY_SPREAD,
@@ -148,7 +149,7 @@ function chargesCategory(
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-  if (!top || top[1] * 2 <= charges.length) return null;
+  if (!top || top[1] <= charges.length * PLAID_STREAM_CHARGES_AGREE) return null;
   const [primary, detailed] = top[0].split("|");
   return { primary: primary!, detailed: detailed || null };
 }
@@ -161,7 +162,7 @@ function commonName(charges: readonly DetectionTransaction[]): string | null {
     if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-  return top && top[1] * 2 > charges.length ? top[0] : null;
+  return top && top[1] > charges.length * PLAID_STREAM_CHARGES_AGREE ? top[0] : null;
 }
 
 export function fromPlaidStream(
