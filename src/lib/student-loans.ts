@@ -89,7 +89,11 @@ export async function loadStudentLoans(
   // Whole days back from the person's day (night round 11-06: a year's pay moved at 7pm).
   const today = await todayOf(userId, { client, now });
   const since = new Date(Date.parse(`${today}T00:00:00Z`) - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
-  const yearAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 365 * DAY_MS);
+  // A year of pay back from where the statements end, not from today: counted from today, statements
+  // that stopped coming lost a paycheck every two weeks and the plans moved with the calendar (debug
+  // 3's calendar sweep, 11-19).
+  const last = (await db.transactions.aggregate({ _max: { date: true } }))._max.date;
+  const yearAgo = new Date((last?.getTime() ?? Date.parse(`${today}T00:00:00Z`)) - 365 * DAY_MS);
   const [book, advice, profile, payments, pay, seen] = await Promise.all([
     debtsOr(given, userId, { client, now }),
     adviceMode(userId, { client }),
