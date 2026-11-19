@@ -66,6 +66,7 @@ export const CONSENT_SCOPES = {
   read_accounts: "See your accounts and balances",
   read_bills: "See your bills and due dates",
   read_policies: "See your insurance policies",
+  read_holdings: "See your investment accounts and what they hold",
   prefill_payments: "Fill in payments for you to approve",
   pay_bills: "Pay a bill, after your yes on that payment",
   move_own_money: "Move money between your own accounts, after your yes on that move",
@@ -222,4 +223,20 @@ export const STRIPE_FC = {
   consentRecordMonths: 24,
   signatureHeader: "stripe-signature",
   secretEnv: "STRIPE_FC_WEBHOOK_SECRET",
+} as const;
+
+// SnapTrade (read connectors, batch 2; docs.snaptrade.com, read 2026-11-19): a person's brokerage
+// holdings, read only (the Connection Portal's `connectionType: "read"`, never trading). Every request
+// is signed: clientId and timestamp in the query, and `Signature`, HMAC-SHA256 with the consumer key
+// over the canonical JSON of { content, path, query }, base64 ("Request Signatures"). Webhooks carry
+// `Signature` over the canonical JSON of their body, and an eventTimestamp checked like any other.
+// Non-production (test) keys see SnapTrade's Sandbox brokerage; production keys don't.
+export const SNAPTRADE = {
+  baseUrl: "https://api.snaptrade.com",
+  clientIdEnv: "SNAPTRADE_CLIENT_ID",
+  consumerKeyEnv: "SNAPTRADE_CONSUMER_KEY",
+  signatureHeader: "Signature",
+  connectionType: "read",
+  // Accounts read per person, at most; positions are read per account.
+  maxAccounts: 25,
 } as const;

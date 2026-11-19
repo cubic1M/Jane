@@ -115,6 +115,7 @@ describe("the sandbox adapters' definitions", () => {
       "irs_transcript_upload",
       "tax_form_upload",
       "stripe_fc",
+      "snaptrade_holdings",
       "canopy_connect",
       "signwell_permission",
     ]);
