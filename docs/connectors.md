@@ -66,6 +66,16 @@ A real connector acts only when all of these hold. Each is tested.
    `connector_connect_declined`, and on revoke `connector_consent_revoked` and
    `connector_credential_deleted`.
 
+## Settings › Connections: last read, and revoking removes the data
+
+Each connection shows when it was allowed and when Jane last read it (from the person's own
+`connector_data_read` audit rows). Revoke stops it at once, deletes its credential and removes what it
+brought in: accounts tied to its credential go by the cascade (Method, SnapTrade), and a connector that
+saves elsewhere has a `forget` step (Canopy's policies, the uploaded credit reports, the benefits
+Pinwheel found and the person hasn't confirmed), audited as `connector_data_forgotten`. Every reader
+must have a `forget` step or a stated reason it keeps nothing (`forget.integration.test.ts`). Never
+shown in sign-up or onboarding.
+
 ## The action pipeline
 
 `src/lib/connectors/pipeline.ts` is the only way anything happens through a connector. The table

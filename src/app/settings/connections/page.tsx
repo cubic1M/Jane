@@ -62,7 +62,10 @@ function CurrentItem({
       className="flex flex-col gap-2 border-b border-zinc-200 py-3 last:border-b-0 dark:border-zinc-800"
     >
       <span className="font-medium">{row.connectorName}</span>
-      <p className={MUTED}>Allowed since {momentLabel(row.grantedAt, timezone, { year: true })}</p>
+      <p className={MUTED}>
+        Allowed since {momentLabel(row.grantedAt, timezone, { year: true })}
+        {row.lastReadAt && <>. Last read {momentLabel(row.lastReadAt, timezone, { year: true })}</>}
+      </p>
       {broken && (
         <p role="status" className="text-sm font-medium">
           The link to your bank stopped working, so this isn&apos;t up to date. Link it again to
@@ -155,7 +158,8 @@ async function ConnectionsContent() {
         <h1 className="text-3xl font-semibold tracking-tight">Connections</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           What each connection may do for you. Jane asks for your yes on every payment, move or
-          cancellation, for that exact amount. Revoke one and it stops at once.
+          cancellation, for that exact amount. Revoke one and it stops at once, and what it brought
+          in goes too.
         </p>
       </div>
 

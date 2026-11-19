@@ -147,6 +147,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   robinhood_reconnect_needed: automatic,
   connector_consent_granted: own,
   connector_consent_revoked: own,
+  connector_data_forgotten: own,
   connector_credential_stored: own,
   connector_credential_deleted: own,
   credit_report_uploaded: own,
