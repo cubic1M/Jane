@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
+import { stageSaveOnPhonePlans } from "@/lib/saveonphone";
 import { requireAdmin } from "@/lib/session";
 import { validateOption, type OptionInput } from "@/lib/switch-options";
 import { systemDb } from "@/lib/system-db";
@@ -85,6 +86,20 @@ export async function removeOption(formData: FormData): Promise<void> {
     "switch_option_removed",
     { type: "switch_option", id },
     {},
+  );
+  revalidatePath("/admin/options");
+}
+
+// Stages phone plans from SaveOnPhone's public catalog, unreviewed, for the team to check like any
+// option (src/lib/saveonphone.ts).
+export async function fetchPhonePlans(): Promise<void> {
+  const admin = await requireAdmin();
+  const { added, updated } = await stageSaveOnPhonePlans({ client: db });
+  await logAudit(
+    { type: "admin", id: admin.id },
+    "switch_options_fetched",
+    { type: "switch_option", id: "saveonphone" },
+    { source: "saveonphone", added, updated },
   );
   revalidatePath("/admin/options");
 }

@@ -150,6 +150,7 @@ export type AuditEvent =
   | "merchant_saved"
   | "switch_option_saved"
   | "switch_option_reviewed"
+  | "switch_options_fetched"
   | "switch_option_removed"
   | "diy_done"
   | "household_invite_sent"
