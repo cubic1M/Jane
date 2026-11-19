@@ -143,6 +143,10 @@ export function nice(description: string): string {
     .replace(/\s+8(?:00|33|44|55|66|77|88)-[A-Z]{4,}[A-Z0-9]*(?:\s+[A-Z]{2})?\s*$/, "")
     .replace(/\.com$/i, "")
     .replace(/\*.*$/, "")
+    // A store or terminal number at the end ("TARGET 00012345", "TRADER JOE S #123"), as the
+    // merchant names leave it out (debug 3, 11-19: "Target 00012345 $64.20 was charged twice.").
+    // Four digits or fewer without a "#" can be the name's own ("7-Eleven 2045" is kept).
+    .replace(/\s+(?:#\d+|\d{5,})$/, "")
     .trim();
   // And the entry's word for what it is ("T-MOBILE AUTO PAY" read "T-Mobile Auto Pay" on a bill
   // card; debugger 11-18), as the merchant names leave it out.

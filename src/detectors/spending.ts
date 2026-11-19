@@ -268,6 +268,10 @@ function asDetectionInput(data: ProfileInput): DetectionInput {
   };
 }
 
+// A charge as the cards name it: Jane's cleaned name for the merchant where the charge has one,
+// else its line made readable (debug 3, 11-19: "Target 00012345" from the bank's line).
+const nameOf = (t: ProfileTx) => t.merchantName ?? nice(t.description);
+
 const duplicateCharge: Detector = {
   capability: "cost",
   topic: "duplicate_charge",
@@ -290,7 +294,7 @@ const duplicateCharge: Detector = {
       title: "You may have been charged twice: ask for one back",
       headline: headlineOf("Claim back a double charge", total, "earns", true),
       short: clip(
-        `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} was charged twice.`,
+        `${doubles.map((d) => `${nameOf(d)} ${formatCents(d.amountCents)}`).join(", ")} was charged twice.`,
       ),
       worthCents: total,
       worthKind: "earns",
@@ -299,7 +303,7 @@ const duplicateCharge: Detector = {
         DUPLICATE_CHARGE_MAX_PERCENT,
       ),
       urgency: "now",
-      why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${DUPLICATE_CHARGE_WINDOW_DAYS === 1 ? "a day" : `${DUPLICATE_CHARGE_WINDOW_DAYS} days`}.`,
+      why: `${doubles.map((d) => `${nameOf(d)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${DUPLICATE_CHARGE_WINDOW_DAYS === 1 ? "a day" : `${DUPLICATE_CHARGE_WINDOW_DAYS} days`}.`,
       action: {
         label: "See the charges",
         href: chargesHref(doubles[0].description, {
