@@ -238,27 +238,36 @@ async function keepNoticesComing(
   return false;
 }
 
+// Emails Claude gave no answer for, in a row: their senders, where the cursor stood before the first
+// of them, and whether that one was the look-back's.
+type Streak = { senders: Set<string>; cursorBefore: string; lookingBack: boolean };
+
 // What one read has done so far: where its cursor stands, the emails it has met, and its counts.
 type Run = {
   cursor: string;
+  // The cursor this read started from, when the read before put it back there for emails Claude
+  // gave no answer for (`reader_unread`). Null after any other ending.
+  putBack: string | null;
+  // Whether the mailbox had never been read through (lastCheckedAt null) when this read began.
+  neverRead: boolean;
   met: Set<string>;
   messages: { count: number };
   kept: number;
   none: number;
   skipped: Record<string, number>;
-  // Emails Claude gave no answer for, in a row: their senders, and where the cursor stood before
-  // the first of them.
-  streak: { senders: Set<string>; cursorBefore: string } | null;
+  streak: Streak | null;
   lookedBack: boolean;
   jumped: boolean;
 };
 
-// How reading new mail ended: everything read, stopped with history left (the deadline or
-// runMessages), the person's count used up, or Claude not to be asked (`later`), with where the
-// cursor goes back to when emails before were taken for unread only because Claude was down.
+// How reading new mail ended: everything read, stopped by the deadline or runMessages with history
+// left or the look-back not begun, the person's count used up, Claude not to be asked (`later`), or
+// emails Claude gave no answer for one after another (`unread`), with where the cursor goes back to:
+// before the first of them.
 type Ended =
   | { end: "done" | "left" | "waiting" }
-  | { end: "later"; reason: string; cursorBack: string | null };
+  | { end: "later"; reason: string }
+  | { end: "unread"; cursorBack: string };
 
 // Between records only: the deadline, or as many emails as one read asks Gmail for.
 const timeIsUp = (read: Read, run: Run): boolean =>
@@ -268,11 +277,19 @@ const countSkip = (run: Run, why: string): void => {
   run.skipped[why] = (run.skipped[why] ?? 0) + 1;
 };
 
+// Whether a streak is the emails the read before stopped for, met again. In the history it begins
+// at the very cursor that read put back. The look-back has no cursor of its own and goes over the
+// same emails from the top at every read, so any streak in it counts: told apart by the cursor, it
+// would stop again every read that found new mail first.
+const metAgain = (run: Run, streak: Streak): boolean =>
+  run.putBack !== null && (streak.lookingBack || streak.cursorBefore === run.putBack);
+
 // Counts one email's end. `readerRefusalsInARow` emails in a row that Claude gave no answer for,
 // from different senders, mean Claude is down, not that the emails are odd: the read ends as
-// `later`, with the cursor back before the first of them. An email Claude did answer ends the
-// streak.
-function noted(run: Run, handled: Handled): Ended | null {
+// `unread`, with the cursor back before the first of them. A read that meets the same ones again
+// takes them as odd after all: they stay skipped and it goes on, so they hold a mailbox for one
+// wait at most. An email Claude did answer ends the streak.
+function noted(run: Run, handled: Handled, lookingBack: boolean): Ended | null {
   if (handled.outcome === "kept" || handled.outcome === "none") {
     run[handled.outcome] += 1;
     run.streak = null;
@@ -284,13 +301,17 @@ function noted(run: Run, handled: Handled): Ended | null {
   }
   if (handled.outcome === "unread") {
     countSkip(run, "unread");
-    run.streak ??= { senders: new Set(), cursorBefore: run.cursor };
+    run.streak ??= { senders: new Set(), cursorBefore: run.cursor, lookingBack };
     run.streak.senders.add(handled.sender);
     if (run.streak.senders.size < GMAIL_LIMITS.readerRefusalsInARow) return null;
-    return { end: "later", reason: "UNREAD", cursorBack: run.streak.cursorBefore };
+    if (metAgain(run, run.streak)) {
+      run.streak = null;
+      return null;
+    }
+    return { end: "unread", cursorBack: run.streak.cursorBefore };
   }
   if (handled.outcome === "waiting") return { end: "waiting" };
-  return { end: "later", reason: handled.reason, cursorBack: null };
+  return { end: "later", reason: handled.reason };
 }
 
 // Each email once in a read, whichever records name it.
@@ -298,31 +319,47 @@ async function oneEmail(
   run: Run,
   mail: MessageRead,
   added: { id: string; labelIds: string[] | null },
+  { lookingBack }: { lookingBack: boolean },
 ): Promise<Ended | null> {
   if (run.met.has(added.id)) return null;
   run.met.add(added.id);
-  return noted(run, await readMessage(mail, added));
+  return noted(run, await readMessage(mail, added), lookingBack);
 }
 
 // 9. The newest emails of the last lookBackDays, oldest first, sharing the read's deadline and
-// runMessages. Run while the mailbox has never been read through, and once after a gap.
+// runMessages: once, after the history passes, in a read of a mailbox never read through, and once
+// after a gap. It is best effort, and done once it ends: run to its end, it records a never-read
+// mailbox as read through at once, whatever stops the read after it; cut short by the deadline or
+// runMessages, it ends the read as done (what it left out is counted). Either way it isn't looked
+// back over from the top at the next read, so a mailbox with more recent mail than one read has time
+// for is read through all the same. Ended by `later`, or by the person's count, it isn't done, and
+// the next read tries it again. With no time left it isn't begun.
 async function lookBack(
   read: Read,
   run: Run,
   access: Access,
   mail: MessageRead,
 ): Promise<Ended | null> {
+  if (timeIsUp(read, run)) return { end: "left" };
   run.lookedBack = true;
   await holding(read);
   const newestFirst = await listRecent(access, {
     days: GMAIL_LIMITS.lookBackDays,
     most: GMAIL_LIMITS.lookBackMessages,
   });
-  for (const id of newestFirst.reverse()) {
-    if (timeIsUp(read, run)) return { end: "left" };
-    const ended = await oneEmail(run, mail, { id, labelIds: null });
+  const oldestFirst = newestFirst.reverse();
+  for (const [index, id] of oldestFirst.entries()) {
+    if (timeIsUp(read, run)) {
+      const leftOut = oldestFirst.slice(index).filter((other) => !run.met.has(other)).length;
+      if (leftOut > 0) run.skipped.look_back_cut = leftOut;
+      return { end: "done" };
+    }
+    const ended = await oneEmail(run, mail, { id, labelIds: null }, { lookingBack: true });
     if (ended) return ended;
   }
+  // Said now: left to the read's end, Claude or a failure in the history listed next would leave the
+  // mailbox never read through, and the next read would look back over all of it again.
+  if (run.neverRead) await save(read, { lastCheckedAt: read.now });
   return null;
 }
 
@@ -354,7 +391,7 @@ async function onePass(
     for (const record of page.records) {
       if (timeIsUp(read, run)) return { end: "left" };
       for (const added of record.added) {
-        const ended = await oneEmail(run, mail, added);
+        const ended = await oneEmail(run, mail, added, { lookingBack: false });
         if (ended) return ended;
       }
       if (await moveCursor(read, run, record.id)) found = true;
@@ -391,15 +428,16 @@ async function jumpAhead(
   return run.lookedBack ? null : lookBack(read, run, access, mail);
 }
 
-// 9 and 10: the look-back while the mailbox has never been read through, then passes over its
-// history until one finds nothing new, the deadline or runMessages. After a pass that handled mail
-// the read lists once more, so a notice that found the lock held loses nothing.
-async function readNewMail(
-  read: Read,
-  run: Run,
-  access: Access,
-  neverRead: boolean,
-): Promise<Ended> {
+// 10 and 9: passes over the history until one finds nothing new, the deadline or runMessages; then,
+// while the mailbox has never been read through, the look-back once. New mail goes first: a first
+// read whose look-back took all its time never got to what arrived after connecting, and the next
+// read began the look-back again. History left before the look-back ends the read as `left`, and the
+// look-back waits for a read that gets through it. A look-back that runs to its end records the
+// mailbox as read through as it ends (lookBack), so what stops the read after it isn't a reason to
+// look back again: history left then can only be mail that came in while it ran, which the next
+// notice reads. After a pass that handled mail, and after the look-back, the read lists once more,
+// so a notice that found the lock held loses nothing.
+async function readNewMail(read: Read, run: Run, access: Access): Promise<Ended> {
   const mail: MessageRead = {
     db: read.db,
     client: read.client,
@@ -410,10 +448,6 @@ async function readNewMail(
     messages: run.messages,
     holding: () => holding(read),
   };
-  if (neverRead) {
-    const ended = await lookBack(read, run, access, mail);
-    if (ended) return ended;
-  }
   for (;;) {
     if (timeIsUp(read, run)) return { end: "left" };
     let pass: Ended | { found: boolean };
@@ -427,23 +461,28 @@ async function readNewMail(
       continue;
     }
     if ("end" in pass) return pass;
-    if (!pass.found) return { end: "done" };
+    if (pass.found) continue;
+    if (!run.neverRead || run.lookedBack) return { end: "done" };
+    const ended = await lookBack(read, run, access, mail);
+    if (ended) return ended;
   }
 }
 
 // `later` (./read-mail.ts): Claude couldn't be asked part way. The read stops at the last finished
-// record, or before the first of the emails Claude was taken to be down for, and is tried again
-// after readerRetryMinutes. Not the mailbox failing: no failure is counted, no audit row is written,
-// and one ops event says why.
+// record and is tried again after readerRetryMinutes. `unread`: the same, with the cursor back
+// before the first of the emails Claude was taken to be down for, and `reader_unread` on the row, so
+// the next read knows them if they stop it again (noted). Not the mailbox failing: no failure is
+// counted, no audit row is written, and one ops event says why.
 async function readerDown(
   read: Read,
-  { reason, cursorBack }: { reason: string; cursorBack: string | null },
+  ended: { end: "later"; reason: string } | { end: "unread"; cursorBack: string },
 ): Promise<void> {
   await save(read, {
-    ...(cursorBack === null ? {} : { historyCursor: cursorBack }),
+    ...(ended.end === "unread" ? { historyCursor: ended.cursorBack } : {}),
     nextTryAt: new Date(read.now.getTime() + GMAIL_LIMITS.readerRetryMinutes * MINUTE),
-    lastErrorCode: "reader_later",
+    lastErrorCode: ended.end === "unread" ? "reader_unread" : "reader_later",
   });
+  const reason = ended.end === "unread" ? "UNREAD" : ended.reason;
   log.warn("Gmail read stopped: Claude couldn't be asked", { reason });
   await recordOpsEvent("gmail_reader_down", {
     code: reason,
@@ -454,7 +493,7 @@ async function readerDown(
 }
 
 // 11. A read that stopped with history left doesn't say it was checked, so the daily job takes it
-// up as stale.
+// up as stale; only a look-back that ran to its end has said so already (lookBack).
 async function succeeded(
   read: Read,
   run: Run,
@@ -604,6 +643,8 @@ async function readHeld(read: Read): Promise<SyncOutcome> {
     // 9 and 10.
     const run: Run = {
       cursor: row.historyCursor,
+      putBack: row.lastErrorCode === "reader_unread" ? row.historyCursor : null,
+      neverRead: row.lastCheckedAt === null,
       met: new Set(),
       messages: { count: 0 },
       kept: 0,
@@ -613,9 +654,17 @@ async function readHeld(read: Read): Promise<SyncOutcome> {
       lookedBack: false,
       jumped: false,
     };
-    const ended = await readNewMail(read, run, access, row.lastCheckedAt === null);
-    if (ended.end === "waiting") return "waiting";
-    if (ended.end === "later") {
+    const ended = await readNewMail(read, run, access);
+    if (ended.end === "waiting") {
+      // `reader_unread` names the emails at the place the read before put back. Once the cursor is
+      // past them that stop is spent: left on the row, it would let the next read pass over a streak
+      // where the cursor stands now, which no read ever went back for.
+      if (run.putBack !== null && run.cursor !== run.putBack) {
+        await save(read, { lastErrorCode: watchFailed ? "watch_failed" : null });
+      }
+      return "waiting";
+    }
+    if (ended.end === "later" || ended.end === "unread") {
       await readerDown(read, ended);
       return "waiting";
     }

@@ -594,11 +594,6 @@ describe("when Claude gives no answer for this one email", () => {
     expect(await readMoneyMail(MAIL, { claude })).toEqual({ outcome: "unread" });
   });
 
-  it.each([400, 413])("it is skipped when the API refuses this request with %i", async (status) => {
-    const { claude } = failing(apiError(status));
-    expect(await readMoneyMail(MAIL, { claude })).toEqual({ outcome: "unread" });
-  });
-
   it("it is skipped when the request ran out of time", async () => {
     const { claude } = failing(new Anthropic.APIConnectionTimeoutError());
     expect(await readMoneyMail(MAIL, { claude })).toEqual({ outcome: "unread" });
@@ -607,6 +602,9 @@ describe("when Claude gives no answer for this one email", () => {
 
 describe("when Claude can't be asked at all", () => {
   it.each([
+    // Every request is cut to a size the API takes, so neither is one email's doing.
+    ["a request the API won't take, from a wrong setting or model", 400],
+    ["a request the API says is too large, from a wrong setting", 413],
     ["a wrong key", 401],
     ["billing", 402],
     ["no permission", 403],

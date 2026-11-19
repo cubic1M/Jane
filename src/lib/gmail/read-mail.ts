@@ -189,20 +189,17 @@ function dateOf(answer: unknown, received: string): Date | null {
   return days >= -GMAIL_LIMITS.dateBackDays && days <= GMAIL_LIMITS.dateAheadDays ? day : null;
 }
 
-// Why Claude gave no answer. A request refused for what it holds or how long it is, and one that
-// ran out of time, are that email's own trouble. Anything else (a busy or failing API, this
-// person's or everyone's limit, a wrong key, billing or model name) means Claude can't be asked at
-// all, and says nothing about the email.
+// Why Claude gave no answer. A request that ran out of time is that email's own trouble. Anything
+// else means Claude can't be asked at all, and says nothing about the email: a busy or failing API,
+// this person's or everyone's limit, a wrong key, billing or model name, and a 400 or a 413 as well.
+// Every request is cut to a size the API takes, so no one email brings either about: they mean the
+// request itself is wrong (a setting, a model), for every email alike.
 function notAnswered(error: unknown): MailReading {
   if (error instanceof Anthropic.APIConnectionTimeoutError) {
     log.warn("Gmail reader: no answer", { why: "timeout" });
     return { outcome: "unread" };
   }
   const status = error instanceof Anthropic.APIError ? error.status : undefined;
-  if (status === 400 || status === 413) {
-    log.warn("Gmail reader: no answer", { why: `http_${status}` });
-    return { outcome: "unread" };
-  }
   const connection = error instanceof Anthropic.APIConnectionError;
   const reason: LaterReason =
     status !== undefined ? `${status}` : connection ? "CONNECTION" : "ERROR";

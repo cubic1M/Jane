@@ -111,20 +111,21 @@ function safely<T>(work: () => T): T | "broken" {
   }
 }
 
-// The latest time a reading can be saved with: the database takes years of four digits.
-const LATEST_SAVED = Date.UTC(9999, 11, 31, 23, 59, 59, 999);
+const HOUR_MS = 60 * 60 * 1000;
 
 type FirstLook = { meta: MailMeta; receivedAt: Date; senderDomain: string };
 
 // Steps 2 and 3, once Gmail has answered: an answer shaped like a message, a time it arrived (the
 // reading's and the reader's day both come from it), and the screen.
-function firstLook(raw: unknown): FirstLook | Skip {
+function firstLook(raw: unknown, now: Date): FirstLook | Skip {
   const meta = mailMeta(raw);
   if (meta === null) return "shape";
   // Gmail's time is when it took the email in, but for mail moved in through its API it can be the
-  // email's own Date header. A time past what can be saved is no time: the reading would fail to
-  // save at every read, and stop each one at this email.
-  if (meta.receivedAt === null || meta.receivedAt.getTime() > LATEST_SAVED) return "no_date";
+  // email's own Date header, which the sender writes. A time well after the read began is no time:
+  // Claude's date would be checked against a day that hasn't come, the reading would head the page,
+  // and one past what the database holds would fail to save at every read.
+  const latest = now.getTime() + GMAIL_LIMITS.receivedAheadHours * HOUR_MS;
+  if (meta.receivedAt === null || meta.receivedAt.getTime() > latest) return "no_date";
   const screened = screenMail(meta);
   if (!screened.keep) return screened.why;
   return { meta, receivedAt: meta.receivedAt, senderDomain: screened.senderDomain };
@@ -154,7 +155,7 @@ export async function readMessage(
   const head = await fetched(read, added.id, "metadata");
   if (typeof head === "string") return skip(head);
   // 3. The screen. Nothing more has been fetched.
-  const look = safely(() => firstLook(head));
+  const look = safely(() => firstLook(head, read.now));
   if (typeof look === "string") return skip(look);
   // 4. Read already, by this read or an earlier one.
   const readings = await read.db.gmailReadings.count({

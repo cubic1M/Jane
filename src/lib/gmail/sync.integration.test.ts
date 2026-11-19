@@ -158,6 +158,14 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         })
       ).map((row) => [row.key, row.count]),
     );
+  // What the last read that got through said it skipped, by reason, in its log line.
+  const skippedSaid = (): unknown => {
+    const line = said.filter((words) => words.startsWith("Gmail read {")).at(-1);
+    return line === undefined
+      ? undefined
+      : (JSON.parse(line.slice("Gmail read ".length)) as { skipped: unknown }).skipped;
+  };
+  const searches = () => fake.requests.filter((r) => r.path.endsWith("/messages")).length;
 
   beforeEach(async () => {
     limits.callTimeoutMs = CALL_TIMEOUT_MS;
@@ -345,7 +353,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
   });
 
   describe("the look back over recent mail", () => {
-    it("runs while the mailbox has never been read through: its newest emails of the last 14 days, oldest first, then what came after connecting", async () => {
+    it("runs while the mailbox has never been read through: what came after connecting, then its newest emails of the last 14 days, oldest first", async () => {
       const userId = await person();
       const address = `box-${randomUUID()}@fake-mailbox.test`;
       const box = fake.mailbox(address);
@@ -356,9 +364,9 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       box.deliver({ subject: "Your receipt 3", receivedAt: at(-HOUR) });
       expect(await sync(userId, id)).toBe("read");
       expect(sent().map((mail) => mail.subject)).toEqual([
+        "Your receipt 3",
         "Your receipt 1",
         "Your receipt 2",
-        "Your receipt 3",
       ]);
       const [search] = fake.requests.filter((r) => r.path.endsWith("/messages"));
       expect(Object.fromEntries(new URLSearchParams(search.query))).toEqual({
@@ -388,6 +396,201 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
       expect(fake.requests.filter((r) => r.path.endsWith("/messages"))).toHaveLength(1);
       expect((await rowOf(id)).lastCheckedAt).toEqual(at(MINUTE));
+    });
+  });
+
+  // Section 16 of the design: the history first, the look-back after it.
+  describe("the look back, after the history", () => {
+    // A mailbox never read through, with recent mail from before it was connected: the given
+    // numbers of days ago, oldest first.
+    async function connectedWithRecent(userId: string, daysAgo: number[]) {
+      const address = `box-${randomUUID()}@fake-mailbox.test`;
+      const box = fake.mailbox(address);
+      const recent = daysAgo.map((days) =>
+        box.deliver({ subject: `Your receipt ${days}`, receivedAt: at(-days * DAY) }),
+      );
+      const { id } = await connected(userId, { lastCheckedAt: null }, address);
+      return { id, box, recent, start: box.historyId };
+    }
+
+    it("reads what came after connecting first, then looks back, and reads an email both name once", async () => {
+      const userId = await person();
+      const { id, box, recent } = await connectedWithRecent(userId, [2]);
+      const after = box.deliver({ subject: "Your bill", receivedAt: at(-MINUTE) });
+      expect(await sync(userId, id)).toBe("read");
+      expect(sent().map((mail) => mail.subject)).toEqual(["Your bill", "Your receipt 2"]);
+      const paths = fake.requests.map((r) => r.path.split("/").pop());
+      expect(paths.indexOf("history")).toBeLessThan(paths.indexOf("messages"));
+      // The new email is recent too: the look-back doesn't fetch it again.
+      expect(fake.fetched("metadata")).toEqual([after.id, recent[0].id]);
+      expect(await readOf(id)).toEqual(ids(after, ...recent));
+      expect(await rowOf(id)).toMatchObject({ historyCursor: box.historyId, lastCheckedAt: NOW });
+    });
+
+    it("cut short by runMessages, is done: lastCheckedAt is set, what it left out is said, and the next read lists the history without looking back", async () => {
+      const userId = await person();
+      const { id, box, recent } = await connectedWithRecent(userId, [3, 2, 1]);
+      const after = box.deliver({ subject: "Your bill", receivedAt: at(-MINUTE) });
+      expect(await sync(userId, id, { runMessages: 2 })).toBe("read");
+      expect(sent().map((mail) => mail.subject)).toEqual(["Your bill", "Your receipt 3"]);
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastCheckedAt: NOW,
+        lastErrorCode: null,
+        nextTryAt: null,
+      });
+      expect(skippedSaid()).toEqual({ look_back_cut: 2 });
+      expect(searches()).toBe(1);
+      const later = box.deliver({ subject: "Your refund" });
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(searches()).toBe(1);
+      expect(await readOf(id)).toEqual(ids(after, recent[0], later));
+      expect((await rowOf(id)).lastCheckedAt).toEqual(at(MINUTE));
+    });
+
+    it("cut short by the deadline, is done the same way", async () => {
+      const userId = await person();
+      const { id, recent } = await connectedWithRecent(userId, [3, 2, 1]);
+      let t = 0;
+      create.mockImplementation(async () => {
+        t += 60_000;
+        return answer(RECEIPT);
+      });
+      expect(await sync(userId, id, { clock: () => t, budgetMs: 100_000 })).toBe("read");
+      expect(await readOf(id)).toEqual(ids(recent[0], recent[1]));
+      expect(await rowOf(id)).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null });
+      expect(skippedSaid()).toEqual({ look_back_cut: 1 });
+    });
+
+    it("ended by Claude being down, isn't done: lastCheckedAt stays null, and the next read looks back again, asking Claude only about what it hadn't read", async () => {
+      const userId = await person();
+      const { id, box, recent } = await connectedWithRecent(userId, [2, 1]);
+      const after = box.deliver({ subject: "Your bill", receivedAt: at(-MINUTE) });
+      let down = true;
+      create.mockImplementation(async (params: unknown) => {
+        if (down && sentOf(params).subject === "Your receipt 1") {
+          throw new Anthropic.APIError(503, { type: "error" }, "overloaded", new Headers());
+        }
+        return answer(RECEIPT);
+      });
+      expect(await sync(userId, id)).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastCheckedAt: null,
+        lastErrorCode: "reader_later",
+        nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
+      });
+      expect(await readOf(id)).toEqual(ids(after, recent[0]));
+      down = false;
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
+      expect(searches()).toBe(2);
+      expect(await readOf(id)).toEqual(ids(after, ...recent));
+      expect(sent().map((mail) => mail.subject)).toEqual([
+        "Your bill",
+        "Your receipt 2",
+        "Your receipt 1",
+        "Your receipt 1",
+      ]);
+      expect((await rowOf(id)).lastCheckedAt).toEqual(at(31 * MINUTE));
+    });
+
+    it("waits while the history is cut short, and runs in the read that gets through it", async () => {
+      const userId = await person();
+      const { id, box, recent, start } = await connectedWithRecent(userId, [2]);
+      // Arrived after connecting, on a day the look-back doesn't reach.
+      const news = [box.deliver(), box.deliver(), box.deliver()];
+      expect(await sync(userId, id, { runMessages: 2 })).toBe("read");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: placeAfter(start, 2),
+        lastCheckedAt: null,
+      });
+      expect(searches()).toBe(0);
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(searches()).toBe(1);
+      expect(await readOf(id)).toEqual(ids(...news, ...recent));
+      expect((await rowOf(id)).lastCheckedAt).toEqual(at(MINUTE));
+    });
+
+    it("is done when the history it lists once more is cut short: that is mail that came while it ran, which the next read reads without looking back", async () => {
+      const userId = await person();
+      const { id, box, recent, start } = await connectedWithRecent(userId, [2]);
+      const held = fake.hold(`/messages/${recent[0].id}`);
+      const reading = sync(userId, id, { runMessages: 2 });
+      await held.reached;
+      const news = [box.deliver(), box.deliver()];
+      held.release();
+      expect(await reading).toBe("read");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: placeAfter(start, 1),
+        lastCheckedAt: NOW,
+      });
+      expect(await readOf(id)).toEqual(ids(news[0], ...recent));
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(searches()).toBe(1);
+      expect(await readOf(id)).toEqual(ids(...news, ...recent));
+    });
+
+    it("run to its end, is done whatever stops the read after it: Claude down for mail that came while it ran leaves lastCheckedAt set, and the next read doesn't look back again", async () => {
+      const userId = await person();
+      const { id, box, recent } = await connectedWithRecent(userId, [2]);
+      let down = true;
+      create.mockImplementation(async (params: unknown) => {
+        if (down && sentOf(params).subject === "Your bill") {
+          throw new Anthropic.APIError(503, { type: "error" }, "overloaded", new Headers());
+        }
+        return answer(RECEIPT);
+      });
+      const held = fake.hold(`/messages/${recent[0].id}`);
+      const reading = sync(userId, id);
+      await held.reached;
+      const news = box.deliver({ subject: "Your bill" });
+      held.release();
+      expect(await reading).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        lastCheckedAt: NOW,
+        lastErrorCode: "reader_later",
+        nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
+      });
+      expect(await readOf(id)).toEqual(ids(...recent));
+      down = false;
+      const asked = fake.fetched("metadata").length;
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
+      expect(searches()).toBe(1);
+      // Only the email Claude couldn't be asked about is fetched again.
+      expect(fake.fetched("metadata").slice(asked)).toEqual([news.id]);
+      expect(await readOf(id)).toEqual(ids(news, ...recent));
+      expect((await rowOf(id)).lastCheckedAt).toEqual(at(31 * MINUTE));
+    });
+
+    it("isn't begun with no time left once the history is read through: it waits for the next read", async () => {
+      const userId = await person();
+      const { id, recent } = await connectedWithRecent(userId, [2]);
+      // Each call to Google takes ten seconds on the read's clock: its one listing uses all five.
+      const clock = () => fake.requests.length * 10_000;
+      expect(await sync(userId, id, { clock, budgetMs: 5_000 })).toBe("read");
+      expect(historyAsked()).toHaveLength(1);
+      expect(searches()).toBe(0);
+      expect((await rowOf(id)).lastCheckedAt).toBeNull();
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(await readOf(id)).toEqual(ids(...recent));
+      expect((await rowOf(id)).lastCheckedAt).toEqual(at(MINUTE));
+    });
+
+    it("after a gap in a mailbox's first read, runs once, and the read is done", async () => {
+      const userId = await person();
+      const { id, box, recent } = await connectedWithRecent(userId, [2]);
+      const after = box.deliver({ subject: "Your bill", receivedAt: at(-MINUTE) });
+      box.loseHistory();
+      expect(await sync(userId, id)).toBe("read");
+      expect(searches()).toBe(1);
+      expect(await readOf(id)).toEqual(ids(after, ...recent));
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        missedAt: NOW,
+        lastCheckedAt: NOW,
+      });
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(searches()).toBe(1);
     });
   });
 
@@ -605,6 +808,40 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await rowOf(id)).toMatchObject({ lastErrorCode: null, nextTryAt: null });
     });
 
+    it.each([400, 413])(
+      "part way, with a %i: the same, so the email is read at the next try and never skipped",
+      async (status) => {
+        const userId = await person();
+        const { id, box } = await connected(userId);
+        const start = box.historyId;
+        const first = box.deliver();
+        const second = box.deliver({ from: "Shop <orders@shop.example>" });
+        create
+          .mockResolvedValueOnce(answer(RECEIPT))
+          .mockRejectedValueOnce(
+            new Anthropic.APIError(status, { type: "error" }, "refused", new Headers()),
+          );
+        expect(await sync(userId, id)).toBe("waiting");
+        expect(await rowOf(id)).toMatchObject({
+          historyCursor: placeAfter(start, 1),
+          nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
+          lastErrorCode: "reader_later",
+          failures: 0,
+        });
+        expect(recordOpsEvent).toHaveBeenCalledWith(
+          "gmail_reader_down",
+          expect.objectContaining({ code: String(status) }),
+        );
+        expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
+        expect(await readOf(id)).toEqual(ids(first, second));
+        expect(sent().map((mail) => mail.from)).toEqual([
+          "northwind-power.example",
+          "shop.example",
+          "shop.example",
+        ]);
+      },
+    );
+
     it("three emails in a row Claude gave no answer for, from different senders, put the cursor back before the first and stop as if Claude were down", async () => {
       const userId = await person();
       const { id, box } = await connected(userId);
@@ -620,7 +857,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await sync(userId, id)).toBe("waiting");
       expect(await rowOf(id)).toMatchObject({
         historyCursor: placeAfter(start, 1),
-        lastErrorCode: "reader_later",
+        lastErrorCode: "reader_unread",
         nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
         failures: 0,
       });
@@ -657,6 +894,161 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await sync(userId, id)).toBe("read");
       expect(create).toHaveBeenCalledTimes(4);
       expect((await rowOf(id)).historyCursor).toBe(box.historyId);
+    });
+  });
+
+  // Section 16 of the design: three emails Claude gives no answer for hold a mailbox for one wait.
+  describe("the cursor goes back for the same emails once", () => {
+    // Emails Claude never answers for, each from a sender of its own.
+    const odd = (box: ReturnType<FakeGoogle["mailbox"]>, numbers: number[]) =>
+      numbers.map((n) =>
+        box.deliver({ from: `Billing <billing@odd${n}.example>`, subject: `Your receipt ${n}` }),
+      );
+    const refusingOdd = () =>
+      create.mockImplementation(async (params: unknown) =>
+        sentOf(params).from.startsWith("odd") ? REFUSED : answer(RECEIPT),
+      );
+    const teamTold = () =>
+      vi.mocked(recordOpsEvent).mock.calls.filter(([kind]) => kind === "gmail_reader_down");
+
+    it("puts it back with reader_unread, and the next read skips the same three and reads the email after them", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId);
+      const start = box.historyId;
+      odd(box, [1, 2, 3]);
+      const after = box.deliver({ subject: "Your bill" });
+      refusingOdd();
+      expect(await sync(userId, id)).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: start,
+        lastErrorCode: "reader_unread",
+        nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
+        failures: 0,
+      });
+      expect(fake.fetched("metadata")).not.toContain(after.id);
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
+      expect(await readOf(id)).toEqual([after.id]);
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastErrorCode: null,
+        nextTryAt: null,
+        lastCheckedAt: at(31 * MINUTE),
+      });
+      expect(skippedSaid()).toEqual({ unread: 3 });
+      // Asked about once in each read, and the team told once.
+      expect(sent().filter((mail) => mail.from.startsWith("odd"))).toHaveLength(6);
+      expect(teamTold()).toHaveLength(1);
+    });
+
+    it("still puts it back for a streak that begins anywhere else in that next read, and lets that one go the read after", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId);
+      const start = box.historyId;
+      odd(box, [1, 2, 3]);
+      const between = box.deliver({ subject: "Your bill" });
+      odd(box, [4, 5, 6]);
+      const last = box.deliver({ subject: "Your refund" });
+      refusingOdd();
+      expect(await sync(userId, id)).toBe("waiting");
+      expect((await rowOf(id)).historyCursor).toBe(start);
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: placeAfter(start, 4),
+        lastErrorCode: "reader_unread",
+        nextTryAt: at((31 + GMAIL_LIMITS.readerRetryMinutes) * MINUTE),
+      });
+      expect(await readOf(id)).toEqual([between.id]);
+      expect(fake.fetched("metadata")).not.toContain(last.id);
+      expect(teamTold()).toHaveLength(2);
+      expect(await sync(userId, id, { now: at(62 * MINUTE) })).toBe("read");
+      expect(await readOf(id)).toEqual(ids(between, last));
+      expect((await rowOf(id)).lastErrorCode).toBeNull();
+    });
+
+    it("is spent once a read gets past the same three: one that then runs out of the person's count clears reader_unread, so three more after them are put back for once too", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId);
+      const start = box.historyId;
+      odd(box, [1, 2, 3]);
+      const between = box.deliver({ subject: "Your bill" });
+      odd(box, [4, 5, 6]);
+      const last = box.deliver({ subject: "Your refund" });
+      refusingOdd();
+      expect(await sync(userId, id)).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: start,
+        lastErrorCode: "reader_unread",
+      });
+      // Room in the person's day for the same three again and the bill, and no more: 60 a day, 3
+      // used by the first read.
+      await hit("gmailReads", userId, { client: db, now: at(31 * MINUTE), by: 60 - 3 - 4 });
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: placeAfter(start, 4),
+        lastErrorCode: null,
+      });
+      expect(await readOf(id)).toEqual([between.id]);
+      // Days later, with the person's day back: the three after the bill stop the read, as a
+      // streak no read went back for does.
+      expect(await sync(userId, id, { now: at(2 * DAY) })).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: placeAfter(start, 4),
+        lastErrorCode: "reader_unread",
+        nextTryAt: at(2 * DAY + GMAIL_LIMITS.readerRetryMinutes * MINUTE),
+      });
+      expect(teamTold()).toHaveLength(2);
+      expect(await sync(userId, id, { now: at(2 * DAY + 31 * MINUTE) })).toBe("read");
+      expect(await readOf(id)).toEqual(ids(between, last));
+      expect(skippedSaid()).toEqual({ unread: 3 });
+      expect(teamTold()).toHaveLength(2);
+    });
+
+    it("lets them go only after a stop for them: a read that began after Claude couldn't be asked stops for them as before", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId, {
+        lastErrorCode: "reader_later",
+        nextTryAt: at(-MINUTE),
+      });
+      const start = box.historyId;
+      odd(box, [1, 2, 3]);
+      box.deliver({ subject: "Your bill" });
+      refusingOdd();
+      expect(await sync(userId, id)).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: start,
+        lastErrorCode: "reader_unread",
+      });
+    });
+
+    it("in the look-back, lets the same three go at the next read, even after new mail moved the cursor first", async () => {
+      const userId = await person();
+      const address = `box-${randomUUID()}@fake-mailbox.test`;
+      const box = fake.mailbox(address);
+      const early = box.deliver({ subject: "Your receipt", receivedAt: at(-3 * DAY) });
+      for (const n of [1, 2, 3]) {
+        box.deliver({
+          from: `Billing <billing@odd${n}.example>`,
+          subject: `Your receipt ${n}`,
+          receivedAt: at(-2 * DAY),
+        });
+      }
+      const late = box.deliver({ subject: "Your bill", receivedAt: at(-DAY) });
+      const { id } = await connected(userId, { lastCheckedAt: null }, address);
+      refusingOdd();
+      expect(await sync(userId, id)).toBe("waiting");
+      expect(await rowOf(id)).toMatchObject({
+        lastCheckedAt: null,
+        lastErrorCode: "reader_unread",
+      });
+      expect(await readOf(id)).toEqual([early.id]);
+      const news = box.deliver({ subject: "Your refund", receivedAt: at(20 * MINUTE) });
+      expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
+      expect(await readOf(id)).toEqual(ids(early, late, news));
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastCheckedAt: at(31 * MINUTE),
+        lastErrorCode: null,
+      });
     });
   });
 
@@ -725,9 +1117,14 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         (box: ReturnType<FakeGoogle["mailbox"]>) => box.deliver({ receivedAt: null }),
       ],
       [
-        "a time it arrived past what can be saved",
+        "a time it arrived far ahead of the read, past what can be saved",
         (box: ReturnType<FakeGoogle["mailbox"]>) =>
           box.deliver({ receivedAt: new Date(Date.UTC(10000, 0, 2)) }),
+      ],
+      [
+        "a time it arrived more than a day after the read began",
+        (box: ReturnType<FakeGoogle["mailbox"]>) =>
+          box.deliver({ receivedAt: at((GMAIL_LIMITS.receivedAheadHours + 1) * HOUR) }),
       ],
       [
         "an email gone before it was asked for",
@@ -767,6 +1164,30 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         lastErrorCode: null,
         failures: 0,
       });
+    });
+
+    // Section 16 of the design: a time Gmail gives that hasn't come yet is no time.
+    it("an email dated more than a day after the read began is skipped as having no date, and the next is read", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId);
+      box.deliver({ receivedAt: at(GMAIL_LIMITS.receivedAheadHours * HOUR + MINUTE) });
+      const next = box.deliver();
+      expect(await sync(userId, id)).toBe("read");
+      expect(await readOf(id)).toEqual([next.id]);
+      expect(fake.fetched("full")).toEqual([next.id]);
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(skippedSaid()).toEqual({ no_date: 1 });
+      expect(await rowOf(id)).toMatchObject({ historyCursor: box.historyId, lastErrorCode: null });
+    });
+
+    it("an email dated up to a day after the read began is read, with that time", async () => {
+      const userId = await person();
+      const { id, box } = await connected(userId);
+      const ahead = at(GMAIL_LIMITS.receivedAheadHours * HOUR);
+      const message = box.deliver({ receivedAt: ahead });
+      expect(await sync(userId, id)).toBe("read");
+      const [reading] = await system().gmailReading.findMany({ where: { mailboxId: id } });
+      expect(reading).toMatchObject({ messageRef: message.id, receivedAt: ahead });
     });
 
     it("a 503 on one email, after its retries, leaves the cursor before that record, and the next read reads it", async () => {

@@ -160,6 +160,8 @@ export const GMAIL_LIMITS = {
   lookBackMessages: 30,
   // A larger email, by Gmail's own estimate, is skipped.
   mailBytesMost: 1_500_000,
+  // An email Gmail says arrived more than this after the read began has no time Jane can use.
+  receivedAheadHours: 24,
   // An email's text, plain or HTML, is cut to this before any pattern runs over it.
   htmlCharsMost: 200_000,
   // A From or Authentication-Results header longer than this isn't cut: the email is unverified.

@@ -202,6 +202,24 @@ describe.runIf(url)("the daily job over Gmail mailboxes", () => {
     expect(due.noNotices.box.watch).not.toBeNull();
   });
 
+  it("takes up a mailbox the reader stopped, for Claude down or for emails it gave no answer for, once its wait is over", async () => {
+    const userId = await person();
+    const waited = [
+      await connected(userId, { lastErrorCode: "reader_later", nextTryAt: at(-MINUTE) }),
+      await connected(userId, { lastErrorCode: "reader_unread", nextTryAt: at(-MINUTE) }),
+    ];
+    const waiting = [
+      await connected(userId, { lastErrorCode: "reader_later", nextTryAt: at(MINUTE) }),
+      await connected(userId, { lastErrorCode: "reader_unread", nextTryAt: at(MINUTE) }),
+    ];
+    expect(await nightly([userId])).toMatchObject({ read: 2, deferred: 0 });
+    for (const mailbox of waited) {
+      const row = await system().gmailMailbox.findUniqueOrThrow({ where: { id: mailbox.id } });
+      expect(row).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null, nextTryAt: null });
+    }
+    for (const mailbox of waiting) expect(await checkedAt(mailbox.id)).toEqual(at(-HOUR));
+  });
+
   it("doesn't take a mailbox for its notices while there are none to ask for", async () => {
     vi.stubEnv("GMAIL_PUBSUB_TOPIC", "");
     const userId = await person();
