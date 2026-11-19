@@ -60,7 +60,7 @@ this on the real project yet, so time it the first time you practise.
 
 | To do this | Do this | How it was checked |
 | --- | --- | --- |
-| Stop all scheduled jobs | Remove `CRON_SECRET` and redeploy. All 7 answer 401 | `src/config/kill-switches.test.ts`, plus each route's test |
+| Stop all scheduled jobs | Remove `CRON_SECRET` and redeploy. All 11 in `vercel.json` answer 401. The offers job still answers its hourly pinger (`OFFERS_PING_SECRET`) and the probe's workflow (`PROBE_SECRET`) | `src/config/kill-switches.test.ts`, plus each route's test |
 | Sign everyone out | In Neon's SQL editor, on the production branch: `DELETE FROM sessions;` Sign-in checks that table on every request | Real run |
 | Close sign-up | `BETA_INVITE_ONLY` is on unless set to `false`. Revoke codes at `/admin/invites` | `src/lib/invites.test.ts` |
 | Turn off Try Jane | Remove `TRY_JANE` and redeploy | `src/lib/trial.integration.test.ts` |
@@ -84,8 +84,8 @@ a code change, not a setting.
 | --- | --- | --- | --- |
 | Uptime (`.github/workflows/uptime.yml`) | The site and database, every 15 minutes | An issue labelled `outage` | Nothing |
 | Error email (`src/lib/error-alerts.ts`) | Every server error, at most hourly per kind | Email to `ADMIN_EMAILS` | Resend |
-| Missed job email (`src/lib/health.ts`) | 6 of the 7 daily jobs. `strategy-eval` isn't on its list, only on the heartbeat | Email | Resend |
-| Heartbeats (`src/lib/heartbeat.ts`) | All 7 jobs, the probe and the backup, even when everything else has stopped | Whatever you set in Healthchecks | `HEALTHCHECKS_PING_KEY` |
+| Missed job email (`src/lib/health.ts`) | 10 of the 11 scheduled jobs, and the trial clean-up that runs inside `plaid-sync` (`DAILY_JOBS` in `src/config/health.ts`). `strategy-eval` isn't on its list, only on the heartbeat | Email | Resend |
+| Heartbeats (`src/lib/heartbeat.ts`) | All 11 scheduled jobs and the trial clean-up, the probe and the backup, even when everything else has stopped | Whatever you set in Healthchecks | `HEALTHCHECKS_PING_KEY` |
 | Hourly probe (`src/lib/probe.ts`) | Sign-in, and one sample person trying to reach another | A vague issue labelled `probe`, email, the heartbeat. The check that failed is on `/admin/errors` | `PROBE_SECRET` |
 | Sentry (`src/lib/sentry.ts`) | Server errors and failed jobs, scrubbed | Sentry | `SENTRY_DSN` |
 | The watch (`scripts/ops/watch.mjs`) | The site, the probe and the jobs, every 10 minutes. It acts as well as tells you | A page to your phone, an issue labelled `deploy-freeze` | The founders' list |

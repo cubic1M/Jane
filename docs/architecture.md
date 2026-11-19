@@ -56,10 +56,11 @@ src/lib/jane-agent/snapshot.ts  (the person's numbers, in one place)
   saved. The demo bank fills the same tables from `src/data-sources/demo`.
 - **Reading mail.** With `GMAIL_LINK=1`, a person can connect Gmail mailboxes read-only
   (`src/lib/gmail`, [docs/setup/gmail.md](setup/gmail.md)): Google's notice of new mail reaches
-  `/api/gmail/webhook`, and Jane reads on from where it stopped. Only an email a company sent about
-  money, by Google's own check of the sender, goes to Claude, which picks out a kind, an amount and
-  a date; no text is kept, and only the person's own mailboxes page and data download show what was
-  read.
+  `/api/gmail/webhook`, and Jane reads on from where it stopped. Only an email that looks like it's
+  about money, from a sender Google's own check vouches for and not from a free email service on
+  Jane's list, goes to Claude (never one carrying a sign-in code or a password), which picks out a
+  kind, an amount and a date; no text is kept, and only the person's own mailboxes page and data
+  download show what was read.
 - **Finding things.** `runDetection` runs every rule on the person's data and saves findings;
   running it twice on the same data changes nothing. The detectors in `src/detectors` cover
   the sectors (debt, insurance, investing, taxes, planning) and feed the ranked list of what
@@ -117,13 +118,16 @@ $CRON_SECRET`:
 
 | Route | When (UTC) | What it does |
 | --- | --- | --- |
-| `/api/cron/plaid-sync` | 10:00 daily | Syncs stale Plaid items, removes inactive ones (after a warning), snapshots balances for net worth, raises deadline reminders, queues each person's nightly controller run, and works through due jobs. |
+| `/api/cron/plaid-sync` | 10:00 daily | First deletes the temporary tries past their time (a run of its own, `trial-cleanup`). Then syncs stale Plaid items, removes inactive people's banks, Robinhood and mailboxes (after a warning), snapshots balances for net worth, raises deadline reminders, queues each person's nightly controller run, and works through due jobs. |
+| `/api/cron/invariants` | 11:30 daily | Checks what must hold on live data, in counts only (`src/lib/invariants/nightly.ts`). A count that should be 0 and isn't emails the team, by its name. |
+| `/api/cron/accuracy` | 12:00 daily | Checks every figure Jane shows each real person against what must hold, in counts only (`src/lib/invariants/accuracy.ts`), for `/admin/accuracy`. The digest job's health email names the checks that fail. |
 | `/api/cron/digest` | 15:00 daily | The weekly digest for anyone whose Monday has arrived, and due jobs. |
 | `/api/cron/market-history` | 09:00 daily | Adds the day's closes for the model ETFs from Alpaca (read only). |
 | `/api/cron/strategy-eval` | 09:30 daily | Replays every strategy over the stored closes and saves each level's choice. |
 | `/api/cron/practice-scan` | 21:30 daily | Scans every practice portfolio and runs its autopilot, in the practice ledger only. |
 | `/api/cron/paper-run` | 22:00 daily | Values every paper account at the day's closes and leaves its trades in the trade pop-up. |
 | `/api/cron/events` | 22:30 daily | Refreshes the events the paper account's overlay reads. |
+| `/api/cron/offers` | 12:45 daily | Refreshes the offers catalog, each source on its own cadence (`src/lib/offers/catalog.ts`), then finds the people an offer now helps. An outside pinger also calls it hourly with `OFFERS_PING_SECRET`, which opens only this route. |
 | `/api/cron/gmail` | 11:15 daily | Reads the Gmail mailboxes due a read: the backstop for Google's notices of new mail, and the only reader when they're off. With `GMAIL_LINK` unset or `KILL_BANKS` on, it reads nothing. |
 
 Slow work that can fail goes through the jobs queue (`src/lib/jobs.ts`, the `jobs` table):

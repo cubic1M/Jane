@@ -78,7 +78,10 @@ failed jobs are sent. Failures caught and logged with `log.error` reach the logs
 
 [Pricing](https://healthchecks.io/pricing/), [API](https://healthchecks.io/docs/http_api/), [terms](https://healthchecks.io/terms/).
 
-- **Free (Hobbyist):** 20 jobs, 100 log entries per job. Jane needs 9: 7 jobs, the probe, the backup.
+- **Free (Hobbyist):** 20 jobs, 100 log entries per job. Jane needs 15: the 11 jobs in `vercel.json`,
+  the trial clean-up that runs inside `plaid-sync` and pings as its own job, the probe, the backup
+  and the watch (`scripts/ops/watch.mjs`); 16 with the agent loop's `SWEEP_PING_URL`
+  (`docs/agent-loop.md`).
 - SMS, WhatsApp and phone calls are paid. Pushover is the phone push option its docs name, and they
   don't say whether it's free on Hobbyist.
 - The terms say nothing on commercial use of free accounts, and don't mention a DPA. What's sent is
@@ -127,8 +130,9 @@ Read on 2026-11-18, with the quotes checked word for word against the pages.
 - **What the connection can see:** the whole mailbox. Jane asks for `gmail.readonly` alone, which
   Google lists as a restricted scope, and which `messages.get` and `messages.attachments.get`
   accept: every email, attachments included. Jane looks at the sender, subject and first lines of
-  each new email, fetches a whole email only when a company wrote about money, and never fetches an
-  attachment.
+  each new email, fetches a whole email only when Google's own check vouches for its sender, it
+  looks like it's about money, and it isn't from a free email service on Jane's list (a person's own
+  domain can't be told from a company's), and never fetches an attachment.
 - **What it can do:** read, and ask Google to send word of new mail (`users.watch` accepts
   `gmail.readonly`) and to stop sending it. Jane's code makes no other call to Gmail
   (`src/lib/gmail/api.ts`), so it sends, deletes and changes nothing.
@@ -140,11 +144,14 @@ Read on 2026-11-18, with the quotes checked word for word against the pages.
   "Exceeding the quota request limits is planned to incur charges to your Google Cloud billing
   account later in 2026."
 - **Revoking:** when a mailbox is disconnected, removed for inactivity or deleted with the account,
-  Jane posts its refresh token to Google's revoke address, unless another Jane account's active
-  mailbox holds the same address. "Revocation removes all OAuth 2.0 scopes previously granted to a
-  project, invalidating any issued access or refresh tokens for all clients registered under that
-  project", which is why Gmail has a Google Cloud project of its own. A person can also remove Jane
-  in their Google Account, and changing their Google password ends it too.
+  Jane posts its refresh token to Google's revoke address once, unless another Jane account's active
+  mailbox holds the same address or Jane can't tell. After a Disconnect the page says when Google
+  didn't confirm. After the other two, only the `gmail_disconnected` audit record says so
+  (`ended_at_google`); it's in the access log, so it stays when the account is deleted. "Revocation
+  removes all OAuth 2.0 scopes previously granted to a project, invalidating any issued access or
+  refresh tokens for all clients registered under that project", which is why Gmail has a Google
+  Cloud project of its own. A person can also remove Jane in their Google Account, and changing
+  their Google password ends it too.
 - **Terms on data, "Limited Use":** use is limited to "providing or improving your appropriate use
   case or features that are visible and prominent in the requesting application's user interface";
   data goes to another company only for that, "and only with the user's consent" (or for security,
@@ -162,12 +169,12 @@ Read on 2026-11-18, with the quotes checked word for word against the pages.
 
 **What Jane sends** (`src/lib/gmail/`): to Google, the sign-in's code and the tokens, and requests
 about that one mailbox, only to the addresses in `src/config/gmail.ts`. To Anthropic, for each email
-that passes the screen and carries no code or password (`src/lib/gmail/read-mail.ts`): the day it
-arrived, the sender's domain as Google checked it, and the subject and text with links, email
-addresses and long numbers taken out, at most the first 2,500 and the last 1,500 characters. An email
-can still hold anything its sender wrote, such as a name, a home address, part of an account number
-or what was bought. Claude answers with a kind, an amount and a date, and only those, once code has
-checked them, are kept.
+that passes the screen and carries no sign-in code, password or code to approve a payment
+(`src/lib/gmail/text.ts`, `read-mail.ts`): the day it arrived, the sender's domain as Google checked
+it, the subject's first 300 characters, and the text's first 2,500 and last 1,500, with links, email
+addresses and long numbers taken out. An email can still hold anything its sender wrote, such as a
+name, a home address, part of an account number or what was bought. Claude answers with a kind, an
+amount and a date, and only those, once code has checked them, are kept.
 
 ## The hourly probe's host
 
