@@ -27,6 +27,17 @@ describe("a SaveOnPhone plan as an option", () => {
   it("never keeps SaveOnPhone's affiliate link, and needs a price, a source and a date", () => {
     const staged = stagedPlan({ ...SAVEONPHONE_PLAN, carrier_url: SAVEONPHONE_PLAN.affiliate_url });
     expect(staged?.signUpUrl).toBeNull();
+    // By hostname: a SaveOnPhone subdomain is left out; a carrier whose path names SaveOnPhone isn't.
+    expect(
+      stagedPlan({ ...SAVEONPHONE_PLAN, carrier_url: "https://go.saveonphone.com/mint" })
+        ?.signUpUrl,
+    ).toBeNull();
+    expect(
+      stagedPlan({
+        ...SAVEONPHONE_PLAN,
+        carrier_url: "https://www.mintmobile.com/from/saveonphone.com",
+      })?.signUpUrl,
+    ).toBe("https://www.mintmobile.com/from/saveonphone.com");
     expect(JSON.stringify(stagedPlan(SAVEONPHONE_PLAN))).not.toContain("/go/");
     expect(stagedPlan({ ...SAVEONPHONE_PLAN, billing: {} })).toBeNull();
     expect(

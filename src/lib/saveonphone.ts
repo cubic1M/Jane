@@ -92,8 +92,12 @@ export function stagedPlan(plan: SaveOnPhonePlan): StagedPlan | null {
     b.taxes === "excluded" ? "Taxes and fees on top" : null,
     "Check coverage and your phone first",
   ].filter(Boolean);
-  // The carrier's own page, never SaveOnPhone's affiliate link.
+  // The carrier's own page, never SaveOnPhone's affiliate link: any page on SaveOnPhone's own host
+  // (or a subdomain of it) is left out, by the URL's hostname, not its text.
   const carrier = https(plan.carrier_url);
+  const carrierHost = carrier ? new URL(carrier).hostname : "";
+  const onSaveOnPhone =
+    carrierHost === "saveonphone.com" || carrierHost.endsWith(".saveonphone.com");
   return {
     provider: provider.slice(0, 100),
     name: name.slice(0, 100),
@@ -102,7 +106,7 @@ export function stagedPlan(plan: SaveOnPhonePlan): StagedPlan | null {
     oneTimeFeeCents: whole(b.activation_fee_cents) ?? 0,
     includes: [data, plan.network ? `${plan.network} network` : null].filter(Boolean).join(", "),
     givesUp: givesUp.join(". "),
-    signUpUrl: carrier && !carrier.includes("saveonphone.com") ? carrier : null,
+    signUpUrl: carrier && !onSaveOnPhone ? carrier : null,
     sourceUrl,
     checkedAt,
   };
