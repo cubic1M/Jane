@@ -1,5 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
-import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
+import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
+import { feeCardRows, menuRowsOf, sameHolding } from "./fund-costs";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { olderPlans } from "@/planning/rollover";
 import { type Detector, suggestion } from "./contract";
@@ -30,25 +31,19 @@ const feeDrag: Detector = {
   covers: ["investment_fees"],
   needs: [],
   detect({ profile, data }) {
-    const rows = held(data.holdings).flatMap((h) => {
-      const facts = FUND_FACTS[h.ticker!];
-      const options = (LOWER_COST_EQUIVALENTS[h.ticker!] ?? [])
-        .filter((t) => FUND_FACTS[t])
-        .map((t) => ({ ticker: t, bps: FUND_FACTS[t].expenseRatioBps }))
-        .sort((a, b) => a.bps - b.bps);
-      const cheaper = options[0];
-      if (!facts || !cheaper || facts.expenseRatioBps <= cheaper.bps) return [];
-      return [
-        {
-          h,
-          cheaper,
-          saving: Math.round((h.valueCents * (facts.expenseRatioBps - cheaper.bps)) / 10_000),
-        },
-      ];
-    });
+    const rows = feeCardRows(data);
+    if (rows.length === 0) return null;
     const total = rows.reduce((s, r) => s + r.saving, 0);
-    if (total < R.feeMinCents) return null;
-    const top = [...rows].sort((a, b) => b.saving - a.saving)[0];
+    const top = [...rows].sort((a, b) => b.saving - a.saving)[0]!;
+    // A 401(k) fund here whose plan's menu has a cheaper one of the same kind: said here, as a
+    // fact with its source, not as a second card (plan_menu, ./fund-costs.ts).
+    const menu = menuRowsOf(data)
+      .filter((m) => rows.some((r) => sameHolding(r.h, m.h)))
+      .map(
+        (m) =>
+          ` Your 401(k)'s menu also has ${FUND_NAMES[m.to] ?? m.to} (${(m.bps / 100).toFixed(2)}% a year), a fund of the same kind as ${FUND_NAMES[m.h.ticker!] ?? m.h.ticker} (your plan's fund list).`,
+      )
+      .join("");
     return suggestion("investing", "investment_fees", {
       // A fact, so a real account sees it too: what the funds cost against similar ones, with no
       // instruction to buy, sell or switch (that belongs to demo advice).
@@ -67,7 +62,7 @@ const feeDrag: Detector = {
         ),
       ]),
       urgency: "later",
-      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); together they cost about ${formatCents(total)} a year more than similar funds do.`,
+      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); together they cost about ${formatCents(total)} a year more than similar funds do.${menu}`,
       action: { label: "See the fees", href: "/investments/fees" },
       // Later holdings show the costly funds gone (the verified savings record).
       watch: {

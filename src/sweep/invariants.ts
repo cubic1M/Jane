@@ -1,3 +1,4 @@
+import { FUND_NAMES } from "@/config/funds";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { landing } from "@/lib/area-pages/landing";
 import type { Flat } from "./diff";
@@ -380,4 +381,23 @@ export function saidTwice(flat: Flat): string[] {
     const sentence = text.split(/(?<=[.!?])\s+(?=[A-Z$])/).find((s) => RESTATED.test(s.trim()));
     return sentence ? [`${path}: says a figure twice in "${sentence.trim().slice(0, 140)}"`] : [];
   });
+}
+
+// And one holding is one card: two suggestions never name the same fund in their short line. The
+// fee card and the 401(k) menu card both named the same costly fund for four sample people (debug 3,
+// 11-19); one fee and one missing cover were the same (#2090, #2094).
+const FUNDS = Object.values(FUND_NAMES);
+
+export function twoCardsOneHolding(flat: Flat): string[] {
+  const named = new Map<string, string[]>();
+  for (const [path, text] of Object.entries(flat)) {
+    const card = /^suggestions\.([^.]+)\.short$/.exec(path)?.[1];
+    if (!card || typeof text !== "string") continue;
+    for (const fund of FUNDS.filter((f) => text.includes(f))) {
+      named.set(fund, [...(named.get(fund) ?? []), card]);
+    }
+  }
+  return [...named]
+    .filter(([, cards]) => cards.length > 1)
+    .map(([fund, cards]) => `${fund}: one holding, ${cards.length} cards (${cards.join(", ")})`);
 }

@@ -26,7 +26,9 @@ export const INVESTING_TRUTH: Readonly<Record<string, Truth>> = {
   old_accounts: { yes: ["preretire"] },
   asset_location: { yes: ["equity"] },
   costly_products: { yes: ["retiree"] },
-  plan_menu: { yes: ["family", "equity", "preretire"] },
+  // Said on the fee card when it names the same 401(k) fund, as it does for these three (one fund,
+  // one card: src/detectors/fund-costs.ts); its own card only for a fund no fee card names.
+  plan_menu: { yes: [], maybe: ["family", "equity", "preretire"] },
   short_term_cash: { yes: ["equity", "preretire", "retiree"], maybe: ["family"] },
   sudden_money: { yes: ["equity"] },
   values_funds: { yes: ["equity"] },

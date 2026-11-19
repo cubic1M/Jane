@@ -1,10 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
-import {
-  DEMO_EMPLOYER_PLAN_MENU,
-  FUND_FACTS,
-  FUND_NAMES,
-  LOWER_COST_EQUIVALENTS,
-} from "@/config/funds";
+import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
 import {
   NOT_SUDDEN_DETAILED,
   NOT_SUDDEN_PRIMARY,
@@ -19,6 +14,7 @@ import type { DetectorContext } from "./contract";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { clip, evidence, headlineOf, liquidCents, monthlySpendCents, weakest } from "./helpers";
+import { feeCardRows, menuRowsOf, sameHolding } from "./fund-costs";
 
 // Detectors for the second batch of investing tools (spec steps 232, 234 and 235): the
 // workplace plan's own menu, cash that could work harder for a short time, and a big deposit
@@ -30,20 +26,10 @@ const planMenu: Detector = {
   covers: ["plan_menu"],
   needs: ["has_401k"],
   detect({ profile, data }) {
-    const plans = new Set(data.accounts.filter((a) => a.subtype === "401k").map((a) => a.id));
-    const rows = (data.holdings ?? []).flatMap((h) => {
-      if (!plans.has(h.accountId) || !h.ticker || h.isCash || h.valueCents <= 0) return [];
-      const bps = FUND_FACTS[h.ticker]?.expenseRatioBps;
-      const cheaper = (LOWER_COST_EQUIVALENTS[h.ticker] ?? [])
-        .filter((t) => DEMO_EMPLOYER_PLAN_MENU.includes(t))
-        .map((t) => ({ t, bps: FUND_FACTS[t]?.expenseRatioBps }))
-        .filter((c): c is { t: string; bps: number } => c.bps !== undefined)
-        .sort((a, b) => a.bps - b.bps)[0];
-      if (bps === undefined || !cheaper || cheaper.bps >= bps) return [];
-      return [
-        { h, to: cheaper.t, saving: Math.round((h.valueCents * (bps - cheaper.bps)) / 10_000) },
-      ];
-    });
+    // One fund, one card: a fund the fee card names has the menu said in its detail
+    // (./fund-costs.ts).
+    const fees = feeCardRows(data);
+    const rows = menuRowsOf(data).filter((m) => !fees.some((f) => sameHolding(f.h, m.h)));
     const total = rows.reduce((s, r) => s + r.saving, 0);
     if (total < R.feeMinCents) return null;
     const top = [...rows].sort((a, b) => b.saving - a.saving)[0];
