@@ -135,4 +135,11 @@ export const DATED: readonly Reason[] = [
     paths: /^trees\.[^.]+\.tree\.sub$/,
     follows: (path) => new RegExp(`^${literal(path.replace(/\.sub$/, ""))}\\.branches\\.`),
   },
+  // Home's tile says its area page's status and line (src/lib/hub/area-status.ts), so it moves
+  // with that tree's branches.
+  {
+    name: "an area tile's tree",
+    paths: /^tiles\.[^.]+\.(?:health|healthWhy)$/,
+    follows: (path) => new RegExp(`^trees\\.${literal(path.split(".")[1]!)}\\.tree\\.branches\\.`),
+  },
 ];
