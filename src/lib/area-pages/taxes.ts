@@ -322,6 +322,9 @@ const SUGGESTION_LABELS: Readonly<Record<string, string>> = {
   identity_ip_pin: "An IP PIN for your return",
   disaster_relief: "Disaster tax relief",
   inherited_ira: "An inherited IRA",
+  // Its headline carries the refund ("Check your withholding: last refund $842"), which the
+  // figure beside it says (debugger 11-19: "$842" twice on one line).
+  refund_withholding: "Check your withholding",
 };
 export const suggestionItemId = (topic: string) =>
   itemId(SUGGESTION_BRANCH[topic] ?? "savings", `suggestion:${topic}`);
