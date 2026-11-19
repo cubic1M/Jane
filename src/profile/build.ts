@@ -72,7 +72,8 @@ export type ProfileTx = {
   accountId: string;
   // The cleaned merchant name, where one was read; messages name a charge by it.
   merchantName?: string | null;
-  // From an uploaded statement, not a linked bank: the person's day it was uploaded (reachOf).
+  // From an uploaded statement, not a linked bank: the person's day it was uploaded. It marks
+  // the line as an upload's, which reaches its last line (reachOf).
   uploadedOn?: string;
 };
 type ProfileAccount = {
@@ -326,30 +327,28 @@ function lastDayOf(txs: readonly ProfileTx[], today: string): string {
 }
 
 // Where these lines reach, to count a window back from. A linked bank's while its newest line is
-// recent reach today (statementsEnd). An uploaded statement closes a few days after its last line,
-// however recent, as an old one does: counted to today instead, an upload's history grew a day
-// each day it sat, so its paced figures drifted with nothing new (debug 2, 11-16: five $12 fees
-// from Jun 1 to Oct 20 read "$120/yr" on Nov 16, $144 really, falling a little each day until
-// day 35). Never past the day it was uploaded, nor today: days still to come hold nothing (a Jan to
-// Mar upload read on Mar 30 isn't four months).
+// recent reach today (statementsEnd). An uploaded statement reaches its last line, whenever it's
+// read and whenever it came in: counted to today instead, an upload's history grew a day each day
+// it sat, so its paced figures drifted with nothing new (debug 2, 11-16: five $12 fees from Jun 1
+// to Oct 20 read "$120/yr" on Nov 16, $144 really, falling a little each day until day 35); and
+// counted to the day it was uploaded, the same file gave another cushion a day later (debug 2,
+// 11-19: S4's "$4,971.36" uploaded Nov 18, "$4,919.01" uploaded Nov 19). The days after the last
+// line hold nothing the file shows.
 export function reachOf(
   txs: readonly { date: string; uploadedOn?: string }[],
   today: string,
 ): string {
   let linked = "";
-  let upload: { date: string; uploadedOn: string } | null = null;
+  let upload = "";
   for (const t of txs) {
     if (t.date > today) continue;
     if (t.uploadedOn) {
-      if (!upload || t.date > upload.date) upload = { date: t.date, uploadedOn: t.uploadedOn };
+      if (t.date > upload) upload = t.date;
     } else if (t.date > linked) linked = t.date;
   }
   if (!upload) return statementsEnd(linked, today);
   const bank = linked ? statementsEnd(linked, today) : "";
-  const closed = [statementClose(upload.date), upload.uploadedOn, today].reduce((a, b) =>
-    b < a ? b : a,
-  );
-  return bank > closed ? bank : closed;
+  return bank > upload ? bank : upload;
 }
 
 const statementClose = (last: string) =>

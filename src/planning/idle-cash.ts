@@ -46,7 +46,8 @@ export type IdleTx = {
   pfc: string | null;
   // The bank's words: with them, one-off charges are found and left out.
   description?: string;
-  // From an uploaded statement, the day it came in (src/profile/build.ts reachOf).
+  // From an uploaded statement, the day it came in: an upload reaches its last line
+  // (src/profile/build.ts reachOf).
   uploadedOn?: string;
 };
 export type IdleCash = {
@@ -159,11 +160,10 @@ export function spendingMonthOf(input: Pick<IdleInput, "asOf" | "transactions">)
     // To where this account's data ended, when it ended a while ago: an upload that ended three
     // weeks ago spread its 26 days of spending over 46, so cash looked idle that the next rent
     // check would take (debugger 11-14: "spend about $1,826.14 a month" for $2,759.83 in 26 days).
-    // A linked account's quiet days are real, so to today otherwise. An upload's statement ends
-    // where it closes, a week past its last line and never past the day it was uploaded, however
-    // recent, as every figure counts it (dataEnd): to today instead, its months grew a day each
-    // day it sat and the cushion shrank with nothing new (gate C's sweep, 11-16: "spend about
-    // $2,075 a month" became $2,061 the next day).
+    // A linked account's quiet days are real, so to today otherwise. An upload's ends at its last
+    // line, however recent and whenever it came in, as every figure counts it (dataEnd): to today
+    // instead, its months grew a day each day it sat and the cushion shrank with nothing new (gate
+    // C's sweep, 11-16: "spend about $2,075 a month" became $2,061 the next day).
     const own = input.transactions.filter((t) => t.accountId === accountId && t.date <= input.asOf);
     const last = own.reduce((max, t) => (t.date > max ? t.date : max), earliest);
     const ends = own.some((t) => t.uploadedOn)
