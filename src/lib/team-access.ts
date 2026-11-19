@@ -180,6 +180,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   switch_option_saved: notOnePerson,
   switch_option_reviewed: notOnePerson,
   switch_option_removed: notOnePerson,
+  switch_options_fetched: notOnePerson,
   diy_done: own,
   household_invite_sent: own,
   household_joined: own,

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
-import { markChecked, removeOption } from "./actions";
+import { fetchPhonePlans, markChecked, removeOption } from "./actions";
 import { OptionForm } from "./option-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
@@ -48,6 +48,14 @@ async function Options() {
           insurance or investments. {needsWork > 0 && <strong>{needsWork} need checking.</strong>}
         </p>
       </div>
+
+      <form action={fetchPhonePlans} className="flex flex-wrap items-center gap-3 text-sm">
+        <SubmitButton>Get phone plans from SaveOnPhone</SubmitButton>
+        <span className="text-zinc-600 dark:text-zinc-400">
+          Adds them unchecked, with SaveOnPhone&apos;s page as the source: check each on the
+          carrier&apos;s page before Jane compares it.
+        </span>
+      </form>
 
       <details className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
         <summary className="cursor-pointer font-semibold">Add an option</summary>

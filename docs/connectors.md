@@ -293,6 +293,21 @@ no pay, and named offers stay in demo advice mode.
 Not built yet: the disclosure component, balance-transfer and rewards-fit maths, the CFPB card-terms
 importer, and wiring offers into a card.
 
+## Phone-plan prices from SaveOnPhone (keyless, for the team to check)
+
+`src/lib/saveonphone.ts` reads SaveOnPhone's public catalog (saveonphone.com/developers and its OpenAPI,
+read 2026-11-19: "Free access. No account or API key required."), on an admin's press of "Get phone plans
+from SaveOnPhone" on /admin/options. The search goes by price alone (`max_monthly_cents`, verified plans
+only, ten a page), so no person's data leaves Jane. Each plan is staged in `switch_options` as a plan for
+`phone`, **unreviewed**, so Jane compares it only after the team checks it, like any option. Its price is
+the higher of the first term's and the renewal's a month, a prepaid term counts as months committed,
+and the "gives up" line says new customers only, autopay, paid up front, and taxes and fees on top.
+The source is SaveOnPhone's page with its verification date, as their developer page asks. The sign-up
+link is the carrier's own page, never SaveOnPhone's affiliate link (no paid referrals). A plan read again
+is updated in place by its SaveOnPhone page, and a changed price or term clears its review. Terms:
+saveonphone.com/terms (updated 2026-08-23) say nothing against an app reading the public catalog. Public
+access is rate limited, so a 429 stops the read.
+
 ## Read connectors
 
 A read connector brings a person's data in from a partner and saves it where Jane already reads it,
