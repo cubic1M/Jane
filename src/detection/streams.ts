@@ -131,9 +131,16 @@ const PLAID_STATUS_CONFIDENCE: Record<string, ConfidenceLevel> = {
   EARLY_DETECTION: "medium",
 };
 
+// `asOf`: the day it's read. Plaid marks a stream inactive a few days after a date it expected
+// passes with no charge, as of the day it synced, so a monthly bill read two days late dropped off
+// Bills and the forecast's low point (debug 2, sweep 6, 11-18: Verizon's $65 on the 16th gone on
+// the 18th, a $200 card payment due Nov 17 and Dec 17 gone, the lowest balance $200 higher). It
+// stays active while its last charge is within ACTIVE_WITHIN_INTERVALS of its usual gap, as our
+// own streams do (detectRuns); a stream Plaid has tombstoned never is.
 export function fromPlaidStream(
   stream: DetectionRecurringStream,
   byPlaidId: Map<string, DetectionTransaction>,
+  asOf?: string,
 ): Stream {
   const charges = stream.transactionIds
     .map((id) => byPlaidId.get(id))
@@ -170,7 +177,9 @@ export function fromPlaidStream(
     annualCostCents: annualCost(stream.lastAmountCents, frequency),
     pfcPrimary: stream.pfcPrimary,
     pfcDetailed: stream.pfcDetailed,
-    active: stream.isActive && stream.status !== "TOMBSTONED",
+    active:
+      stream.status !== "TOMBSTONED" &&
+      (stream.isActive || (asOf !== undefined && withinUsualGap(charges, asOf))),
     confidence: PLAID_STATUS_CONFIDENCE[stream.status] ?? "low",
     accountId: stream.accountId,
     lastDate: stream.lastDate ?? charges.at(-1)?.date ?? null,
@@ -662,6 +671,14 @@ function uploadedThrough(input: DetectionInput): Map<string, string> {
   return through;
 }
 
+// Whether the last of these charges is within ACTIVE_WITHIN_INTERVALS of their usual gap of `asOf`.
+function withinUsualGap(charges: readonly DetectionTransaction[], asOf: string): boolean {
+  const gaps = charges.slice(1).map((c, i) => daysBetween(charges[i]!.date, c.date));
+  const last = charges.at(-1);
+  if (gaps.length === 0 || !last) return false;
+  return daysBetween(last.date, asOf) <= median(gaps) * ACTIVE_WITHIN_INTERVALS;
+}
+
 // A charge due after the file ends can't have been missed yet: in an uploaded account a stream
 // is active while its last charge is within ACTIVE_WITHIN_INTERVALS gaps of the file's last
 // day, not of today (night QA 10-30: a card statement to Sep 30 uploaded on Oct 30 found
@@ -689,7 +706,7 @@ export function buildStreams(input: DetectionInput): Stream[] {
   const fromPlaid = input.recurringStreams
     .filter((s) => s.averageAmountCents > 0 && s.transactionIds.length >= PLAID_STREAM_MIN_CHARGES)
     .sort((a, b) => a.plaidStreamId.localeCompare(b.plaidStreamId))
-    .map((s) => fromPlaidStream(s, byPlaidId));
+    .map((s) => fromPlaidStream(s, byPlaidId, input.asOf));
 
   const covered = new Set(input.recurringStreams.map((s) => s.accountId));
   const fallback = detectRecurring({

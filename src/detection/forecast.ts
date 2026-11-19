@@ -104,6 +104,7 @@ export function incomeStreams(input: DetectionInput): Stream[] {
       fromPlaidStream(
         { ...s, lastAmountCents: -s.lastAmountCents, averageAmountCents: -s.averageAmountCents },
         byPlaidId,
+        input.asOf,
       ),
     );
   const covered = new Set(input.recurringStreams.map((s) => s.accountId));
