@@ -150,7 +150,10 @@ export async function cancelTransfer(
     throw new TransferError("That transfer has already gone through or been undone.");
   }
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
-  if (movement && row.partnerRef) await movement.cancel(row.partnerRef);
+  // A partner that says it's too late (already being processed) keeps the transfer going.
+  if (movement && row.partnerRef && !(await movement.cancel(row.partnerRef))) {
+    throw new TransferError("That transfer has already gone through or been undone.");
+  }
   const { count } = await db.moneyTransfers.updateMany({
     where: { id: transferId, status: { in: ["pending", "awaiting_partner"] } },
     data: { status: "cancelled", cancelledAt: now },
@@ -177,11 +180,41 @@ export async function settleTransfers(
   const db = scopedFor(userId, client);
   const pending = await db.moneyTransfers.findMany({
     where: { status: "pending", runOn: { lte: new Date(`${today(now)}T00:00:00Z`) } },
-    select: { id: true, runOn: true, goalId: true, amountCents: true },
+    select: {
+      id: true,
+      runOn: true,
+      goalId: true,
+      amountCents: true,
+      partnerRef: true,
+      fromAccountId: true,
+      toAccountId: true,
+      toName: true,
+      purpose: true,
+      planKey: true,
+    },
   });
   let settled = 0;
   for (const t of pending) {
-    if (!(await movement.settled({ runOn: today(t.runOn) }, today(now)))) continue;
+    let partnerRef = t.partnerRef;
+    // Its day has come: a partner that queues in Jane gets it now, past its undo.
+    if (movement.release && partnerRef) {
+      const released = await movement.release(partnerRef, {
+        fromAccountId: t.fromAccountId,
+        toAccountId: t.toAccountId,
+        toName: t.toName,
+        amountCents: t.amountCents,
+        runOn: today(t.runOn),
+        memo: t.planKey ?? t.purpose,
+      });
+      if (released.partnerRef !== partnerRef) {
+        await db.moneyTransfers.updateMany({
+          where: { id: t.id, status: "pending" },
+          data: { partnerRef: released.partnerRef },
+        });
+        partnerRef = released.partnerRef;
+      }
+    }
+    if (!(await movement.settled({ runOn: today(t.runOn), partnerRef }, today(now)))) continue;
     const { count } = await db.moneyTransfers.updateMany({
       where: { id: t.id, status: "pending" },
       data: { status: "completed", completedAt: now },

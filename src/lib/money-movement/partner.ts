@@ -11,7 +11,7 @@ import { isDemoItemId } from "@/lib/plaid/demo";
 // be connected later; until then the stand-in below records each transfer and moves nothing.
 // Real money never moves without that partner and counsel's sign-off (REAL_MONEY_MOVEMENT).
 
-type TransferRequest = {
+export type TransferRequest = {
   fromAccountId: string;
   toAccountId: string | null;
   toName: string;
@@ -28,7 +28,14 @@ export interface MoneyMovementPartner {
   schedule(request: TransferRequest): Promise<{ partnerRef: string }>;
   cancel(partnerRef: string): Promise<boolean>;
   // Whether a scheduled transfer has gone through by `today` (YYYY-MM-DD).
-  settled(request: Pick<TransferRequest, "runOn">, today: string): Promise<boolean>;
+  settled(
+    request: Pick<TransferRequest, "runOn"> & { partnerRef?: string | null },
+    today: string,
+  ): Promise<boolean>;
+  // A partner that keeps each transfer in Jane's own queue until its day (so the undo never has
+  // to reach the partner) is handed it here when the day comes, and gives back its own ref.
+  // Calling it again for a transfer already handed over gives back the same ref.
+  release?(partnerRef: string, request: TransferRequest): Promise<{ partnerRef: string }>;
 }
 
 // Records only. A transfer "goes through" on its day; nothing leaves the app.
