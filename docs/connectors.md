@@ -160,6 +160,40 @@ and is offered only to sample-data people.
 Fakes for tests live in `src/lib/connectors/__fixtures__/`: a pretend real connector, a webhook
 signer, and people (real, sample, trial).
 
+## Add a connector (the checklist)
+
+Section C7: the same hour of work each time. Start with
+`node scripts/new-connector.mjs <id> "<Vendor>"`: it makes `src/lib/connectors/<id>/` with `api.ts`,
+`sample.ts`, `connector.ts` (the real registration and its sandbox twin, both off) and a test that says
+so, formatted, never overwriting. Then:
+
+1. **Read first.** The vendor's own docs and its API terms (may a backend serving many people call it?
+   paid referrals stay off). Cite the page and the date read in each file's header.
+2. **Client** (`api.ts`): only the fields Jane reads; never logs or returns a key; refuses a live host
+   (test hosts only until the founder says so); no network in tests (a fake `fetch`).
+3. **Normalise** into Jane's own tables, the shape another source already uses (Plaid's, ideally), so
+   the pages and detectors work unchanged. Accounts carry `connectorCredentialId` so revoking removes
+   them.
+4. **Sample** (`sample.ts`): the vendor's documented example, never invented numbers; the sandbox twin
+   reads it for sample people only.
+5. **Registry**: both registrations in `CONNECTORS` (`registry.ts`); the real id in the real list of
+   `sandbox/adapters.integration.test.ts`. No `REAL_CONNECTORS` entry.
+6. **Config and keys**: rates, limits, hosts and versions in `src/config` with URL and date; key names
+   (empty) in `.env.example`, each key line followed by a comment line; the names in `VENDOR_CHECKS`
+   (`env-check.ts`) and the vendor in `VENDOR_OF` (`status.ts`), so `npm run connectors:check` and
+   /admin/connectors see it. A keyed vendor also gets a contract in `src/lib/connectors/contract/` (its
+   test host on `CONTRACT_HOSTS`, its own read and parse), so `npm run connectors:contract` checks the
+   adapter against real answers.
+7. **Consent**: its scopes' words; a legal scope (`EXACT_TEXT_SCOPES`) needs counsel's approved text as
+   `consentText`, and a soft pull also needs `COUNSEL_SOFT_PULL`. `from` says where the data comes
+   from, not the name again; a sandbox twin's says it's a sample.
+8. **Connect**: `connect` if the partner has its own step (it gets Jane's return address); offered with
+   `<ConnectTap>` inside the card that needs it, never in sign-up or onboarding.
+9. **Revoke**: a `forget` step, or a stated reason it keeps nothing (`forget.integration.test.ts`).
+10. **Webhooks**: its own signing kind if none fits, tested against the vendor's documented example.
+11. **Tests** for every rule and route; then a section here and a line in connector-infra.md with what
+    the person has to do to connect (screens, what they type).
+
 ## The safety rails, and where each is tested
 
 | Rail | Test |
