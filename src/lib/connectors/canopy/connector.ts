@@ -1,3 +1,4 @@
+import { scopedFor } from "@/lib/db-scoped";
 import { CANOPY } from "@/config/connectors";
 import type { Connector, LinkEvent } from "../types";
 import { withCredential } from "../vault";
@@ -44,6 +45,10 @@ export const canopyConnect: Connector = {
   scopes: ["read_policies"],
   sandbox: false,
   movesMoney: false,
+  // Revoked: the policies it brought in go (source "canopy").
+  forget: async ({ userId, client }) =>
+    (await scopedFor(userId, client).insurancePolicies.deleteMany({ where: { source: "canopy" } }))
+      .count,
   read: ({ userId, client, now }) =>
     withCredential(
       userId,
@@ -70,6 +75,10 @@ export const sandboxCanopyConnect: Connector = {
   scopes: ["read_policies"],
   sandbox: true,
   movesMoney: false,
+  // Revoked: the policies it brought in go (source "canopy").
+  forget: async ({ userId, client }) =>
+    (await scopedFor(userId, client).insurancePolicies.deleteMany({ where: { source: "canopy" } }))
+      .count,
   read: async ({ userId, client, now }) =>
     savePull(userId, samplePull(await todayOf(userId, { client, now })), { client }),
 };

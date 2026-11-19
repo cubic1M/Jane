@@ -1,3 +1,4 @@
+import { scopedFor } from "@/lib/db-scoped";
 import { PINWHEEL } from "@/config/connectors";
 import { saveBenefitsFromStub } from "@/lib/insurance/benefits";
 import type { Paystub } from "@/lib/insurance/payroll";
@@ -70,6 +71,14 @@ export const pinwheelPayroll: Connector = {
   scopes: ["read_pay"],
   sandbox: false,
   movesMoney: false,
+  // Revoked: benefits it found on a pay stub and the person hasn't confirmed go; confirmed ones are
+  // the person's own answer and stay.
+  forget: async ({ userId, client }) =>
+    (
+      await scopedFor(userId, client).employerBenefits.deleteMany({
+        where: { source: "paystub", status: "found" },
+      })
+    ).count,
   read: async ({ userId, client, now }) =>
     withCredential(
       userId,
@@ -104,6 +113,14 @@ export const sandboxPinwheelPayroll: Connector = {
   scopes: ["read_pay"],
   sandbox: true,
   movesMoney: false,
+  // Revoked: benefits it found on a pay stub and the person hasn't confirmed go; confirmed ones are
+  // the person's own answer and stay.
+  forget: async ({ userId, client }) =>
+    (
+      await scopedFor(userId, client).employerBenefits.deleteMany({
+        where: { source: "paystub", status: "found" },
+      })
+    ).count,
   read: async ({ userId, client, now }) => {
     // The twin's own connection, so revoking it is like the real one.
     await storeCredential(userId, "sandbox_pinwheel_payroll", "sandbox-account", { client });

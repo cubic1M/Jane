@@ -126,6 +126,7 @@ export type AuditEvent =
   | "connector_connect_started"
   | "connector_connect_returned"
   | "connector_connect_declined"
+  | "connector_data_forgotten"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"

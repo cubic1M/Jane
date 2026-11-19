@@ -147,6 +147,9 @@ export type Connector = {
   // a form). Only through readConnector (./read.ts), which checks the person may use it and their
   // consent covers it first. A real one opens the person's credential from the vault itself.
   read?: (context: CheckContext) => Promise<ReadResult>;
+  // Removes what this connector brought in for the person, when they revoke it (accounts tied to its
+  // credential go by themselves: accounts.connector_credential_id cascades). Returns how many rows.
+  forget?: (context: CheckContext) => Promise<number>;
   // Carries out a draft the person said yes to. Gated: only inside the pipeline's grant.
   act?: (draft: ActionDraft, context: ActContext) => Promise<ActResult>;
   // Takes it back at the partner, while ActResult.cancelUntil allows. Gated.

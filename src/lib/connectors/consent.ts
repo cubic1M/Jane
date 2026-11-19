@@ -12,6 +12,7 @@ import { onSampleDataOnly } from "@/lib/concierge-mode";
 import { currentRequestDetails } from "@/lib/request-details";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 import { allConnectors, connectorById, whyUnavailable, type Unavailable } from "./registry";
 import type { Connector } from "./types";
 import { deleteCredential } from "./vault";
@@ -138,6 +139,17 @@ export async function revokeConsent(
     data: { revokedAt: now },
   });
   await deleteCredential(userId, connectorId, { client });
+  // What it brought in goes too (Settings › Connections says so).
+  const forget = connectorById(connectorId)?.forget;
+  const forgotten = forget ? await forget({ userId, client, now }) : 0;
+  if (forget) {
+    await logAudit(
+      { type: "user", id: userId },
+      "connector_data_forgotten",
+      { type: "user", id: userId },
+      { connector: connectorId, rows: forgotten },
+    );
+  }
   // Anything not yet run through it stops too (the pipeline checks consent again before acting).
   await db.connectorActions.updateMany({
     where: { connectorId, status: { in: ["awaiting_yes", "approved"] } },
@@ -200,6 +212,8 @@ export type ConsentRow = {
   revokedAt: Date | null;
   // Word for word what they agreed to; null on rows from before it was kept.
   shownText: string | null;
+  // When Jane last brought its data in; null when it never has.
+  lastReadAt: Date | null;
 };
 
 // Every consent the person gave, newest first, current and revoked, for the settings page.
@@ -207,19 +221,38 @@ async function listConsents(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<ConsentRow[]> {
-  const rows = await scopedFor(userId, client).connectorConsents.findMany({
-    orderBy: { grantedAt: "desc" },
-    select: {
-      id: true,
-      connectorId: true,
-      scopes: true,
-      grantedAt: true,
-      revokedAt: true,
-      shownText: true,
-    },
-  });
+  const db = scopedFor(userId, client);
+  const [rows, reads] = await Promise.all([
+    db.connectorConsents.findMany({
+      orderBy: { grantedAt: "desc" },
+      select: {
+        id: true,
+        connectorId: true,
+        scopes: true,
+        grantedAt: true,
+        revokedAt: true,
+        shownText: true,
+      },
+    }),
+    // The person's own reads, from the audit log (every read writes connector_data_read).
+    systemDb(
+      "Settings › Connections: the signed-in person's own read events, by their id",
+      client,
+    ).auditLog.findMany({
+      where: { event: "connector_data_read", targetType: "user", targetId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: { metadata: true, createdAt: true },
+    }),
+  ]);
+  const readAt = new Map<string, Date>();
+  for (const read of reads) {
+    const id = (read.metadata as { connector?: unknown } | null)?.connector;
+    if (typeof id === "string" && !readAt.has(id)) readAt.set(id, read.createdAt);
+  }
   return rows.map((row) => ({
     ...row,
+    lastReadAt: row.revokedAt === null ? (readAt.get(row.connectorId) ?? null) : null,
     connectorName: connectorById(row.connectorId)?.name ?? row.connectorId,
     scopes: row.scopes.map((scope) => ({
       scope,

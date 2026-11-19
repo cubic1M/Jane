@@ -158,6 +158,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   connector_connect_started: own,
   connector_connect_returned: own,
   connector_connect_declined: own,
+  connector_data_forgotten: own,
   connector_action_planned: own,
   connector_action_approved: own,
   connector_action_declined: own,
