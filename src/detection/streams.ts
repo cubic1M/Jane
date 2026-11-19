@@ -153,6 +153,17 @@ function chargesCategory(
   return { primary: primary!, detailed: detailed || null };
 }
 
+// The merchant name most of these charges carry, if most carry one.
+function commonName(charges: readonly DetectionTransaction[]): string | null {
+  const counts = new Map<string, number>();
+  for (const c of charges) {
+    const name = c.merchantName?.trim();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  return top && top[1] * 2 > charges.length ? top[0] : null;
+}
+
 export function fromPlaidStream(
   stream: DetectionRecurringStream,
   byPlaidId: Map<string, DetectionTransaction>,
@@ -174,7 +185,17 @@ export function fromPlaidStream(
     merchant !== null &&
     !/[a-z]/.test(named) &&
     named.toLowerCase() !== merchant.name.toLowerCase();
-  const shown = bankLine ? merchant.name : named;
+  // When the stream's name is the bank's line in capitals and its charges carry Plaid's own name
+  // for the merchant, that name (debug 2, sweep 8, 11-19: Bills listed "NELNET STUDENT LN PAYMENT",
+  // "TOYOTA FINANCIAL PMT" and "PROGRESSIVE INS PREM" for charges named Nelnet, Toyota Financial
+  // and Progressive Insurance). Only the name shown: the key stays the stream's.
+  const chargeName = commonName(charges);
+  const shown =
+    named !== null && !/[a-z]/.test(named) && chargeName
+      ? chargeName
+      : bankLine
+        ? merchant.name
+        : named;
   const merchantKey = merchant?.key ?? stream.plaidStreamId;
   const lastCharge = charges.at(-1);
   const frequency = isFrequency(stream.frequency) ? stream.frequency : null;
