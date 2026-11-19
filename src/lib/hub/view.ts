@@ -13,6 +13,7 @@ import {
   SAVED_SHOWN,
   areaOfCapability,
   type AreaKey,
+  TOO_LITTLE_HISTORY,
 } from "@/config/areas";
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
@@ -572,7 +573,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     empty: input.statementsEnd
       ? `Your statements end ${dayLabel(input.statementsEnd, { year: true })}: upload newer ones to see what's due now.`
       : shortHistory
-        ? "Too little history to see your bills yet: they show once about two months of transactions are in."
+        ? TOO_LITTLE_HISTORY
         : "Nothing due in the next month.",
   };
 }

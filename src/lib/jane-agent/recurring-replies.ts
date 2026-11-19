@@ -126,7 +126,14 @@ export function subscriptionsReply(
   intent: { total: boolean; all: boolean },
   recurring: Recurring,
   snapshot: Snapshot | null,
-  { statementsEnd = null }: { statementsEnd?: string | null } = {},
+  {
+    statementsEnd = null,
+    shortHistory = false,
+  }: {
+    statementsEnd?: string | null;
+    // Less history than a monthly charge shows twice in (CASH_FLOW_MIN_HISTORY_DAYS).
+    shortHistory?: boolean;
+  } = {},
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
   const what = intent.all ? "regular charges" : "subscriptions";
@@ -134,7 +141,12 @@ export function subscriptionsReply(
   const counted = `${list.length} ${list.length === 1 ? what.replace(/s$/, "") : what}`;
   if (list.length === 0) {
     if (statementsEnd) return oldStatements(statementsEnd, `what ${what} you pay now`, "check");
-    return { body: `I don't see any ${what} yet.`, actions: [subscriptionsLink], refs: {} };
+    // Debug 3, 11-19 (class 6): one month of statements can't show a monthly charge twice, so
+    // none seen isn't none paid.
+    const why = shortHistory
+      ? ": there's too little history to tell. They show once about two months of transactions are in."
+      : ".";
+    return { body: `I don't see any ${what} yet${why}`, actions: [subscriptionsLink], refs: {} };
   }
   const yearCents = list.reduce((sum, c) => sum + c.annualCostCents, 0);
   const monthCents = Math.round(yearCents / 12);
