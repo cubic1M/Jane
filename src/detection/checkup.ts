@@ -144,6 +144,9 @@ const first =
   (f: Facts) =>
     reasons.reduce<T | null>((r, reason) => r ?? reason(f), null);
 
+// The checks about cash held rather than paid: old statements can't say what's held now.
+const HOLDING_CHECKS: readonly FindingType[] = ["idle_cash", "low_balance_risk"];
+
 export const CHECKS: Record<FindingType, Check> = {
   subscription_review: {
     label: "Subscriptions",
@@ -415,8 +418,9 @@ export function checkup(
           label: check.label,
           status: "not_enough_data",
           line: `Your statements end ${dayLabel(facts.statementsEnd, { year: true })}`,
-          detail:
-            "That's too long ago to say what you're paying now. Upload newer statements and Jane checks this again.",
+          // Cash is what's held, not paid (debugger 11-19: "Idle cash … too long ago to say what
+          // you're paying now").
+          detail: `That's too long ago to say what you're ${HOLDING_CHECKS.includes(type) ? "holding" : "paying"} now. Upload newer statements and Jane checks this again.`,
         },
       ];
     }
