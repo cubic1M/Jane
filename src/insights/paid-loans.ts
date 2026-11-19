@@ -39,9 +39,10 @@ export type PaidLoan = {
 
 // The lender as a person says it: the bank's words for the payment come off ("NELNET LOAN PAYMENT
 // STUDENT LN" read "Nelnet Loan Payment Student Ln" on Home, Loans and in the chat; debugger
-// 11-19). Only where a payment word is there to say so, so a lender's own name stays whole.
+// 11-19). Only where a payment word is there to say so, so a lender's own name stays whole; nor
+// "Mortgage", which is often the lender's own ("ROCKET MORTGAGE PMT" is Rocket Mortgage).
 const PAYMENT_WORDS =
-  /\s+(?:(?:student|auto|car|home|mortgage|title)\s+)?(?:loan|ln|mtg)?\s*\b(?:payments?|pmts?|pymts?)\b.*$/i;
+  /\s+(?:(?:student|auto|car|home|title)\s+)?(?:loan|ln|mtg)?\s*\b(?:payments?|pmts?|pymts?)\b.*$/i;
 export const lenderName = (name: string) => name.replace(PAYMENT_WORDS, "").trim() || name;
 
 export function paidLoans(payments: readonly PaidLoanPayment[], asOf: string): PaidLoan[] {

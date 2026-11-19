@@ -33,7 +33,8 @@ describe("answerDebt, mortgage", () => {
       "2026-10-30",
     );
     const reply = await ask();
-    expect(reply.body).toMatch(/^Your Rocket Mortgage Pmt: I don't know what's left/);
+    // The lender's name, without the bank's word for the payment (debugger 11-19).
+    expect(reply.body).toMatch(/^Your Rocket Mortgage: I don't know what's left/);
     expect(reply.body).toMatch(/You pay \$5,120\.00 a month, next on Nov 1\./);
   });
 

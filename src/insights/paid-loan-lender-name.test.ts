@@ -31,6 +31,7 @@ describe("a loan seen in payments, by its lender's name", () => {
     ["NELNET LOAN PAYMENT STUDENT LN", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT", "Nelnet student loan"],
     ["NAVIENT STUDENT LN PMT", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT", "Navient student loan"],
     ["ALLY AUTO PAYMENT", "LOAN_PAYMENTS_CAR_PAYMENT", "Ally car loan"],
+    ["ROCKET MORTGAGE PMT", "LOAN_PAYMENTS_MORTGAGE_PAYMENT", "Rocket Mortgage"],
   ])("%s is %s", (description, category, name) => {
     expect(nameOf(description, category)).toEqual([name]);
   });
