@@ -236,10 +236,19 @@ describe("what Claude may see of a body", () => {
     const text = forReader("Account 000123456789.00 paid $123456789.49, ref 987654321,12.");
     expect(text).toBe("Account [number] paid $[number], ref [number].");
     expect(text).not.toMatch(/\d/);
+    const card = forReader("Card 4111 1111 1111 1111.00 on file, 4111-1111-1111-1111,50 too");
+    expect(card).toBe("Card [number] on file, [number] too");
     // A full stop or a comma that only ends a sentence or a clause is left where it is.
     expect(forReader("Your account is 123456789. $15.49 is due, on card 123456789, today.")).toBe(
       "Your account is [number]. $15.49 is due, on card [number], today.",
     );
+  });
+
+  it.each([
+    ["a comma", "4111 1111 1111 1111,4222 2222 2222 2222", "[number],[number]"],
+    ["a full stop", "4111-1111-1111-1111.4222-2222-2222-2222", "[number].[number]"],
+  ])("replaces both of two card numbers with only %s between", (_what, cards, both) => {
+    expect(forReader(`Cards ${cards} on file`)).toBe(`Cards ${both} on file`);
   });
 
   it.each([
@@ -376,6 +385,11 @@ describe("a code or a password given in the text", () => {
     "Enter this code to verify your identity: 482913",
     "Your code for two-step verification is 482913",
     "Your code to log in to Acme: 482913",
+    "Enter code 482913 to sign in",
+    "Use code 482913 to verify your identity.",
+    "Code 482913 for two-step verification",
+    "Your one-time password is 482913",
+    "One time password: 4829",
     "Your sign in code is 12345678",
     "Your sign-in code - 482913",
     "Use 2FA code 482913",
@@ -389,6 +403,12 @@ describe("a code or a password given in the text", () => {
     "PIN: 4829",
     "Your OTP is 482913",
     "Your passcode for Acme Online Banking is 482913",
+    // Other figures between the code's name and its digits.
+    "Your verification code (valid for 10 minutes) is 482913",
+    "Your verification code, valid for 10 minutes, is: 482913",
+    "Your one-time passcode for your purchase of $50.00 at Amazon is 482913",
+    "Verification code for your $25.00 order: 482913",
+    "Your PIN for card ending 1234 is 5678",
     "Your login code\n\n482913",
     "Here is your login code.\n\n482913\n\nIt expires in 10 minutes.",
     "Your verification code is below.\n482913",
@@ -420,6 +440,9 @@ describe("a code or a password given in the text", () => {
     "Coupon code 482913",
     "For your security, your zip code 94105 was checked",
     "Sign in to view your statement. Approval code: 004521",
+    "Enter code 4521 to track your order",
+    "Use code 2026 for 20% off your next purchase",
+    "Promo code 2026 for access to the sale",
     // Mentioned, not given.
     "We will never ask for your password or verification code.",
     "We will never ask for your password or verification code. © 2026 Acme Bank",
@@ -428,6 +451,8 @@ describe("a code or a password given in the text", () => {
     "If you forgot your password, you can reset it at any time.",
     "Enter the PIN on the back of your card.",
     "Use your PIN at any of our 4000 ATMs",
+    "Never share your one-time password with anyone.",
+    "Your one-time password expires in 10 minutes.",
     "A verification code is required for payments over 5000 dollars.",
     "Your security code was sent on November 18, 2026",
     "Security code expires 2026-11-18",
@@ -530,6 +555,7 @@ describe("crafted text is read in one pass", () => {
     ["digits", "1".repeat(LONG)],
     ["groups of four digits", "1234 ".repeat(LONG / 5)],
     ["groups of four digits with dashes", "1234-".repeat(LONG / 5)],
+    ["card numbers with decimals", "1234 1234 1234 1234.12 ".repeat(LONG / 23)],
     ["three digits and a space", "123 ".repeat(LONG / 4)],
     ["digits and points", "1.".repeat(LONG / 2)],
     ["long numbers with decimals", "123456789.12 ".repeat(LONG / 13)],
@@ -563,6 +589,8 @@ describe("crafted text is read in one pass", () => {
     ["the words your password", "your password ".repeat(LONG / 14)],
     ["the words sign in", "sign in ".repeat(LONG / 8)],
     ["code to, and words", `code to ${"sign ".repeat(LONG / 5)}`],
+    ["codes given, and words after them", "code 1234 to x ".repeat(LONG / 15)],
+    ["codes with figures and a colon after them", "pin 1.5: 123456789 ".repeat(LONG / 19)],
     ["one long word", "a".repeat(LONG)],
     ["spaces", " ".repeat(LONG)],
     ["full stops", "pin. ".repeat(LONG / 5)],

@@ -262,7 +262,7 @@ describe("a sender domain made to read like words", () => {
 // The whole way from Gmail's answer to what could be listed, as the reading code strings it together.
 describe("a hostile email from end to end", () => {
   const encoded = (text: string) => Buffer.from(text).toString("base64url");
-  const hostile = (words: string) => ({
+  const hostile = (words: string, subject = `Invoice 4471 due: $499.00. ${words}`) => ({
     id: "18c0ffee",
     labelIds: ["INBOX", "CATEGORY_UPDATES"],
     snippet: `Amount due: $499.00. ${words}`,
@@ -273,7 +273,7 @@ describe("a hostile email from end to end", () => {
       filename: "",
       headers: [
         { name: "From", value: `"${words.replaceAll('"', "")}" <billing@pay.evil.example>` },
-        { name: "Subject", value: `Invoice 4471 due: $499.00. ${words}` },
+        { name: "Subject", value: subject },
         {
           name: "Authentication-Results",
           value: "mx.google.com; dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=pay.evil.example",
@@ -352,6 +352,17 @@ describe("a hostile email from end to end", () => {
     answers({ kind: "bill", amount: "499.00", date: DUE });
     const row = await listed(hostile("Your verification code is 482913."));
     expect(row).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("is never sent to Claude when only its body gives a code, with other figures before it", async () => {
+    answers({ kind: "bill", amount: "499.00", date: DUE });
+    const words = "Your verification code (valid for 10 minutes) is 482913.";
+    // The subject reads as a bill, so the screen keeps the email: finding the code is the body's.
+    const raw = hostile(words, "Invoice 4471 due: $499.00");
+    const meta = mailMeta(raw);
+    expect(meta && screenMail(meta)).toEqual({ keep: true, senderDomain: "evil.example" });
+    expect(await listed(raw)).toBeNull();
     expect(create).not.toHaveBeenCalled();
   });
 });

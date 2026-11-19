@@ -13,19 +13,22 @@ const NOW = new Date("2026-11-18T12:00:00Z");
 const after = (ms: number) => new Date(NOW.getTime() + ms);
 const ME = "user_me";
 
-// Every word there is: the page has a sentence for each, and for no other.
-const WORDS: NoticeWord[] = [
-  "connected",
-  "connected_moved",
-  "not_connected",
-  "not_allowed",
-  "paused",
-  "too_many",
-  "start_here",
-  "disconnected",
-  "disconnected_unconfirmed",
-  "disconnected_no_access",
-];
+// Every word there is: the page has a sentence for each, and for no other. Written as a record of
+// the words' type, so the typecheck fails when ./notice.ts gains a word or loses one and this
+// doesn't.
+const EVERY_WORD: Record<NoticeWord, true> = {
+  connected: true,
+  connected_moved: true,
+  not_connected: true,
+  not_allowed: true,
+  paused: true,
+  too_many: true,
+  start_here: true,
+  disconnected: true,
+  disconnected_unconfirmed: true,
+  disconnected_no_access: true,
+};
+const WORDS = Object.keys(EVERY_WORD) as NoticeWord[];
 
 beforeEach(() => {
   vi.stubEnv("TOKEN_ENCRYPTION_KEY", KEY);
@@ -36,7 +39,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("a notice", () => {
   it("has ten words", () => {
-    expect(new Set(WORDS).size).toBe(10);
+    expect(WORDS).toHaveLength(10);
   });
 
   it.each(WORDS)("opens as %s for the person it was sealed for", (word) => {

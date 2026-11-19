@@ -96,20 +96,35 @@ function wordAt(text: string, start: number): string {
   return text.slice(start, end);
 }
 
-// Another country's money, by its code, its sign, or the letters it puts before a dollar sign.
-const OTHER_CODES = new Set(["CAD", "AUD", "NZD", "MXN", "HKD", "SGD", "EUR", "GBP"]);
-const OTHER_SIGNS = new Set(["£", "€"]);
-const OTHER_DOLLARS = new Set(["CA", "C", "A", "AU", "MX", "NZ", "HK", "S"]);
+// Another country's money, by its code, its sign, or the letters it puts before a dollar sign. No
+// code here is also an English word, since one is matched in any case.
+const OTHER_CODES = new Set(
+  "CAD AUD NZD MXN HKD SGD EUR GBP JPY CNY RMB INR KRW CHF BRL SEK NOK DKK PLN ZAR".split(" "),
+);
+const OTHER_SIGNS = new Set(["£", "€", "¥", "₹", "₩", "₱", "₽", "₺", "₪"]);
+const OTHER_DOLLARS = new Set(["CA", "C", "A", "AU", "MX", "NZ", "HK", "S", "R", "NT"]);
+
+// What may stand between a number and its currency mark without hiding it.
+const between = (c: string | undefined): boolean =>
+  c !== undefined && (whitespace(c) || "(-+:)".includes(c));
 
 // Whether the currency mark next to a number, on either side, is another country's: "CA$15.49",
-// "15.49 CAD", "Total (EUR): 15.49", "€15". Spaces, a sign, a colon and brackets between them
-// don't hide it. "$15.49 CAD" is Canadian, so either side is enough.
+// "CAD$15.49", "CAD $15.49", "15.49 CAD", "Total (EUR): 15.49", "€15". Spaces, a sign, a colon and
+// brackets between them don't hide it. "$15.49 CAD" is Canadian, so either side is enough.
 function otherCurrency(text: string, start: number, end: number): boolean {
   let before = start - 1;
-  while (before >= 0 && (whitespace(text[before]) || "(-+:)".includes(text[before]))) before--;
+  while (before >= 0 && between(text[before])) before--;
   const mark = text[before];
   if (OTHER_SIGNS.has(mark)) return true;
-  if (mark === "$" && OTHER_DOLLARS.has(wordBefore(text, before))) return true;
+  if (mark === "$") {
+    const joined = wordBefore(text, before);
+    if (OTHER_DOLLARS.has(joined) || OTHER_CODES.has(joined.toUpperCase())) return true;
+    // A code set apart from its dollar sign. One or two letters set apart are a word ("Plan A
+    // $15", "tax CA $1.20"), not a country.
+    let gap = before - 1;
+    while (gap >= 0 && between(text[gap])) gap--;
+    if (gap < before - 1 && OTHER_CODES.has(wordBefore(text, gap + 1).toUpperCase())) return true;
+  }
   if (OTHER_CODES.has(wordBefore(text, before + 1).toUpperCase())) return true;
   let after = end;
   while (whitespace(text[after]) || text[after] === "(" || text[after] === ")") after++;
@@ -122,10 +137,13 @@ const JOINED_DIGITS = /\d[\d.,:/-]*\d|\d/g;
 // Every amount written in a text, in cents. A number counts when all of it, with what joins it, is
 // a plain amount: "15.49" and "1,234.56" are, and "$15,49", a date, a time and a phone number
 // aren't. It doesn't count as "2k" or "2M", as a percentage, as dollars whose cents were set apart
-// ("$15 49" and "$15 .49" are neither 15 nor 15.49), or beside another country's currency.
+// ("$15 49" and "$15 .49" are none of 15, 15.49, 49 or 0.49), or beside another country's currency.
 function amountsWritten(text: string): Set<number> {
   const amounts = new Set<number>();
+  // Where the cents of a figure set apart from its dollars begin.
+  let setApart = -1;
   for (const found of text.matchAll(JOINED_DIGITS)) {
+    if (found.index === setApart) continue;
     const end = found.index + found[0].length;
     const before = text.slice(Math.max(0, found.index - 2), found.index);
     // After a point of its own, ".49" is 49 cents and never 49 dollars. A row of dots that leads to
@@ -135,7 +153,11 @@ function amountsWritten(text: string): Set<number> {
     const cents = parseMoneyToCents(number);
     if (cents === null || "kKmM%".includes(text[end] ?? " ")) continue;
     const wholeDollars = !number.includes(".") && /\$ ?$/.test(before);
-    if (wholeDollars && /^ \.?\d{2}(?!\d|[.,]\d)/.test(text.slice(end, end + 6))) continue;
+    const apart = wholeDollars && /^ \.?(?=\d{2}(?!\d|[.,]\d))/.exec(text.slice(end, end + 6));
+    if (apart) {
+      setApart = end + apart[0].length;
+      continue;
+    }
     if (otherCurrency(text, start, end)) continue;
     amounts.add(cents);
   }

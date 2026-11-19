@@ -189,10 +189,11 @@ const INVISIBLE =
 // what comes after one ("?name=O'Brien&token=...") must go with the rest.
 const LINK = /[a-z][a-z0-9+.-]{1,20}:\/\/[^\s<>"]+|(?<![a-z])www\.[^\s<>"]+/gi;
 // An account or card number: groups of four as a card prints them, four groups or more, or digits
-// in a long row, with any decimals written after them ("000123456789.00"), so that no part of one
-// is left to be read as an amount.
+// in a long row. Either takes the decimals written after it ("000123456789.00"), so that no part of
+// one is left to be read as an amount. After a card those are cents only ("...1111.00"), so a card
+// written right after another ("...1111,4222 2222 2222 2222") is replaced whole as well.
 const LONG_NUMBER = new RegExp(
-  `(?<!\\d)\\d{4}(?:[ -]\\d{4}){3,}(?!\\d)|\\d{${GMAIL_LIMITS.longNumberDigits},}(?:[.,]\\d+)*`,
+  `(?<!\\d)\\d{4}(?:[ -]\\d{4}){3,}(?!\\d)(?:[.,]\\d{1,2}(?!\\d))?|\\d{${GMAIL_LIMITS.longNumberDigits},}(?:[.,]\\d+)*`,
   "g",
 );
 
@@ -276,11 +277,11 @@ const SECURITY_AFTER = new RegExp(
 // part of a longer number, an amount or a date.
 const CODE_DIGITS = `(?<![\\w$])(?<!\\d[.,/:-])(?:\\d{${GMAIL_LIMITS.codeDigitsLeast},${GMAIL_LIMITS.codeDigitsMost}}|\\d{3}[ -]\\d{3})(?![\\w]|[.,/:-]\\d)`;
 // The digits come right after the code's name, or after "is", a colon, a dash or the end of its
-// sentence: "Your code is 482913", "code to sign in: 482913", "Your code is below. 482913". Other
-// words in between don't count ("use your PIN at any of our 4000 ATMs"), and no other number may
-// come first.
+// sentence, with any words or figures of that sentence between: "Your code is 482913", "code to
+// sign in: 482913", "Your code (valid for 10 minutes) is 482913", "Your code is below. 482913".
+// Digits that only follow other words don't count ("use your PIN at any of our 4000 ATMs").
 const THEN_DIGITS = new RegExp(
-  `^(?:[^.!?\\d]{0,60}(?:\\bis|[:=.!]| [-\u2013\u2014]))? ?["'*(\\[]{0,2}(?:[a-z]{1,3}-)?${CODE_DIGITS}`,
+  `^(?:(?:[^.!?]|\\.(?=\\d)){0,60}(?:\\bis|[:=.!]| [-\u2013\u2014]))? ?["'*(\\[]{0,2}(?:[a-z]{1,3}-)?${CODE_DIGITS}`,
 );
 // "482913 is your Acme verification code."
 const DIGITS_FIRST = new RegExp(
@@ -291,9 +292,10 @@ const DIGITS_FIRST = new RegExp(
 const GIVES_PASSWORD = /\btemporary password\b|\byour (?:new |temporary )?password is\b/;
 
 // Whether the word found is a code that signs someone in: a passcode, a PIN or an OTP by name, or
-// a "code" with a security word in the three words before it, or after "to" or "for". A zip code,
-// a promo code and a confirmation code are not.
-function isSecret(word: string, before: string, after: string): boolean {
+// a "code" with a security word in the three words before it, or after "to" or "for", whether that
+// comes right after the word or after its digits ("code 482913 to sign in"). A zip code, a promo
+// code and a confirmation code are not.
+function isSecret(word: string, before: string, after: string, afterDigits: string): boolean {
   if (word !== "code" && word !== "codes") return true;
   const lead = before
     .split(" ")
@@ -301,7 +303,11 @@ function isSecret(word: string, before: string, after: string): boolean {
     .filter(Boolean)
     .slice(-3);
   if (EVERYDAY_CODES.has(lead[lead.length - 1])) return false;
-  return lead.some((w) => SECURITY_WORD.test(w)) || SECURITY_AFTER.test(after);
+  return (
+    lead.some((w) => SECURITY_WORD.test(w)) ||
+    SECURITY_AFTER.test(after) ||
+    SECURITY_AFTER.test(afterDigits)
+  );
 }
 
 // Whether a text gives a code or a password that signs someone in: an email carrying one is never
@@ -315,13 +321,18 @@ export function carriesSecret(text: string): boolean {
     .replace(/\s+/g, " ")
     .replace(/\b(sign|log)(?:g?ing)? in\b/g, "$1-in")
     .replace(/\bone time\b/g, "one-time")
-    .replace(/\btwo (factor|step)\b/g, "two-$1");
+    .replace(/\btwo (factor|step)\b/g, "two-$1")
+    // A one-time password is a code by another name.
+    .replace(/\bone-time password\b/g, "one-time passcode");
   if (GIVES_PASSWORD.test(said) || DIGITS_FIRST.test(said)) return true;
   for (const found of said.matchAll(CODE_WORD)) {
     const end = found.index + found[0].length;
-    const before = said.slice(Math.max(0, found.index - NEAR), found.index);
     const after = said.slice(end, end + NEAR);
-    if (THEN_DIGITS.test(after) && isSecret(found[0], before, after)) return true;
+    const digits = THEN_DIGITS.exec(after);
+    if (!digits) continue;
+    const before = said.slice(Math.max(0, found.index - NEAR), found.index);
+    const past = end + digits[0].length;
+    if (isSecret(found[0], before, after, said.slice(past, past + NEAR))) return true;
   }
   return false;
 }

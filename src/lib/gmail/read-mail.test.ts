@@ -310,6 +310,15 @@ describe("the amount", () => {
     // Two digits after a space are cents set apart only right after a dollar figure.
     ["Total due: 150 30 days from now", "150", 15_000],
     ["Paid $15 49.99 was the old price", "15", 1_500],
+    ["Paid $15 49.99 was the old price", "49.99", 4_999],
+    // A letter or two a space before a dollar sign is a word, not a country; so is US.
+    ["Plan A $15.49/mo", "15.49", 1_549],
+    ["PLAN A $15.49/MO", "15.49", 1_549],
+    ["Sales tax CA $1.20", "1.20", 120],
+    ["Total: USD $15.49", "15.49", 1_549],
+    ["Total: USD$15.49", "15.49", 1_549],
+    // Another currency beside one amount doesn't take the next one with it.
+    ["Total: €12.00 / $15.49", "15.49", 1_549],
   ])("is kept when the email says %j and Claude gives %j", async (body, amount, cents) => {
     const reading = await read({ ...BILL, amount, date: "" }, about(body));
     expect(reading).toEqual({
@@ -336,6 +345,10 @@ describe("the amount", () => {
     ["You paid $15 49.", "15"],
     ["You paid $15 .49 today", "15"],
     ["You paid $15 .49 today", "15.49"],
+    // Nor are the cents set apart an amount of their own.
+    ["You paid $15 49 today", "49"],
+    ["You paid $15 49 today", "0.49"],
+    ["You paid $15 .49 today", "0.49"],
     // Cents alone aren't dollars.
     ["You paid $15 .49 today", "49"],
     ["A fee of .49 applies", "49"],
@@ -376,6 +389,30 @@ describe("the amount", () => {
     ["Total: € 15.49", "15.49"],
     ["A fee of €.49 applies", "0.49"],
     ["Total: CAD\n15.49", "15.49"],
+    // A code written against the dollar sign, or a space before it.
+    ["Total: CAD$15.49", "15.49"],
+    ["Total: AUD$15.49", "15.49"],
+    ["Total: NZD$15.49", "15.49"],
+    ["Total: HKD$15.49", "15.49"],
+    ["Total: SGD$15.49", "15.49"],
+    ["Total: MXN$15.49", "15.49"],
+    ["Total: cad$15.49", "15.49"],
+    ["Total: CAD $15.49", "15.49"],
+    ["Total: AUD $15.49", "15.49"],
+    ["Total: CAD\n$15.49", "15.49"],
+    ["Total (CAD): $15.49", "15.49"],
+    ["Total: R$15.49", "15.49"],
+    ["Total: NT$15.49", "15.49"],
+    // Other countries' signs and codes, either side.
+    ["Total: ¥1,500", "1500"],
+    ["Total: JPY 1,500", "1500"],
+    ["Total: 1,500 JPY", "1500"],
+    ["Total: ₹1,500", "1500"],
+    ["Total: INR 1,500", "1500"],
+    ["Total: ₩15,000", "15000"],
+    ["Total: CHF 15.49", "15.49"],
+    ["Total: 15.49 CHF", "15.49"],
+    ["Total: 15.49 sek", "15.49"],
     // A number that isn't an amount.
     ["Save 15.49% today", "15.49"],
     ["Due 2026-12-01", "2026"],
@@ -437,6 +474,9 @@ describe("the amount check on a crafted email", () => {
     ["letters before an amount", `${"a".repeat(LONG)}$15.49`],
     ["letters after an amount", `15.49${"a".repeat(LONG)}`],
     ["a currency code over and over", `${"CAD ".repeat(LONG / 4)}15.49`],
+    ["spaces and brackets before a dollar sign", `${" (".repeat(LONG / 2)}$15.49`],
+    ["codes set apart from dollar signs", "CAD $1 ".repeat(LONG / 7)],
+    ["dollar figures with cents set apart", "$15 49 ".repeat(LONG / 7)],
     ["amounts far apart", `1${" ".repeat(1_000)}`.repeat(LONG / 1_000)],
     ["dates", "2026-11-18 ".repeat(LONG / 11)],
   ])("is quick over %s", async (_what, body) => {
