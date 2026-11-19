@@ -25,6 +25,7 @@ import {
   onePlurals,
   owedTotals,
   rawNames,
+  sameFigures,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
 import { snapshotAt } from "./snapshot";
@@ -150,5 +151,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 8: 1942, 1965, 2018, 2050, 2070, 2096, 2043.
   it("adds up as owed only what's owed", () => {
     expect(everyone(owedTotals)).toEqual([]);
+  });
+
+  // Class 4: 1900, 1904, 1938, 2011, 2014, 2016, 2027, 2063, 2097, 2114.
+  it("reads the same figure the same everywhere it's shown", () => {
+    expect(everyone(sameFigures)).toEqual([]);
   });
 });

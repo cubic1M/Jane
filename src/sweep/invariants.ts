@@ -229,7 +229,7 @@ const DOLLARS = (text: unknown) => {
 };
 // A shown figure's rounding: "$4.7k" is within $50, "$13k" within $500, "$312k" within $500.
 const SLACK = (text: unknown) => {
-  const m = typeof text === "string" ? /\$[\d,]+(\.\d+)?(k|m)?/.exec(text) : null;
+  const m = typeof text === "string" ? /\$[\d,]+(\.\d+)?(k|m|M)?/.exec(text) : null;
   if (!m?.[2]) return 0.5;
   const unit = m[2] === "k" ? 1e3 : 1e6;
   return (m[1] ? unit / 10 ** (m[1].length - 1) : unit) / 2;
@@ -281,5 +281,89 @@ export function owedTotals(flat: Flat): string[] {
       );
     }
   }
+  return found;
+}
+
+// Class 4: the same figure reads the same everywhere it's shown. Net worth on Home's hero, its
+// chart's last point, the chat and both trees; safe to spend on Home, its hero and the chat; what's
+// owed in the chat's net worth, the loans tile and Money's "Loans and cards". A short figure
+// ("$178k") agrees when it's the exact one rounded. Walkers found net worth one figure on Home and
+// another in the chat (#1904, #2011), safe to spend two ways (#1938, #2014), income two ways
+// (#2063, #2097).
+const CENTS = (text: unknown) => {
+  const m = typeof text === "string" ? /([−-])?\$([\d,]+(?:\.\d+)?)(k|M|m)?\b/.exec(text) : null;
+  if (!m) return null;
+  const unit = m[3] === "k" ? 1e3 : m[3] ? 1e6 : 1;
+  return Math.round(Number(m[2]!.replace(/,/g, "")) * unit * 100) * (m[1] ? -1 : 1);
+};
+// Whether a shown figure is `cents` as written: exactly, or rounded to its own last digit.
+const reads = (text: unknown, cents: number) => {
+  const shown = CENTS(text);
+  if (shown === null) return true;
+  const short = typeof text === "string" && /\$[\d,.]+[kmM]\b/.test(text);
+  return (
+    Math.abs(shown - cents) <= (short ? SLACK((text as string).replace(/[−-]/, "")) * 100 : 0.5)
+  );
+};
+
+export function sameFigures(flat: Flat): string[] {
+  const found: string[] = [];
+  const check = (what: string, cents: unknown, shown: [path: string, text: unknown][]) => {
+    if (typeof cents !== "number") return;
+    for (const [path, text] of shown) {
+      if (text !== undefined && text !== null && !reads(text, cents)) {
+        found.push(`${path}: "${String(text).slice(0, 100)}", ${what} is ${cents / 100}`);
+      }
+    }
+  };
+  const last = flat["netWorth.length"];
+  const worth = flat["home.hero.netWorth.cents"];
+  check("net worth", worth, [
+    [
+      "netWorth (its last day)",
+      typeof last === "number" && typeof flat[`netWorth.${last - 1}.cents`] === "number"
+        ? `${(flat[`netWorth.${last - 1}.cents`] as number) < 0 ? "-" : ""}$${Math.abs(flat[`netWorth.${last - 1}.cents`] as number) / 100}`
+        : undefined,
+    ],
+    [
+      "chat.what's my net worth.body",
+      /net worth is ([−-]?\$[\d,.]+)/.exec(
+        String(flat["chat.what's my net worth.body"] ?? ""),
+      )?.[1],
+    ],
+    [
+      "trees.ahead…worth:today.figure",
+      flat["trees.ahead.tree.branches.worth.items.worth:today.figure"],
+    ],
+    [
+      "trees.money…have:net-worth.figure",
+      flat["trees.money.tree.branches.have.items.have:net-worth.figure"],
+    ],
+  ]);
+  check("safe to spend", flat["home.summary.safeToSpend.safeCents"], [
+    [
+      "home.hero.safe.cents",
+      // Short before payday: the hero holds what's short, as a positive amount, with `short`.
+      typeof flat["home.hero.safe.cents"] === "number"
+        ? `${flat["home.hero.safe.short"] === true ? "-" : ""}$${Math.abs(flat["home.hero.safe.cents"] as number) / 100}`
+        : undefined,
+    ],
+    [
+      "chat.what's safe to spend.body",
+      /You have ([−-]?\$[\d,.]+) safe to spend/.exec(
+        String(flat["chat.what's safe to spend.body"] ?? ""),
+      )?.[1],
+    ],
+  ]);
+  const owe = /owe (\$[\d,]+\.\d{2})/.exec(
+    String(flat["chat.what's my net worth.body"] ?? ""),
+  )?.[1];
+  check("what's owed", owe === undefined ? undefined : CENTS(owe), [
+    ["tiles.loans.value", flat["tiles.loans.value"]],
+    [
+      "trees.money…have:loans.figure",
+      flat["trees.money.tree.branches.have.items.have:loans.figure"],
+    ],
+  ]);
   return found;
 }
