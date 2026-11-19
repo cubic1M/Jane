@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { writeNoDeploy } from "../no-deploy.mjs";
 
 export const DATA_BRANCH = "ops-numbers";
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
@@ -52,6 +53,7 @@ export function writeData(message, change) {
       mkdirSync(dirname(join(dir, file)), { recursive: true });
       writeFileSync(join(dir, file), text);
     }
+    writeNoDeploy(dir);
     git("add", "-A");
     git(
       "-c",
