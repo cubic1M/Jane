@@ -91,6 +91,16 @@ export async function benefitsFromPayroll(
   if (!payroll) return 0;
   const [stub] = await payroll.paystubs(userId, { today: await todayOf(userId, { client, now }) });
   if (!stub) return 0;
+  return saveBenefitsFromStub(userId, stub, { client, demo: payroll.demo });
+}
+
+// Adds each benefit deduction on this pay stub not seen before, as found (a payroll partner's
+// read uses it too: src/lib/connectors/pinwheel/). Returns how many are new.
+export async function saveBenefitsFromStub(
+  userId: string,
+  stub: Paystub,
+  { client = defaultClient, demo }: { client?: PrismaClient; demo: boolean },
+): Promise<number> {
   const db = scopedFor(userId, client);
   const known = await db.employerBenefits.findMany({
     where: { employer: stub.employer },
@@ -117,7 +127,7 @@ export async function benefitsFromPayroll(
     })),
     skipDuplicates: true,
   });
-  await track(userId, "benefits_found", { count: fresh.length, demo: payroll.demo });
+  await track(userId, "benefits_found", { count: fresh.length, demo });
   return fresh.length;
 }
 

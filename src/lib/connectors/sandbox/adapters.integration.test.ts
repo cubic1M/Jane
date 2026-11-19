@@ -110,6 +110,7 @@ describe("the sandbox adapters' definitions", () => {
       "manual_bill_pay",
       "manual_own_transfer",
       "manual_open_savings",
+      "pinwheel_payroll",
       "credit_upload",
       "my_aid_upload",
       "irs_transcript_upload",

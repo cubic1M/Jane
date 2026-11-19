@@ -273,6 +273,24 @@ Every one is unpaid (`paid: false`): the beta takes no pay for any loan product.
 link, and every URL written anywhere in `src/config`, to carrying no affiliate tag (`subid`,
 `clickref`, `irclickid`, `utm_*`, Impact's `p.*` and the like) and nothing about the person.
 
+## Pay stubs and employer (Pinwheel)
+
+`pinwheel_payroll` and its sandbox twin `sandbox_pinwheel_payroll` (`src/lib/connectors/pinwheel/`, built
+from docs.pinwheelapi.com on 2026-11-19: API Overview, Core Data Technical Implementation, Webhook
+Signature Verification, Sandbox) read a connected payroll account's employment and newest pay stubs
+(`GET /v1/accounts/{id}/employment` and `/paystubs?limit=3`, `x-api-secret` and `Pinwheel-Version:
+2025-07-08`, the Sandbox host unless `PINWHEEL_ENV` says development or production). The newest stub, as
+Jane's `Paystub`, goes through `saveBenefitsFromStub` (`src/lib/insurance/benefits.ts`, the same code as
+the demo's stub). Each deduction that reads as cover through work is saved as a found benefit for the
+person to confirm, never twice. How often pay comes is read from the gap between pay dates, since
+Pinwheel's income says an amount per unit, not a pay schedule. The scope is the new `read_pay` ("See your
+pay stubs and who you work for"). Webhooks: `x-pinwheel-signature: v2=<hex>`, HMAC-SHA256 with the API
+secret over `v2:<x-timestamp>:<raw body>` (the new `pinwheel_v2` signing kind). New pay stubs or
+employment for the account read again. **Off for real people**: no entry in `REAL_CONNECTORS`. Not built:
+Pinwheel Link (its modal, and keeping the account from `account.added`); `payrollFor`'s live reads
+(open enrollment, the life and disability question) still use the demo stand-in only; found benefits
+stay after a revoke, as the person's own list.
+
 ## Card offers (mock)
 
 `src/lib/connectors/card-offers/offer.ts` (roadmap round 15) reads card offers shaped like Engine's

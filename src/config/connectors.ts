@@ -78,6 +78,7 @@ export const CONSENT_SCOPES = {
   record_calls: "Record those calls (each call says so at the start)",
   share_with_partner: "Share the details a partner needs for a quote or offer",
   read_credit: "See your credit report and score",
+  read_pay: "See your pay stubs and who you work for",
   soft_credit_pull: "Let a partner check your credit without affecting your score",
   ach_debit_authorization: "Let a partner take a payment from your bank account, as you authorize",
   tax_7216_disclosure: "Share your tax information with a tax partner, for the use you choose",
@@ -192,6 +193,27 @@ export const CHART = {
   apiVersion: "2024-01-01",
   clientIdEnv: "CHART_CLIENT_ID",
   clientSecretEnv: "CHART_CLIENT_SECRET",
+} as const;
+
+// Pinwheel (read connectors, batch 2; docs.pinwheelapi.com, read 2026-11-19: API Overview, Core Data
+// Technical Implementation, Webhook Signature Verification, Sandbox): a person's pay stubs and
+// employer, read through their payroll login. One host per mode; Jane uses Sandbox unless
+// PINWHEEL_ENV says development or production. Every request carries `x-api-secret` and
+// `Pinwheel-Version`. Webhooks: `x-pinwheel-signature: v2=<hex>`, HMAC-SHA256 with the API secret over
+// "v2:<x-timestamp>:<raw body>".
+export const PINWHEEL = {
+  hosts: {
+    sandbox: "https://sandbox.getpinwheel.com",
+    development: "https://development.getpinwheel.com",
+    production: "https://api.getpinwheel.com",
+  },
+  version: "2025-07-08",
+  envEnv: "PINWHEEL_ENV",
+  apiSecretEnv: "PINWHEEL_API_SECRET",
+  signatureHeader: "x-pinwheel-signature",
+  timestampHeader: "x-timestamp",
+  // Pay stubs read at a time: enough to tell how often the person is paid.
+  paystubLimit: 3,
 } as const;
 
 // SignWell (read connectors, 11-18; developers.signwell.com, read 2026-11-17): a letter the person
