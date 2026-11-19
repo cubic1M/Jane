@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
 import { GIVING } from "@/config/giving";
@@ -277,7 +278,7 @@ const childcareTaxBreak: Detector = {
     return suggestion("taxes", "childcare_tax_break", {
       title: "Pay for childcare from a dependent care FSA",
       headline: headlineOf("Use a dependent care FSA", saves, "saves"),
-      short: `You paid ${formatCents(spent)} for childcare in ${profile.months} months.`,
+      short: `You paid ${formatCents(spent)} for childcare in ${plural(profile.months, "month")}.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -290,7 +291,7 @@ const childcareTaxBreak: Detector = {
         },
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(spent)} for childcare in ${profile.months} months. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
+      why: `You paid ${formatCents(spent)} for childcare in ${plural(profile.months, "month")}. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
       action: { label: "See family tax choices", href: "/taxes?focus=life:family" },
     });
   },

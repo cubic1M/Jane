@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
@@ -85,7 +86,7 @@ const lifeInsurance: Detector = {
         income.value * 12 * R.lifeCoverYears,
         "risk",
       ),
-      short: `You have children and I see no life-cover charge in ${profile.months} months.`,
+      short: `You have children and I see no life-cover charge in ${plural(profile.months, "month")}.`,
       worthCents: income.value * 12 * R.lifeCoverYears,
       worthKind: "risk",
       confidence: weakest([
@@ -94,7 +95,7 @@ const lifeInsurance: Detector = {
         factEvidence(income),
       ]),
       urgency: "soon",
-      why: `You have children and I see no life-cover charge in ${profile.months} months. A common rule is ${R.lifeCoverYears} years of income, about ${formatCents(income.value * 12 * R.lifeCoverYears)} for you. The chance of needing it in a given year is small (about ${(CHANCE.life_insurance * 100).toFixed(1)}%), but the loss would be total.`,
+      why: `You have children and I see no life-cover charge in ${plural(profile.months, "month")}. A common rule is ${R.lifeCoverYears} years of income, about ${formatCents(income.value * 12 * R.lifeCoverYears)} for you. The chance of needing it in a given year is small (about ${(CHANCE.life_insurance * 100).toFixed(1)}%), but the loss would be total.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     });
   },

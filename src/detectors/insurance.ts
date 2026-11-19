@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
@@ -74,7 +75,7 @@ const rentersInsurance: Detector = {
     return suggestion("insurance", "renters_insurance", {
       title: "Cover your belongings with renters insurance",
       headline: headlineOf("Get renters insurance", R.rentersContentsCents, "risk"),
-      short: `You rent and I see no renters cover in ${profile.months} months.`,
+      short: `You rent and I see no renters cover in ${plural(profile.months, "month")}.`,
       worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: combine([
@@ -82,7 +83,7 @@ const rentersInsurance: Detector = {
         evidence("seen", profile.months, 0, "renters-cover charges"),
       ]),
       urgency: "later",
-      why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(CHANCE.renters_insurance * 100)}%), and renters cover usually costs under $20 a month.`,
+      why: `You rent and I see no renters-cover charge in ${plural(profile.months, "month")}. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(CHANCE.renters_insurance * 100)}%), and renters cover usually costs under $20 a month.`,
       action: { label: "Get quotes", href: "/insurance" },
     });
   },
@@ -107,7 +108,7 @@ const autoInsurance: Detector = {
     return suggestion("insurance", "auto_insurance", {
       title: "Check your car is insured",
       headline: headlineOf("Check your car is insured", R.autoLiabilityCents, "risk"),
-      short: `I see car costs but no car-insurance charge in ${profile.months} months.`,
+      short: `I see car costs but no car-insurance charge in ${plural(profile.months, "month")}.`,
       worthCents: R.autoLiabilityCents,
       // Driving without liability cover is against the law almost everywhere.
       required: true,
@@ -117,7 +118,7 @@ const autoInsurance: Detector = {
         evidence("seen", profile.months, 0, "car-cover charges"),
       ]),
       urgency: "now",
-      why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
+      why: `I see car costs but no car-insurance charge in ${plural(profile.months, "month")}. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
       action: { label: "Add or compare car cover", href: "/insurance" },
     });
   },
@@ -213,7 +214,7 @@ const healthInsurance: Detector = {
       return suggestion("insurance", "health_insurance", {
         title: "Compare health plans at open enrollment",
         headline: headlineOf("Compare health plans", saves, "saves"),
-        short: `You paid ${formatCents(yearly)} for your own health plan in ${profile.months} months.`,
+        short: `You paid ${formatCents(yearly)} for your own health plan in ${plural(profile.months, "month")}.`,
         worthCents: saves,
         worthKind: "saves",
         confidence: capped(
@@ -225,7 +226,7 @@ const healthInsurance: Detector = {
           "the saving is typical, and I can't see a partner's plan",
         ),
         urgency: timely ? "soon" : "later",
-        why: `You buy your own health plan and paid ${formatCents(yearly)} in ${profile.months} months. Comparing plans on what you'd really pay in a year, premium plus likely costs, can find up to ${formatCents(saves)} a year. Open enrollment runs Nov 1 to Jan 15.`,
+        why: `You buy your own health plan and paid ${formatCents(yearly)} in ${plural(profile.months, "month")}. Comparing plans on what you'd really pay in a year, premium plus likely costs, can find up to ${formatCents(saves)} a year. Open enrollment runs Nov 1 to Jan 15.`,
         action: { label: "Compare plans", href: "/insurance" },
       });
     }
@@ -245,7 +246,7 @@ const healthInsurance: Detector = {
           "the saving is typical, and I can't see a partner's plan",
         ),
         urgency: timely ? "soon" : "later",
-        why: `You work for yourself, so no employer plan covers you, and I see no health-plan charge in ${profile.months} months. A hospital stay can cost tens of thousands of dollars. If a partner's plan covers you, tell me and I'll stop asking.`,
+        why: `You work for yourself, so no employer plan covers you, and I see no health-plan charge in ${plural(profile.months, "month")}. A hospital stay can cost tens of thousands of dollars. If a partner's plan covers you, tell me and I'll stop asking.`,
         action: { label: "Compare plans", href: "/insurance" },
       });
     }
@@ -269,7 +270,7 @@ const medigap: Detector = {
     return suggestion("insurance", "medigap", {
       title: "Compare your Medicare supplement",
       headline: headlineOf("Compare your Medicare supplement", saves, "saves"),
-      short: `You paid ${formatCents(yearly)} for a Medicare supplement in ${profile.months} months.`,
+      short: `You paid ${formatCents(yearly)} for a Medicare supplement in ${plural(profile.months, "month")}.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: capped(
@@ -281,7 +282,7 @@ const medigap: Detector = {
         "the saving is typical, not quoted",
       ),
       urgency: "later",
-      why: `You paid ${formatCents(yearly)} for a Medicare supplement over ${profile.months} months. The same standard plan costs different amounts at different insurers, and prices rise with age, so comparing can find up to ${formatCents(saves)} a year.`,
+      why: `You paid ${formatCents(yearly)} for a Medicare supplement over ${plural(profile.months, "month")}. The same standard plan costs different amounts at different insurers, and prices rise with age, so comparing can find up to ${formatCents(saves)} a year.`,
       action: { label: "Compare supplements", href: "/insurance" },
     });
   },
@@ -456,7 +457,7 @@ const cardCover: Detector = {
     return suggestion("insurance", "card_cover", {
       title: "Check your card already covers this",
       headline: headlineOf("Cancel a plan your card covers", yearly, "saves"),
-      short: `You paid ${formatCents(yearly)} for a protection plan over ${profile.months} months.`,
+      short: `You paid ${formatCents(yearly)} for a protection plan over ${plural(profile.months, "month")}.`,
       worthCents: yearly,
       worthKind: "saves",
       confidence: capped(
@@ -468,7 +469,7 @@ const cardCover: Detector = {
         "I can't see your card's actual benefits",
       ),
       urgency: "later",
-      why: `You paid ${formatCents(yearly)} for a protection plan over ${profile.months} months, and you hold a premium card whose benefits often cover phones and trips bought with it. If yours does, the plan can be cancelled.`,
+      why: `You paid ${formatCents(yearly)} for a protection plan over ${plural(profile.months, "month")}, and you hold a premium card whose benefits often cover phones and trips bought with it. If yours does, the plan can be cancelled.`,
       action: { label: "See what your card covers", href: "/insurance" },
     });
   },
@@ -544,7 +545,7 @@ const policyDocuments: Detector = {
         "the saving is typical, not quoted",
       ),
       urgency: "soon",
-      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(yearly)} for insurance in ${profile.months} months, and a comparison can find up to a tenth of that.`,
+      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(yearly)} for insurance in ${plural(profile.months, "month")}, and a comparison can find up to a tenth of that.`,
       action: { label: "Check what I read", href: "/insurance" },
     });
   },

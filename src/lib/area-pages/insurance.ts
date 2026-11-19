@@ -322,7 +322,8 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   const listedGaps = new Set<string>(input.gaps.map((g) => g.key));
   for (const s of input.suggested ?? []) {
     const key = SUGGESTED_GAP[s.topic];
-    if (!key || listedGaps.has(key)) continue;
+    // Nor one the person said they don't need (debug 2, 11-18, upload S5).
+    if (!key || listedGaps.has(key) || dismissed.has(key)) continue;
     listedGaps.add(key);
     missing.push(
       item("missing", key, {
