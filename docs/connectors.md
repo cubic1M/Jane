@@ -123,6 +123,17 @@ a 404 unless `CONNECTORS=1`. In order:
 A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
 A body over the limit is refused on its `Content-Length` before it is read.
 
+## Checking the keys: `npm run connectors:check`
+
+Section C3. For each connector: its key names, `set` or `missing`, and whether its vendor's **test**
+environment accepts them (`yes (HTTP 404)`, `no (HTTP 401)`). It prints names and yes or no only, never
+a value. It calls only test hosts (`TEST_HOSTS` in `src/lib/connectors/env-check.ts`): Method's
+Development whatever `METHOD_ENV` says (Method's "Sandbox" is live data), Dwolla's Sandbox token,
+Pinwheel's Sandbox with an account id that can't exist, and PostGrid only with a key starting `test_`.
+SnapTrade and Retell have one host for test and live keys, so they're checked by name only.
+`--names` skips the calls. The names are held to `src/config` and `.env.example` by
+`env-check.test.ts`.
+
 ## Sandbox adapters
 
 `src/lib/connectors/sandbox/adapters.ts`: four simulated partners, each shaped like the partner the
@@ -151,6 +162,29 @@ signer, and people (real, sample, trial).
 | Nobody reaches another person's consent, credential or action | `consent-vault`, `pipeline` and `webhooks` integration tests, and the access proof over every route |
 | The flags are off in code, and a real connector's switch is never read from env | `registry.test.ts` |
 | Sandbox adapters call nobody | `sandbox/adapters.integration.test.ts` |
+
+## The contract run: real test-host answers through the adapters' own code
+
+`npm run connectors:contract` (local only, never in CI: refused when `CI` is set, and a
+`.proof.test.ts` that normal runs exclude; it loads the worktree's `.env.local` and `.env`). For each keyed
+connector it makes the read calls its adapter makes against the vendor's **test** host and passes the real
+answers through that adapter's own parse and normalise code, then reports per connector: reachable,
+parsed, any test entity it made, and any field the adapter expected and didn't get or got in another
+shape. Names and yes or no only: no key, token or response body, ever. Every request goes through
+`guardedFetch` (`src/lib/connectors/contract/guard.ts`), which refuses any host not on `CONTRACT_HOSTS`,
+before it leaves (Method's production and its live-data "Sandbox" are not on it).
+
+- **Method** (Development): makes Method's documented test entity, verifies it the "bring your own"
+  way, queues the five simulated liabilities, runs Connect, then reads through `methodHttp` and
+  `methodReads`. Each run makes one test entity.
+- **Dwolla** (Sandbox): the adapter's token, then a $1.00 transfer between the Sandbox account's own
+  balance and bank through `createTransfer`, read through `transferStatus`, cancelled through
+  `cancelTransfer`.
+- **SnapTrade**: a test user, its read-only portal link and accounts through the adapter, then the user
+  is deleted. Use a test key.
+- **PostGrid** (test key only) and **Pinwheel** (Sandbox): when their keys are set.
+- **Alpaca, SignWell, Chart**: not called, and the run says why (no read calls; a signed document; a
+  person's IRS code).
 
 ## What's next
 
