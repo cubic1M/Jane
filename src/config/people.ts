@@ -392,7 +392,6 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "property_tax_check",
       "family_credit",
-      "plan_menu",
       "life_checklist",
       "household_setup",
       // The family dog (vet visits and Chewy orders): cover only for someone who has a pet.
@@ -554,7 +553,6 @@ export const PEOPLE: readonly Person[] = [
       "tax_loss_harvest",
       "charity_receipts",
       "property_tax_check",
-      "plan_menu",
       "short_term_cash",
       "sudden_money",
 
@@ -631,7 +629,6 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
       "charity_receipts",
       "inherited_ira_spread",
-      "plan_menu",
       "short_term_cash",
       "household_setup",
       "irmaa_watch",
