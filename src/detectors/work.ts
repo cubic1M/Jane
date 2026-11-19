@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { rateMonthsOf } from "@/profile/build";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
@@ -81,7 +82,7 @@ const estimatedTaxes: Detector = {
       why: `${
         paid.length > 0
           ? `Nobody withholds tax from your pay. I see ${formatCents(paidCents)} of tax payments, and about ${formatCents(dueCents)} was due by now on about ${formatCents(owed)} of tax a year. Late payment penalties could reach ${formatCents(risk)}.`
-          : `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
+          : `Nobody withholds tax from your pay and I see no tax payments in ${plural(profile.months, "month")}. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
       } The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
       action: { label: "Set aside tax", href: "/taxes" },
     });
@@ -297,7 +298,7 @@ const businessInsurance: Detector = {
         evidence("seen", profile.months, 0, "business-cover charges"),
       ]),
       urgency: "soon",
-      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
+      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${plural(profile.months, "month")}. A liability claim in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     });
   },
@@ -378,7 +379,7 @@ const cashFlow: Detector = {
         factEvidence(profile.facts.income_pattern),
       ]),
       urgency: daysLeft <= BUSINESS_LUMPS.soonDays ? "soon" : "later",
-      why: `Your business pays about ${formatCents(average)} of tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${profile.months} months), the next about ${nextWords}, from the same account your weekly sales go into. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week, and keeps it apart from your own money.`,
+      why: `Your business pays about ${formatCents(average)} of tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${plural(profile.months, "month")}), the next about ${nextWords}, from the same account your weekly sales go into. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week, and keeps it apart from your own money.`,
       action: { label: "See business taxes", href: "/taxes/business" },
     });
   },

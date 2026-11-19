@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { ADDON_RULES } from "@/config/car-loan";
@@ -289,7 +290,7 @@ const balanceTransfer: Detector = {
       ]),
       urgency: "soon",
       ...(trouble ? { rankCents: Math.round(saving * D.troubleDiscount) } : {}),
-      why: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest over ${profile.months} months. A 0% transfer with a ${Math.round(D.transferFeeShare * 100)}% fee (${formatCents(Math.round(debt.value * D.transferFeeShare))}) could save about ${formatCents(saving)}.`,
+      why: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest over ${plural(profile.months, "month")}. A 0% transfer with a ${Math.round(D.transferFeeShare * 100)}% fee (${formatCents(Math.round(debt.value * D.transferFeeShare))}) could save about ${formatCents(saving)}.`,
       action: { label: "See transfer offers", href: "/loans/refinance" },
     });
   },
@@ -372,7 +373,7 @@ const bnplPlans: Detector = {
       worthKind: "risk",
       confidence: evidence("seen", profile.months, payments.length, "pay-later installments"),
       urgency: "soon",
-      why: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments over ${profile.months} months. Jane can count the next ones against what's safe to spend, and tell you before a new plan strains the month.`,
+      why: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments over ${plural(profile.months, "month")}. Jane can count the next ones against what's safe to spend, and tell you before a new plan strains the month.`,
       action: { label: "See your installments", href: "/loans" },
     });
   },
@@ -406,12 +407,12 @@ const medicalBills: Detector = {
         // A share of these bills, not something that comes back each year.
         true,
       ),
-      short: `You paid ${formatCents(total)} for medical care in ${profile.months} months.`,
+      short: `You paid ${formatCents(total)} for medical care in ${plural(profile.months, "month")}.`,
       worthCents: Math.round(total * D.medicalAskShare),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, care.length, "medical bills"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} for medical care in ${profile.months} months. Bills often have errors${care.some((t) => t.pfc !== "MEDICAL_DENTAL_CARE") ? ", and nonprofit hospitals must offer financial assistance" : ""}; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
+      why: `You paid ${formatCents(total)} for medical care in ${plural(profile.months, "month")}. Bills often have errors${care.some((t) => t.pfc !== "MEDICAL_DENTAL_CARE") ? ", and nonprofit hospitals must offer financial assistance" : ""}; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
       action: { label: "Check your medical bills", href: "/loans/medical" },
     });
   },
@@ -431,12 +432,12 @@ const collections: Detector = {
       title:
         "Check the collection on your credit report before you pay more, and ask for it in writing",
       headline: headlineOf("Check a collection before paying", total, "risk"),
-      short: `You've paid ${formatCents(total)} to a collection agency in ${profile.months} months.`,
+      short: `You've paid ${formatCents(total)} to a collection agency in ${plural(profile.months, "month")}.`,
       worthCents: total,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, paid.length, "payments to a collector"),
       urgency: "now",
-      why: `You've paid ${formatCents(total)} to a collection agency in ${profile.months} months. Collections can be wrong or too old to collect, and a validation letter makes the collector prove the debt; Jane writes it.`,
+      why: `You've paid ${formatCents(total)} to a collection agency in ${plural(profile.months, "month")}. Collections can be wrong or too old to collect, and a validation letter makes the collector prove the debt; Jane writes it.`,
       action: { label: "Check your report", href: "/loans/report" },
     });
   },

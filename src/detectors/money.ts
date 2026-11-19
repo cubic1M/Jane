@@ -539,7 +539,7 @@ const hardshipPlan: Detector = {
     // The reason in their own figures; with no fees or interest, what made it trouble.
     const said =
       costs > 0
-        ? `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`
+        ? `Fees and interest cost you ${formatCents(costs)} in ${plural(profile.months, "month")}.`
         : "Your debt payments take more of your income than lenders like to see.";
     return suggestion("debt", "hardship_plan", {
       title: "Ask your lenders for a hardship plan",

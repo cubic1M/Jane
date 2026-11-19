@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import {
   AUTO_AVERAGE,
@@ -69,7 +70,7 @@ const belongingsCover: Detector = {
       factOnly: true,
       short: stanford
         ? "Stanford doesn't insure students' belongings in its housing; I see no renters cover."
-        : `You rent and I see no renters-cover charge in ${profile.months} months.`,
+        : `You rent and I see no renters-cover charge in ${plural(profile.months, "month")}.`,
       worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: weakest([
@@ -82,7 +83,7 @@ const belongingsCover: Detector = {
       why: `${
         stanford
           ? "I see Stanford in your payments and no rent, so you may live in Stanford housing. Stanford's residence agreement says the university doesn't carry insurance on residents' belongings and calls it advisable to get your own renter's insurance; residents also answer for damage to university property in their rooms."
-          : `You pay rent and I see no renters-cover charge in ${profile.months} months. A landlord's policy covers the building, not the things inside it.`
+          : `You pay rent and I see no renters-cover charge in ${plural(profile.months, "month")}. A landlord's policy covers the building, not the things inside it.`
       } ${averageLine} ${steps} If you're already covered, tell me and I'll stop.`,
       action: { label: "See your cover", href: "/insurance" },
       more: [
