@@ -444,8 +444,9 @@ export function walkedUnlabelled(flat: Flat): string[] {
   }
   if (walked.size === 0) return [];
   return shownTexts(flat).flatMap(([path, text]) =>
-    [...walked].some((w) => new RegExp(`${w.replace(/[$.]/g, "\\$&")}(?![\\d])`).test(text)) &&
-    !SAYS_ESTIMATE.test(text)
+    [...walked].some((w) =>
+      new RegExp(`${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\d])`).test(text),
+    ) && !SAYS_ESTIMATE.test(text)
       ? [`${path}: a balance walked forward from a statement, unlabelled: "${text.slice(0, 140)}"`]
       : [],
   );
