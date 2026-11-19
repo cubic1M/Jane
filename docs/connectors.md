@@ -373,3 +373,24 @@ Not built: a Dwolla Verified Customer for the person (their identity) and verifi
 each account (`fundingSource` maps them per account); payments to someone else (a bill); Dwolla's
 webhooks (signed with `X-Request-Signature-SHA-256` over the body alone, no timestamp), since the status
 is read on the transfer's day; marking a `failed` or `cancelled` transfer at Dwolla as failed in Jane.
+
+## The agent's phone calls in test (Retell)
+
+`src/lib/voice/retell/` puts Retell (docs.retellai.com, read 2026-11-19: Create Phone Call, Get Call,
+Secure the webhook, Post Call Extraction) behind the action agent's calls, in test only. With
+`VOICE_PROVIDER=retell_test` and `RETELL_API_KEY`, `RETELL_AGENT_ID` and `RETELL_FROM_NUMBER` set, an
+approved bill negotiation in simulated mode is called through Retell instead of the simulated job: always
+the simulated company's fiction number (`RETELL.simulatedCompanyNumber`, +1 202 555-0100, checked against
+the fiction range, toll-free excluded), the script and company as dynamic variables, the action's reply
+token as metadata, and `jane-<action id>` as Retell's idempotency key. Real companies stay uncalled:
+`callMode` is still off for real people in production. Trial people never reach Retell; the simulated job
+answers them.
+
+Retell's `call_analyzed` webhook (`POST /api/voice/retell`, `X-Retell-Signature: v=<ms>,d=<hex>`,
+HMAC-SHA256 with the API key over the raw body and v, within five minutes) gives the result to
+`handleCallResult` by that token. The test agent's post-call extraction says the outcome in Jane's words
+(`outcome`, `new_monthly_cents`, `offer`, `offer_monthly_cents`, `offer_contract_months`,
+`offer_fee_cents`); a failed dial is `no_answer`, and anything unclear needs a person. A fiction number
+answers nobody, so a test call ends as `no_answer` unless the simulated company is played by a number of
+its own (a Retell number with a second agent: a purchase, the founder's call).
+

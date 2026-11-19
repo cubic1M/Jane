@@ -104,6 +104,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/unsubscribe/route.ts": public_(
     "An emailed link: its signed token is the credential and covers one person's emails.",
   ),
+  "src/app/api/voice/retell/route.ts": "webhook",
   "src/app/api/voice/result/route.ts": "webhook",
   "src/app/icons/[variant]/route.tsx": public_("App icons: the same for everyone."),
   "src/app/investments/family-file/export/route.ts": "signed-in",
