@@ -50,8 +50,9 @@ export function atStanford(data: Pick<Data, "transactions">): boolean {
 }
 
 // The data must reach close to today: a forecast from an old statement's balance says nothing
-// about now (upload S7's statement ended four weeks before today).
-const FRESH_DAYS = 10;
+// about now (upload S7's statement ended four weeks before today). 17 days past an upload's last
+// line, as 10 past where its statement closed was before an upload reached its last line (reachOf).
+const FRESH_DAYS = 17;
 const fresh = (data: Data) =>
   daysBetween(dataEnd(data.transactions, data.today), data.today) <= FRESH_DAYS;
 

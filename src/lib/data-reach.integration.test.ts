@@ -64,12 +64,12 @@ describe.runIf(url)("a year of data counted back from where it reaches", () => {
     await client.$disconnect();
   });
 
-  it("reaches where an upload's statement closes, a week past its newest line, however recent", async () => {
+  it("reaches an upload's newest line, however recent", async () => {
     const db = scopedFor(userId, client);
     const LA = "America/Los_Angeles";
-    expect(await dataReach(db, "2026-12-10", LA)).toBe("2026-10-31");
+    expect(await dataReach(db, "2026-12-10", LA)).toBe("2026-10-24");
     // However recent (debug 2, 11-16): counted to today, its history grew a day each day.
-    expect(await dataReach(db, "2026-11-20", LA)).toBe("2026-10-31");
+    expect(await dataReach(db, "2026-11-20", LA)).toBe("2026-10-24");
     // A year and more on, it's all older than the window: today, and none of it is read.
     expect(await dataReach(db, "2027-12-01", LA)).toBe("2027-12-01");
   });

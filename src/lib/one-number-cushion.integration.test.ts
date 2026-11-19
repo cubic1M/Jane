@@ -134,9 +134,9 @@ describe.runIf(url)("a month of spending, one number", { timeout: 300_000 }, () 
       })),
     );
     await client.transaction.createMany({ data: rows });
-    // $6,080 spent from Jul 1 to Oct 22, where the statement ends (the day it was uploaded), over
-    // those 113 days: not over the 145 to today, empty weeks read as a quiet month.
+    // $6,080 spent from Jul 1 to Oct 20, where the statement's lines end, over those 111 days:
+    // not over the 145 to today, empty weeks read as a quiet month, nor to the day it was uploaded.
     const m = await expectOneMonth(userId);
-    expect(m.cushion).toBe(Math.round(608_000 / (113 / 30.4375)));
+    expect(m.cushion).toBe(Math.round(608_000 / (111 / 30.4375)));
   });
 });

@@ -39,7 +39,7 @@ const TRANSACTION_SELECT = {
 } as const;
 
 // A row as detection reads it: its day as YYYY-MM-DD, and from an upload, the person's day it was
-// uploaded (where the data reaches: src/profile/build.ts reachOf).
+// uploaded (an upload reaches its last line, not today: src/profile/build.ts reachOf).
 const asDetectionTransaction =
   (timezone: string) =>
   <T extends { date: Date; source: string; createdAt: Date }>({ source, createdAt, ...t }: T) => ({

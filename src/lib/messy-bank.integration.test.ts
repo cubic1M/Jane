@@ -119,16 +119,11 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
         title: "$1.28 in fees on Chase Freedom in the last 4 months",
         annualSavingsCents: 128,
       },
-      // $9,015.59 in checking and savings over three months of $2,651.36: the Best Buy TV left
-      // out as a one-off, and the cancelled flight, the return and the reversed fee netted, as on
-      // the Money page (beta accuracy: idle cash had counted them as spending). Averaged to Oct 19,
-      // where the checking export closes (a week past its Oct 12 line), not the day it's read
-      // (gate C, 11-16: to today, an upload's cushion shrank daily).
-      {
-        type: "idle_cash",
-        title: "$1,061.51 more cash than 3 months of spending",
-        annualSavingsCents: 3_715,
-      },
+      // No idle cash: $9,015.59 in checking and savings is under three months of spending, the
+      // Best Buy TV left out as a one-off and the cancelled flight, the return and the reversed fee
+      // netted, as on the Money page (beta accuracy). Averaged to Oct 12, the checking export's
+      // last line, whenever it's read or uploaded (debug 3, 11-19); to Oct 19, a week past it,
+      // there was "$1,061.51 more cash than 3 months of spending".
       // $15.49, $15.49, $17.99, $17.99: still a rise after the second charge at the new price.
       {
         type: "price_increase",
