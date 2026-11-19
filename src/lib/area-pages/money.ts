@@ -17,6 +17,7 @@ import {
   urgentLine,
 } from "./tree";
 import { plural } from "@/lib/plural";
+import { CHEAPER_PLANS } from "@/config/student-money";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
 // (charges to look at, what's coming up, subscriptions, budgets, yearly bills, where it goes,
@@ -305,7 +306,17 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
-  for (const r of input.recurring.filter((r) => r.findingId)) {
+  // A service a cheaper plan is suggested for is said by that suggestion, as the dock does
+  // (src/lib/jane-agent/sources/findings.ts): Subscriptions listed "A cheaper plan, same service
+  // $78/yr" and "Netflix $186/yr" for one Netflix (debugger 11-19).
+  const cheaperPlanOf = input.suggestions
+    .filter((s) => s.topic === "cheaper_tier")
+    .flatMap((s) =>
+      CHEAPER_PLANS.filter((p) => `${s.summary} ${s.headline ?? ""}`.includes(p.service)),
+    );
+  const saidAsCheaperPlan = (merchant: string) =>
+    cheaperPlanOf.some((p) => p.words.test(merchant.toUpperCase()));
+  for (const r of input.recurring.filter((r) => r.findingId && !saidAsCheaperPlan(r.merchant))) {
     items.subscriptions.push(
       item("subscriptions", r.key, {
         label: r.merchant,
