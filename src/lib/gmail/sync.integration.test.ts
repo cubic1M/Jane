@@ -353,7 +353,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
   });
 
   describe("the look back over recent mail", () => {
-    it("runs while the mailbox has never been read through: what came after connecting, then its newest emails of the last 14 days, oldest first", async () => {
+    it("runs while the mailbox has never been read through: what came after connecting, then its newest emails of the last 14 days, newest first", async () => {
       const userId = await person();
       const address = `box-${randomUUID()}@fake-mailbox.test`;
       const box = fake.mailbox(address);
@@ -365,8 +365,8 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await sync(userId, id)).toBe("read");
       expect(sent().map((mail) => mail.subject)).toEqual([
         "Your receipt 3",
-        "Your receipt 1",
         "Your receipt 2",
+        "Your receipt 1",
       ]);
       const [search] = fake.requests.filter((r) => r.path.endsWith("/messages"));
       expect(Object.fromEntries(new URLSearchParams(search.query))).toEqual({
@@ -432,7 +432,8 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       const { id, box, recent } = await connectedWithRecent(userId, [3, 2, 1]);
       const after = box.deliver({ subject: "Your bill", receivedAt: at(-MINUTE) });
       expect(await sync(userId, id, { runMessages: 2 })).toBe("read");
-      expect(sent().map((mail) => mail.subject)).toEqual(["Your bill", "Your receipt 3"]);
+      // Newest first: cut short, it is the oldest that are left out.
+      expect(sent().map((mail) => mail.subject)).toEqual(["Your bill", "Your receipt 1"]);
       expect(await rowOf(id)).toMatchObject({
         historyCursor: box.historyId,
         lastCheckedAt: NOW,
@@ -444,7 +445,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       const later = box.deliver({ subject: "Your refund" });
       expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
       expect(searches()).toBe(1);
-      expect(await readOf(id)).toEqual(ids(after, recent[0], later));
+      expect(await readOf(id)).toEqual(ids(after, recent[2], later));
       expect((await rowOf(id)).lastCheckedAt).toEqual(at(MINUTE));
     });
 
@@ -457,7 +458,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         return answer(RECEIPT);
       });
       expect(await sync(userId, id, { clock: () => t, budgetMs: 100_000 })).toBe("read");
-      expect(await readOf(id)).toEqual(ids(recent[0], recent[1]));
+      expect(await readOf(id)).toEqual(ids(recent[2], recent[1]));
       expect(await rowOf(id)).toMatchObject({ lastCheckedAt: NOW, lastErrorCode: null });
       expect(skippedSaid()).toEqual({ look_back_cut: 1 });
     });
@@ -480,16 +481,16 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         lastErrorCode: "reader_later",
         nextTryAt: at(GMAIL_LIMITS.readerRetryMinutes * MINUTE),
       });
-      expect(await readOf(id)).toEqual(ids(after, recent[0]));
+      expect(await readOf(id)).toEqual(ids(after));
       down = false;
       expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
       expect(searches()).toBe(2);
       expect(await readOf(id)).toEqual(ids(after, ...recent));
       expect(sent().map((mail) => mail.subject)).toEqual([
         "Your bill",
+        "Your receipt 1",
+        "Your receipt 1",
         "Your receipt 2",
-        "Your receipt 1",
-        "Your receipt 1",
       ]);
       expect((await rowOf(id)).lastCheckedAt).toEqual(at(31 * MINUTE));
     });
@@ -1040,7 +1041,7 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
         lastCheckedAt: null,
         lastErrorCode: "reader_unread",
       });
-      expect(await readOf(id)).toEqual([early.id]);
+      expect(await readOf(id)).toEqual([late.id]);
       const news = box.deliver({ subject: "Your refund", receivedAt: at(20 * MINUTE) });
       expect(await sync(userId, id, { now: at(31 * MINUTE) })).toBe("read");
       expect(await readOf(id)).toEqual(ids(early, late, news));

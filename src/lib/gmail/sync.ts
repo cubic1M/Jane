@@ -326,7 +326,8 @@ async function oneEmail(
   return noted(run, await readMessage(mail, added), lookingBack);
 }
 
-// 9. The newest emails of the last lookBackDays, oldest first, sharing the read's deadline and
+// 9. The newest emails of the last lookBackDays, newest first (cut short, it is the oldest that are
+// left out, not the latest bills and receipts), sharing the read's deadline and
 // runMessages: once, after the history passes, in a read of a mailbox never read through, and once
 // after a gap. It is best effort, and done once it ends: run to its end, it records a never-read
 // mailbox as read through at once, whatever stops the read after it; cut short by the deadline or
@@ -347,10 +348,9 @@ async function lookBack(
     days: GMAIL_LIMITS.lookBackDays,
     most: GMAIL_LIMITS.lookBackMessages,
   });
-  const oldestFirst = newestFirst.reverse();
-  for (const [index, id] of oldestFirst.entries()) {
+  for (const [index, id] of newestFirst.entries()) {
     if (timeIsUp(read, run)) {
-      const leftOut = oldestFirst.slice(index).filter((other) => !run.met.has(other)).length;
+      const leftOut = newestFirst.slice(index).filter((other) => !run.met.has(other)).length;
       if (leftOut > 0) run.skipped.look_back_cut = leftOut;
       return { end: "done" };
     }
