@@ -31,6 +31,7 @@ import {
   type CallResult,
 } from "./provider";
 import { meteredClaude } from "@/lib/claude-budget";
+import { retellHttp, retellTestOn } from "./retell/api";
 import { systemDb } from "@/lib/system-db";
 
 // The agent's phone calls (spec step 54): bill negotiation. A call only ever happens with
@@ -141,8 +142,24 @@ export async function startCall(
     null,
     client,
   );
-  // A real provider would be asked to call here; the simulated one answers through a job.
-  await enqueueJob("voice_simulated_result", { userId, actionId: action.id }, { client, now });
+  // In test (VOICE_PROVIDER=retell_test), Retell's phone agent calls the simulated company's fiction
+  // number and its webhook brings the result (src/app/api/voice/retell/); never for trial people.
+  // Otherwise the simulated provider answers through a job. Real companies are never called here.
+  if (mode === "simulated" && retellTestOn() && !isTrialUser(userId) && action.replyToken) {
+    try {
+      await retellHttp().callSimulatedCompany({
+        token: action.replyToken,
+        actionId: action.id,
+        company,
+        script,
+      });
+    } catch {
+      await handOff(userId, action, "The test call through Retell didn't start.", options);
+      return "handed_off";
+    }
+  } else {
+    await enqueueJob("voice_simulated_result", { userId, actionId: action.id }, { client, now });
+  }
   await setStatus(
     userId,
     action,
