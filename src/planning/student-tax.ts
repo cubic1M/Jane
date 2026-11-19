@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/dates";
 import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-taxes";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
@@ -80,12 +81,27 @@ export function studentYearOf(
   rateMonths: number,
 ): StudentYear {
   const money = studentMoney(data);
-  const pace = (cents: number) => Math.round((cents * 12) / Math.max(1, rateMonths));
+  const year = Number(data.today.slice(0, 4));
+  // The rows are this year's (studentMoney), so with data from before January they're paced over
+  // the months of this year the data covers, not the whole history's: 10.5 months of pay paced as
+  // 12 read $18,744.80 a year beside the Saver's Credit's $27,444.46 (debug 2, upload S6, 11-19).
+  const first = data.transactions.reduce((a, t) => (t.date < a ? t.date : a), data.today);
+  const last = data.transactions
+    .filter((t) => t.date <= data.today)
+    .reduce((a, t) => (t.date > a ? t.date : a), `${year}-01-01`);
+  const span =
+    first < `${year}-01-01`
+      ? Math.max(
+          1,
+          ((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${year}-01-01T00:00:00Z`)) / DAY_MS + 1) /
+            (365.25 / 12),
+        )
+      : rateMonths;
+  const pace = (cents: number) => Math.round((cents * 12) / Math.max(1, span));
   // Pay as a month first, then a year grossed up: the order the profile's monthly income and the
   // other tax cards use, so the same pay is one figure on every card (debug 2, upload S5, 11-18).
   const grossYear = (cents: number) =>
-    Math.round(Math.round(cents / Math.max(1, rateMonths)) * 12 * DETECTOR_RATES.tax.netToGross);
-  const year = Number(data.today.slice(0, 4));
+    Math.round(Math.round(cents / Math.max(1, span)) * 12 * DETECTOR_RATES.tax.netToGross);
   const gig = data.transactions.filter(
     (t) =>
       t.amountCents < 0 &&

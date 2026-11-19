@@ -9,6 +9,8 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
+import { studentYearOf } from "@/planning/student-tax";
+import { rateMonthsOf } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
 import { dayLabel } from "@/lib/day-label";
@@ -29,13 +31,31 @@ const statusOf = (filing: unknown, household: unknown, earners: unknown): Filing
   return "single";
 };
 
+// The year's income as the other tax credits estimate it (pay grossed up, gig pay and fellowship
+// money: studentYearOf), so "income near" is one figure on Taxes; a family member's transfers
+// aren't income for a return (debug 2, upload S6, 11-19: $27,444.46 here beside $18,744.80 on
+// California's renter's credit). With none of that seen (a pension), the profile's monthly income
+// grossed up.
+// What the person said they bring in wins over what Jane reads from deposits.
+function agiOf({ profile, data }: Parameters<Detector["detect"]>[0]): number {
+  const income = profile.facts.monthly_income;
+  const year =
+    income.source === "told"
+      ? 0
+      : studentYearOf(data, profile.facts, rateMonthsOf(profile)).agiCents;
+  if (year > 0) return year;
+  return typeof income.value === "number" && income.value > 0
+    ? Math.round(income.value * 12 * DETECTOR_RATES.tax.netToGross)
+    : 0;
+}
+
 const saversCredit: Detector = {
   capability: "taxes",
   topic: "savers_credit",
   covers: ["tax_plan"],
   needs: ["monthly_income", "enrollment"],
-  detect({ profile }) {
-    const { today, facts } = profile;
+  detect(input) {
+    const { today, facts } = input.profile;
     if (today < `${SAVERS_CREDIT.taxYear}-01-01` || today > SAVERS_CREDIT.iraDeadline) return null;
     if (facts.is_student.value === true) return null;
     // Not for a full-time student: someone who said they're in school at least half time is read as
@@ -43,10 +63,8 @@ const saversCredit: Detector = {
     if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     // Someone in debt trouble needs relief and a plan first, not a nudge to save more.
     if (facts.debt_trouble.value === true) return null;
-    const monthly = facts.monthly_income.value;
-    if (typeof monthly !== "number" || monthly <= 0) return null;
-    // Take-home pay, grossed up like the other tax cards: a rough AGI.
-    const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
+    const agi = agiOf(input);
+    if (agi <= 0) return null;
     const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
     const limit = SAVERS_CREDIT.agiLimit[status];
     if (agi > limit) return null;
@@ -94,14 +112,14 @@ const saversMatch: Detector = {
   topic: "savers_match",
   covers: ["tax_plan"],
   needs: ["monthly_income", "enrollment"],
-  detect({ profile, data }) {
+  detect(input) {
+    const { profile, data } = input;
     const { today, facts } = profile;
     if (today < SAVERS_MATCH.shownFrom || today > SAVERS_MATCH.shownUntil) return null;
     if (facts.is_student.value === true || facts.debt_trouble.value === true) return null;
     if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
-    const monthly = facts.monthly_income.value;
-    if (typeof monthly !== "number" || monthly <= 0) return null;
-    const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
+    const agi = agiOf(input);
+    if (agi <= 0) return null;
     const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
     const [from, to] = SAVERS_MATCH.phaseOut[status];
     if (agi >= to) return null;
