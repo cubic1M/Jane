@@ -1,6 +1,7 @@
 import { sumMoneyFound } from "@/detection/engine";
 import type {
   Confidence,
+  DataSourceKind,
   DecisionChoice,
   FindingStatus,
   FindingType,
@@ -25,7 +26,7 @@ export type BetaRows = {
   users: { id: string; email: string; role: "user" | "admin" }[];
   // Emails let in by an invite code (beta_access).
   invited: { email: string }[];
-  accounts: { userId: string; source: "csv" | "plaid" | "robinhood"; demo: boolean }[];
+  accounts: { userId: string; source: DataSourceKind; demo: boolean }[];
   findings: {
     userId: string;
     type: FindingType;
