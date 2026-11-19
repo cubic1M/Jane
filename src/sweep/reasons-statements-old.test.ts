@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import { STALE_UPLOAD_DAYS } from "@/config/import";
+import { addDays } from "@/detection/units";
+import { DATED } from "./reasons";
+
+// Gate C (debug 3, 11-19): on the day a person's statements become too old to say what's now,
+// the cushion card waits and the chat's net worth says when it's from; a return's due date counts
+// down every day. Each reason names only those.
+
+const reason = (name: string) => DATED.find((r) => r.name === name)!;
+const person = { linked: "2027-01-28", lastLine: "2027-01-24" };
+
+describe("statements too old to say what's now", () => {
+  const old = reason("statements too old to say what's now");
+
+  it("explains the cushion card and the chat's net worth on that one day", () => {
+    const day = addDays(person.lastLine, STALE_UPLOAD_DAYS + 1);
+    expect(day).toBe("2027-03-11");
+    expect(old.paths.test("suggestions.safe_to_spend:emergency_fund.short")).toBe(true);
+    expect(old.paths.test("chat.what's my net worth.body")).toBe(true);
+    expect(old.paths.test("suggestions.investing:idle_cash.short")).toBe(true);
+    expect(old.paths.test("trees.money.summaries.have:net-worth")).toBe(true);
+    expect(old.on!(day, person)).toBe(true);
+    expect(old.on!(addDays(day, -1), person)).toBe(false);
+    expect(old.on!(addDays(day, 1), person)).toBe(false);
+  });
+
+  it("explains nothing else", () => {
+    expect(old.paths.test("suggestions.insurance:car_cover_cost.short")).toBe(false);
+    expect(old.paths.test("chat.what's safe to spend.body")).toBe(false);
+  });
+});
+
+describe("the return's countdown", () => {
+  it("is the filing-extension card's why only", () => {
+    const countdown = reason("the return's countdown");
+    expect(countdown.paths.test("suggestions.taxes:filing_extension.why")).toBe(true);
+    expect(countdown.paths.test("suggestions.taxes:filing_extension.short")).toBe(false);
+  });
+});
+
+describe("the filing season", () => {
+  it("brings the filing-extension card on March 1 and takes it the day after April 15", () => {
+    const season = reason("the filing season");
+    expect(season.paths.test("suggestions.taxes:filing_extension.headline")).toBe(true);
+    expect(season.on!("2028-03-01", person)).toBe(true);
+    expect(season.on!("2028-04-16", person)).toBe(true);
+    expect(season.on!("2028-03-02", person)).toBe(false);
+  });
+});
+
+describe("the tax forms season", () => {
+  it("brings the forms-on-the-way card on December 1 and takes it the day after February 15", () => {
+    const season = reason("the tax forms season");
+    expect(season.paths.test("suggestions.taxes:tax_forms_coming.title")).toBe(true);
+    expect(season.paths.test("suggestions.taxes:file_return.title")).toBe(false);
+    expect(season.on!("2026-12-01", person)).toBe(true);
+    expect(season.on!("2027-02-16", person)).toBe(true);
+    expect(season.on!("2026-12-02", person)).toBe(false);
+  });
+});
+
+describe("the data ending", () => {
+  it("lets Money's month line say to when, on the day the data ends", () => {
+    const ending = reason("the data ending");
+    const upload = { linked: "2026-10-25", lastLine: "2026-10-22" };
+    expect(ending.paths.test("trees.money.summaries.spending:month")).toBe(true);
+    expect(ending.paths.test("trees.money.summaries.spending:top")).toBe(false);
+    expect(ending.on!("2026-11-06", upload)).toBe(true);
+    expect(ending.on!("2026-11-05", upload)).toBe(false);
+  });
+});

@@ -293,8 +293,10 @@ describe("Netflix's plan with ads", () => {
   it("is nothing for someone already on it (with tax), or whose last charge is over 45 days old", () => {
     expect(fire(netflix(1_034), "cheaper_tier")).toBeNull();
     expect(fire(netflix(1_035), "cheaper_tier")).not.toBeNull();
-    expect(fire(netflix(1_799, "2026-10-04"), "cheaper_tier")).not.toBeNull();
-    expect(fire(netflix(1_799, "2026-10-03"), "cheaper_tier")).toBeNull();
+    // 45 days before the newest line (Nov 17), where the data ends, not before today (gate C,
+    // debug 3, 11-19: counted from today, a fixed history lost the card with the calendar).
+    expect(fire(netflix(1_799, "2026-10-03"), "cheaper_tier")).not.toBeNull();
+    expect(fire(netflix(1_799, "2026-10-02"), "cheaper_tier")).toBeNull();
   });
 });
 
