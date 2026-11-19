@@ -22,6 +22,7 @@ import { sandboxSignwellPermission, signwellPermission } from "./signwell/connec
 import { sandboxAlpacaAccount, sandboxAlpacaOrder } from "./alpaca/connector";
 import { methodLiabilities, sandboxMethodLiabilities } from "./method/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
+import { pinwheelPayroll, sandboxPinwheelPayroll } from "./pinwheel/connector";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
 
@@ -65,6 +66,10 @@ const CONNECTORS: readonly Connector[] = [
   manualBillPay,
   manualOwnTransfer,
   manualOpenSavings,
+  // Real, read only, off until REAL_CONNECTORS: pay stubs and employer through Pinwheel, their benefit
+  // deductions saved as found; and its sandbox twin on Pinwheel's documented examples (./pinwheel/).
+  pinwheelPayroll,
+  sandboxPinwheelPayroll,
   // Real, read only, no vendor: the person's own report and score (./credit-upload/).
   creditUpload,
   // Real, read only, no vendor: the person's federal student loans from studentaid.gov (./my-aid/).

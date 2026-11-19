@@ -71,6 +71,14 @@ export function signatureValid(
     const expected = createHmac("sha256", secret).update(`${event.type}@${event.time}`).digest();
     return sameBytes(Buffer.from(event.hash, "hex"), expected);
   }
+  if (signing.kind === "pinwheel_v2") {
+    const at = headers.get(signing.timestampHeader) ?? "";
+    const given = /^v2=([0-9a-f]{64})$/i.exec(headers.get(signing.header) ?? "")?.[1];
+    if (!given || !/^\d{1,12}$/.test(at)) return false;
+    if (Math.abs(now.getTime() / 1000 - Number(at)) > WEBHOOK_TOLERANCE_SECONDS) return false;
+    const expected = createHmac("sha256", secret).update(`v2:${at}:${rawBody}`).digest();
+    return sameBytes(Buffer.from(given, "hex"), expected);
+  }
   let timestamp: string | null;
   let signatures: string[];
   if (signing.kind === "hmac_sha256_tv") {

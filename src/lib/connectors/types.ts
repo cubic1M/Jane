@@ -63,6 +63,8 @@ export type WebhookSigning =
     }
   // Svix (Resend, and others): svix-id, svix-timestamp and svix-signature, "v1,<base64>".
   | { kind: "svix"; secretEnv: string }
+  // Pinwheel's: `header` is "v2=<hex>", HMAC-SHA256 over "v2:<timestamp header>:<raw body>".
+  | { kind: "pinwheel_v2"; secretEnv: string; header: string; timestampHeader: string }
   // One header "t=<unix seconds>,v1=<hex>" over `${t}.${body}` (PostGrid, Stripe's Stripe-Signature;
   // several v1 while a secret rotates). `field` names the signature part when it isn't "v1"
   // (Canopy's "s").
