@@ -101,7 +101,7 @@ export async function loadStudentLoans(
         amountCents: { gt: 0 },
         pfcDetailed: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
       },
-      select: { date: true },
+      select: { date: true, amountCents: true },
     }),
     db.transactions.aggregate({
       where: {
@@ -140,10 +140,24 @@ export async function loadStudentLoans(
   // One qualifying payment a month at most.
   const paymentsSeen = new Set(payments.map((p) => p.date.toISOString().slice(0, 7))).size;
   const paymentsCounted = profile.countedBefore + paymentsSeen;
+  // What's been paid a month, when it's more than the bank's minimum and there's one student loan
+  // to pay (debugger 11-18: "Your plan now: $25.00 a month, not paid off in 50 years" beside three
+  // $231.40 MOHELA payments it had counted).
+  const months = new Map<string, number>();
+  for (const p of payments) {
+    const month = p.date.toISOString().slice(0, 7);
+    months.set(month, (months.get(month) ?? 0) + p.amountCents);
+  }
+  const monthly = [...months.values()].sort((a, b) => a - b);
+  const paid =
+    book.debts.filter((d) => d.kind === "student").length === 1 && monthly.length > 0
+      ? monthly[Math.floor(monthly.length / 2)]!
+      : 0;
+  const reported = loan ? loanPaymentCents(loan) : null;
   const input: StudentInput | null = loan && {
     balanceCents: loan.balanceCents!,
     aprBps: loan.aprBps!,
-    currentPaymentCents: loanPaymentCents(loan),
+    currentPaymentCents: Math.max(reported ?? 0, paid) || null,
     agiCents,
     familySize: profile.familySize,
     dependants: profile.dependants,
