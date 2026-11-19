@@ -18,6 +18,8 @@ import { loadChanges } from "@/lib/changes";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { scopedFor } from "@/lib/db-scoped";
 import { staleStatementsEnd } from "@/lib/report-state";
+import { historyDaysOf } from "@/lib/history-days";
+import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
 import { homeSummary } from "@/lib/home";
 import { matchCategory, type Intent } from "../intents";
 import { listGoals } from "@/lib/goals";
@@ -62,6 +64,31 @@ async function statementsEndOf(
   return staleStatementsEnd(read._max.date, asOf);
 }
 
+// Less history than bills show in: Home's strip's rule (src/lib/hub/view.ts cashFlowView).
+const tooLittle = (historyDays: number | undefined) =>
+  historyDays !== undefined && historyDays < CASH_FLOW_MIN_HISTORY_DAYS;
+
+// The same, read from the first and last transaction, where Home's summary isn't loaded.
+async function shortHistoryOf(
+  userId: string,
+  client: CapabilityContext["client"],
+): Promise<boolean> {
+  const read = await scopedFor(userId, client).transactions.aggregate({
+    _min: { date: true },
+    _max: { date: true },
+  });
+  const [first, last] = [read._min.date, read._max.date];
+  return (
+    first !== null &&
+    last !== null &&
+    tooLittle(
+      historyDaysOf({
+        transactions: [first, last].map((d) => ({ date: d.toISOString().slice(0, 10) })),
+      }),
+    )
+  );
+}
+
 async function answer(ctx: CapabilityContext): Promise<Reply | null> {
   const { intent } = ctx;
   const { userId, client, now, asOf } = ctx;
@@ -87,6 +114,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       ]);
       return subscriptionsReply(intent, recurring, snapshot, {
         statementsEnd: await statementsEndOf(userId, client, asOf),
+        shortHistory: await shortHistoryOf(userId, client),
       });
     }
     case "payday": {
@@ -165,12 +193,17 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         drawn: block !== null && rows.length <= CHAT_BLOCK_ROWS,
         payday,
         statementsEnd: rows.length === 0 ? await statementsEndOf(userId, client, asOf) : null,
+        shortHistory: tooLittle(home?.cashFlow.historyDays),
       });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
-      if (home?.safeToSpend) return safeReply(home.safeToSpend, asOf);
+      if (home?.safeToSpend) {
+        return safeReply(home.safeToSpend, asOf, {
+          shortHistory: tooLittle(home.cashFlow.historyDays),
+        });
+      }
       return safeReply(null, asOf, { statementsEnd: await statementsEndOf(userId, client, asOf) });
     }
     case "paycheck": {

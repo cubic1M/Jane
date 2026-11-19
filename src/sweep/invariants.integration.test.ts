@@ -17,7 +17,14 @@ import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { EVERYONE, makePerson, type OwnRows, type Who } from "./__fixtures__/people";
 import { atLocal, type Flat } from "./diff";
 import { staleStatementsEnd } from "@/lib/report-state";
-import { areaCounts, hiddenPageLinks, nowFromOldData, rawNames } from "./invariants";
+import {
+  areaCounts,
+  hiddenPageLinks,
+  noneFromShortHistory,
+  nowFromOldData,
+  rawNames,
+} from "./invariants";
+import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
 import { snapshotAt } from "./snapshot";
 
 // The walkers' bug classes as checks on every push (debug 3, 11-19; the classes, and the PRs
@@ -120,5 +127,16 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 9: 1886, 1894, 1907, 1909, 1931, 1986, 2060, 2079.
   it("never links to a page the beta hides", () => {
     expect(everyone(hiddenPageLinks)).toEqual([]);
+  });
+
+  // Class 6: 1944, 2001, 2007, 2064, 2107.
+  it("says nothing is due only with history enough to know", () => {
+    expect(
+      [...seen].flatMap(([who, flat]) => {
+        const days = flat["home.summary.cashFlow.historyDays"];
+        const short = typeof days === "number" && days < CASH_FLOW_MIN_HISTORY_DAYS;
+        return noneFromShortHistory(flat, short).map((found) => `${who} ${found}`);
+      }),
+    ).toEqual([]);
   });
 });

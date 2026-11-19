@@ -9,6 +9,7 @@ import {
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
 import { RULE_UNDO_HOURS } from "@/config/rules";
+import { TOO_LITTLE_HISTORY } from "@/config/areas";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
@@ -745,11 +746,14 @@ export function comingUpReply(
     drawn = false,
     payday = null,
     statementsEnd = null,
+    shortHistory = false,
   }: {
     drawn?: boolean;
     payday?: string | null;
     // Where the statements end, when that's too long ago to say what's coming up now.
     statementsEnd?: string | null;
+    // Less history than bills show in (CASH_FLOW_MIN_HISTORY_DAYS, Home's strip's rule).
+    shortHistory?: boolean;
   } = {},
 ): Reply {
   // Before payday: what's due before the next pay, when Jane knows when that is (debugger 11-17).
@@ -773,6 +777,9 @@ export function comingUpReply(
       [openLink("Upload newer statements", "/import")],
     );
   }
+  // Debug 3, 11-19 (class 6): one month of statements heard "Nothing is coming up that I can see."
+  // with rent still to come: Home's strip says why it can't tell, and so does the chat.
+  if (shown.length === 0 && shortHistory) return reply(TOO_LITTLE_HISTORY, open);
   if (shown.length === 0) return reply(`Nothing is ${span} that I can see.`, open);
   // Spec step 89: how many and how much first, then the list. A return window is listed with its
   // purchase but isn't money owed, so it isn't in the total (debug 3, 11-18: "$1,053.92 in all"
@@ -820,7 +827,12 @@ export function safeReply(
   } | null,
   asOf: string | null = null,
   // Why there's no figure, when Jane knows: statements too old to say what's in checking today.
-  { statementsEnd = null }: { statementsEnd?: string | null } = {},
+  // shortHistory: too little history to see bills in (CASH_FLOW_MIN_HISTORY_DAYS), so none taken
+  // off isn't none due.
+  {
+    statementsEnd = null,
+    shortHistory = false,
+  }: { statementsEnd?: string | null; shortHistory?: boolean } = {},
 ): Reply {
   if (!safe && statementsEnd) {
     // Debugger 11-16: a statement ending Sep 29, balance and all, heard "Jane needs your checking
@@ -858,9 +870,11 @@ export function safeReply(
         // before payday (debug 2, 11-16: "I don't see budgets or goals yet" a minute after "Set it
         // up" on an emergency fund goal).
         ` That's your ${safe.taxHeldCents ? "checking balance" : "whole checking balance"}${tax}: ${
-          payday
-            ? "no bills are due before then, and nothing is held back for budgets or goals."
-            : "I don't see any bills coming up, and nothing is held back for budgets or goals."
+          shortHistory
+            ? "there's too little history to see your bills yet, and nothing is held back for budgets or goals."
+            : payday
+              ? "no bills are due before then, and nothing is held back for budgets or goals."
+              : "I don't see any bills coming up, and nothing is held back for budgets or goals."
         }`;
   return reply(
     `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${leftOut}`,

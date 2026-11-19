@@ -80,6 +80,9 @@ export const CASH_FLOW_DAYS = 30;
 // there's too little to tell, not that nothing is due (debugger 11-14: a student with 26 days of one
 // statement read "Nothing due in the next month", rent and all).
 export const CASH_FLOW_MIN_HISTORY_DAYS = 45;
+// What the strip, and the chat's coming-up and safe-to-spend answers, say then (debug 3, 11-19).
+export const TOO_LITTLE_HISTORY =
+  "Too little history to see your bills yet: they show once about two months of transactions are in.";
 // The spending tile's bars: this many months, this one last.
 export const SPENDING_MONTHS = 6;
 // The goals tile draws at most this many goals.

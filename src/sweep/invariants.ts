@@ -179,3 +179,25 @@ export function hiddenPageLinks(flat: Flat): string[] {
     return isHiddenPage(drawn) ? [`${path}: goes to ${drawn}, a page the beta hides`] : [];
   });
 }
+
+// Class 6: no "nothing" claim when the history is too short to know. With less history than bills
+// show in (CASH_FLOW_MIN_HISTORY_DAYS, the strip's own rule), a text that says nothing is due, or
+// that it sees no bills or pay, also says the history is short. Walkers found "Nothing due in the
+// next month" over one statement, rent and all (#2007), safe to spend with "no bills" from a
+// month's data (#2064), "All good" over two weeks (#2107).
+const SAYS_NONE = [
+  /\bNothing (?:is )?(?:coming up|due)\b/,
+  /\b(?:don't|didn't) see any (?:bills|income|pay|subscriptions)\b/,
+  /\bNo (?:bills|income|subscriptions|paydays?)\b(?! to)/,
+];
+const SAYS_SHORT =
+  /\b(?:[Tt]oo little|short|little) history\b|\bonly (?:\d+|a few|one) (?:days?|weeks?|months?|statements?)\b|\bonce (?:about )?(?:two|2) months\b|\bonly (?:one|a) (?:month|statement)\b/;
+
+export function noneFromShortHistory(flat: Flat, short: boolean): string[] {
+  if (!short) return [];
+  return shownTexts(flat).flatMap(([path, text]) =>
+    SAYS_NONE.some((p) => p.test(text)) && !SAYS_SHORT.test(text)
+      ? [`${path}: says none from too little history: "${text.slice(0, 140)}"`]
+      : [],
+  );
+}
