@@ -81,6 +81,10 @@ export function studentYearOf(
 ): StudentYear {
   const money = studentMoney(data);
   const pace = (cents: number) => Math.round((cents * 12) / Math.max(1, rateMonths));
+  // Pay as a month first, then a year grossed up: the order the profile's monthly income and the
+  // other tax cards use, so the same pay is one figure on every card (debug 2, upload S5, 11-18).
+  const grossYear = (cents: number) =>
+    Math.round(Math.round(cents / Math.max(1, rateMonths)) * 12 * DETECTOR_RATES.tax.netToGross);
   const year = Number(data.today.slice(0, 4));
   const gig = data.transactions.filter(
     (t) =>
@@ -90,13 +94,10 @@ export function studentYearOf(
       (t.pfc === "INCOME_GIG_ECONOMY" || t.pfc === "INCOME_CONTRACTOR"),
   );
   const said = facts.school_deposit?.value;
-  const wages = pace(Math.round(sumCents(money.wages) * DETECTOR_RATES.tax.netToGross));
+  const wages = grossYear(sumCents(money.wages));
   const stipend =
     said === "wage" || said === "aid_refund" ? 0 : pace(sumCents(money.schoolDeposits));
-  const schoolPayAsWage =
-    said === "wage"
-      ? pace(Math.round(sumCents(money.schoolDeposits) * DETECTOR_RATES.tax.netToGross))
-      : 0;
+  const schoolPayAsWage = said === "wage" ? grossYear(sumCents(money.schoolDeposits)) : 0;
   const gigCents = pace(sumCents(gig));
   const wagesCents = wages + schoolPayAsWage;
   return {
