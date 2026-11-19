@@ -16,16 +16,10 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { PERSON_IDS, type PersonId } from "@/config/people";
+import { PERSON_IDS } from "@/config/people";
 import { PrismaClient } from "@/generated/prisma/client";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
-import { madeUpChaseCsv } from "@/lib/__fixtures__/made-up-statement";
 import { NO_PLAID } from "@/lib/__fixtures__/plaid";
-import { encrypt } from "@/lib/crypto";
-import { scopedFor } from "@/lib/db-scoped";
-import { finishImport } from "@/lib/import/background";
-import { saveUpload } from "@/lib/import/upload";
-import { DEMO_TOKEN_PREFIX, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { refreshPrimer } from "@/lib/jane-agent/claude-tools";
 import { scanSuggestions } from "@/lib/suggestions";
@@ -33,6 +27,7 @@ import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import { atLocal, changes, daysFrom, unexplained, type Change, type Flat } from "./diff";
 import { DATED } from "./reasons";
+import { makePerson, UPLOADS, type OwnRows, type Who } from "./__fixtures__/people";
 import { snapshotAt } from "./snapshot";
 
 // Gate C (mvp-ready.md): nothing a person sees moves with the calendar for no reason. For the demo
@@ -75,13 +70,6 @@ const listed = (name: string) =>
     ?.split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-// "upload": a made-up Chase statement (src/lib/__fixtures__/made-up-statement.ts), uploaded.
-// "two-uploads": a checking statement that ended 25 days before and a card's to the day, uploaded
-// together (debug 3, 11-16: one account's old data beside another's recent).
-// "mid-start": a statement that starts 50 days before, mid-month (debug 3, 11-16: a window that
-// starts before the data does).
-type Who = PersonId | "demo" | "upload" | "two-uploads" | "mid-start";
-const UPLOADS = new Set<Who>(["upload", "two-uploads", "mid-start"]);
 const people: Who[] = (listed("SWEEP_PEOPLE") as Who[]) ?? [
   "demo",
   ...PERSON_IDS,
@@ -103,6 +91,14 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
   const found: Finding[] = [];
   const timings: number[] = [];
 
+  // The test's own rows, written here so they go through the database's owner
+  // (./__fixtures__/people.ts).
+  const own = (): OwnRows => ({
+    person: (data) => client.user.create({ data }),
+    token: (id, accessTokenEncrypted) =>
+      client.plaidItem.update({ where: { id }, data: { accessTokenEncrypted } }),
+  });
+
   beforeAll(() => {
     stubTestKeys();
     vi.stubEnv("SYNC_SNAPSHOTS", "off");
@@ -122,69 +118,18 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
   });
 
   // A person with their bank linked on `day` (at 8am there) and its first sync done, or with a
-  // statement through that day uploaded then.
+  // statement through that day uploaded then (./__fixtures__/people.ts).
   async function person(who: Who, day: string, seed: string) {
     const linked = atLocal(day, 8, ZONE);
     vi.setSystemTime(linked);
-    const user = await client.user.create({
-      data: { email: `sweep-${who}-${day}-${made.length}@example.test`, timezone: ZONE },
+    const made_ = await makePerson(client, own(), who, {
+      linked,
+      seed,
+      email: `sweep-${who}-${day}-${made.length}@example.test`,
+      timezone: ZONE,
     });
-    made.push(user.id);
-    if (UPLOADS.has(who)) {
-      const checkingEnds = new Date(linked.getTime() - 25 * 86_400_000);
-      // The card's file holds only what came after the checking file ends: the two made-up
-      // statements share their lines, which the import rightly takes for the same account's.
-      const statements: [string, "checking" | "credit_card", string][] =
-        who === "upload"
-          ? [["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", linked)]]
-          : who === "mid-start"
-            ? [
-                [
-                  "Made-up checking",
-                  "checking",
-                  postedAfter(
-                    madeUpChaseCsv("ZZCHECKING", linked),
-                    new Date(linked.getTime() - 50 * 86_400_000),
-                  ),
-                ],
-              ]
-            : [
-                ["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", checkingEnds)],
-                [
-                  "Made-up card",
-                  "credit_card",
-                  postedAfter(madeUpChaseCsv("ZZCARD", linked), checkingEnds),
-                ],
-              ];
-      for (const [name, kind, csv] of statements) {
-        const form = new FormData();
-        form.set("accountId", "new");
-        form.set("new.name", name);
-        form.set("new.kind", kind);
-        form.append("files", new File([csv], "statement.csv", { type: "text/csv" }));
-        const saved = await saveUpload(scopedFor(user.id, client), form, { client });
-        if (!saved.ok) throw new Error(saved.error);
-        await finishImport(user.id, saved.runId, { client, now: linked });
-      }
-      return { userId: user.id, itemId: null };
-    }
-    const sample = who === "demo" ? undefined : (who as PersonId);
-    const { itemId } = await linkDemoBank(user.id, {
-      client,
-      now: linked,
-      ...(sample ? { person: sample } : {}),
-    });
-    const anchor = linked.toISOString().slice(0, 10);
-    await client.plaidItem.update({
-      where: { id: itemId },
-      data: {
-        accessTokenEncrypted: encrypt(
-          `${DEMO_TOKEN_PREFIX}${seed}:${anchor}${sample ? `:${sample}` : ""}`,
-        ),
-      },
-    });
-    await syncItem(itemId, { client, api: NO_PLAID, now: linked });
-    return { userId: user.id, itemId };
+    made.push(made_.userId);
+    return made_;
   }
 
   async function read(userId: string, now: Date): Promise<Flat> {
@@ -299,17 +244,6 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
     }
   }
 });
-
-// The made-up statement's lines posted after `day` (its Posting Date, MM/DD/YYYY), header kept.
-function postedAfter(csv: string, day: Date): string {
-  const [header, ...lines] = csv.split("\n");
-  const after = day.toISOString().slice(0, 10);
-  const kept = lines.filter((line) => {
-    const [m, d, y] = (line.split(",")[1] ?? "").split("/");
-    return Boolean(y) && `${y}-${m}-${d}` > after;
-  });
-  return [header, ...kept, ""].join("\n");
-}
 
 function summary(ms: number[]) {
   const sorted = [...ms].sort((a, b) => a - b);
