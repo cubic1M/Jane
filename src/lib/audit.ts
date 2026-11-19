@@ -86,6 +86,7 @@ export type AuditEvent =
   | "admin_viewed_feedback_screenshot"
   // /admin/costs: counts and spend only, across people.
   | "admin_viewed_costs"
+  | "admin_viewed_connectors"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"

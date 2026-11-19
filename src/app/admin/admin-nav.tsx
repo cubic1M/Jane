@@ -50,6 +50,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/costs" className="hover:underline">
           Costs
         </Link>
+        <Link href="/admin/connectors" className="hover:underline">
+          Connectors
+        </Link>
         <Link href="/admin/access-log" className="hover:underline">
           Access log
         </Link>
