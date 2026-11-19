@@ -19,6 +19,7 @@ import {
   cashKnown,
   liquidCents,
   listOf,
+  nameOf,
   nice,
   outCents,
   tx,
@@ -267,10 +268,6 @@ function asDetectionInput(data: ProfileInput): DetectionInput {
     })),
   };
 }
-
-// A charge as the cards name it: Jane's cleaned name for the merchant where the charge has one,
-// else its line made readable (debug 3, 11-19: "Target 00012345" from the bank's line).
-const nameOf = (t: ProfileTx) => t.merchantName ?? nice(t.description);
 
 const duplicateCharge: Detector = {
   capability: "cost",
