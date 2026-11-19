@@ -308,6 +308,22 @@ sample-data people. Tests use a fake `fetch`, never the network.
 | --- | --- | --- | --- | --- |
 | `canopy_connect`, `sandbox_canopy_connect` | Personal policies from the person's insurer: kind, carrier, premium, term, deductible, limits, renewal date (`GET /teams/{team}/pulls/{pull}`, Basic auth; webhook `canopy-signature` `t=,s=`) | `insurance_policies`, source `canopy`, updated in place on a new pull | The renewal reshop before a car or home renews, and a price rise against the last reshop | docs.usecanopy.com/reference and its OpenAPI, 2026-11-17 |
 
+## Loans and cards from the credit report (Method)
+
+`method_liabilities` and its sandbox twin `sandbox_method_liabilities` (`src/lib/connectors/method/`,
+built from docs.methodfi.com on 2026-11-19) read a person's loans and cards found through a
+soft-pull credit report, **federal student loans included** (the servicers Plaid dropped in August
+2024), into Jane's own `accounts` (source `method`) and `liabilities`. The Loans pages, the payoff
+planner and the student-loan cards read them like Plaid's. A credit-report figure is a snapshot as
+of the lender's last report; Method marks which came straight from the lender (`direct`). A card's
+rate given as a range is left unknown, and a federal loan is never called a Direct Loan, because
+Method doesn't say so. Each account is tied to the person's connection, so revoking it takes them
+back. The real one needs `soft_credit_pull`, an exact-text scope whose words Method and counsel
+haven't given, so nobody can consent to it; it also reaches nobody until
+`REAL_CONNECTORS.method_liabilities`. The person's identity check and Connect aren't built. Method's
+"Sandbox" environment carries live data, so anything but production uses its mocked Development
+environment.
+
 ## IRS transcripts (Chart), sandbox only
 
 `sandbox_chart_transcripts` (`src/lib/connectors/chart/`, built from developer.trychart.com and its
