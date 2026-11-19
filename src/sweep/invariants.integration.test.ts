@@ -27,6 +27,7 @@ import {
   rawNames,
   saidTwice,
   twoCardsOneHolding,
+  decidedOnEstimate,
   walkedUnlabelled,
   sameFigures,
 } from "./invariants";
@@ -175,5 +176,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // the chat's cash answer, 11-19).
   it("says estimated wherever it shows a balance walked forward from a statement", () => {
     expect(everyone(walkedUnlabelled)).toEqual([]);
+  });
+
+  // And decides nothing from an estimate (the pay-later payoff, 11-19).
+  it("decides from checking as the bank or statement shows it", () => {
+    expect(everyone(decidedOnEstimate)).toEqual([]);
   });
 });

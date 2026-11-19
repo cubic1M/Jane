@@ -34,7 +34,7 @@ export const DATED: readonly Reason[] = [
   {
     name: "what's coming up",
     paths:
-      /^(home\.summary\.(comingUp|deadlines|cashFlow|safeToSpend)|home\.(cashFlow|hero\.safe)\.|trees\.ahead\.|trees\.money\.(chips\.|summaries\.coming:|tree\.branches\.coming\.)|chat\.(what bills are coming up|when do I get paid|how much is my paycheck|what's safe to spend|how much cash do I have)\.|cash\.places\.)/,
+      /^(home\.summary\.(comingUp|deadlines|cashFlow|safeToSpend)|home\.(cashFlow|hero\.safe)\.|trees\.ahead\.|trees\.money\.(chips\.|summaries\.coming:|tree\.branches\.coming\.)|chat\.(what bills are coming up|when do I get paid|how much is my paycheck|what's safe to spend|how much cash do I have)\.|cash\.places\.|decides\.)/,
   },
   // The net worth chart: a point for every day, ending today.
   { name: "a day on the chart", paths: /^(netWorth\.|home\.hero\.netWorth\.)/ },
