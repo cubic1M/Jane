@@ -7,6 +7,23 @@ export const REAL_MONEY_MOVEMENT = false;
 
 export const STAND_IN_PARTNER = "Simulated transfers (no real money moves)";
 
+// Dwolla's Sandbox (batch-2 connectors; developers.dwolla.com, API reference and "Testing in the
+// Sandbox", read 2026-11-19): a money-movement partner for building against, never for real money.
+// Only the Sandbox host is here, and no production one, on purpose: real transfers would be a new
+// partner, REAL_MONEY_MOVEMENT and counsel's sign-off, never an env var. The key and secret are the
+// Sandbox app's (dashboard-sandbox.dwolla.com, Applications).
+export const DWOLLA_SANDBOX = {
+  base: "https://api-sandbox.dwolla.com",
+  keyEnv: "DWOLLA_SANDBOX_KEY",
+  secretEnv: "DWOLLA_SANDBOX_SECRET",
+  mediaType: "application/vnd.dwolla.v1.hal+json",
+  // A token is used until this many seconds before Dwolla says it expires (expires_in, 3600).
+  tokenMarginSeconds: 60,
+  // correlationId: 1 to 255 characters (Initiate a transfer).
+  correlationIdMax: 255,
+  name: "Dwolla Sandbox (no real money moves)",
+} as const;
+
 // A transfer runs this many days after it's scheduled, and can be undone until then.
 export const TRANSFER_DELAY_DAYS = 1;
 

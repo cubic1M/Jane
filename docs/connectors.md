@@ -353,3 +353,23 @@ carries the person's government id, date of birth and identity documents: counse
 own) and the sweep enrollment call (described in Alpaca's blog, not its reference). The paper account
 (`src/lib/paper/`) stays simulated money with its own pop-up and never reaches these.
 
+## Money between a person's own accounts (Dwolla's Sandbox), sandbox only
+
+`dwollaSandboxPartner` (`src/lib/money-movement/dwolla/`) is a `MoneyMovementPartner` built from
+developers.dwolla.com (Create an application access token, Initiate, Retrieve and Cancel a transfer,
+Transfer Lifecycle, Testing in the Sandbox, read 2026-11-19). Only the Sandbox host
+(`DWOLLA_SANDBOX` in `src/config/money-movement.ts`) is in code; there is no production one, and
+`REAL_MONEY_MOVEMENT` stays false. `moneyPartnerFor` never returns it, so nobody's transfers reach it:
+tests and a founder's own Sandbox run pass it in as `partner`.
+
+The one-day undo stays in Jane's queue. Scheduling sends Dwolla nothing (the ref is `JANEQ-…`), and an
+undo before the day is Jane's alone. On the transfer's day `settleTransfers` releases it to Dwolla
+through the partner's `release`, with the queue ref as Idempotency-Key and correlationId, so a retry
+never makes a second one. After that an undo asks Dwolla to cancel, and is refused once Dwolla says
+processing began. A transfer completes when Dwolla says `processed`. Dwolla's Sandbox runs no ACH: a
+transfer stays `pending` until a Sandbox simulation processes it.
+
+Not built: a Dwolla Verified Customer for the person (their identity) and verified funding sources for
+each account (`fundingSource` maps them per account); payments to someone else (a bill); Dwolla's
+webhooks (signed with `X-Request-Signature-SHA-256` over the body alone, no timestamp), since the status
+is read on the transfer's day; marking a `failed` or `cancelled` transfer at Dwolla as failed in Jane.
