@@ -123,6 +123,17 @@ a 404 unless `CONNECTORS=1`. In order:
 A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
 A body over the limit is refused on its `Content-Length` before it is read.
 
+## Checking the keys: `npm run connectors:check`
+
+Section C3. For each connector: its key names, `set` or `missing`, and whether its vendor's **test**
+environment accepts them (`yes (HTTP 404)`, `no (HTTP 401)`). It prints names and yes or no only, never
+a value. It calls only test hosts (`TEST_HOSTS` in `src/lib/connectors/env-check.ts`): Method's
+Development whatever `METHOD_ENV` says (Method's "Sandbox" is live data), Dwolla's Sandbox token,
+Pinwheel's Sandbox with an account id that can't exist, and PostGrid only with a key starting `test_`.
+SnapTrade and Retell have one host for test and live keys, so they're checked by name only.
+`--names` skips the calls. The names are held to `src/config` and `.env.example` by
+`env-check.test.ts`.
+
 ## Sandbox adapters
 
 `src/lib/connectors/sandbox/adapters.ts`: four simulated partners, each shaped like the partner the
