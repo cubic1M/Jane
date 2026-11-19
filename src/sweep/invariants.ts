@@ -182,3 +182,17 @@ export function noneFromShortHistory(flat: Flat, short: boolean): string[] {
       : [],
   );
 }
+
+// Class 2: a count agrees with its noun: "1 month", never "1 months"; "1 late fee". Walkers found
+// "1 months of data" (#2019), "1 late fees" (#2064), "1 urgent · 1 things" (#2093). Not a lone 1
+// that's part of a figure ("$1", "1.5", "11") or a date ("Nov 1"), and not words that end in s as
+// one ("1 bonus").
+const ONE_PLURAL =
+  /(?<![\d.,$/-]|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* )\b1 ((?:late |new |more |open |unpaid |missed |full )?[a-z]+s(?<!ss|us|is))\b/;
+
+export function onePlurals(flat: Flat): string[] {
+  return shownTexts(flat).flatMap(([path, text]) => {
+    const m = ONE_PLURAL.exec(text);
+    return m ? [`${path}: "1 ${m[1]}" in "${text.slice(0, 120)}"`] : [];
+  });
+}
