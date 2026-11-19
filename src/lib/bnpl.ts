@@ -21,6 +21,7 @@ import {
   type PlanSchedule,
 } from "@/planning/bnpl";
 import { addDays } from "@/lib/dates";
+import type { SinceStatement } from "@/planning/since-statement";
 import { todayOf } from "@/lib/today";
 
 // Buy now, pay later under control (spec step 176). Every plan with its next installments
@@ -38,9 +39,13 @@ export class BnplError extends Error {}
 type BnplPlanView = PlanSchedule & {
   provider: string;
   aprBps: number | null;
-  // Paying it off now costs nothing extra (a Pay in 4 plan), and checking can cover it.
+  // Paying it off now costs nothing extra (a Pay in 4 plan), and checking can cover it: as the bank
+  // or statement shows it, never an estimate.
   freePayoff: boolean;
   canCoverPayoff: boolean;
+  // When only checking walked forward to today would cover it: that estimate, said as a fact with
+  // what it added, never as "can cover" (src/planning/since-statement.ts).
+  coveredOnlyByEstimate?: { todayCents: number; since: SinceStatement };
   payoffScheduled: boolean;
 };
 
@@ -99,6 +104,15 @@ export async function loadBnpl(
     amountCents: b.amountCents,
   }));
   const checking = forecast?.todayCents ?? null;
+  // What decides: checking as the bank or statement shows it, never walked forward with pay Jane
+  // expects but hasn't seen (the manager, 11-19, as the idle-cash card and the cushion).
+  const shown = forecast?.startCents ?? null;
+  const since =
+    forecast && forecast.todayCents !== forecast.startCents
+      ? { day: forecast.startOn, cents: forecast.todayCents - forecast.startCents }
+      : null;
+  const covers = (cents: number | null, owed: number | null) =>
+    cents !== null && cents - (owed ?? 0) >= PAYOFF_CUSHION_CENTS;
   const done = await scopedFor(userId, client).moneyTransfers.findMany({
     where: {
       status: { in: ["pending", "completed"] },
@@ -128,8 +142,10 @@ export async function loadBnpl(
         provider: d.name.split(" ")[0],
         aprBps: d.aprBps,
         freePayoff: free,
-        canCoverPayoff:
-          free && checking !== null && checking - (d.balanceCents ?? 0) >= PAYOFF_CUSHION_CENTS,
+        canCoverPayoff: free && covers(shown, d.balanceCents),
+        ...(free && since && !covers(shown, d.balanceCents) && covers(checking, d.balanceCents)
+          ? { coveredOnlyByEstimate: { todayCents: checking!, since } }
+          : {}),
         payoffScheduled: done.some((t) => t.planKey === payoffKey(d.key)),
       };
     }),

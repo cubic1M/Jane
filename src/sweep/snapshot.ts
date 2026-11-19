@@ -6,6 +6,9 @@ import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { loadBnpl } from "@/lib/bnpl";
+import { forecastAccounts } from "@/detection/forecast";
+import { FORECAST_DAYS } from "@/config/detection";
 import { loadCash } from "@/lib/investments/cash";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { cashReply } from "@/lib/jane-agent/investments/replies";
@@ -65,6 +68,11 @@ export async function snapshotAt(
   // The chat's cash answer (cashReply, as "how much cash do I have" gets it), with the places it
   // adds up: class 4 holds its checking to Home's (src/sweep/invariants.ts sameFigures).
   const cash = await loadCash(userId, { client, now });
+  // What decides from cash, beside what it decides: checking as the bank or statement shows it, and
+  // each pay-later plan's payoff (class 4's decision side, src/sweep/invariants.ts).
+  const input = await loadDetectionInput(userId, { client, now });
+  const statementCents = forecastAccounts(input, FORECAST_DAYS)[0]?.startCents ?? null;
+  const bnpl = await loadBnpl(userId, { client, now, input });
   chat[CASH_QUESTION] = cashReply(cash);
   const trees = await loadAreaTrees(userId);
   return flatten({
@@ -80,6 +88,14 @@ export async function snapshotAt(
     trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
     chat,
+    decides: {
+      checkingAsShown: statementCents,
+      payoffs: bnpl.plans.map((p) => ({
+        name: p.name,
+        balanceCents: p.balanceCents,
+        canCoverPayoff: p.canCoverPayoff,
+      })),
+    },
     cash: {
       places: cash.places.map(({ name, kind, balanceCents, today }) => ({
         name,

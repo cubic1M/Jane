@@ -1,3 +1,4 @@
+import { sinceStatementNote } from "@/planning/since-statement";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import type { Bnpl } from "@/lib/bnpl";
 import { dayLabel } from "@/lib/day-label";
@@ -50,6 +51,16 @@ export function bnplReply(data: Bnpl, advice: boolean): Reply {
   if (free) {
     lines.push(
       `Paying off the ${free.name} now (${formatCents(free.balanceCents!)}) costs nothing extra: Pay in 4 plans charge no interest or fee for paying early.`,
+    );
+  }
+  // Only an estimate would cover it: said as a fact, labelled, never as "can cover" (11-19).
+  const estimated = advice
+    ? data.plans.find((p) => p.coveredOnlyByEstimate && !p.payoffScheduled)
+    : undefined;
+  if (!free && estimated?.coveredOnlyByEstimate) {
+    const e = estimated.coveredOnlyByEstimate;
+    lines.push(
+      `Your checking statement doesn't cover paying off the ${estimated.name} (${formatCents(estimated.balanceCents!)}) and keeping a cushion; checking today is ${formatCents(e.todayCents)}, estimated (${sinceStatementNote(e.since)}).`,
     );
   }
   return {

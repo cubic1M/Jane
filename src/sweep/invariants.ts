@@ -1,3 +1,4 @@
+import { PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
 import { FUND_NAMES } from "@/config/funds";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { landing } from "@/lib/area-pages/landing";
@@ -450,4 +451,24 @@ export function walkedUnlabelled(flat: Flat): string[] {
       ? [`${path}: a balance walked forward from a statement, unlabelled: "${text.slice(0, 140)}"`]
       : [],
   );
+}
+
+// And nothing is decided from an estimate (the manager, 11-19): an offer that needs checking to
+// cover it reads checking as the bank or statement shows it, never walked forward with pay Jane
+// expects but hasn't seen. The pay-later page offered "checking can cover the payoff" on the
+// estimate; the idle-cash card and the cushion read the statement.
+export function decidedOnEstimate(flat: Flat): string[] {
+  const shown = flat["decides.checkingAsShown"];
+  if (typeof shown !== "number") return [];
+  return Object.keys(flat)
+    .filter((k) => /^decides\.payoffs\.\d+\.canCoverPayoff$/.test(k) && flat[k] === true)
+    .flatMap((k) => {
+      const at = k.replace(/canCoverPayoff$/, "");
+      const owed = flat[`${at}balanceCents`];
+      return typeof owed === "number" && shown - owed < PAYOFF_CUSHION_CENTS
+        ? [
+            `${at}canCoverPayoff: ${String(flat[`${at}name`])} offered with $${(shown / 100).toFixed(2)} in checking as shown, under its $${(owed / 100).toFixed(2)} and cushion`,
+          ]
+        : [];
+    });
 }
