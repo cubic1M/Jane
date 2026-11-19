@@ -32,15 +32,18 @@ function Screen({ screen, from }: { screen: ConnectScreen; from: string }) {
           ))}
         </ul>
       </section>
-      <section aria-labelledby="from" className="flex flex-col gap-1">
-        <h2 id="from" className="font-semibold">
-          From
-        </h2>
-        <p className="text-sm">{screen.from}</p>
-        {screen.partnerStep && (
-          <p className={MUTED}>You sign in on their page, then come straight back here.</p>
-        )}
-      </section>
+      {/* Only when the connector names its source: its name already says who it is. */}
+      {(screen.from || screen.partnerStep) && (
+        <section aria-labelledby="from" className="flex flex-col gap-1">
+          <h2 id="from" className="font-semibold">
+            From
+          </h2>
+          {screen.from && <p className="text-sm">{screen.from}</p>}
+          {screen.partnerStep && (
+            <p className={MUTED}>You sign in on their page, then come straight back here.</p>
+          )}
+        </section>
+      )}
       <section aria-labelledby="stop" className="flex flex-col gap-1">
         <h2 id="stop" className="font-semibold">
           How to stop

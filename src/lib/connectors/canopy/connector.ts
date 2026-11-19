@@ -40,6 +40,7 @@ export function parseCanopyEvent(body: unknown): LinkEvent | null {
 export const canopyConnect: Connector = {
   id: "canopy_connect",
   name: "Your insurance policies, through Canopy Connect",
+  from: "Your insurer, through Canopy Connect (read only: it can't change a policy)",
   category: "insurance",
   capabilities: ["read"],
   scopes: ["read_policies"],
@@ -70,6 +71,7 @@ export const canopyConnect: Connector = {
 export const sandboxCanopyConnect: Connector = {
   id: "sandbox_canopy_connect",
   name: "Your insurance policies, through Canopy Connect (sandbox)",
+  from: "Sample insurance policies (Canopy's own example)",
   category: "insurance",
   capabilities: ["read"],
   scopes: ["read_policies"],

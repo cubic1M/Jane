@@ -26,14 +26,13 @@ export type ConnectScreen = {
   name: string;
   // What Jane reads or does, one line per scope, in the consent's own words.
   reads: string[];
-  from: string;
+  // Where the data comes from, when the connector says (Connector.from); its name says the rest.
+  from: string | null;
   // Whether the partner has a step of its own after the yes.
   partnerStep: boolean;
   // Exactly what the person agrees to; null when a legal scope has no approved text yet.
   agreesTo: string | null;
 };
-
-const fromOf = (connector: Pick<Connector, "from" | "name">) => connector.from ?? connector.name;
 
 // What the consent screen says. Throws ConsentError when the connector isn't for this person now.
 export async function connectScreen(
@@ -46,7 +45,7 @@ export async function connectScreen(
     connectorId: connector.id,
     name: connector.name,
     reads: connector.scopes.map((scope) => CONSENT_SCOPES[scope]),
-    from: fromOf(connector),
+    from: connector.from ?? null,
     partnerStep: Boolean(connector.connect),
     agreesTo: consentWords(connector, connector.scopes),
   };

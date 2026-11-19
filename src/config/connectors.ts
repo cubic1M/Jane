@@ -91,6 +91,7 @@ export const CONSENT_SCOPES = {
   share_with_partner: "Share the details a partner needs for a quote or offer",
   read_credit: "See your credit report and score",
   read_pay: "See your pay stubs and who you work for",
+  read_tax_transcripts: "See your IRS account transcripts",
   soft_credit_pull: "Let a partner check your credit without affecting your score",
   ach_debit_authorization: "Let a partner take a payment from your bank account, as you authorize",
   tax_7216_disclosure: "Share your tax information with a tax partner, for the use you choose",
