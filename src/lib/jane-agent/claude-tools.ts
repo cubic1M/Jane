@@ -1,3 +1,4 @@
+import { sinceStatementNote } from "@/planning/since-statement";
 import { oneLine } from "@/lib/untrusted-text";
 import { adviceMode } from "@/lib/advice-mode";
 import { log } from "@/lib/log";
@@ -604,7 +605,18 @@ async function runChatToolWork(
       return out({
         safeToSpend: money(safe.safeCents),
         until: safe.payday,
-        checkingBalance: money(safe.balanceCents),
+        // A statement's balance is the balance; walked forward with the pay and bills expected since
+        // it ends, it's an estimate of today's and says so, as Home's "In checking, estimated" does
+        // (gate B, 11-18: "how much do I have invested?" gave checking as $3,022.33, the estimate,
+        // then "Your cash is $3,087.33", the statement's, in one answer).
+        ...(safe.sinceStatement
+          ? {
+              checkingBalanceOnTheStatement: money(safe.balanceCents - safe.sinceStatement.cents),
+              statementEnds: safe.sinceStatement.day,
+              checkingEstimatedToday: money(safe.balanceCents),
+              estimate: `${sinceStatementNote(safe.sinceStatement)}. Say the statement's balance as the balance, and this one only as an estimate of today's.`,
+            }
+          : { checkingBalance: money(safe.balanceCents) }),
         upcomingBills: money(safe.billsCents),
         leftInBudgets: money(safe.budgetsLeftCents),
         forGoals: money(safe.goalsCents),
