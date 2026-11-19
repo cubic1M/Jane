@@ -1,5 +1,17 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+// The area loaders read the default client: the test database here.
+vi.mock("@/lib/db", async () => {
+  const { PrismaClient: Client } = await import("@/generated/prisma/client");
+  const { PrismaPg: Adapter } = await import("@prisma/adapter-pg");
+  return {
+    db: new Client({ adapter: new Adapter({ connectionString: process.env.TEST_DATABASE_URL }) }),
+  };
+});
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+
 import { PrismaClient } from "@/generated/prisma/client";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { EVERYONE, makePerson, type OwnRows, type Who } from "./__fixtures__/people";
