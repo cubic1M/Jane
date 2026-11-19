@@ -190,6 +190,10 @@ enum DataSourceKind {
   plaid
   // Read from a person's own Robinhood connection (src/lib/robinhood/), off unless ROBINHOOD_LINK=1.
   robinhood
+  // Read through a connector (src/lib/connectors/), off for real people: Method's loans and cards,
+  // SnapTrade's brokerage accounts.
+  method
+  snaptrade
 
   @@map("data_source")
 }
@@ -616,6 +620,9 @@ model ConnectorCredential {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  // Accounts read through this connection (Method, SnapTrade).
+  accounts Account[]
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, connectorId])
@@ -745,6 +752,10 @@ model Account {
   itemId                String?        @map("item_id")
   // Robinhood-only: goes when the connection goes.
   robinhoodConnectionId String?        @map("robinhood_connection_id")
+  // Read through a connector (Method, SnapTrade): goes when the person revokes that connection, with
+  // the partner's own id for the account.
+  connectorCredentialId String?        @map("connector_credential_id")
+  externalAccountId     String?        @map("external_account_id")
   plaidAccountId        String?        @unique @map("plaid_account_id")
   name                  String
   mask                  String?
@@ -762,6 +773,7 @@ model Account {
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   item                   PlaidItem?              @relation(fields: [itemId], references: [id], onDelete: Cascade)
   robinhoodConnection    RobinhoodConnection?    @relation(fields: [robinhoodConnectionId], references: [id], onDelete: Cascade)
+  connectorCredential    ConnectorCredential?    @relation(fields: [connectorCredentialId], references: [id], onDelete: Cascade)
   transactions           Transaction[]
   recurringStreams       RecurringStream[]
   balanceSnapshots       BalanceSnapshot[]
@@ -776,6 +788,7 @@ model Account {
   beneficiaries          AccountBeneficiary[]
   importRuns             ImportRun[]
 
+  @@unique([connectorCredentialId, externalAccountId])
   @@index([userId])
   @@index([itemId])
   @@index([robinhoodConnectionId])
