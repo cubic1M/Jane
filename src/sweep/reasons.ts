@@ -1,7 +1,7 @@
 import { STALE_UPLOAD_DAYS } from "@/config/import";
 import { DATA_ENDED_AFTER_DAYS } from "@/config/insights";
 import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
-import { FILING, W4 } from "@/config/student-taxes";
+import { FILING, FORMS_COMING, W4 } from "@/config/student-taxes";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import type { Reason } from "./diff";
@@ -113,7 +113,9 @@ export const DATED: readonly Reason[] = [
   // chat says what it has ends there instead of answering from its last month.
   {
     name: "the data ending",
-    paths: /^chat\.how much did I spend this month\./,
+    // And Money's month line says to when, as the chat does: "in October (to Oct 22, where what I
+    // have ends)" (gate C, debug 3, 11-19: the upload people's 15th day).
+    paths: /^(chat\.how much did I spend this month\.|trees\.money\.summaries\.spending:month$)/,
     on: daysAfter("lastLine", DATA_ENDED_AFTER_DAYS + 1),
   },
   // Statements that end more than STALE_UPLOAD_DAYS ago say nothing about now (statementsTooOld,
@@ -134,6 +136,15 @@ export const DATED: readonly Reason[] = [
     paths: /^suggestions\.taxes:filing_extension\./,
     on: (day) =>
       day.slice(5) === W4.extensionFrom || day.slice(5) === addDays(FILING.due, 1).slice(5),
+  },
+  // The forms on the way for the year (src/detectors/tax-forms.ts) come on FORMS_COMING.from and go
+  // the day after FORMS_COMING.until (gate C, debug 3, 11-19: every person's Dec 1).
+  {
+    name: "the tax forms season",
+    paths: /^suggestions\.taxes:tax_forms_coming\./,
+    on: (day) =>
+      day.slice(5) === FORMS_COMING.from ||
+      day.slice(5) === addDays(`2001-${FORMS_COMING.until}`, 1).slice(5),
   },
   // A balance older than STALE_AFTER_DAYS isn't today's: safe to spend is left out (an upload's,
   // whose balance is its statement's). Each account's own: an old checking file beside a recent
