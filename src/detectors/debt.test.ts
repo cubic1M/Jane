@@ -38,7 +38,8 @@ describe("on the eight sample people", () => {
     const by = Object.fromEntries(PEOPLE.map((p) => [p.id, topics(p.id).sort()]));
     // Card interest on a $1,940 balance (a 0% transfer would save more than its fee), 65% of her
     // card limit in use, and six Klarna installments.
-    expect(by.renter).toEqual(["balance_transfer", "bnpl", "credit_building"]);
+    // And a $160 student loan payment above RAP's $98.67 at her $39,468 of pay.
+    expect(by.renter).toEqual(["balance_transfer", "bnpl", "credit_building", "student_repayment"]);
     // A GAP add-on bought with the car loan, and a teacher's $62,000 student loan.
     // Also the Reyes' $2,100 imaging bill (the insurance lane's sample data).
     expect(by.family).toEqual(["car_addons", "medical_bills", "student_forgiveness"]);
@@ -117,13 +118,15 @@ describe("a student loan", () => {
       (x) => x.topic === "student_repayment",
     )!;
     expect(s).toBeDefined();
-    // 7% of $3,280 is about $230 a month against $600.
-    expect(s.worthCents).toBe((60_000 - Math.round(328_000 * 0.07)) * 12);
+    // The lowest income-driven plan's payment by the plans' rules, against $600.
+    const idr = Number(s.why.match(/would ask about \$([\d,]+\.\d{2})/)![1]!.replace(/,/g, ""));
+    expect(idr).toBeLessThan(600);
+    expect(s.worthCents).toBe(Math.round((600 - idr) * 100) * 12);
     expect(s.confidence.reason).toContain("student loan payments");
     expect(s.action.href).toBe("/loans/student");
   });
-  it("is not raised for Maya, whose $160 payment is already under the estimate", () => {
-    expect(topics("renter")).not.toContain("student_repayment");
+  it("is not raised when the payment is already near the lowest plan's", () => {
+    expect(topics("renter", withStudent(11_000, 328_000))).not.toContain("student_repayment");
   });
   it("is not raised without a student loan", () => {
     expect(topics("retiree", withStudent(60_000, 452_000))).not.toContain("student_repayment");

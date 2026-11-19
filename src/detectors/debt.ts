@@ -2,10 +2,12 @@ import { plural } from "@/lib/plural";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { ADDON_RULES } from "@/config/car-loan";
+import { DAY_MS } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import type { Profile, ProfileTx } from "@/profile/build";
 import { median } from "@/detection/units";
 import { addonCandidates, refundFor } from "@/planning/car-loan";
+import { lowestIncomeDrivenCents, paycheckYearCents } from "@/planning/student-loans";
 import { type Detector, suggestion } from "./contract";
 import {
   evidence,
@@ -44,7 +46,27 @@ export const monthlyPaymentOf = (payments: readonly ProfileTx[]): number => {
 const income = (profile: Profile) =>
   typeof profile.facts.monthly_income.value === "number" ? profile.facts.monthly_income.value : 0;
 
-// Student loan payments well above what an income-driven plan would ask.
+// The last year's paychecks as a year, the way /loans/student works it out: wages in the last 365
+// days, paced over the days the statements cover.
+function paycheckYear(data: Parameters<Detector["detect"]>[0]["data"]): number {
+  const yearAgo = new Date(Date.parse(`${data.today}T00:00:00Z`) - 365 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const lastYear = data.transactions.filter((t) => t.date >= yearAgo);
+  const pay = lastYear
+    .filter((t) => t.amountCents < 0 && (t.pfc === "INCOME_SALARY" || t.pfc === "INCOME_WAGES"))
+    .reduce((s, t) => s + t.amountCents, 0);
+  const dates = lastYear.map((t) => t.date).sort();
+  const covered =
+    dates.length > 0
+      ? Math.round((Date.parse(dates.at(-1)!) - Date.parse(dates[0]!)) / DAY_MS) + 1
+      : 365;
+  return paycheckYearCents(pay, covered);
+}
+
+// Student loan payments well above what an income-driven plan would ask, by the plans' own rules
+// at the income /loans/student uses (debug 2, sweep 7, Plaid + loans, 11-18: the card said a plan
+// "would ask roughly $139.98", 7% of take-home pay, and the page it opened said RAP $41.36).
 const studentRepayment: Detector = {
   capability: "debt",
   topic: "student_repayment",
@@ -52,13 +74,17 @@ const studentRepayment: Detector = {
   needs: ["monthly_income"],
   detect({ profile, data }) {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
-    if (payments.length < D.studentPaymentsMin || balanceOf(data.accounts, "student") <= 0) {
-      return null;
-    }
+    const owed = balanceOf(data.accounts, "student");
+    if (payments.length < D.studentPaymentsMin || owed <= 0) return null;
+    // No paychecks (someone paid as a contractor): the year of income the profile sees.
+    const pay = paycheckYear(data);
+    const agi = pay > 0 ? pay : income(profile) * 12;
+    if (agi <= 0) return null;
     const monthly = monthlyPaymentOf(payments);
-    const idr = Math.round(income(profile) * D.studentIdrShare);
+    const loan = data.liabilities.find((l) => l.kind === "student" && l.aprBps !== null);
+    const idr = lowestIncomeDrivenCents(owed, loan?.aprBps ?? null, agi);
     const gap = Math.round(monthly - idr);
-    if (income(profile) <= 0 || gap < D.studentMinGapCents) return null;
+    if (gap < D.studentMinGapCents) return null;
     return suggestion("debt", "student_repayment", {
       title: "Compare an income-driven plan for your student loans",
       headline: headlineOf("Compare an income-driven loan plan", gap * 12, "saves"),
@@ -77,7 +103,7 @@ const studentRepayment: Detector = {
         ),
       ]),
       urgency: "later",
-      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans. If they're federal, an income-driven plan on your ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
+      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans. If they're federal, the lowest income-driven plan at about ${formatCents(agi)} a year of ${pay > 0 ? "pay" : "income"} would ask about ${formatCents(idr)} a month.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
     });
   },
