@@ -1,3 +1,4 @@
+import { REGULAR_PAYER_PERSON_WORD } from "@/config/detection";
 import { HSA_DEPOSIT } from "@/config/health-taxes";
 import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
 import { TROUBLE_MONEY_LEFT_DAYS } from "@/config/debt-trouble";
@@ -58,6 +59,9 @@ import {
   studentReading,
   travelReading,
 } from "./life-facts";
+
+// The word that says one person paid another (src/categorize/regular-payers.ts reads the same).
+const PERSON_PAID = new RegExp(`\\b${REGULAR_PAYER_PERSON_WORD}\\b`, "i");
 
 // The picture of you (spec step 253): one profile per person, built from their
 // transactions, accounts, loans and answers. Pure: the loader (src/lib/profile.ts) gathers
@@ -567,8 +571,14 @@ function incomeFacts(b: Builder) {
   if (earners > 0) set("earners", earners, "seen", "payroll names", salary.length);
   else unknown("earners");
 
+  // Not money a person sends by Zelle, which regular payers file as other income (a tenant's rent,
+  // debugger 11-02): the tax estimate leaves it out as income it can't place, and so does this (gate
+  // B, 11-18: a monthly $400 from family read as "about $1,759 a month … from your salary at UNIV OF
+  // CALIF", and the Saver's cards' "income near $27,444.46", where pay was about $1,350).
+  const fromAPerson = (t: ProfileTx) => t.pfc === "INCOME_OTHER" && PERSON_PAID.test(t.description);
   const regularIncome = income.filter(
     (t) =>
+      !fromAPerson(t) &&
       !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED") &&
       !ONE_OFF_PAY.test(t.description) &&
       !RETIREMENT_LUMP_SUM.test(t.description),
