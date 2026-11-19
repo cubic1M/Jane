@@ -122,6 +122,8 @@ export type LoansTreeInput = {
   debts: {
     key: string;
     name: string;
+    // "card", "student", "auto"…: a card's payment is the bank's minimum, not what's paid.
+    kind?: string;
     kindLabel: string;
     balanceCents: number | null;
     aprBps: number | null;
@@ -196,8 +198,10 @@ export function loansTree(input: LoansTreeInput): AreaTree {
     const status: TreeStatus = d.overdue ? "act" : d.balanceCents === null ? "look" : "good";
     const parts = [
       // Debugger 11-13: a pay-in-4 plan's $62.25 every two weeks read "$62 a month".
+      // A card's is the minimum the bank asks (debug 2, 11-19: "$45 a month" on a card paid $200 a
+      // month).
       d.paymentCents !== null
-        ? `${shortMoney(d.paymentCents)} ${d.paymentEvery === "two_weeks" ? "every two weeks" : "a month"}`
+        ? `${d.kind === "card" ? "minimum " : ""}${shortMoney(d.paymentCents)} ${d.paymentEvery === "two_weeks" ? "every two weeks" : "a month"}`
         : null,
       d.nextDue ? `next due ${dayLabel(d.nextDue)}` : null,
     ].filter(Boolean);

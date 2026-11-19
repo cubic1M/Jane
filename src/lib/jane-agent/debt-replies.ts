@@ -39,7 +39,7 @@ function line(debt: Debt): string {
         : `${debt.name}: balance not known yet, ${rateWords(debt)}`;
   const parts = [head];
   const payment = paymentWords(debt);
-  if (payment) parts.push(payment);
+  if (payment) parts.push(debt.kind === "card" ? `minimum ${payment}` : payment);
   if (debt.payoffDate) parts.push(`paid off by ${dayLabel(debt.payoffDate, { year: true })}`);
   return `- ${parts.join(", ")}${debt.overdue ? ". Your bank shows it as overdue" : ""}`;
 }
@@ -149,7 +149,12 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   );
   const payment = paymentWords(debt);
   if (payment) {
-    lines.push(`You pay ${payment}${debt.nextDue ? `, next on ${dayLabel(debt.nextDue)}` : ""}.`);
+    // A card's payment on file is the bank's minimum, not what's paid (debug 2, 11-19: "You pay
+    // $45.00 a month" for a card paid $200 a month).
+    const due = debt.nextDue ? `, next on ${dayLabel(debt.nextDue)}` : "";
+    lines.push(
+      debt.kind === "card" ? `The minimum is ${payment}${due}.` : `You pay ${payment}${due}.`,
+    );
   }
   // An uploaded card's balance is asked on the import page (loansIntro). Debugger 11-17: "how much
   // do I owe on my chase card?" said it didn't know, then "A card has no end date", with no way
