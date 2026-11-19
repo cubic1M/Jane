@@ -63,7 +63,7 @@ describe("how much do I owe", () => {
     expect(reply.body.split("\n")).toEqual([
       "You owe $20,430.50 on 2 loans and cards, the same as your net worth counts.",
       "Plus 1 buy now, pay later plan (1 without a balance yet). Net worth doesn't count these: they aren't bank accounts.",
-      "- Demo Credit Card ····0003: $2,410.50 at 22.99% (from your bank), $35.00 a month. Your bank shows it as overdue",
+      "- Demo Credit Card ····0003: $2,410.50 at 22.99% (from your bank), minimum $35.00 a month. Your bank shows it as overdue",
       "- Affirm plan: balance and rate not known yet, $89.50 a month",
       "- Demo Car Loan ····0006: $18,020.00 at 6.90% fixed (from your bank), $494.10 a month, paid off by Oct 1, 2029",
       "I don't have a rate for Affirm plan. Add it on the loans page and I'll count it.",
