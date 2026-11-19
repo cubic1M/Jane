@@ -433,6 +433,12 @@ async function LoansContent({
   details[itemId("borrow", "cards")] = <PageLink href="/loans/cards" />;
   details[itemId("reviews", "debt")] = <PageLink href="/loans/review" />;
 
+  // Nothing owed but something to look at ("No credit history may be building"): the tree shows it,
+  // as Home's tile counts it (debugger 11-19: "1 to look at" there, an empty page here).
+  const toLook = area.tree.branches.some((b) =>
+    b.items.some((i) => i.status === "look" || i.status === "act"),
+  );
+
   // Opened from a debt's "Add what your bank doesn't report" (?terms=) or a deep link.
   const focus = one("focus") || (openKey ? itemId("debts", openKey) : "");
 
@@ -461,8 +467,8 @@ async function LoansContent({
         </p>
       )}
 
-      {book.debts.length === 0 ? (
-        book.cardPaidNotOnFile ? (
+      {book.debts.length === 0 &&
+        (book.cardPaidNotOnFile ? (
           // The line above already asks for the card's statement: here, only the way to add it
           // (debugger 11-15: it was asked for twice, once more as "When you add your accounts").
           <Link href="/import" className={`self-start ${LINK}`}>
@@ -477,8 +483,8 @@ async function LoansContent({
             (a card statement, or a bank that reports loans), they show here with their rates and
             due dates.
           </p>
-        )
-      ) : (
+        ))}
+      {(book.debts.length > 0 || toLook) && (
         <AreaPage
           tree={area.tree}
           label="Loans & credit"
