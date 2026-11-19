@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { detect } from "@/detection/detect";
 import { loadDetectionInput } from "@/detection/input";
+import { withAreaStatus } from "@/lib/hub/area-status";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
@@ -58,6 +59,7 @@ export async function snapshotAt(
     );
     chat[question] = reply;
   }
+  const trees = await loadAreaTrees(userId);
   return flatten({
     asOf,
     detected: Object.fromEntries(detected.map((c) => [`${c.type}:${c.key}`, c])),
@@ -66,8 +68,9 @@ export async function snapshotAt(
     home: top
       ? { summary: top.home, hero: heroView(top.hero), cashFlow: cashFlowView(top.cashFlow) }
       : null,
-    tiles: areas ? tilesView(areas) : null,
-    trees: await loadAreaTrees(userId),
+    // As Home shows them: each tile's status is its area's tree's (src/lib/hub/area-status.ts).
+    tiles: areas ? withAreaStatus(tilesView(areas), trees) : null,
+    trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
     chat,
   });

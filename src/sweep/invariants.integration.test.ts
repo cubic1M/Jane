@@ -16,7 +16,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { EVERYONE, makePerson, type OwnRows, type Who } from "./__fixtures__/people";
 import { atLocal, type Flat } from "./diff";
-import { rawNames } from "./invariants";
+import { areaCounts, rawNames } from "./invariants";
 import { snapshotAt } from "./snapshot";
 
 // The walkers' bug classes as checks on every push (debug 3, 11-19; the classes, and the PRs
@@ -82,5 +82,20 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 1: 1955, 1962, 1970, 2025, 2034, 2083, 2084, 2091.
   it("names what it shows by the cleaned name, never the bank's raw line", () => {
     expect(everyone(rawNames)).toEqual([]);
+  });
+
+  // Class 3: 1889, 1907, 2079, 2101, 2113.
+  it("adds up each area's counts, and says on its tile what its page says", () => {
+    // The area loaders swallow a failure (src/lib/hub/area-trees.ts): with no tree there'd be
+    // nothing to count, so every person's six areas must have read.
+    const areas = ["insurance", "loans", "taxes", "ahead", "investments", "money"];
+    expect(
+      [...seen].flatMap(([who, flat]) =>
+        areas
+          .filter((a) => typeof flat[`trees.${a}.tree.sub`] !== "string")
+          .map((a) => `${who} ${a}`),
+      ),
+    ).toEqual([]);
+    expect(everyone(areaCounts)).toEqual([]);
   });
 });

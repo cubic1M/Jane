@@ -64,3 +64,75 @@ export function rawNames(flat: Flat): string[] {
     rawLineMarks(text).map((what) => `${path}: ${what} in "${text.slice(0, 120)}"`),
   );
 }
+
+// Class 3: an area's counts add up, and its tile says what its page says. A tree's line ("1
+// urgent · 6 to look at") is its items' statuses counted, each branch's line and status are its
+// own items', and Home's tile takes the tree's status and line (src/lib/hub/area-status.ts).
+// Walkers found a branch whose urgent item hid its things to look at (#2101), a tile saying
+// "All good" over a page with items (#2113), a count that left one out (#1889).
+const COUNT = (line: unknown, word: "urgent" | "to look at") => {
+  const m = typeof line === "string" ? new RegExp(`(\\d+) (?:things? )?${word}`).exec(line) : null;
+  return m ? Number(m[1]) : 0;
+};
+const RANK: Record<string, number> = { good: 0, look: 1, act: 2 };
+const worstOf = (statuses: unknown[]) =>
+  statuses.reduce<string | undefined>(
+    (w, s) => (typeof s === "string" && (!w || RANK[s]! > RANK[w]!) ? s : w),
+    undefined,
+  );
+// The names under `prefix.` in a flat snapshot (an array's items, by their names).
+const childrenOf = (flat: Flat, prefix: string) => [
+  ...new Set(
+    Object.keys(flat)
+      .filter((k) => k.startsWith(`${prefix}.`) && k !== `${prefix}.length`)
+      .map((k) => k.slice(prefix.length + 1).split(".")[0]!),
+  ),
+];
+
+export function areaCounts(flat: Flat): string[] {
+  const found: string[] = [];
+  const areas = Object.keys(flat).flatMap((k) => /^trees\.([^.]+)\.tree\.sub$/.exec(k)?.[1] ?? []);
+  for (const area of areas) {
+    const tree = `trees.${area}.tree`;
+    let urgent = 0;
+    let look = 0;
+    const branchStatuses: unknown[] = [];
+    for (const b of childrenOf(flat, `${tree}.branches`)) {
+      const branch = `${tree}.branches.${b}`;
+      const items = childrenOf(flat, `${branch}.items`).map(
+        (i) => flat[`${branch}.items.${i}.status`],
+      );
+      const u = items.filter((s) => s === "act").length;
+      const l = items.filter((s) => s === "look").length;
+      urgent += u;
+      look += l;
+      const line = flat[`${branch}.line`];
+      if ((u > 0 || l > 0) && (COUNT(line, "urgent") !== u || COUNT(line, "to look at") !== l)) {
+        found.push(`${branch}.line: "${String(line)}", its items: ${u} urgent, ${l} to look at`);
+      }
+      const status = flat[`${branch}.status`];
+      const own = worstOf(items);
+      if (own && own !== "good" && status !== own) {
+        found.push(`${branch}.status: ${String(status)}, its items' worst: ${own}`);
+      }
+      branchStatuses.push(status);
+    }
+    const sub = flat[`${tree}.sub`];
+    const counted = urgent > 0 || look > 0;
+    if (
+      counted
+        ? COUNT(sub, "urgent") !== urgent || COUNT(sub, "to look at") !== look
+        : COUNT(sub, "urgent") + COUNT(sub, "to look at") > 0
+    ) {
+      found.push(`${tree}.sub: "${String(sub)}", its items: ${urgent} urgent, ${look} to look at`);
+    }
+    const health = flat[`tiles.${area}.health`];
+    const status = worstOf(branchStatuses) ?? "good";
+    if (health !== undefined && health !== null && health !== status) {
+      found.push(
+        `tiles.${area}.health: ${String(health)} ("${String(flat[`tiles.${area}.healthWhy`])}"), its page: ${status} ("${String(sub)}")`,
+      );
+    }
+  }
+  return found;
+}
