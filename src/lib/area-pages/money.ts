@@ -127,6 +127,10 @@ export type MoneyTreeInput = {
   }[];
   // Too little history to see bills in (Home's strip says so): no lowest point ahead is claimed.
   shortHistory?: boolean;
+  // The last day statements reach, when that's too long ago to say what's held now (Home's and the
+  // report's "Your statements end …", staleStatementsEnd): no lowest point ahead from a balance
+  // that old, and net worth says where its figure is from, as the chat's does.
+  statementsEnd?: string | null;
   // The forecast's bills, soonest first, and how many of its days are "this week".
   bills: { merchant: string; date: string; amountCents: number }[];
   weekEnds: string;
@@ -247,7 +251,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
 
   // A month of a new account shows no bills yet, so "Nothing coming up takes it lower" was a
   // guess said as a fact beside Home's "Too little history to see your bills yet" (debugger 11-19).
-  for (const l of input.shortHistory ? [] : input.lows) {
+  // Nor from statements that ended long ago: their balance read as "$8,450.00 today. Nothing
+  // coming up takes it lower." two months on (debug 3's invariants, 11-19).
+  for (const l of input.shortHistory || input.statementsEnd ? [] : input.lows) {
     const under = l.lowCents < input.cushionCents;
     items.coming.push(
       item("coming", `low-${l.accountId}`, {
@@ -447,7 +453,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         summary:
           h.netKnown === false
             ? "Your files don't include a balance yet. Add one on the import page."
-            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${left ? ` ${left.sentence}` : ""}`,
+            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${left ? ` ${left.sentence}` : ""}${input.statementsEnd ? ` That's from your statements, which end on ${dayLabel(input.statementsEnd)}.` : ""}`,
       }),
     );
   }

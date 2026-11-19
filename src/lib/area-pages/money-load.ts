@@ -24,6 +24,7 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { historyDaysOf } from "@/lib/history-days";
+import { staleStatementsEnd } from "@/lib/report-state";
 import { todayOf } from "@/lib/today";
 import { frequencyWords } from "@/lib/explain-input";
 import { listGoals } from "@/lib/goals";
@@ -171,6 +172,10 @@ export async function loadMoneyArea(
   const open = books.open.filter((o) => o.kind !== "transfer");
 
   const late = await goalsLate(userId, goals, { client, now });
+  const newestLine = transactions.reduce<string | null>(
+    (m, t) => (m === null || t.date > m ? t.date : m),
+    null,
+  );
   return {
     hasAccounts: accounts.length > 0,
     cushionCents: LOW_BALANCE_CUSHION_CENTS,
@@ -185,6 +190,10 @@ export async function loadMoneyArea(
       status: s.status,
     })),
     shortHistory: historyDaysOf(input) < CASH_FLOW_MIN_HISTORY_DAYS,
+    statementsEnd: staleStatementsEnd(
+      newestLine ? new Date(`${newestLine}T00:00:00Z`) : null,
+      asOf,
+    ),
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
       accountId: f.accountId,
       name: f.accountName,

@@ -136,3 +136,27 @@ export function areaCounts(flat: Flat): string[] {
   }
   return found;
 }
+
+// Class 5: nothing is said about now from statements that ended long ago. When a person's
+// statements end too long ago to say what's held or paid now (`statementsEnd`, the report's and
+// Home's rule, staleStatementsEnd), a text that speaks of now also says when its figure is from.
+// Walkers found "You keep $1,950.16 in cash" (#2095), "$12,511.09 today" (#1938), a month's
+// payday and subscriptions said as current (#2047), "how much money do I have?" with no date
+// (#2004).
+const SAYS_NOW = [
+  // Not a cover's monthly benefit ("you have $0/mo" of disability cover), which isn't cash.
+  /\b[Yy]ou (?:keep|have|pay) \$[\d,.]+(?!k?\/mo)\b/,
+  /\$[\d,]+(?:\.\d{2})? today\b/,
+  /\bNothing coming up\b/,
+];
+const SAYS_WHEN =
+  /\b(?:statements?|which) end\b|\bas of\b|\bon (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}\b/;
+
+export function nowFromOldData(flat: Flat, statementsEnd: string | null): string[] {
+  if (!statementsEnd) return [];
+  return shownTexts(flat).flatMap(([path, text]) =>
+    SAYS_NOW.some((p) => p.test(text)) && !SAYS_WHEN.test(text)
+      ? [`${path}: says now from statements that end ${statementsEnd}: "${text.slice(0, 120)}"`]
+      : [],
+  );
+}
