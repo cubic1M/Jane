@@ -131,11 +131,15 @@ export const GMAIL_LIMITS = {
   runBudgetMs: 150_000,
   // Emails one read asks Google for before it stops; the next read carries on from there.
   runMessages: 60,
-  // One mailbox in the daily job: it gets the smaller of this and what is left of the run.
+  // One mailbox in the daily job: it gets the smaller of this and what is left of the run. A mailbox
+  // never read through gets a whole read's runBudgetMs instead, and once another mailbox has started
+  // it waits for the next run when less than that is left. One whose last read was unfinished gets a
+  // whole read when one fits, and this otherwise, never put off for want of one.
   nightMailboxBudgetMs: 20_000,
   // One run of the daily job; mailboxes it doesn't reach wait for the next. Set so that the last
   // read, the calls it is still waiting on and the job's own end inside the function's five
-  // minutes, with time to spare.
+  // minutes, with time to spare. Never less than runBudgetMs, so the run's first mailbox can always
+  // have a whole read.
   cronBudgetMs: 165_000,
   // Mailboxes the daily job takes on in one run.
   cronMailboxes: 500,
@@ -269,6 +273,21 @@ export const PERSONAL_MAIL_DOMAINS: ReadonlySet<string> = new Set([
   "yahoo.com.ph",
   "yahoo.co.id",
   "yahoo.co.jp",
+  // Microsoft's free mail in other countries.
+  "hotmail.co.uk",
+  "hotmail.fr",
+  "hotmail.de",
+  "hotmail.it",
+  "hotmail.es",
+  "hotmail.ca",
+  "live.co.uk",
+  "live.ca",
+  "live.fr",
+  "live.com.au",
+  "outlook.fr",
+  "outlook.de",
+  "outlook.es",
+  "outlook.it",
   // Large providers in other countries.
   "btinternet.com",
   "gmx.de",

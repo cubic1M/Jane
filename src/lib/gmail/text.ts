@@ -341,11 +341,15 @@ const SECURITY_AFTER = new RegExp(
 // The same, asked for before the code in its own sentence: "To approve your $500.00 payment, enter
 // code 482913". Only with "to": a receipt's "approval code" never says it.
 const TO_APPROVE = /\bto (?:approve|authori[sz]e|confirm)\b/;
+// And a code for signing in or checking who someone is, asked for the same way: "To sign in to your
+// account, enter code 482913", "To verify your $500.00 payment, enter code 482913". "Sign in", "log
+// in", "sign into" and "log into" are joined with a hyphen by then (carriesSecret).
+const TO_SIGN_IN = /\bto (?:sign-?in|log-?in|verify)\b/;
 // What a card receipt or a notice prints beside what it reports. Before one of these, "to confirm"
-// is about what was done, not the code ("This is to confirm your payment, authorization code
-// 004521"), so only a security word makes it a secret.
+// or "to verify" is about what was done, not the code ("This is to confirm your payment,
+// authorization code 004521"), so only a security word makes it a secret.
 const PRINTED_CODES = new Set(
-  "approval auth authorization authorisation reference transaction".split(" "),
+  "approval auth authorization authorisation receipt ref reference transaction".split(" "),
 );
 // The digits of a code: four to eight on their own, or six written "482 913" or "482-913". Never
 // part of a longer number, an amount or a date.
@@ -375,9 +379,10 @@ const GIVES_PASSWORD =
 
 // Whether the word found is a code that signs someone in or approves something: a passcode, a PIN
 // or an OTP by name, or a "code" with a security word in the three words before it, or "to
-// approve", "to authorize" or "to confirm" earlier in its sentence, or a security word or approve,
-// authorize or confirm after "to" or "for", whether that comes right after the word or after its
-// digits ("code 482913 to sign in"). A zip code, a promo code and a confirmation code are not.
+// approve", "to authorize", "to confirm", "to sign in", "to log in" or "to verify" earlier in its
+// sentence, or a security word or approve, authorize or confirm after "to" or "for", whether that
+// comes right after the word or after its digits ("code 482913 to sign in"). A zip code, a promo
+// code and a confirmation code are not.
 function isSecret(word: string, before: string, after: string, afterDigits: string): boolean {
   if (word !== "code" && word !== "codes") return true;
   const lead = before
@@ -392,7 +397,7 @@ function isSecret(word: string, before: string, after: string, afterDigits: stri
   );
   return (
     lead.some((w) => SECURITY_WORD.test(w)) ||
-    (!PRINTED_CODES.has(named) && TO_APPROVE.test(sentence)) ||
+    (!PRINTED_CODES.has(named) && (TO_APPROVE.test(sentence) || TO_SIGN_IN.test(sentence))) ||
     SECURITY_AFTER.test(after) ||
     SECURITY_AFTER.test(afterDigits)
   );
@@ -407,7 +412,7 @@ export function carriesSecret(text: string): boolean {
   const said = text
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/\b(sign|log)(?:g?ing)? in\b/g, "$1-in")
+    .replace(/\b(sign|log)(?:g?ing)? in(?:to)?\b/g, "$1-in")
     .replace(/\bone time\b/g, "one-time")
     .replace(/\btwo (factor|step)\b/g, "two-$1")
     // A one-time password is a code by another name.

@@ -114,6 +114,17 @@ vi.mock("@/config/gmail", async (original) => {
   const real = await original<typeof import("@/config/gmail")>();
   return { ...real, GMAIL_LIMITS: { ...real.GMAIL_LIMITS, callRetryWaitMs: 1 } };
 });
+// The daily job's runs are recorded as they always are, under a name only this run of this file
+// gives them: src/lib/health.integration.test.ts takes any "gmail" run for the job's own, and two
+// runs of this file at once would delete each other's. The route's own name is pinned in
+// src/app/api/cron/gmail/route.test.ts.
+const cronRuns = vi.hoisted(() => ({ suffix: `-attacks-${crypto.randomUUID()}` }));
+vi.mock("@/lib/health", async (original) => {
+  const real = await original<typeof import("@/lib/health")>();
+  const recordRun: typeof real.recordRun = (name, run, options) =>
+    real.recordRun(`${name}${cronRuns.suffix}`, run, options);
+  return { ...real, recordRun };
+});
 
 import { GET as cronRoute } from "@/app/api/cron/gmail/route";
 import { GET as callbackRoute } from "@/app/api/gmail/callback/route";
@@ -151,7 +162,8 @@ const PAGE = new URL(GMAIL_PAGE_PATH, ORIGIN).toString();
 const SESSION_COOKIE = "authjs.session-token";
 const TOPIC = "projects/jane-mail/topics/gmail";
 const CRON_SECRET = `cron-${randomUUID()}`;
-const FILE_STARTED = new Date();
+// The daily job's runs, under this file's name for them.
+const CRON_RUNS = `gmail${cronRuns.suffix}`;
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -537,9 +549,7 @@ describe.runIf(url)("attacks on Gmail mailboxes, with the switch on", () => {
     await system().rateLimit.deleteMany({
       where: { OR: people.map((id) => ({ key: { endsWith: `:${id}` } })) },
     });
-    await system().cronRun.deleteMany({
-      where: { name: "gmail", startedAt: { gte: FILE_STARTED } },
-    });
+    await system().cronRun.deleteMany({ where: { name: { endsWith: cronRuns.suffix } } });
     await system().user.deleteMany({ where: { id: { in: people } } });
   });
 
@@ -567,6 +577,42 @@ describe.runIf(url)("attacks on Gmail mailboxes, with the switch on", () => {
       expect(await mailOf(a)).toEqual({ mailboxes: [], readings: [] });
       expect(await mailOf(b)).toEqual(before.b);
     });
+
+    // Taking access away always works: neither the switch nor KILL_BANKS stands in its way.
+    it.each([
+      ["with the switch off", "GMAIL_LINK", ""],
+      ["while reading is paused", "KILL_BANKS", "1"],
+    ])(
+      "A's own Disconnect %s removes the mailbox and what was read, and asks Google to end the permission",
+      async (_when, name, value) => {
+        const { a, b } = await twoPeople();
+        const address = newAddress();
+        fake.mailbox(address).deliver();
+        const theirs = await connected(a, address);
+        expect((await mailOf(a)).readings).toHaveLength(1);
+        const { refreshToken } = openSecrets((await rowOf(theirs)).secretsEncrypted);
+        await planted(b);
+        const bBefore = await mailOf(b);
+        vi.stubEnv(name, value);
+        signedInAs(a);
+        expect(await disconnect(theirs)).toBe("disconnected");
+        expect(await mailOf(a)).toEqual({ mailboxes: [], readings: [] });
+        expect(fake.stopped).toEqual([address]);
+        expect(fake.revokedTokens).toEqual([refreshToken]);
+        const removed = (await auditBy(a)).filter((entry) => entry.event === "gmail_disconnected");
+        expect(removed.map(({ targetId, metadata }) => [targetId, metadata])).toEqual([
+          [
+            theirs,
+            expect.objectContaining({
+              user_id: a,
+              reason: "user_disconnected",
+              ended_at_google: true,
+            }),
+          ],
+        ]);
+        expect(await mailOf(b)).toEqual(bBefore);
+      },
+    );
   });
 
   describe("the way back from Google", () => {
@@ -1648,18 +1694,18 @@ describe.runIf(url)("attacks on Gmail mailboxes, with the switch on", () => {
       const counters = await system().rateLimit.findMany({ where: { key: { endsWith: `:${a}` } } });
       const jobs = await system().job.findMany({ where: { createdAt: { gte: since } } });
       const runs = await system().cronRun.findMany({
-        where: { name: "gmail", startedAt: { gte: since } },
+        where: { name: CRON_RUNS, startedAt: { gte: since } },
       });
       const ops = vi.mocked(recordOpsEvent).mock.calls.map(([kind, options]) => ({
         kind,
         code: options?.code ?? null,
         userId: options?.userId ?? null,
       }));
+      // Each answer whole: its status, every header (each cookie on its own) and its body.
       const responses = await Promise.all(
         answers.map(async (answer) => ({
           status: answer.status,
-          location: answer.headers.get("location"),
-          cookies: answer.headers.getSetCookie(),
+          headers: [...answer.headers],
           body: await answer.text(),
         })),
       );

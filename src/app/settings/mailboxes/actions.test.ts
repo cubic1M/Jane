@@ -18,7 +18,14 @@ const NOW = new Date("2026-11-19T18:00:00Z");
 
 const mocks = vi.hoisted(() => ({ set: vi.fn(), removeMailbox: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+// As Next.js's own: redirect throws, so nothing after it runs.
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((to: string) => {
+    throw Object.assign(new Error("NEXT_REDIRECT"), {
+      digest: `NEXT_REDIRECT;replace;${to};307;`,
+    });
+  }),
+}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: mocks.set }) }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "person_me" })) }));
 vi.mock("@/lib/gmail/mailbox", () => ({ removeMailbox: mocks.removeMailbox }));
@@ -40,6 +47,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+// Disconnect, from the page. It ends by sending the browser back to the page, by throwing.
+async function submit(data: FormData): Promise<void> {
+  await expect(disconnectMailbox(data)).rejects.toMatchObject({
+    digest: `NEXT_REDIRECT;replace;${GMAIL_PAGE_PATH};307;`,
+  });
+}
+
 // The word the cookie holds, as the page would read it.
 function wordSet(): NoticeWord | null {
   expect(mocks.set).toHaveBeenCalledTimes(1);
@@ -57,7 +71,7 @@ function wordSet(): NoticeWord | null {
 
 describe("disconnecting a mailbox", () => {
   it("removes the signed-in person's own mailbox, and goes back to the page", async () => {
-    await disconnectMailbox(form({ mailboxId: MAILBOX, userId: "someone_else" }));
+    await submit(form({ mailboxId: MAILBOX, userId: "someone_else" }));
     expect(mocks.removeMailbox).toHaveBeenCalledWith(ME, MAILBOX, "user_disconnected");
     expect(revalidatePath).toHaveBeenCalledWith(GMAIL_PAGE_PATH);
     expect(revalidatePath).toHaveBeenCalledWith("/settings");
@@ -70,13 +84,13 @@ describe("disconnecting a mailbox", () => {
     [{ endedAtGoogle: false, hadAccess: false }, "disconnected_no_access"],
   ] as const)("leaves the page the word for what happened: %o is %s", async (removed, word) => {
     mocks.removeMailbox.mockResolvedValue(removed);
-    await disconnectMailbox(form({ mailboxId: MAILBOX }));
+    await submit(form({ mailboxId: MAILBOX }));
     expect(wordSet()).toBe(word);
   });
 
   it("leaves no word when nothing was removed: someone else's mailbox, or one already gone", async () => {
     mocks.removeMailbox.mockResolvedValue(null);
-    await disconnectMailbox(form({ mailboxId: MAILBOX }));
+    await submit(form({ mailboxId: MAILBOX }));
     expect(mocks.removeMailbox).toHaveBeenCalledWith(ME, MAILBOX, "user_disconnected");
     expect(mocks.set).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(GMAIL_PAGE_PATH);
@@ -88,7 +102,7 @@ describe("disconnecting a mailbox", () => {
     ["a filter", form({ mailboxId: "' OR 1=1 --" })],
     ["a long one", form({ mailboxId: "c".repeat(41) })],
   ])("looks nothing up for %s", async (_name, data) => {
-    await disconnectMailbox(data);
+    await submit(data);
     expect(mocks.removeMailbox).not.toHaveBeenCalled();
     expect(mocks.set).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(GMAIL_PAGE_PATH);
@@ -97,15 +111,21 @@ describe("disconnecting a mailbox", () => {
   it("looks nothing up for a file in place of an id", async () => {
     const data = new FormData();
     data.set("mailboxId", new Blob(["cmailbox"]), "mailbox.txt");
-    await disconnectMailbox(data);
+    await submit(data);
     expect(mocks.removeMailbox).not.toHaveBeenCalled();
   });
 
   it("works with the switch off and while reading is paused", async () => {
     vi.stubEnv("GMAIL_LINK", "");
     vi.stubEnv("KILL_BANKS", "1");
-    await disconnectMailbox(form({ mailboxId: MAILBOX }));
+    await submit(form({ mailboxId: MAILBOX }));
     expect(mocks.removeMailbox).toHaveBeenCalledWith(ME, MAILBOX, "user_disconnected");
+    // Removed before the action's one redirect, its last step: a check of a switch that sent the
+    // browser back first would have removed nothing.
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(mocks.removeMailbox.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(redirect).mock.invocationCallOrder[0],
+    );
     expect(wordSet()).toBe("disconnected");
     const source = readFileSync("src/app/settings/mailboxes/actions.ts", "utf8");
     expect(source).not.toMatch(/gmailOffered|gmailOpen|killed\(/);

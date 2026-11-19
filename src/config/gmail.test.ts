@@ -328,6 +328,26 @@ describe("mail from a person, not a company", () => {
     expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(true);
   });
 
+  // Microsoft's free mail in other countries: Hotmail, Live and Outlook addresses outside the US.
+  it.each([
+    "hotmail.co.uk",
+    "hotmail.fr",
+    "hotmail.de",
+    "hotmail.it",
+    "hotmail.es",
+    "hotmail.ca",
+    "live.co.uk",
+    "live.ca",
+    "live.fr",
+    "live.com.au",
+    "outlook.fr",
+    "outlook.de",
+    "outlook.es",
+    "outlook.it",
+  ])("counts %s, Microsoft's free mail in another country", (domain) => {
+    expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(true);
+  });
+
   // Each only ends, starts or reads like a listed one.
   it.each([
     "email.com",
@@ -354,13 +374,25 @@ describe("mail from a person, not a company", () => {
     "eweb.de",
     "web.de.",
     "orange.fr.example",
+    "hotmail.co",
+    "nothotmail.fr",
+    "hotmail.de.evil.example",
+    "billing.hotmail.co.uk",
+    "HOTMAIL.IT",
+    "live.co",
+    "olive.ca",
+    "mail.live.com.au",
+    "live.fr.",
+    "outlook.de.example",
+    "myoutlook.es",
+    "news.outlook.it",
   ])("matches exactly, so %j is not one", (domain) => {
     expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(false);
   });
 
-  it("is every address anyone can sign up for that the agent knows, and fifty more", () => {
+  it("is every address anyone can sign up for that the agent knows, and sixty-four more", () => {
     for (const domain of SHARED_MAIL_DOMAINS) expect(PERSONAL_MAIL_DOMAINS.has(domain)).toBe(true);
-    expect(PERSONAL_MAIL_DOMAINS.size).toBe(SHARED_MAIL_DOMAINS.length + 50);
+    expect(PERSONAL_MAIL_DOMAINS.size).toBe(SHARED_MAIL_DOMAINS.length + 64);
     for (const domain of PERSONAL_MAIL_DOMAINS) expect(domain).toMatch(/^[a-z0-9-]+(\.[a-z]+)+$/);
   });
 });
@@ -493,6 +525,12 @@ describe("limits that stand on each other", () => {
     expect(GMAIL_LIMITS.runBudgetMs).toBeLessThan(FUNCTION_MS);
     expect(GMAIL_LIMITS.cronBudgetMs).toBeLessThan(FUNCTION_MS);
     expect(GMAIL_LIMITS.nightMailboxBudgetMs).toBeLessThan(GMAIL_LIMITS.cronBudgetMs);
+  });
+
+  // A mailbox never read through, or whose last read was unfinished, gets a whole read when it is
+  // the first of the daily job's run (src/lib/gmail/sync.ts): the run must hold one.
+  it("has room in the daily job for a whole read", () => {
+    expect(GMAIL_LIMITS.runBudgetMs).toBeLessThanOrEqual(GMAIL_LIMITS.cronBudgetMs);
   });
 
   // A read looks at its clock between one email and the next, so when its time is up it can still be

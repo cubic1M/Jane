@@ -1151,7 +1151,9 @@ describe.runIf(url)("the Gmail routes", () => {
       expect(kept).toHaveLength(6);
       const written = [
         ...said,
-        ...answers.map((answer) => answer.headers.get("location") ?? ""),
+        ...answers.flatMap((answer) =>
+          [...answer.headers].map(([name, value]) => `${name}: ${value}`),
+        ),
         JSON.stringify(await system().auditLog.findMany({ where: { actorId: userId } })),
         JSON.stringify(await eventsOf(userId)),
       ].join("\n");

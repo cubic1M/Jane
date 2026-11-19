@@ -568,6 +568,20 @@ describe("a code or a password given in the text", () => {
     "To confirm your $500.00 payment, enter code 482913",
     "To authorize this $250.00 transfer, enter code 482913",
     "Approve your payment\nTo approve your $500.00 payment, enter code 482913.",
+    // A code asked for after signing in, logging in or verifying, in the same sentence.
+    "To sign in to your account, enter code 482913.",
+    "To verify your $500.00 payment, enter code 482913.",
+    "To log in to the Acme app, enter code 482913",
+    "To login to your account, enter code 482913",
+    "To verify it's you, enter code 482913",
+    "To sign in on your new phone, use this code: 482913",
+    "To verify your identity, please enter the code below. 482913",
+    "To sign-in to Acme Online Banking, use code 482913.",
+    // ... and "log into" or "sign into", before the code or after it.
+    "To log into your account, enter code 482913.",
+    "To sign into your account, enter code 482913.",
+    "Use this code to log into your account: 482913",
+    "Use this code to sign into Acme: 482913",
   ])("is found in: %s", (text) => {
     expect(carriesSecret(text)).toBe(true);
   });
@@ -633,6 +647,26 @@ describe("a code or a password given in the text", () => {
     "Reply YES to confirm your appointment, reference code 4521",
     // ... and in the sentence before the one that gives a code.
     "We're writing to confirm your payment of $45.00. Your receipt code is 004521.",
+    // What a receipt prints after "to sign in", "to log in" or "to verify", and those words in the
+    // sentence before, or before a code that only names an offer.
+    "To verify this charge, authorization code 004521 is on your receipt.",
+    "To verify your payment, auth code 004521",
+    "To verify your payment, transaction code 004521",
+    "We're writing to verify your payment of $45.00, reference code 4521.",
+    "Reply YES to verify your appointment, reference code 4521",
+    "To verify your purchase, your confirmation code is 482913.",
+    "Payment received\nTo verify your recent payment\nAmount: $45.00\nAuthorization code: 004521",
+    "To log in, visit [link]\nAuthorization code: 004521",
+    "To sign in to your account, visit [link]. Approval code: 004521",
+    "Sign in to verify your order. Here's your code: 482913",
+    "To sign up, use code 4521 for 20% off your first order",
+    "To verify, promo code 2026 at checkout",
+    // A receipt's own code, called a receipt code or a ref code, after the same words or after "to
+    // confirm".
+    "Log in to verify your payment, ref code 004521",
+    "To verify your purchase, keep your receipt code 004521",
+    "To verify your recent payment of $45.00 please see the attached receipt, code 004521",
+    "We're writing to confirm your payment of $45.00, ref code 004521",
     // Digits that aren't a code.
     "Total $4829.00, security code on file",
     "Security code: $4829",
@@ -808,6 +842,10 @@ describe("crafted text is read in one pass", () => {
       "to approve. code 1234. ".repeat(LONG / 23),
     ],
     ["codes a receipt prints, after to confirm", "to confirm, auth code 1234. ".repeat(LONG / 28)],
+    [
+      "codes, each after sentences that say to sign in and to verify",
+      "to sign in a b c. to verify a b c. code 1234. ".repeat(LONG / 46),
+    ],
   ])("a text of %s, looked through for a code", (_what, text) => {
     expect(workMs(() => carriesSecret(text))).toBeLessThan(WORK_MS_MOST);
     expect(carriesSecret(text)).toBe(false);

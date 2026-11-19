@@ -483,6 +483,18 @@ describe("the amount", () => {
   });
 });
 
+// Counted as work, this process's time on a processor, not as time passed: a busy machine keeping
+// the test waiting adds nothing. One pass over any of these takes tens of milliseconds, and starting
+// over from every position takes seconds, so the limit sits far from both.
+const WORK_MS_MOST = 2_000;
+
+async function workMs(work: () => Promise<unknown>): Promise<number> {
+  const since = process.cpuUsage();
+  await work();
+  const { user, system } = process.cpuUsage(since);
+  return (user + system) / 1_000;
+}
+
 // The body is cut before it gets here, but the check is still one pass if it ever isn't.
 describe("the amount check on a crafted email", () => {
   const LONG = 100_000;
@@ -504,9 +516,8 @@ describe("the amount check on a crafted email", () => {
     ["amounts far apart", `1${" ".repeat(1_000)}`.repeat(LONG / 1_000)],
     ["dates", "2026-11-18 ".repeat(LONG / 11)],
   ])("is quick over %s", async (_what, body) => {
-    const start = performance.now();
-    await read({ ...BILL, amount: "15.49" }, about(body));
-    expect(performance.now() - start).toBeLessThan(250);
+    const worked = await workMs(() => read({ ...BILL, amount: "15.49" }, about(body)));
+    expect(worked).toBeLessThan(WORK_MS_MOST);
   });
 });
 

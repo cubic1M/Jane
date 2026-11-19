@@ -223,8 +223,9 @@ const accessFor = (read: Read): Access => ({
 });
 
 // 7. Google's notices end after a week unless asked for again. A watch Google refuses doesn't stop
-// the read: the mailbox is still read, by the daily job if not by notices, and `watch_failed` stays
-// on the row until a watch works. Answers whether the read's ending leaves that code.
+// the read: the mailbox is still read, by the daily job if not by notices, and the watch stays due,
+// so every read asks again until one works. Answers whether a refusal stands, this read's or one
+// still on the row: a read that then gets to everything leaves `watch_failed` (codeAfter).
 async function keepNoticesComing(
   read: Read,
   access: Access,
@@ -243,10 +244,11 @@ async function keepNoticesComing(
     throw error;
   });
   if (answer instanceof GoogleCallError) {
-    // Not over `reader_unread`: the next read lets the emails the read before stopped for go only
-    // with it, and this read may stop before it gets past them. Once it does, its ending writes
-    // `watch_failed` (codeAfter); until then the watch is still due, and the next read asks again.
-    if (row.lastErrorCode !== "reader_unread") await save(read, { lastErrorCode: "watch_failed" });
+    // Written only over no code: one already on the row says more (a failure, Claude's, the emails
+    // `reader_unread` put the cursor back for, mail left `unfinished`), and a read that stops before
+    // it gets anywhere leaves it as it was. Its ending writes `watch_failed` when it got to
+    // everything (codeAfter); until then the watch is still due, and the next read asks again.
+    if (row.lastErrorCode === null) await save(read, { lastErrorCode: "watch_failed" });
     log.warn("Gmail notices not renewed", { code: answer.code });
     await recordOpsEvent("gmail_read_failed", {
       code: "WATCH_FAILED",
@@ -552,13 +554,15 @@ const stillPutBack = (run: Run): boolean => run.putBack !== null && run.cursor =
 
 // The code a read that got through leaves. Stopped short of the emails the read before put the
 // cursor back for, it keeps their mark, a failed watch or not: the next read lets them go only with
-// it. Otherwise a failed watch's code wins (keepNoticesComing). Mail the read didn't get to, history
-// left or a look-back cut short, is `unfinished`: the daily job takes the mailbox at its next run,
-// and a read that gets through clears it.
+// it. Otherwise mail the read didn't get to, history left or a look-back cut short, is `unfinished`,
+// over a failed watch's code too, so the daily job always sees a mailbox with mail left: it takes
+// it at its next run, and a read that gets through clears it. Nothing is lost by that: the watch is
+// asked for again whenever it is due (keepNoticesComing), and the page's once-a-day line follows
+// the watch's end, not the code. Only a read that got to everything leaves `watch_failed`.
 function codeAfter(run: Run, { watchFailed, left }: { watchFailed: boolean; left: boolean }) {
   if (left && stillPutBack(run)) return "reader_unread";
-  if (watchFailed) return "watch_failed";
-  return left || run.lookBackCut ? "unfinished" : null;
+  if (left || run.lookBackCut) return "unfinished";
+  return watchFailed ? "watch_failed" : null;
 }
 
 // 11. A read that stopped with history left doesn't say it was checked; only a look-back that ran
@@ -820,11 +824,17 @@ type GmailRun = {
 // asking for. Oldest checked first, each with the smaller of nightMailboxBudgetMs and what is left
 // of the run; those past it wait for tomorrow. Two kinds need a whole read's runBudgetMs instead. A
 // mailbox never read through: its look-back counts as done however short it is cut, so twenty
-// seconds would leave most of its recent mail unread for good. And one whose last read was
-// `unfinished`: it may have stopped inside a record with more emails than twenty seconds get
-// through, and would stop there again every night. Once the run has started another mailbox, one
-// of these with less than a whole read left waits for tomorrow, rather than start short. A record
-// longer than a whole read can still hold a mailbox. Off, it reads nothing.
+// seconds would leave most of its recent mail unread for good. Once the run has started another
+// mailbox, it waits for tomorrow when less than a whole read is left, rather than start short. And
+// one whose last read was `unfinished`: it may have stopped inside a record with more emails than
+// twenty seconds get through. It gets a whole read when one fits, as the run's first mailbox or
+// with that much left, and an ordinary read otherwise, never put off: put off, one behind the same
+// mailboxes every night would never be read. A read that stops short leaves it `unfinished`, with
+// lastCheckedAt as it was, so it comes before the mailboxes read through since. Known limits: a
+// record longer than a whole read can still hold a mailbox. And while the mailboxes before an
+// `unfinished` one take more than cronBudgetMs - runBudgetMs every night, it gets twenty seconds
+// every night, so a record longer than that holds it until they take less, or a notice reads it.
+// Off, it reads nothing.
 export async function refreshAllGmail({
   client = defaultClient,
   now = new Date(),
@@ -870,12 +880,16 @@ export async function refreshAllGmail({
   let begun = false;
   for (const { id, userId, lastCheckedAt, lastErrorCode } of due) {
     const left = budgetMs - (clock() - started);
-    const whole = lastCheckedAt === null || lastErrorCode === "unfinished";
-    const own = whole ? GMAIL_LIMITS.runBudgetMs : GMAIL_LIMITS.nightMailboxBudgetMs;
-    if (left <= 0 || (whole && begun && left < own)) {
+    const neverRead = lastCheckedAt === null;
+    const whole = neverRead || lastErrorCode === "unfinished";
+    if (left <= 0 || (neverRead && begun && left < GMAIL_LIMITS.runBudgetMs)) {
       run.deferred += 1;
       continue;
     }
+    const own =
+      whole && (!begun || left >= GMAIL_LIMITS.runBudgetMs)
+        ? GMAIL_LIMITS.runBudgetMs
+        : GMAIL_LIMITS.nightMailboxBudgetMs;
     begun = true;
     const outcome = await syncMailbox(userId, id, {
       client,

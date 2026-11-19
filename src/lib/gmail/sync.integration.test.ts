@@ -781,7 +781,47 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await auditOf(id)).toEqual([]);
     });
 
-    it("with history left, leaves a failed watch's code, which wins over unfinished", async () => {
+    // Section 17 of the design, items 5 and 20: a read that stops before it gets anywhere leaves the
+    // row's code, failures and wait as they were, a refused watch or not. The watch is still due, so
+    // the next read asks for it again.
+    it.each<[string, Fields, { countUsedUp?: boolean; budgetMs?: number }, string]>([
+      [
+        "unfinished, with the person's count used up",
+        { lastErrorCode: "unfinished" },
+        { countUsedUp: true },
+        "waiting",
+      ],
+      ["unfinished, with no time left", { lastErrorCode: "unfinished" }, { budgetMs: 0 }, "read"],
+      [
+        "a failing mailbox's code, with no time left",
+        { lastErrorCode: "http_503", failures: 3, nextTryAt: at(-MINUTE) },
+        { budgetMs: 0 },
+        "read",
+      ],
+    ])(
+      "with a watch Google refuses, leaves the row as it was: %s",
+      async (_what, fields, { countUsedUp = false, budgetMs }, outcome) => {
+        vi.stubEnv("GMAIL_PUBSUB_TOPIC", TOPIC);
+        const userId = await person();
+        if (countUsedUp) await hit("gmailReads", userId, { client: db, now: NOW, by: 60 });
+        const { id, box } = await connected(userId, { watchExpiresAt: null, ...fields });
+        box.deliver();
+        fake.answerWith("/watch", 403);
+        expect(await sync(userId, id, budgetMs === undefined ? {} : { budgetMs })).toBe(outcome);
+        expect(fake.requests.map((r) => r.path.split("/").pop())).toEqual(["watch"]);
+        expect(await rowOf(id)).toMatchObject({
+          failures: 0,
+          nextTryAt: null,
+          ...fields,
+          lastCheckedAt: at(-HOUR),
+          watchExpiresAt: null,
+        });
+      },
+    );
+
+    // Section 17 of the design, item 20: mail a read leaves behind is `unfinished` over a failed
+    // watch's code, so the daily job sees it. The watch is asked for again whenever it is due.
+    it("with history left, leaves unfinished, which wins over a failed watch's code, and the next read asks for notices again", async () => {
       vi.stubEnv("GMAIL_PUBSUB_TOPIC", TOPIC);
       const userId = await person();
       const { id, box } = await connected(userId, { watchExpiresAt: null });
@@ -792,8 +832,79 @@ describe.runIf(url)("reading a Gmail mailbox", () => {
       expect(await sync(userId, id, { runMessages: 1 })).toBe("read");
       expect(await rowOf(id)).toMatchObject({
         historyCursor: placeAfter(start, 1),
-        lastErrorCode: "watch_failed",
+        lastCheckedAt: at(-HOUR),
+        lastErrorCode: "unfinished",
+        watchExpiresAt: null,
         failures: 0,
+      });
+      expect(box.watch).toBeNull();
+      // The team still hears of the refusal.
+      expect(recordOpsEvent).toHaveBeenCalledWith(
+        "gmail_read_failed",
+        expect.objectContaining({ code: "WATCH_FAILED" }),
+      );
+      expect(await sync(userId, id, { now: at(MINUTE) })).toBe("read");
+      expect(box.watch).not.toBeNull();
+      expect(await rowOf(id)).toMatchObject({
+        historyCursor: box.historyId,
+        lastCheckedAt: at(MINUTE),
+        lastErrorCode: null,
+        watchExpiresAt: at(7 * DAY),
+      });
+    });
+
+    it.each([
+      // Two emails after connecting, and one read: history left, so it isn't read through yet.
+      ["history left", { daysAgo: [], after: 2 }, null],
+      // Nothing after connecting, and two receipts from the days before: the look-back reads one.
+      ["its look-back cut short", { daysAgo: [2, 1], after: 0 }, NOW],
+    ])(
+      "never read through, with %s, leaves unfinished over a failed watch's code too",
+      async (_what, { daysAgo, after }, checked) => {
+        vi.stubEnv("GMAIL_PUBSUB_TOPIC", TOPIC);
+        const userId = await person();
+        const address = `box-${randomUUID()}@fake-mailbox.test`;
+        const box = fake.mailbox(address);
+        for (const days of daysAgo) {
+          box.deliver({ subject: `Your receipt ${days}`, receivedAt: at(-days * DAY) });
+        }
+        const { id } = await connected(
+          userId,
+          { lastCheckedAt: null, watchExpiresAt: null },
+          address,
+        );
+        for (let n = 0; n < after; n++) box.deliver();
+        fake.answerWith("/watch", 403);
+        expect(await sync(userId, id, { runMessages: 1 })).toBe("read");
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(await rowOf(id)).toMatchObject({
+          lastCheckedAt: checked,
+          lastErrorCode: "unfinished",
+          watchExpiresAt: null,
+        });
+      },
+    );
+
+    // A read that got to everything leaves the failed watch's code: a first read here, and a mailbox
+    // read before under Google's notices, below.
+    it("never read through, with everything read, leaves a failed watch's code", async () => {
+      vi.stubEnv("GMAIL_PUBSUB_TOPIC", TOPIC);
+      const userId = await person();
+      const address = `box-${randomUUID()}@fake-mailbox.test`;
+      const box = fake.mailbox(address);
+      const recent = box.deliver({ subject: "Your receipt", receivedAt: at(-2 * DAY) });
+      const { id } = await connected(
+        userId,
+        { lastCheckedAt: null, watchExpiresAt: null },
+        address,
+      );
+      fake.answerWith("/watch", 403);
+      expect(await sync(userId, id)).toBe("read");
+      expect(await readOf(id)).toEqual([recent.id]);
+      expect(await rowOf(id)).toMatchObject({
+        lastCheckedAt: NOW,
+        lastErrorCode: "watch_failed",
+        watchExpiresAt: null,
       });
     });
   });

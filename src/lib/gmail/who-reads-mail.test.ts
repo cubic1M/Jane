@@ -6,14 +6,16 @@ import { describe, expect, it } from "vitest";
 // Download my data, and used nowhere else ("Who sees it" in docs/setup/gmail.md). Every file that
 // reads the mail tables is written down here, so a new reader fails this test until someone has
 // decided it may read them. Download my data is the one reader that doesn't name the tables: it
-// reads every table the person has, so the files that take it are written down instead.
+// reads every table the person has, so the files that take it are written down instead, and no
+// other file may go through every table of a client.
 
-// Every file that names the mail tables (gmailMailbox and gmailReading through a system client,
-// gmailMailboxes and gmailReadings through scopedFor) or the page's views of them (mailboxesView,
-// readingsView): the Gmail library, the mailboxes page, the settings page (it counts them), the
-// scoped client, key rotation, and the two that remove mailboxes with everything else (deleting an
-// account, and the inactivity clean-up). The routes, Disconnect and the daily job reach the tables
-// only through the library, so they aren't here. Before a file is added, decide:
+// Every file whose code names the mail tables (gmailMailbox and gmailReading through a system
+// client, gmailMailboxes and gmailReadings through scopedFor, gmail_mailboxes and gmail_readings in
+// raw SQL) or the page's views of them (mailboxesView, readingsView): the Gmail library, the
+// mailboxes page, the settings page (it counts them), the scoped client, key rotation, and the two
+// that remove mailboxes with everything else (deleting an account, and the inactivity clean-up).
+// The routes, Disconnect and the daily job reach the tables only through the library, so they
+// aren't here. Before a file is added, decide:
 // - Advice mode first: real mail must never get advice (REAL_ACCOUNT_ADVICE, src/config/advice.ts).
 //   A chat answer, a card or a deadline made from a bill is advice as soon as it says what to do.
 // - Never a partner or lending feature: Google's Limited Use allows no lending or credit use of
@@ -59,8 +61,40 @@ const NEVER_READS_MAIL = [
 ];
 
 const NAMES_MAIL =
-  /\b(?:gmailMailboxes|gmailMailbox|gmailReadings|gmailReading|mailboxesView|readingsView)\b/;
+  /\b(?:gmailMailboxes|gmailMailbox|gmailReadings|gmailReading|mailboxesView|readingsView|gmail_mailboxes|gmail_readings)\b/;
 const GMAIL = "src/lib/gmail";
+
+// A database client, asked for: a person's (scopedFor, scopedDb) or one across people (systemDb).
+const CLIENT = String.raw`(?:scopedFor|scopedDb|systemDb)\s*\(`;
+// A call inside the client's argument, two deep: scopedFor(String(id)),
+// scopedFor((await requireUser()).id).
+const ARGS = String.raw`(?:[^()]|\((?:[^()]|\([^()]*\))*\))*`;
+// The names a file holds such a client by: `const mine = scopedFor(id)`, `db: ScopedDb`, and the
+// untyped one a transaction hands its callback, `personTransaction(id, async (tx) =>`. A name for
+// what a query on one returned isn't one.
+const HOLDS = new RegExp(
+  String.raw`\b(\w+)\s*(?::\s*(?:ScopedDb|SystemDb|PersonTx|SystemTx|ReturnType<typeof\s+(?:scopedFor|systemDb)>)|=\s*(?:await\s+)?${CLIENT}${ARGS}\)(?!\s*[.?[]))` +
+    String.raw`|\b(?:personTransaction|systemTransaction)\s*\([^()]*\(\s*(\w+)\s*\)\s*=>`,
+  "g",
+);
+
+// A file's code: its lines that are only a comment left out, since a comment reads nothing
+// (src/config/gmail-disclosure.ts names a mail table in one).
+const code = (text: string): string =>
+  text
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("//"))
+    .join("\n");
+
+// Whether code goes through every table of a client it holds, which reads the mail tables without
+// naming them: Object.keys(db), Object.entries(scopedFor(id)), for (const name in mine).
+function walksTables(text: string): boolean {
+  const held = [...text.matchAll(HOLDS)].map((found) => `${found[1] ?? found[2]}\\b`);
+  const client = String.raw`(?:await\s+)?(?:${[CLIENT, ...held].join("|")})`;
+  return new RegExp(
+    String.raw`(?:Object\.(?:keys|entries|values|getOwnPropertyNames)|Reflect\.ownKeys)\(\s*${client}|\bfor\s*\(\s*(?:const|let|var)\s+\w+\s+in\s+${client}`,
+  ).test(text);
+}
 
 // The app's own source, as paths from the repository's root: tests, test fixtures and generated
 // code left out.
@@ -122,11 +156,55 @@ describe("who reads what Jane read in a mailbox", () => {
     expect(importsOf(text(deletion)).some((s) => intoGmail(deletion, s))).toBe(true);
   });
 
+  it("knows raw SQL on the mail tables and a walk through every table of a client, and that a comment reads nothing", () => {
+    const raw = 'await systemDb(WHY).$queryRaw`SELECT amount_cents FROM "gmail_readings"`;';
+    expect(NAMES_MAIL.test(code(raw))).toBe(true);
+    expect(NAMES_MAIL.test(code("await tx.$executeRaw`DELETE FROM gmail_mailboxes`;"))).toBe(true);
+    expect(
+      NAMES_MAIL.test(code("  // (gmail_mailboxes.disclosure_version), so a changed word")),
+    ).toBe(false);
+    expect(walksTables("export const all = (db: ScopedDb) => Object.keys(db);")).toBe(true);
+    expect(walksTables("const tables = Object.entries(scopedFor(userId));")).toBe(true);
+    expect(
+      walksTables("const mine = await scopedDb();\nfor (const name in mine) seen.add(name);"),
+    ).toBe(true);
+    expect(walksTables('const all = systemDb("why");\nconst names = Reflect.ownKeys(all);')).toBe(
+      true,
+    );
+    // A client asked for with a call in its argument, and the one a transaction hands its callback.
+    expect(walksTables("const db = scopedFor(String(userId));\nObject.keys(db);")).toBe(true);
+    expect(walksTables("const db = scopedFor((await requireUser()).id);\nObject.keys(db);")).toBe(
+      true,
+    );
+    expect(walksTables("await personTransaction(userId, async (tx) => Object.keys(tx));")).toBe(
+      true,
+    );
+    expect(
+      walksTables("await systemTransaction(WHY, (tx) => {\n  for (const t in tx) seen(t);\n});"),
+    ).toBe(true);
+    // A row, or a name given what a query returned, is no client.
+    const rows = "const db = scopedFor(userId);\nconst [row] = await db.accounts.findMany();";
+    expect(walksTables(`${rows}\nObject.entries(row);`)).toBe(false);
+    const found = "const session = await systemDb(WHY).session.findUnique(args);";
+    expect(walksTables(`${found}\nconst signed = "mfa" in session;`)).toBe(false);
+    const chained = "const mine = await scopedFor(String(userId)).accounts.findMany();";
+    expect(walksTables(`${chained}\nObject.keys(mine);`)).toBe(false);
+    // A file known to go through every table is found doing it.
+    expect(walksTables(code(text("src/lib/data-export-rest.ts")))).toBe(true);
+  });
+
   it("is the files written down above, and no other", () => {
-    const readers = files.filter((file) => NAMES_MAIL.test(text(file)));
+    const readers = files.filter((file) => NAMES_MAIL.test(code(text(file))));
     expect(readers.sort(), "decide the four things above first, then add the file").toEqual(
       [...READS_MAIL].sort(),
     );
+  });
+
+  // A file that goes through every table of a client takes the mail tables with the rest. Download
+  // my data is the one that does, for the person's own copy.
+  it("goes through every table of a client only in Download my data", () => {
+    const walkers = files.filter((file) => walksTables(code(text(file))));
+    expect(walkers, "decide the four things above first").toEqual(["src/lib/data-export-rest.ts"]);
   });
 
   // Download my data writes out every table of the person's scoped client, the mail tables among
