@@ -19,6 +19,7 @@ import {
 import { daysBetween } from "@/detection/units";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
+import type { SinceStatement } from "@/planning/since-statement";
 
 // "Safe to spend until payday": checking balance today, minus regular bills and regular moves
 // out (to savings, or a Zelle that may be rent) from checking before the next expected deposit, minus what's left in this month's budgets,
@@ -38,6 +39,9 @@ export type SafeToSpend = {
   // The next expected paycheck, or null when none is expected in the forecast window.
   payday: string | null;
   balanceCents: number;
+  // What balanceCents adds to a statement's balance for the pay and bills expected since its day
+  // (the earliest, with more than one); null when it's the balance as it stands.
+  sinceStatement: SinceStatement | null;
   bills: Expected[];
   billsCents: number;
   budgetsLeftCents: number;
@@ -83,13 +87,16 @@ export function safeToSpend(
   const checkingIds = new Set(checking.map((a) => a.id));
   // Today's balance: an uploaded statement's, walked forward with what was due since, as the
   // forecast does (debugger 10-31).
-  const balance = checking.reduce(
-    (sum, a) =>
-      sum +
-      (a.currentBalanceCents ?? 0) +
-      expectedBetween(input, a.id, balanceDay(a, input.asOf), input.asOf),
-    0,
-  );
+  const walked = checking.map((a) => {
+    const from = balanceDay(a, input.asOf);
+    return { from, cents: expectedBetween(input, a.id, from, input.asOf) };
+  });
+  const sinceCents = walked.reduce((sum, w) => sum + w.cents, 0);
+  const balance = checking.reduce((sum, a) => sum + (a.currentBalanceCents ?? 0), 0) + sinceCents;
+  const sinceFrom = walked
+    .filter((w) => w.cents !== 0)
+    .map((w) => w.from)
+    .sort()[0];
 
   // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
   const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;
@@ -142,6 +149,8 @@ export function safeToSpend(
   return {
     payday,
     balanceCents: balance,
+    sinceStatement:
+      sinceFrom === undefined || sinceCents === 0 ? null : { day: sinceFrom, cents: sinceCents },
     bills,
     billsCents,
     budgetsLeftCents,

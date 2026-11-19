@@ -18,6 +18,7 @@ import {
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatWholeDollars } from "@/lib/money";
+import { sinceStatementNote, type SinceStatement } from "@/planning/since-statement";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 import { shownHref } from "@/config/hidden-pages";
@@ -34,6 +35,8 @@ type Health = "good" | "look" | "act";
 type SafeInput = {
   payday: string | null;
   balanceCents: number;
+  // A statement's balance walked forward to today (src/planning/safe-to-spend.ts).
+  sinceStatement?: SinceStatement | null;
   billsCents: number;
   budgetsLeftCents: number;
   goalsCents: number;
@@ -370,6 +373,17 @@ const taxUnknownLine = (safe: SafeInput): CalcLine[] =>
       ]
     : [];
 
+// The balance safe to spend starts from: an estimate when walked forward from a statement.
+const balanceLine = (safe: SafeInput, label: string): CalcLine =>
+  safe.sinceStatement
+    ? {
+        label: `${label}, estimated`,
+        sign: "",
+        cents: safe.balanceCents,
+        note: sinceStatementNote(safe.sinceStatement),
+      }
+    : { label, sign: "", cents: safe.balanceCents };
+
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;
   const raw = [
@@ -397,7 +411,7 @@ function safeHero(safe: SafeInput): SafeHero {
     short,
     parts: raw.map((p) => ({ ...p, share: total > 0 ? p.cents / total : 0 })),
     why: [
-      { label: "In checking now", sign: "", cents: safe.balanceCents },
+      balanceLine(safe, "In checking now"),
       ...held.map((l) => ({ ...l, sign: "−" as const })),
       { label: short ? "Short before payday" : "Safe to spend", sign: "=", cents: safe.safeCents },
       ...(safe.unevenPayMonthlyCents
@@ -447,7 +461,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
     },
   ].filter((l) => l.cents > 0);
   return [
-    { label: "In checking today", sign: "", cents: safe.balanceCents },
+    balanceLine(safe, "In checking today"),
     ...billLines,
     ...held,
     {

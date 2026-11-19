@@ -37,6 +37,7 @@ import { healthFor, healthInput } from "@/lib/health-score";
 import { homeSummary } from "@/lib/home";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { formatCents } from "@/lib/money";
+import { sinceStatementNote } from "@/planning/since-statement";
 import { isoDay as iso } from "@/lib/dates";
 import { monthLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -119,7 +120,13 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
     value: formatCents(safe.safeCents),
     summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
     rows: [
-      { label: "In checking today", value: formatCents(safe.balanceCents) },
+      safe.sinceStatement
+        ? {
+            label: "In checking today, estimated",
+            value: formatCents(safe.balanceCents),
+            note: sinceStatementNote(safe.sinceStatement),
+          }
+        : { label: "In checking today", value: formatCents(safe.balanceCents) },
       ...safe.bills.map((b) => ({
         label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
         value: `−${formatCents(b.amountCents)}`,
