@@ -22,6 +22,7 @@ import {
   hiddenPageLinks,
   noneFromShortHistory,
   nowFromOldData,
+  onePlurals,
   rawNames,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
@@ -138,5 +139,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
         return noneFromShortHistory(flat, short).map((found) => `${who} ${found}`);
       }),
     ).toEqual([]);
+  });
+
+  // Class 2: 2019, 2064, 2084, 2093, 2097.
+  it("counts one thing in the singular", () => {
+    expect(everyone(onePlurals)).toEqual([]);
   });
 });
