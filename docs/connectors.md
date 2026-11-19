@@ -484,6 +484,22 @@ that asks for `soft_credit_pull` back from every real person, answering `needs_c
 `REAL_CONNECTORS` lists it. It opens only when counsel's sign-off is recorded there and the approved
 words are added as the connector's `consentText` (`soft-pull-lock.test.ts`).
 
+## A card's earn rates from CardSavvy (keyless)
+
+`src/lib/credit-cards/cardsavvy.ts` reads one card's terms from CardSavvy's public catalog (`get_card`
+on its MCP server, mcp.card-savvy.com/mcp, over Streamable HTTP; "no account is needed for the
+catalog"). It turns them into Jane's `CardProduct`: each kind of spending's rate valued as cash
+(CardSavvy's multiple times its point value: 3x at 1.5 cents is 450 basis points), and the fee. Jane's
+own `earnsCents` then works out what the person's spending earned with it. Only the card's name goes to
+CardSavvy; the spending stays in Jane. The label says it's CardSavvy's, with its verification date, as
+its terms ask. A card without a verification date, point value or base rate gives nothing. A card is
+looked up once a day at most, inside the 120 anonymous calls an hour. Terms (card-savvy.com/terms/api,
+updated 2026-07-30) allow showing its answers "within your own product or workflow, including for
+commercial purposes", and may ask for a written agreement for high volume. It identifies a card the
+person has, and picks no new card and applies for nothing. **Not wired in yet**: the cards feature runs
+only in demo advice mode (`creditCardPartnerFor`), where the demo bank's cards have made-up names
+CardSavvy can't know; it plugs into `CreditCardPartner.identify` when that feature opens to real cards.
+
 ## IRS transcripts (Chart), sandbox only
 
 `sandbox_chart_transcripts` (`src/lib/connectors/chart/`, built from developer.trychart.com and its

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CARDSAVVY } from "@/config/cardsavvy";
 import { ACTING_TOOLS, FakeRobinhood } from "./__fixtures__/fake-robinhood";
 import {
   openReader,
@@ -185,11 +186,20 @@ describe("no other code calls it", () => {
     (f) => /\.tsx?$/.test(f) && !f.includes(".test.") && !f.startsWith("src/generated"),
   );
 
+  // Other MCP servers Jane reads, each through its own client with a fixed endpoint that isn't
+  // Robinhood's: CardSavvy's public card catalog (get_card only). A new one is added here on purpose.
+  const OTHER_MCP_CLIENTS = ["src/lib/credit-cards/cardsavvy.ts"];
+
   it("only the client module says tools/call", () => {
     const callers = app.filter((f) => readFileSync(f, "utf8").includes('"tools/call"'));
     expect(
-      callers.filter((f) => !f.endsWith("src/lib/robinhood/__fixtures__/fake-robinhood.ts")),
-    ).toEqual(["src/lib/robinhood/mcp-client.ts"]);
+      callers.filter((f) => !f.endsWith("src/lib/robinhood/__fixtures__/fake-robinhood.ts")).sort(),
+    ).toEqual([...OTHER_MCP_CLIENTS, "src/lib/robinhood/mcp-client.ts"].sort());
+  });
+
+  it("another MCP client never reaches Robinhood", () => {
+    for (const f of OTHER_MCP_CLIENTS) expect(readFileSync(f, "utf8")).not.toMatch(/robinhood/i);
+    expect(new URL(CARDSAVVY.endpoint).hostname).toBe("mcp.card-savvy.com");
   });
 
   it("only the client module opens a reader, and only the refresh asks it", () => {
