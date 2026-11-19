@@ -160,6 +160,17 @@ and is offered only to sample-data people.
 Fakes for tests live in `src/lib/connectors/__fixtures__/`: a pretend real connector, a webhook
 signer, and people (real, sample, trial).
 
+## The fixture walk
+
+Each sandbox twin end to end in a running app (section C8): a local dev server with `CONNECTORS=1` and
+`DEMO_BANK=1` on a scratch database, on its own `<name>.localhost` host. A trial person ("Try it with
+sample data") reaches every twin through `/settings/connections/<id>`. The investing card and its
+SnapTrade tap need money sent to a brokerage, which none of the demo people has; they stay as they are
+(their figures hold the accuracy baselines). The walk uses its own person instead:
+`node scripts/connector-walk-person.mjs` makes one with a session (local databases only), they link the
+demo bank at `/connect`, and `--transfers <id>` adds two transfers to Robinhood. In tests, the connector
+fixtures' `sampleInvestor` does the same (`snaptrade-tap.integration.test.ts`).
+
 ## Add a connector (the checklist)
 
 Section C7: the same hour of work each time. Start with
