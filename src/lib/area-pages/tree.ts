@@ -145,8 +145,14 @@ export function buildAreaTree({
         id: b.id,
         label: b.label,
         status: worst(b.items.map((i) => i.status)),
+        // Its things to look at beside its urgent ones, as the tree's own line says them, so the
+        // branches add up to it (debugger 11-19: "1 urgent" over 3 more, under "7 to look at").
         line:
-          act > 0 ? `${act} urgent` : look > 0 ? `${plural(look, "thing")} to look at` : undefined,
+          act > 0
+            ? urgentLine(act, look)
+            : look > 0
+              ? `${plural(look, "thing")} to look at`
+              : undefined,
         items: b.items.map((i) => ({
           id: i.id,
           label: i.label,
