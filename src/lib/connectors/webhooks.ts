@@ -94,13 +94,17 @@ export function signatureValid(
     // Several while a secret rotates, comma-separated.
     signatures = (headers.get(signing.signatureHeader) ?? "").split(",").map((p) => p.trim());
   }
-  if (!timestamp || !/^\d{1,12}$/.test(timestamp)) return false;
-  if (Math.abs(now.getTime() / 1000 - Number(timestamp)) > WEBHOOK_TOLERANCE_SECONDS) return false;
+  if (!timestamp || !/^\d{1,15}$/.test(timestamp)) return false;
+  const seconds =
+    signing.kind === "hmac_sha256_tv" && signing.timestampUnit === "ms"
+      ? Number(timestamp) / 1000
+      : Number(timestamp);
+  if (Math.abs(now.getTime() / 1000 - seconds) > WEBHOOK_TOLERANCE_SECONDS) return false;
   const separator = signing.kind === "hmac_sha256" ? (signing.separator ?? ".") : ".";
   const expected = createHmac("sha256", secret)
     .update(`${timestamp}${separator}${rawBody}`)
     .digest();
-  // Hex: PostGrid doesn't say which encoding it uses; check against its sandbox before going live.
+  // Hex, as PostGrid's and Stripe's examples show.
   return signatures.some(
     (part) => /^[0-9a-f]{64}$/i.test(part) && sameBytes(Buffer.from(part, "hex"), expected),
   );

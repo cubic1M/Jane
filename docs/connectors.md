@@ -392,6 +392,23 @@ It doesn't cover which document, so the real connector stays off until a "comple
 with Get Document first (`api.get` is built). Letters are test-mode (not binding) unless
 `SIGNWELL_ENV=production`. Counsel reads the letter's words before any real person signs one.
 
+## Letters through PostGrid's test mode, sandbox only
+
+`sandbox_postgrid_letters` (`src/lib/connectors/postgrid/`, built from postgrid.readme.io on 2026-11-19:
+Create Letter, Cancel Letter, Getting Started, Manually Verifying Webhook Signatures) is the sandbox's
+letter made at PostGrid in test mode, where "none of the orders made in test mode will be sent out". It
+keeps `sandbox_letters`' checks: the person's own name, and only a company Jane knows takes a letter, at
+its documented address (parsed into PostGrid's contact fields). The letter is plain HTML, certified, with
+Jane's idempotency key in its metadata, since PostGrid has none of its own. It can be stopped until
+midnight Eastern (`DELETE`, while `ready`). Only `POSTGRID_TEST_API_KEY` is read; a key starting `live_` is
+refused before any call, and a letter that comes back `live` is cancelled at once. The return address
+is PostGrid's own documented example contact, because Jane keeps no mailing address for a person. A trial
+person's letter stays in the plain sandbox, which calls nobody. Webhooks: `PostGrid-Signature:
+t=<unix milliseconds>,v1=<hex>`. The `t=,v1=` signing kind now takes `timestampUnit: "ms"`; the
+sandbox's PostGrid-shaped signature moved to milliseconds too, since a 13-digit t was refused before.
+**There is no real PostGrid connector**: it needs the person's mailing address, a live key and
+`REAL_CONNECTORS`.
+
 ## Investing through Alpaca's Broker API, sandbox only
 
 `sandbox_alpaca_account` (open an Individual, Roth or Traditional IRA account; turn on the FDIC cash

@@ -185,6 +185,30 @@ export const CANOPY = {
   signatureHeader: "canopy-signature",
 } as const;
 
+// PostGrid's Print & Mail API in test mode (batch-2 connectors; postgrid.readme.io, read 2026-11-19:
+// Create Letter, Cancel Letter, Getting Started, Manually Verifying Webhook Signatures). "None of the
+// orders made in test mode will be sent out": only the test key is read here, a letter must come back
+// `live: false`, and certified mail can be stopped while it's `ready`. Webhooks:
+// "PostGrid-Signature: t=<unix milliseconds>,v1=<hex>" over `${t}.${body}`.
+export const POSTGRID = {
+  baseUrl: "https://api.postgrid.com",
+  lettersPath: "/print-mail/v1/letters",
+  testApiKeyEnv: "POSTGRID_TEST_API_KEY",
+  webhookSecretEnv: "POSTGRID_WEBHOOK_SECRET",
+  signatureHeader: "PostGrid-Signature",
+  mailingClass: "certified",
+  // The return address on a test letter: PostGrid's own documented example contact (Create Letter),
+  // verbatim (its zip and city disagree there too; test mode verifies no address), since Jane keeps no
+  // mailing address for a person. A real letter needs the person's own.
+  testSender: {
+    addressLine1: "90 CANAL ST STE 600",
+    city: "BOSTON",
+    provinceOrState: "MA",
+    postalOrZip: "90210-1234",
+    countryCode: "US",
+  },
+} as const;
+
 // Chart (read connectors, 11-18; developer.trychart.com and its OpenAPI definition, read
 // 2026-11-17): IRS account transcripts and past returns. Sandbox only until counsel answers
 // whether a person may type their IRS login into a third party (src/lib/connectors/chart/).
