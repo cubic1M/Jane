@@ -66,6 +66,7 @@ async function save(
 export const pinwheelPayroll: Connector = {
   id: "pinwheel_payroll",
   name: "Your pay stubs and employer, through Pinwheel",
+  from: "Your employer's payroll, through Pinwheel (read only: it can't change your pay)",
   category: "payroll",
   capabilities: ["read"],
   scopes: ["read_pay"],
@@ -108,6 +109,7 @@ export const pinwheelPayroll: Connector = {
 export const sandboxPinwheelPayroll: Connector = {
   id: "sandbox_pinwheel_payroll",
   name: "Your pay stubs and employer, through Pinwheel (sandbox)",
+  from: "A sample employer and pay stub (Pinwheel's own example)",
   category: "payroll",
   capabilities: ["read"],
   scopes: ["read_pay"],

@@ -49,6 +49,7 @@ export function parseStripeFcEvent(body: unknown): LinkEvent | null {
 export const stripeFc: Connector = {
   id: "stripe_fc",
   name: "Your bank accounts, through Stripe",
+  from: "Your bank, through Stripe Financial Connections (read only: it can't move money)",
   category: "bank_data",
   capabilities: ["read"],
   scopes: ["read_accounts"],

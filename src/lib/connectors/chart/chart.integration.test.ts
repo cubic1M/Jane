@@ -49,7 +49,7 @@ describe.runIf(url)("Chart as the transcript partner, sandbox only", () => {
 
   it("reads a sample person's transcripts through Chart once they allow it", async () => {
     expect((await transcriptPartnerFor(sample, { now: NOW }))?.name).not.toBe("chart (sandbox)");
-    await grantConsent(sample, "sandbox_chart_transcripts", ["read_accounts"]);
+    await grantConsent(sample, "sandbox_chart_transcripts", ["read_tax_transcripts"]);
     expect((await transcriptPartnerFor(sample, { now: NOW }))?.name).toBe("chart (sandbox)");
     const transcripts = await partnerTranscripts(sample, { now: NOW });
     // The finding it feeds: each year's return, withholding and refund, for the refund tracker.
@@ -64,7 +64,7 @@ describe.runIf(url)("Chart as the transcript partner, sandbox only", () => {
 
   it("gives a real person no transcript partner", async () => {
     await expect(
-      grantConsent(real, "sandbox_chart_transcripts", ["read_accounts"]),
+      grantConsent(real, "sandbox_chart_transcripts", ["read_tax_transcripts"]),
     ).rejects.toBeInstanceOf(ConsentError);
     expect(await transcriptPartnerFor(real, { now: NOW })).toBeNull();
   });

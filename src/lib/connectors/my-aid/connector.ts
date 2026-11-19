@@ -6,6 +6,7 @@ import type { Connector } from "../types";
 export const myAidUpload: Connector = {
   id: "my_aid_upload",
   name: "Your federal student loans, from studentaid.gov",
+  from: "The file you download from studentaid.gov and upload yourself",
   category: "credit",
   capabilities: ["read"],
   scopes: ["read_accounts"],

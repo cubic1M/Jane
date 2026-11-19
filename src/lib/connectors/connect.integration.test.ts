@@ -104,7 +104,8 @@ describe.runIf(url)("the one connect flow", () => {
       from: "Your fake bank",
       partnerStep: false,
     });
-    expect((await connectScreen(sample, "fake_partner", { client: db })).from).toBe("Fake partner");
+    // No source named: the screen leaves the From line out rather than repeat the name.
+    expect((await connectScreen(sample, "fake_partner", { client: db })).from).toBeNull();
     await expect(connectScreen(real, "fake_reader", { client: db })).rejects.toBeInstanceOf(
       ConsentError,
     );

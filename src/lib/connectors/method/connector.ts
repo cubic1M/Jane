@@ -51,6 +51,7 @@ async function credentialId(userId: string, connectorId: string, client: PrismaC
 export const methodLiabilities: Connector = {
   id: "method_liabilities",
   name: "Your loans and cards from your credit report, through Method",
+  from: "Your credit report, through Method (read only: it can't make a payment)",
   category: "credit",
   capabilities: ["read"],
   scopes: ["read_credit", "soft_credit_pull"],
@@ -84,6 +85,7 @@ export const methodLiabilities: Connector = {
 export const sandboxMethodLiabilities: Connector = {
   id: "sandbox_method_liabilities",
   name: "Your loans and cards from your credit report, through Method (sandbox)",
+  from: "Sample loans and cards (Method's own examples)",
   category: "credit",
   capabilities: ["read"],
   scopes: ["read_credit"],

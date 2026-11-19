@@ -6,6 +6,7 @@ import type { Connector } from "../types";
 export const creditUpload: Connector = {
   id: "credit_upload",
   name: "Your own credit report and score",
+  from: "The report you download and upload yourself",
   category: "credit",
   capabilities: ["read"],
   scopes: ["read_credit"],

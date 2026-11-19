@@ -6,6 +6,7 @@ import type { Connector } from "../types";
 export const taxFormUpload: Connector = {
   id: "tax_form_upload",
   name: "Your W-2s and 1099s, from the PDFs you download",
+  from: "The PDFs you download and upload yourself",
   category: "tax",
   capabilities: ["read"],
   scopes: ["read_accounts"],

@@ -6,6 +6,7 @@ import type { Connector } from "../types";
 export const irsTranscriptUpload: Connector = {
   id: "irs_transcript_upload",
   name: "Your IRS account transcript, from your IRS Online Account",
+  from: "The transcript you download from the IRS and upload yourself",
   category: "tax",
   capabilities: ["read"],
   scopes: ["read_accounts"],

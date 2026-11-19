@@ -14,9 +14,10 @@ import type { Connector } from "../types";
 export const sandboxChartTranscripts: Connector = {
   id: "sandbox_chart_transcripts",
   name: "Your IRS account transcripts, through Chart (sandbox)",
+  from: "Sample IRS transcripts, made from the sample person's figures",
   category: "tax",
   capabilities: ["read"],
-  scopes: ["read_accounts"],
+  scopes: ["read_tax_transcripts"],
   sandbox: true,
   movesMoney: false,
 };
