@@ -7,6 +7,7 @@ import { TRANSFER_DELAY_DAYS } from "./money-movement";
 //    pipeline refuses everything, sandbox included.
 // 2. REAL_CONNECTORS: per real connector, in code. A sandbox adapter needs no entry: it reaches nobody.
 // 3. REAL_MONEY_MOVEMENT (./money-movement.ts): a real connector that moves money needs it as well.
+// 4. COUNSEL_SOFT_PULL (below): a real connector that asks for a soft credit pull needs it as well.
 //
 // KILL_CONNECTORS (./kill-switches.ts) and CONNECTORS_KILLED stop them again in seconds.
 
@@ -42,6 +43,17 @@ export const REAL_TRADING = false;
 // The real connectors that may act, by id. None until a partner is signed, counsel has answered and
 // the founders say so. Turning one on is a code change, never an env var (registry.test.ts checks).
 export const REAL_CONNECTORS: Readonly<Record<string, boolean>> = {};
+
+// Counsel's sign-off on a soft credit pull (an FCRA "written instruction": Method's credit report, batch
+// 2). Until `approved` is true no real person reaches a connector asking for `soft_credit_pull`, even one
+// listed in REAL_CONNECTORS; sample people use its sandbox twin, which asks for no pull. Code only,
+// never an env var: record who answered and when, and add the approved words as the connector's
+// consentText, so the decision and the text are on file together.
+export const COUNSEL_SOFT_PULL: { approved: boolean; recordedOn: string | null; note: string } = {
+  approved: false,
+  recordedOn: null,
+  note: "Waiting for counsel on the soft-pull consent text (connector-infra.md). Sandbox twin only.",
+};
 
 export type ConnectorCategory =
   | "bank_data"
