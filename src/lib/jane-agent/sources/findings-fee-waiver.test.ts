@@ -81,7 +81,7 @@ describe("a bank's fee card beside the day's fee-waiver suggestion", () => {
     expect(
       gather(
         ["fee_waiver_met"],
-        "Advantage SafeBalance Banking has no monthly fee with a qualifying deposit, according to Bank of America's page",
+        "Advantage Plus Banking has no monthly fee with one qualifying direct deposit of $250 or more, according to Bank of America's page",
         "Bank of America charged a $12.00 monthly fee on Oct 20; $3,000.00 in pay came in that month.",
       ).sort(),
     ).toEqual(["f1", "f2", "f3", "f5"]);
