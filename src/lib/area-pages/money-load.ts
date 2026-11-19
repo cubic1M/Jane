@@ -1,4 +1,4 @@
-import { SPENDING_MONTHS } from "@/config/areas";
+import { CASH_FLOW_MIN_HISTORY_DAYS, SPENDING_MONTHS } from "@/config/areas";
 import { goalsLate } from "@/lib/goals-late";
 import { goalsOnTrack } from "@/planning/goals";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
@@ -23,6 +23,7 @@ import { listMerchantRules } from "@/lib/categories";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { historyDaysOf } from "@/lib/history-days";
 import { todayOf } from "@/lib/today";
 import { frequencyWords } from "@/lib/explain-input";
 import { listGoals } from "@/lib/goals";
@@ -183,6 +184,7 @@ export async function loadMoneyArea(
       urgency: s.urgency,
       status: s.status,
     })),
+    shortHistory: historyDaysOf(input) < CASH_FLOW_MIN_HISTORY_DAYS,
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
       accountId: f.accountId,
       name: f.accountName,

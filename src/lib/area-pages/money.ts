@@ -125,6 +125,8 @@ export type MoneyTreeInput = {
     lowCents: number;
     date: string;
   }[];
+  // Too little history to see bills in (Home's strip says so): no lowest point ahead is claimed.
+  shortHistory?: boolean;
   // The forecast's bills, soonest first, and how many of its days are "this week".
   bills: { merchant: string; date: string; amountCents: number }[];
   weekEnds: string;
@@ -243,7 +245,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
-  for (const l of input.lows) {
+  // A month of a new account shows no bills yet, so "Nothing coming up takes it lower" was a
+  // guess said as a fact beside Home's "Too little history to see your bills yet" (debugger 11-19).
+  for (const l of input.shortHistory ? [] : input.lows) {
     const under = l.lowCents < input.cushionCents;
     items.coming.push(
       item("coming", `low-${l.accountId}`, {

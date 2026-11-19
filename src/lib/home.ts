@@ -11,7 +11,7 @@ import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { moneyFoundParts } from "@/detection/engine";
 import { loadDetectionInput } from "@/detection/input";
-import { daysBetween } from "@/lib/dates";
+import { historyDaysOf } from "@/lib/history-days";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
@@ -227,15 +227,6 @@ function planTop<
     .sort((a, b) => (b.annualSavingsCents ?? 0) - (a.annualSavingsCents ?? 0))
     .slice(0, PLAN_SHOWN)
     .map((f) => ({ title: f.title, cents: f.annualSavingsCents ?? 0 }));
-}
-
-// Days from the first transaction to the last (an old statement's span, not up to today).
-function historyDaysOf(input: { historyFrom?: string; transactions: { date: string }[] }): number {
-  const dates = input.transactions.map((t) => t.date);
-  if (dates.length === 0) return 0;
-  const first = input.historyFrom ?? dates.reduce((a, b) => (b < a ? b : a));
-  const last = dates.reduce((a, b) => (b > a ? b : a));
-  return daysBetween(first, last);
 }
 
 export type HomeSummary = NonNullable<Awaited<ReturnType<typeof homeSummary>>>;
