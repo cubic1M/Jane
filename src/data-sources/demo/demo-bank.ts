@@ -772,6 +772,15 @@ export const DEMO_EXTRAS = [
 ] as const;
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
+// A loan's year to date, dated (debug 2, 11-20): a payment's share for each monthly payment made
+// this year through the last one, so the year paced from it holds still between payments (a fixed
+// figure with a payment date that moves read twelve payments' interest from two in February).
+// Before the year's first payment, nothing yet.
+function paidSoFar(perPayment: number, lastPayment: string, today: string): number {
+  if (lastPayment.slice(0, 4) !== today.slice(0, 4)) return 0;
+  return Math.round(perPayment * Number(lastPayment.slice(5, 7)) * 100) / 100;
+}
+
 export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
   if (isPersonSeed(demo)) return personLiabilities(demo, today);
   const { seed, anchor } = demo;
@@ -816,7 +825,8 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         has_prepayment_penalty: false,
         interest_rate: { percentage: 3.99, type: "fixed" },
         last_payment_amount: 2198.31,
-        last_payment_date: null,
+        // Paid on the 1st, as it's due: the year to date below is as of that payment.
+        last_payment_date: lastDayOfMonthOn(today, 1),
         loan_term: "30 year",
         loan_type_description: "Conventional 30 year fixed",
         maturity_date: monthsAfter(
@@ -829,8 +839,8 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         origination_principal_amount: 400000,
         past_due_amount: 0,
         property_address: null,
-        ytd_interest_paid: 10230.4,
-        ytd_principal_paid: 9180.25,
+        ytd_interest_paid: paidSoFar(1023.04, lastDayOfMonthOn(today, 1), today),
+        ytd_principal_paid: paidSoFar(918.03, lastDayOfMonthOn(today, 1), today),
       },
     ],
     student: [
@@ -843,7 +853,7 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         interest_rate_percentage: 5.25,
         is_overdue: false,
         last_payment_amount: 195,
-        last_payment_date: null,
+        last_payment_date: lastDayOfMonthOn(today, 28),
         last_statement_issue_date: null,
         loan_name: "Consolidation",
         loan_status: { end_date: null, type: "repayment" },
@@ -861,8 +871,8 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         repayment_plan: { description: "Standard Repayment", type: "standard" },
         sequence_number: null,
         servicer_address: null,
-        ytd_interest_paid: 805.5,
-        ytd_principal_paid: 1144.5,
+        ytd_interest_paid: paidSoFar(80.55, lastDayOfMonthOn(today, 28), today),
+        ytd_principal_paid: paidSoFar(114.45, lastDayOfMonthOn(today, 28), today),
       },
     ],
     loan: [
@@ -880,9 +890,9 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         next_payment_amount: 494.1,
         next_payment_due_date: nextDayOfMonth(today, 1),
         last_payment_amount: 494.1,
-        last_payment_date: null,
+        last_payment_date: lastDayOfMonthOn(today, 1),
         payoff_amount: null,
-        ytd_interest_paid: 1050.75,
+        ytd_interest_paid: paidSoFar(105.08, lastDayOfMonthOn(today, 1), today),
         compounding_period: null,
       },
     ],

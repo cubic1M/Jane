@@ -121,13 +121,24 @@ export const TAXABLE_INVESTMENT_SUBTYPES: readonly string[] = [
   "crypto exchange",
 ];
 
-// How far back Jane looks for income, in days: a full year, so a yearly payment counts.
-// A lender's interest paid so far this year (Plaid Liabilities' year to date) is paced to the year
-// only from this many days in: a January reading is a few weeks of interest, and twelve times it is
-// noise, so before then a year's interest is worked out from the balance and rate
-// (src/planning/lender-interest.ts).
+// A lender's interest paid so far this year (Plaid Liabilities' year to date), paced to the year
+// (src/planning/lender-interest.ts). With a last payment in the year it's paced by payments, from
+// this many on: one payment's interest twelve times over is noise. Without one, by the day it was
+// read, from this many days in. Before either, a year's interest is the balance times the rate.
+export const LENDER_INTEREST_MIN_PAYMENTS = 2;
 export const LENDER_INTEREST_MIN_DAYS = 61;
+// Payments Jane sees count as the lender's when they come monthly (each gap in this range, in
+// days), and Jane's data starts at least the lead before the first (else earlier ones may be
+// unseen, and the last payment's month number counts them, as if monthly from January).
+export const LENDER_PAYMENT_GAP_DAYS = { min: 20, max: 40 } as const;
+export const LENDER_PAYMENT_SEEN_LEAD_DAYS = 35;
+// The payments to a kind of loan, by Plaid category (PFCv2), as the student loan card finds them.
+export const LENDER_PAYMENT_CATEGORIES: Readonly<Record<string, PfcDetailed>> = {
+  student: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+  mortgage: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+};
 
+// How far back Jane looks for income, in days: a full year, so a yearly payment counts.
 export const TAX_PROFILE_LOOKBACK_DAYS = 365;
 // Wages count once there are this many paychecks; one-off payments count from the first.
 export const TAX_PROFILE_MIN_PAYCHECKS = 2;

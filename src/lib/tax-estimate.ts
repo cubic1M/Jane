@@ -11,6 +11,7 @@ import {
   BUSINESS_SALES_PAYEE,
   CHECK_DEPOSIT,
   LEFT_OUT_INCOME_MIN_CENTS,
+  LENDER_PAYMENT_CATEGORIES,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
   type FilingStatus,
@@ -288,6 +289,7 @@ async function loadTaxEstimateFrom(
         kind: true,
         ytdInterestPaidCents: true,
         aprBps: true,
+        lastPaymentDate: true,
         updatedAt: true,
         account: { select: { currentBalanceCents: true } },
       },
@@ -618,17 +620,41 @@ async function loadTaxEstimateFrom(
   // $0.58 a day). As the student loan card reads it (src/planning/lender-interest.ts); the balance and
   // rate stand in only for a loan whose lender reports interest, read too early in the year or in
   // another year.
+  // Paced by the payments seen, as the card does: the year's payments to each kind of loan, and where
+  // the data starts.
+  const paid = loans.some((l) => l.lastPaymentDate)
+    ? await db.transactions.findMany({
+        where: {
+          pending: false,
+          amountCents: { gt: 0 },
+          pfcDetailed: { in: Object.values(LENDER_PAYMENT_CATEGORIES) },
+          date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+        },
+        select: { date: true, pfcDetailed: true },
+      })
+    : [];
+  const firstLine = paid.length
+    ? await db.transactions.findFirst({ orderBy: { date: "asc" }, select: { date: true } })
+    : null;
   const loanInterest = (kind: string) => {
     const mine = loans.filter((l) => l.kind === kind);
     const found = yearInterest(
       mine.map((l) => ({
         ytdInterestPaidCents: l.ytdInterestPaidCents,
-        asOf: iso(l.updatedAt),
+        // Each sync writes the lender's figures, and nothing else updates the row.
+        readOn: iso(l.updatedAt),
+        lastPaymentDate: l.lastPaymentDate ? iso(l.lastPaymentDate) : null,
         balanceCents: l.account.currentBalanceCents,
         aprBps: l.aprBps,
       })),
       year,
       today,
+      {
+        dates: paid
+          .filter((t) => t.pfcDetailed === LENDER_PAYMENT_CATEGORIES[kind])
+          .map((t) => iso(t.date)),
+        dataFrom: firstLine ? iso(firstLine.date) : null,
+      },
     );
     if (!found) return 0;
     return found.from === "lender" || mine.some((l) => (l.ytdInterestPaidCents ?? 0) > 0)

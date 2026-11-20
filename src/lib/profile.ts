@@ -153,6 +153,7 @@ async function loadProfileInputFrom(
         loanStatus: true,
         loanStatusEndDate: true,
         ytdInterestPaidCents: true,
+        lastPaymentDate: true,
         updatedAt: true,
       },
     }),
@@ -303,8 +304,10 @@ async function loadProfileInputFrom(
       loanStatus: l.loanStatus,
       loanStatusEndDate: l.loanStatusEndDate ? dayOf(l.loanStatusEndDate) : null,
       ytdInterestPaidCents: l.ytdInterestPaidCents,
-      // Each sync writes the lender's figures, so the row's last write is the day they were read.
-      ytdInterestAsOf: dayOf(l.updatedAt),
+      // Each sync writes the lender's figures, and nothing else updates the row: its last write is
+      // the day they were read.
+      ytdInterestReadOn: dayOf(l.updatedAt),
+      lastPaymentDate: l.lastPaymentDate ? dayOf(l.lastPaymentDate) : null,
     })),
     state: tax?.state ?? null,
     // The person, a spouse on a joint return, and dependants, once they've answered both.

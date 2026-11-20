@@ -48,7 +48,7 @@ const data = (
       hasPmi: null,
       payoffDate: "2033-09-01",
       ytdInterestPaidCents: reading?.cents ?? null,
-      ytdInterestAsOf: reading?.asOf ?? null,
+      ytdInterestReadOn: reading?.asOf ?? null,
     },
   ],
   told: { home_state: "CA", claimed_as_dependent: "no" },

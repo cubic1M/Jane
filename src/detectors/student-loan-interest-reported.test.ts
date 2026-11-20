@@ -39,7 +39,7 @@ const data = (ytdInterestPaidCents: number | null): ProfileInput => ({
       hasPmi: null,
       payoffDate: "2033-09-01",
       ytdInterestPaidCents,
-      ytdInterestAsOf: "2026-11-20",
+      ytdInterestReadOn: "2026-11-20",
     },
   ],
   told: { home_state: "CA", claimed_as_dependent: "no" },
