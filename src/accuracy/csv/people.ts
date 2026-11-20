@@ -1,6 +1,6 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
-import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
+import { ANNUAL_FEE_WORDS, FEE_PACE_MIN_CHARGES } from "@/config/found-policies";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units";
 import { idleCashOf } from "@/planning/idle-cash";
@@ -2709,20 +2709,42 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       a.date.localeCompare(b.date) ||
       Number(a.id.slice(a.id.indexOf("-r") + 2)) - Number(b.id.slice(b.id.indexOf("-r") + 2)),
   );
-  // Fees and card interest from a short history are worth a year at their pace (#853): over the
-  // months the person's data covers, from their first transaction on any account, as the dock
-  // and the report count them (src/detection/rules/fee-totals.ts).
+  // Card interest from a short history is worth a year at its pace (#853): over the months the
+  // person's data covers, from their first transaction on any account, as the dock and the
+  // report count it (src/detection/rules/fee-totals.ts).
   const days = daysBetween(L.rows[0]!.date, asOf);
   if (days < SHORT_HISTORY_DAYS) {
     const months = Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)));
-    for (const f of L.findings.filter(
-      (x) => x.type === "card_interest" || x.type === "bank_fees",
-    )) {
+    for (const f of L.findings.filter((x) => x.type === "card_interest")) {
       // A card's annual fee comes once a year: counted once, not scaled with the rest.
       const yearly = (f.rows ?? [])
         .map((id) => L.rows.find((x) => x.id === id))
         .filter((x) => x && ANNUAL_FEE_WORDS.test(x.descriptor))
         .reduce((sum, x) => sum + x!.amountCents, 0);
+      f.annualCents = Math.round(((f.annualCents! - yearly) * MONTHS_PER_YEAR) / months) + yearly;
+    }
+  }
+  // Bank fees as Jane counts them (src/planning/bank-fees.ts): each account over its own months
+  // of statements, at a year's pace under twelve months (#1852), and one fee counted once, not
+  // paced (#1065, FEE_PACE_MIN_CHARGES). A card's annual fee counts once either way.
+  for (const f of L.findings.filter((x) => x.type === "bank_fees")) {
+    const own = L.rows.filter((x) => x.account === f.account && x.date <= asOf);
+    if (own.length === 0) continue;
+    const span = daysBetween(own[0]!.date, own[own.length - 1]!.date);
+    const months = Math.min(MONTHS_PER_YEAR, Math.max(1, Math.round(span / DAYS_PER_MONTH)));
+    const fees = (f.rows ?? []).flatMap((id) => L.rows.find((x) => x.id === id) ?? []);
+    const yearly = fees
+      .filter((x) => ANNUAL_FEE_WORDS.test(x.descriptor))
+      .reduce((sum, x) => sum + x.amountCents, 0);
+    // The fees left once a reversal (the same amount back) pairs off one, as Jane pairs them.
+    const charged = fees
+      .filter((x) => x.amountCents > 0 && !ANNUAL_FEE_WORDS.test(x.descriptor))
+      .map((x) => x.amountCents);
+    for (const back of fees.filter((x) => x.amountCents < 0)) {
+      const i = charged.indexOf(-back.amountCents);
+      if (i >= 0) charged.splice(i, 1);
+    }
+    if (charged.length >= FEE_PACE_MIN_CHARGES) {
       f.annualCents = Math.round(((f.annualCents! - yearly) * MONTHS_PER_YEAR) / months) + yearly;
     }
   }

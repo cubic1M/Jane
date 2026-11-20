@@ -97,10 +97,10 @@ Calibration, tuning set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 48 | 57% | 100% |
+| 50–59% | 56 | 56% | 100% |
 | 60–69% | 18 | 65% | 100% |
-| 70–79% | 7 | 74% | 100% |
-| 80–89% | 31 | 86% | 100% |
+| 70–79% | 8 | 74% | 100% |
+| 80–89% | 37 | 86% | 100% |
 | 90–100% | 33 | 95% | 100% |
 
 Held-out set (40 people, 10008 transactions):
@@ -122,9 +122,9 @@ Calibration, held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 30 | 55% | 100% |
-| 60–69% | 31 | 65% | 100% |
-| 70–79% | 11 | 74% | 100% |
+| 50–59% | 35 | 55% | 100% |
+| 60–69% | 32 | 65% | 100% |
+| 70–79% | 12 | 74% | 100% |
 | 80–89% | 18 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
 
@@ -147,10 +147,10 @@ Calibration, second held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 31 | 57% | 100% |
-| 60–69% | 18 | 64% | 100% |
-| 70–79% | 8 | 75% | 100% |
-| 80–89% | 19 | 86% | 100% |
+| 50–59% | 32 | 57% | 100% |
+| 60–69% | 17 | 65% | 100% |
+| 70–79% | 9 | 75% | 100% |
+| 80–89% | 21 | 86% | 100% |
 | 90–100% | 19 | 95% | 100% |
 
 Third held-out set (40 people, 9384 transactions):
@@ -172,10 +172,10 @@ Calibration, third held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 41 | 55% | 100% |
+| 50–59% | 45 | 55% | 100% |
 | 60–69% | 16 | 66% | 100% |
 | 70–79% | 8 | 73% | 100% |
-| 80–89% | 12 | 85% | 100% |
+| 80–89% | 14 | 85% | 100% |
 | 90–100% | 8 | 95% | 100% |
 <!-- scoreboard:end -->
 
@@ -344,7 +344,7 @@ Tuning set (20 people, 147 files, 5513 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 99.8% (11 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $28,299, truth $28,429; error on the ones found 0.5% |
+| Findings, $/yr | Jane $28,286, truth $28,286; error on the ones found 0.0% |
 | Asked "a subscription to cancel?", no dollars on it | 0 are, $0; 0 aren't, $0 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
@@ -373,10 +373,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 4 | 59% | 100% |
-| 60–69% | 31 | 63% | 100% |
+| 50–59% | 5 | 59% | 100% |
+| 60–69% | 32 | 63% | 100% |
 | 70–79% | 9 | 73% | 100% |
-| 80–89% | 8 | 82% | 100% |
+| 80–89% | 7 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Second tuning set (20 people, 137 files, 5926 transactions):
@@ -387,12 +387,12 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $90,030, truth $94,265; error on the ones found 0.4% |
+| Findings, $/yr | Jane $89,915, truth $94,051; error on the ones found 0.1% |
 | Asked "a subscription to cancel?", no dollars on it | 18 are, $4,454; 2 aren't, $1,536 |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,996 in all) |
-| Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
+| Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
 | "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 30 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 93.6% (error where drawn 47.2%) |
@@ -406,7 +406,7 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
-| idle_cash | 66.7% | 50.0% | 2 | 1 | 2 |
+| idle_cash | 100.0% | 50.0% | 2 | 0 | 2 |
 | bills coming up (31 days) | 100.0% | 100.0% | 257 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -416,10 +416,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 4 | 59% | 0% |
-| 60–69% | 47 | 63% | 89% |
+| 50–59% | 5 | 59% | 20% |
+| 60–69% | 48 | 63% | 92% |
 | 70–79% | 12 | 73% | 83% |
-| 80–89% | 11 | 83% | 100% |
+| 80–89% | 10 | 84% | 100% |
 | 90–100% | 0 | – | – |
 
 Held-out set (20 people, 114 files, 5484 transactions):
@@ -430,7 +430,7 @@ Held-out set (20 people, 114 files, 5484 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 95.6% (188 left for Claude) |
 | False "Charged twice?" | 1 (1 people) |
-| Findings, $/yr | Jane $22,093, truth $28,454; error on the ones found 0.7% |
+| Findings, $/yr | Jane $22,252, truth $28,400; error on the ones found 0.0% |
 | Asked "a subscription to cancel?", no dollars on it | 34 are, $4,977; 0 aren't, $0 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
@@ -459,10 +459,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 5 | 59% | 100% |
-| 60–69% | 31 | 63% | 100% |
-| 70–79% | 8 | 75% | 100% |
-| 80–89% | 15 | 83% | 100% |
+| 50–59% | 8 | 59% | 100% |
+| 60–69% | 32 | 64% | 100% |
+| 70–79% | 6 | 74% | 100% |
+| 80–89% | 14 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Second held-out set (20 people, 138 files, 5532 transactions):
@@ -473,7 +473,7 @@ Second held-out set (20 people, 138 files, 5532 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 91.6% (392 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $21,125, truth $28,124; error on the ones found 0.8% |
+| Findings, $/yr | Jane $21,213, truth $28,001; error on the ones found 0.0% |
 | Asked "a subscription to cancel?", no dollars on it | 27 are, $6,718; 0 aren't, $0 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
@@ -502,10 +502,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 4 | 59% | 100% |
-| 60–69% | 38 | 63% | 100% |
-| 70–79% | 7 | 74% | 100% |
-| 80–89% | 10 | 82% | 100% |
+| 50–59% | 6 | 59% | 100% |
+| 60–69% | 39 | 63% | 97% |
+| 70–79% | 4 | 72% | 100% |
+| 80–89% | 8 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Third held-out set (20 people, 148 files, 5695 transactions):
@@ -516,14 +516,14 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 83.9% (883 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $20,181, truth $33,026; error on the ones found 0.3% |
+| Findings, $/yr | Jane $20,226, truth $33,034; error on the ones found 0.0% |
 | Asked "a subscription to cancel?", no dollars on it | 42 are, $12,845; 32 aren't, $16,560 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $41,990 in all) |
-| Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
+| Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
 | "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
-| Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 1 false idle cash |
+| Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 90.9% (error where drawn 14.4%) |
 | Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
 
@@ -535,7 +535,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | bank_fees | 100.0% | 100.0% | 23 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 78.6% | 100.0% | 11 | 3 | 0 |
-| idle_cash | 85.7% | 100.0% | 6 | 1 | 0 |
+| idle_cash | 100.0% | 100.0% | 6 | 0 | 0 |
 | bills coming up (31 days) | 100.0% | 100.0% | 221 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -545,9 +545,9 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 7 | 59% | 57% |
-| 60–69% | 36 | 63% | 100% |
-| 70–79% | 11 | 74% | 100% |
+| 50–59% | 7 | 59% | 71% |
+| 60–69% | 38 | 63% | 100% |
+| 70–79% | 10 | 74% | 100% |
 | 80–89% | 11 | 84% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->

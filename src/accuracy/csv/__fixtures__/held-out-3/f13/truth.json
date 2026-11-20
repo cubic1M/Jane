@@ -61,7 +61,7 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 9
+      "perYear": 3
     }
   ],
   "notFindings": [
