@@ -109,7 +109,7 @@ import {
   startButtons,
 } from "./auto-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
-import { formatRate } from "@/lib/percent";
+import { formatExpenseRatio } from "@/lib/percent";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
 // wording and buttons out. Facts only, the same for every account; advice is in the later
@@ -297,13 +297,13 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
   const [only] = fees.funds;
   const funds =
     fees.funds.length === 1 && only
-      ? `\nThat's ${only.holding.name}, at ${formatRate(only.expenseRatioBps)} a year.`
+      ? `\nThat's ${only.holding.name}, at ${formatExpenseRatio(only.expenseRatioBps)} a year.`
       : fees.funds.length > 1
         ? `\nThe costliest:\n${fees.funds
             .slice(0, 3)
             .map(
               (f) =>
-                `- ${f.holding.name}: ${formatRate(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
+                `- ${f.holding.name}: ${formatExpenseRatio(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
             )
             .join("\n")}`
         : "";
@@ -1071,7 +1071,7 @@ export function planMenuReply(view: PlanMenuView): Reply {
   }
   if (!view.advice || !view.plan) {
     return {
-      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${formatRate(f.expenseBps)})`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
+      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${formatExpenseRatio(f.expenseBps)})`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
       actions: [MENU_LINK],
       refs: {},
     };

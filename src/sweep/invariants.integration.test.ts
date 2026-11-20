@@ -29,6 +29,7 @@ import {
   twoCardsOneHolding,
   decidedOnEstimate,
   listDoubles,
+  fundRatios,
   walkedUnlabelled,
   sameFigures,
 } from "./invariants";
@@ -161,6 +162,11 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // Class 4: 1900, 1904, 1938, 2011, 2014, 2016, 2027, 2063, 2097, 2114.
   it("reads the same figure the same everywhere it's shown", () => {
     expect(everyone(sameFigures)).toEqual([]);
+  });
+
+  // And each fund's yearly cost as the fund table has it (FXAIX's 0.015%, 11-20).
+  it("reads each fund's yearly cost as Jane's fund table has it", () => {
+    expect(everyone(fundRatios)).toEqual([]);
   });
 
   // Class 7: 1882, 1886, 1897, 1906, 1911, 1917, 1920, 1928, 1947, 1948, 1982, 2060, 2086, 2088.

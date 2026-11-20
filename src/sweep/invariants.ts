@@ -592,3 +592,35 @@ export function listDoubles(flat: Flat): string[] {
   }
   return found;
 }
+
+// Class 4 for a fund's yearly cost (debug 3, 11-20): a ratio shown beside a fund's name or ticker
+// is the one in Jane's fund table (src/config/funds.ts), to the digit the table holds. Fidelity 500
+// Index read "0.01%" in the chat beside the walkers' "0.015%", Fidelity's own figure (walk notes,
+// 11-18): two decimals rounded away the half basis point.
+export function fundRatios(flat: Flat): string[] {
+  const funds = Object.keys(flat)
+    .filter((k) => /^funds\.\d+\.ticker$/.test(k))
+    .map((k) => {
+      const at = k.replace(/ticker$/, "");
+      return {
+        ticker: String(flat[k]),
+        name: String(flat[`${at}name`]),
+        ratio: String(flat[`${at}ratio`]),
+      };
+    });
+  const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return shownTexts(flat).flatMap(([path, text]) =>
+    funds.flatMap(({ ticker, name, ratio }) =>
+      [
+        ...text.matchAll(
+          new RegExp(
+            `(?:${escape(name)}|\\b${escape(ticker)}\\b)(?:(?!\\. )[^%;\\n]){0,60}?(\\d+(?:\\.\\d+)?%)`,
+            "gi",
+          ),
+        ),
+      ]
+        .filter((m) => m[1] !== ratio)
+        .map((m) => `${path}: "${m[0].slice(0, 100)}", ${ticker} costs ${ratio} a year`),
+    ),
+  );
+}

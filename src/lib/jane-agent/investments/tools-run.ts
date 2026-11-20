@@ -83,7 +83,7 @@ import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { practiceIdeasFor } from "./practice-ideas";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
-import { formatRate } from "@/lib/percent";
+import { formatExpenseRatio } from "@/lib/percent";
 import { scopedFor } from "@/lib/db-scoped";
 import { chatToday } from "@/lib/today";
 import { toolAnswer } from "@/lib/ask/tools";
@@ -126,7 +126,7 @@ export async function runInvestmentTool(
             value: money(h.valueCents),
             paid: h.costBasisCents === null || h.isCash ? null : money(h.costBasisCents),
             gainOrLoss: h.gainCents === null ? null : money(h.gainCents),
-            yearlyCost: h.expenseRatioBps === null ? null : formatRate(h.expenseRatioBps),
+            yearlyCost: h.expenseRatioBps === null ? null : formatExpenseRatio(h.expenseRatioBps),
             source: h.source,
           })),
         })),
@@ -173,7 +173,7 @@ export async function runInvestmentTool(
         funds: fees.funds.map((f) => ({
           name: f.holding.name,
           account: f.accountName,
-          yearlyCost: formatRate(f.expenseRatioBps),
+          yearlyCost: formatExpenseRatio(f.expenseRatioBps),
           aYear: money(f.yearlyCents),
         })),
         costNotKnown: fees.unknown,
@@ -184,7 +184,7 @@ export async function runInvestmentTool(
               hold: e.name,
               ticker: e.ticker,
               kind: e.category,
-              itsYearlyCost: formatRate(e.expenseRatioBps),
+              itsYearlyCost: formatExpenseRatio(e.expenseRatioBps),
               offeredInPlan: e.inPlanMenu,
               savingAYear: money(e.yearlySavingCents),
               [`savingOver${fees.years}Years`]: span(e.overYears),

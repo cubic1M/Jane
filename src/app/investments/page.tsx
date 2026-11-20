@@ -52,7 +52,7 @@ import { honestLine } from "@/planning/trading-agent/honest-line";
 import { ownedFacts } from "@/planning/owned-facts";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
-import { formatRate } from "@/lib/percent";
+import { formatExpenseRatio } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
 import { timezoneOf } from "@/lib/today";
 import { PageShell } from "@/components/page-shell";
@@ -102,7 +102,9 @@ function HoldingRow({ h }: { h: HoldingView }) {
         )}
         <div>
           <dt className="text-zinc-500">Yearly fund cost</dt>
-          <dd>{h.expenseRatioBps === null ? "Not known" : formatRate(h.expenseRatioBps)}</dd>
+          <dd>
+            {h.expenseRatioBps === null ? "Not known" : formatExpenseRatio(h.expenseRatioBps)}
+          </dd>
         </div>
       </dl>
       <p className="text-xs text-zinc-500">

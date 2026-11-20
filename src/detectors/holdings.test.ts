@@ -95,8 +95,8 @@ describe("fund costs from real, published figures", () => {
     const s = runDetectors({ profile: buildProfile(real), data: real }, HOLDINGS_DETECTORS).find(
       (x) => x.topic === "investment_fees",
     )!;
-    // 0.74% (its filing) against the 0.01% S&P 500 index fund on $100,000: $730 a year.
-    expect(s.worthCents).toBe(73_000);
+    // 0.74% (its filing) against Fidelity 500 Index's 0.015% (its page) on $100,000: $725 a year.
+    expect(s.worthCents).toBe(72_500);
     // Both funds read from their filings, so the weak point is the months seen, not the figures.
     expect(s.confidence.reason).not.toMatch(/published|demo/);
   });
