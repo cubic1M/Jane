@@ -122,6 +122,12 @@ export const TAXABLE_INVESTMENT_SUBTYPES: readonly string[] = [
 ];
 
 // How far back Jane looks for income, in days: a full year, so a yearly payment counts.
+// A lender's interest paid so far this year (Plaid Liabilities' year to date) is paced to the year
+// only from this many days in: a January reading is a few weeks of interest, and twelve times it is
+// noise, so before then a year's interest is worked out from the balance and rate
+// (src/planning/lender-interest.ts).
+export const LENDER_INTEREST_MIN_DAYS = 61;
+
 export const TAX_PROFILE_LOOKBACK_DAYS = 365;
 // Wages count once there are this many paychecks; one-off payments count from the first.
 export const TAX_PROFILE_MIN_PAYCHECKS = 2;

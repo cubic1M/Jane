@@ -39,6 +39,7 @@ const data = (ytdInterestPaidCents: number | null): ProfileInput => ({
       hasPmi: null,
       payoffDate: "2033-09-01",
       ytdInterestPaidCents,
+      ytdInterestAsOf: "2026-11-20",
     },
   ],
   told: { home_state: "CA", claimed_as_dependent: "no" },
@@ -53,7 +54,7 @@ describe("a student loan's year of interest", () => {
   it("is the lender's interest so far, paced to the year as the tax estimate does", () => {
     const s = card(data(86_007));
     expect(s.why).toContain(
-      "Your lender reports $860.07 of interest paid so far this year, about $971.91 for the year",
+      "Your lender reports $860.07 of interest paid in 2026 by Nov 20, about $971.91 for the year",
     );
     expect(s.why).not.toContain("$882.96");
   });
