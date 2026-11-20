@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DRIFT_FILE, pushDriftWarning } from "../../scripts/accuracy-drift-core.mjs";
 import { PASS_FILE, pushNeedsE2e } from "../../scripts/e2e-touched-core.mjs";
 
 const MAIN = new Set(["main", "master", "refs/heads/main", "refs/heads/master"]);
@@ -422,6 +423,40 @@ export function checkBash(command, cwd, branchOf = currentBranch, depth = 0) {
   return null;
 }
 
+// A push of a branch that changes what the accuracy scoreboards read, before npm run
+// accuracy:drift ran on its last commit, or after it found a fall: a warning, never a refusal (the
+// founder made the baselines a flag, 11-06). Null when there's nothing to say or git can't say.
+function driftWarning(cwd) {
+  try {
+    const git = (...a) =>
+      execFileSync("git", ["-C", cwd, ...a], {
+        encoding: "utf8",
+        stdio: "pipe",
+        timeout: 4000,
+      }).trim();
+    const base = git("merge-base", "origin/main", "HEAD");
+    const changedPaths = git("diff", "--name-only", base, "HEAD").split("\n").filter(Boolean);
+    let record = null;
+    try {
+      record = readFileSync(resolve(cwd, git("rev-parse", "--git-path", DRIFT_FILE)), "utf8");
+    } catch {
+      // Not run yet.
+    }
+    return pushDriftWarning({ changedPaths, head: git("rev-parse", "HEAD"), record });
+  } catch {
+    return null;
+  }
+}
+
+/** A warning to show before this tool call runs, which doesn't stop it, or null. */
+export function warnToolCall(call) {
+  const { tool_name: tool, tool_input: input = {}, cwd = process.cwd() } = call;
+  if (tool !== "Bash") return null;
+  const command = stripHeredocs(input.command ?? "");
+  const push = /(?:^|[\s;&|(])git\s+(?:-C\s+(\S+)\s+)?push\b/.exec(command);
+  return push ? driftWarning(push[1] ? resolve(cwd, push[1]) : cwd) : null;
+}
+
 /** Why this tool call must not run, or null. */
 export function checkToolCall(call, branchOf) {
   const { tool_name: tool, tool_input: input = {}, cwd = process.cwd() } = call;
@@ -437,13 +472,26 @@ export function checkToolCall(call, branchOf) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   let reason = null;
+  let warning = null;
   try {
-    reason = checkToolCall(JSON.parse(readFileSync(0, "utf8")));
+    const call = JSON.parse(readFileSync(0, "utf8"));
+    reason = checkToolCall(call);
+    if (!reason) warning = warnToolCall(call);
   } catch {
     // A hook that can't read its input steps aside rather than stopping a session's work.
   }
   if (reason) {
     process.stderr.write(`Refused by .claude/hooks/deny.mjs: ${reason}\n`);
     process.exit(2);
+  }
+  if (warning) {
+    // Shown, and the push goes on.
+    const text = `Warning from .claude/hooks/deny.mjs: ${warning}`;
+    process.stdout.write(
+      `${JSON.stringify({
+        systemMessage: text,
+        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: text },
+      })}\n`,
+    );
   }
 }

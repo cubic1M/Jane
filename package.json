@@ -9,6 +9,7 @@
     "start": "next start",
     "check:e2e-wording": "node scripts/check-e2e-wording.mjs",
     "e2e:touched": "node scripts/e2e-touched.mjs",
+    "accuracy:drift": "node scripts/accuracy-drift.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
