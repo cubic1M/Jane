@@ -40,7 +40,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "payday",
     bank: ["income", "pay"],
-    kinds: ["payday", "paycheck"],
+    kinds: ["payday", "paycheck", "income"],
     tools: ["safe_to_spend", "money_moves"],
     answer: moneyAnswer,
   },

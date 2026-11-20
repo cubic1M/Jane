@@ -41,6 +41,10 @@ import {
 } from "../replies";
 import { changesReply } from "../replies-changes";
 import { paycheckReply } from "../replies-paycheck";
+import { incomeReply } from "../replies-income";
+import { loadProfileInput } from "@/lib/profile";
+import { buildProfile, rateMonthsOf } from "@/profile/build";
+import { yearIncomeOf } from "@/detectors/helpers";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
@@ -128,6 +132,20 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         };
       }
       return paydayReply(await loadRecurring(userId, { client, now }), asOf, {
+        statementsEnd: await statementsEndOf(userId, client, asOf),
+      });
+    }
+    case "income": {
+      // The profile's month and the tax cards' year: the figures every page gives.
+      const input = await loadProfileInput(userId, { client, now });
+      const profile = buildProfile(input);
+      const fact = profile.facts.monthly_income;
+      return incomeReply(intent.period, {
+        monthCents: typeof fact.value === "number" ? fact.value : null,
+        told: fact.source === "told",
+        schedules: profile.paySchedules ?? [],
+        months: Math.max(1, Math.round(rateMonthsOf(profile))),
+        yearGrossCents: yearIncomeOf(profile, input),
         statementsEnd: await statementsEndOf(userId, client, asOf),
       });
     }

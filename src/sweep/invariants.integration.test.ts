@@ -104,6 +104,18 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
     expect([...seen.keys()]).toEqual(EVERYONE);
   });
 
+  // The backup chat answers what each person makes (the walkers' unanswered "how much do I make a
+  // month?", 11-18 to 11-20), so class 4 below has its figure to hold to the profile's.
+  it("answers what each person with an income makes, a month", () => {
+    expect(
+      [...seen]
+        .filter(([, flat]) => typeof flat["income.monthlyCents"] === "number")
+        .filter(([, flat]) => (flat["income.monthlyCents"] as number) > 0)
+        .filter(([, flat]) => typeof flat["income.chatMonth"] !== "string")
+        .map(([who]) => who),
+    ).toEqual([]);
+  });
+
   // Class 1: 1955, 1962, 1970, 2025, 2034, 2083, 2084, 2091.
   it("names what it shows by the cleaned name, never the bank's raw line", () => {
     expect(everyone(rawNames)).toEqual([]);

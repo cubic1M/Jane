@@ -393,6 +393,7 @@ export function sameFigures(flat: Flat): string[] {
   // 11-19).
   check("the profile's monthly income", flat["income.monthlyCents"], [
     ["income.chatFigure", flat["income.chatFigure"]],
+    ["income.chatMonth", flat["income.chatMonth"]],
     ...shownTexts(flat).flatMap(([path, text]) =>
       [...text.matchAll(/\byou earn about (\$[\d,]+\.\d{2}) a month\b/gi)].map(
         (m): [string, unknown] => [path, m[1]],
@@ -405,16 +406,15 @@ export function sameFigures(flat: Flat): string[] {
   // month" and "Income near $28,489.50"; the schedule says $1,343 and about $20,956).
   const yearCents = flat["income.yearCents"];
   if (typeof yearCents === "number" && yearCents > 0) {
-    check(
-      "the year's income",
-      yearCents,
-      shownTexts(flat).flatMap(([path, text]) =>
+    check("the year's income", yearCents, [
+      ["income.chatYearGross", flat["income.chatYearGross"]],
+      ...shownTexts(flat).flatMap(([path, text]) =>
         [...text.matchAll(/\bincome near (\$[\d,]+\.\d{2})/gi)].map((m): [string, unknown] => [
           path,
           m[1],
         ]),
       ),
-    );
+    ]);
     if (flat["income.payOnly"] === true)
       check("the profile's month of pay, as a year", flat["income.fromMonthCents"], [
         ["income.yearCents", `$${(yearCents / 100).toFixed(2)}`],

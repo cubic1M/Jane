@@ -107,6 +107,17 @@ export async function snapshotAt(
   );
   const thisYear = `${found.input.today.slice(0, 4)}-01-01`;
   const incomeFigure = await explainFigure(userId, "monthly_income", { client, now });
+  // The backup chat's answers to what they make: their figures only, held to the profile's month and
+  // the tax cards' year (class 4). Not the text: how many months of data it says moves with the day.
+  const said = async (question: string, figure: RegExp) => {
+    const reply = await answerByRules(userId, parseIntent(question, asOf), { client, now });
+    return reply ? (figure.exec(reply.body)?.[1] ?? null) : null;
+  };
+  const chatMonth = await said("how much do I make a month", /(\$[\d,]+\.\d{2}) a month/);
+  const chatYearGross = await said(
+    "how much do I make a year",
+    /about (\$[\d,]+\.\d{2}) before tax/,
+  );
   return flatten({
     asOf,
     detected: Object.fromEntries(detected.map((c) => [`${c.type}:${c.key}`, c])),
@@ -131,6 +142,8 @@ export async function snapshotAt(
     income: {
       // What the chat says for "how much do I make" and "how did you get that" (explain_figure).
       chatFigure: incomeFigure?.value ?? null,
+      chatMonth,
+      chatYearGross,
       // A month of pay by the schedules Home's payday and the chat's "when do I get paid" read
       // (src/detection/paydays.ts): each employer's latest paycheck times its paychecks a month.
       // Still paying is counted from where the data ends, as the profile counts it, so it doesn't

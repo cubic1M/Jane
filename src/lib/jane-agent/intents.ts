@@ -76,6 +76,8 @@ export type Intent =
   | { kind: "subscriptions"; total: boolean; all: boolean }
   // The next paycheck.
   | { kind: "payday" }
+  // "How much do I make a month?", "what's my yearly income?": what comes in, as the profile has it.
+  | { kind: "income"; period: "month" | "year" }
   // Spec step 94: how the savings goals are doing.
   | { kind: "goals" }
   // Spec step 95: a guided flow to start, or the one left open to pick up again.
@@ -443,6 +445,11 @@ const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my 
 const COMING_UP =
   /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b|\bwhat (?:are|r) (?:my|the) bills\b|\bwhat bills do i (?:have|pay)\b/;
 // Spec step 88.
+// What they make, not when they're paid: "how much do I make a month", "what's my income", "how much
+// do I take home a year" (the walkers' backup chat left these unanswered, 11-18 to 11-20).
+const INCOME =
+  /\bhow much (?:money )?(?:do|did) (?:i|we) (?:make|earn|bring in|take home)\b|\bwhat(?:'s| is| are) (?:my|our) (?:monthly |yearly |annual )?(?:income|take[- ]home(?: pay)?|earnings)\b|\b(?:my|our) (?:monthly|yearly|annual) (?:income|take[- ]home|earnings)\b|\bhow much (?:money )?comes in (?:a|each|every|per) (?:month|year)\b/;
+const YEARLY = /\b(?:a|per|each|every|this) year\b|\byearly\b|\bannual(?:ly)?\b/;
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 // Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
 // when the next paycheck comes (11-03).
@@ -610,6 +617,9 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  if (INCOME.test(text) && !/\b(?:tax|taxes|after|if|would|could|should)\b/.test(text)) {
+    return { kind: "income", period: YEARLY.test(text) ? "year" : "month" };
+  }
   if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {

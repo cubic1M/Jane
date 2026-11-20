@@ -77,3 +77,32 @@ describe("income on the tax cards", () => {
     expect(sameFigures(flat("$28,489.50", 2_848_950, 2_095_595, false))).toEqual([]);
   });
 });
+
+describe("the backup chat's income answers", () => {
+  it("fails a month or a year before tax that isn't the profile's or the tax cards'", () => {
+    expect(
+      sameFigures({
+        ...flat("$20,955.95", 2_095_595, 2_095_595),
+        "income.chatMonth": "$1,826.25",
+        "income.chatYearGross": "$28,489.50",
+      }),
+    ).toEqual([
+      `income.chatMonth: "$1,826.25", the profile's monthly income is 1343.33`,
+      `income.chatYearGross: "$28,489.50", the year's income is 20955.95`,
+    ]);
+  });
+
+  it("passes the same figures, and no answer", () => {
+    const one = flat("$20,955.95", 2_095_595, 2_095_595);
+    expect(
+      sameFigures({
+        ...one,
+        "income.chatMonth": "$1,343.33",
+        "income.chatYearGross": "$20,955.95",
+      }),
+    ).toEqual([]);
+    expect(sameFigures({ ...one, "income.chatMonth": null, "income.chatYearGross": null })).toEqual(
+      [],
+    );
+  });
+});
