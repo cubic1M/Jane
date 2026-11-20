@@ -162,8 +162,12 @@ const bankFees: Detector = {
         (t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS"),
     );
     const overdrawn = overdrafts.length > 0;
-    // An overdraft fee at Chase: Chase's own rule on when it charges one (src/config/student-money.ts).
+    // A rule is cited only beside a fee it covers (src/config/student-money.ts): the opt-in and
+    // Chase's $50 rule are about overdraft fees, not an insufficient-funds fee.
+    const optIn = overdrafts.some((t) => OVERDRAFT_OPT_IN.covers.includes(t.pfc ?? ""));
+    // An overdraft fee at Chase: Chase's own rule on when it charges one.
     const atChase = overdrafts.some((t) => {
+      if (!CHASE_OVERDRAFT.covers.includes(t.pfc ?? "")) return false;
       const a = data.accounts.find((x) => x.id === t.accountId);
       return (
         !!a && CHASE_OVERDRAFT.words.test(`${a.institution ?? ""} ${a.name ?? ""}`.toUpperCase())
@@ -199,7 +203,7 @@ const bankFees: Detector = {
       confidence: evidence("seen", profile.months, fees.count, "bank fees"),
       urgency: "soon",
       why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.${
-        overdrawn
+        optIn
           ? " The CFPB says banks need your opt-in to charge an overdraft fee on an ATM withdrawal or a one-time debit card purchase, and that you can change that choice any time by asking your bank: the card is then declined instead, with no fee."
           : ""
       }${
@@ -208,7 +212,7 @@ const bankFees: Detector = {
           : ""
       }`,
       action: { label: "See the fees", href: "/insights" },
-      ...(overdrawn
+      ...(optIn
         ? {
             more: [
               { label: "CFPB: overdraft coverage", href: OVERDRAFT_OPT_IN.consumerUrl },
