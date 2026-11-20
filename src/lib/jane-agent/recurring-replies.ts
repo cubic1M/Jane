@@ -129,10 +129,13 @@ export function subscriptionsReply(
   {
     statementsEnd = null,
     shortHistory = false,
+    seenOnce = [],
   }: {
     statementsEnd?: string | null;
     // Less history than a monthly charge shows twice in (CASH_FLOW_MIN_HISTORY_DAYS).
     shortHistory?: boolean;
+    // On a short history, the charges of a subscription's kind seen once each ("Hulu $9.99").
+    seenOnce?: readonly string[];
   } = {},
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
@@ -143,6 +146,17 @@ export function subscriptionsReply(
     if (statementsEnd) return oldStatements(statementsEnd, `what ${what} you pay now`, "check");
     // Debug 3, 11-19 (class 6): one month of statements can't show a monthly charge twice, so
     // none seen isn't none paid.
+    if (shortHistory && seenOnce.length > 0) {
+      const named =
+        seenOnce.length === 1
+          ? seenOnce[0]!
+          : `${seenOnce.slice(0, -1).join(", ")} and ${seenOnce[seenOnce.length - 1]}`;
+      return {
+        body: `${named} ${seenOnce.length === 1 ? "looks like a subscription" : "look like subscriptions"}, one charge each so far. There's too little history to be sure: they show as subscriptions once about two months of transactions are in.`,
+        actions: [subscriptionsLink],
+        refs: {},
+      };
+    }
     const why = shortHistory
       ? ": there's too little history to tell. They show once about two months of transactions are in."
       : ".";

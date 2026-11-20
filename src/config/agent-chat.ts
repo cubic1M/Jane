@@ -487,3 +487,16 @@ export const CHAT_MONTHLY_CAP_CENTS_DEFAULT = 800;
 export const PERSON_APPS = /\b(venmo|zelle|cash ?app|paypal)\b/i;
 // A charge this many times the merchant's usual (its median before) is said as far above usual.
 export const CHARGE_FAR_ABOVE_SHARE = 2;
+
+// A bill asked by its kind ("how much is my internet bill?"), as the bank files it: what the backup
+// chat looks for in statements that ended long ago (src/lib/jane-agent/replies-old-bills.ts).
+export const BILL_KINDS: Readonly<Record<string, string>> = {
+  internet: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+  cable: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+  wifi: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+  electric: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+  electricity: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+  power: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+  phone: "RENT_AND_UTILITIES_TELEPHONE",
+  water: "RENT_AND_UTILITIES_WATER",
+};
