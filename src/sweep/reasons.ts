@@ -53,10 +53,14 @@ export const DATED: readonly Reason[] = [
       /^(tiles\.[^.]+\.(caption|value|chart)|trees\.(money|loans)\.|chat\.how much did I spend this month\.|suggestions\.(close:month_close|spending:budget_overrun|debt:consolidation|safe_to_spend:emergency_fund)\.|detected\.idle_cash:|suggestions\.investing:idle_cash\.)/,
     on: firstOfMonth,
   },
-  // A new year: this year's taxes, contributions and moves start again.
+  // A new year: this year's taxes, contributions and moves start again. The tax year's income is
+  // the new year's: on Jan 1 with no pay in it yet, its month as a year, where Dec 31 had the year's
+  // own pay (the snapshot's income, #2165; the cards say which year, "2027 income near …"; the
+  // calendar sweep, 1-1: the renter's 5,261,568 to 5,116,800 cents, mid-start's payOnly).
   {
     name: "a new year",
-    paths: /^(trees\.(taxes|insurance)\.|suggestions\.(taxes:|investing:employer_match)|tiles\.)/,
+    paths:
+      /^(trees\.(taxes|insurance)\.|suggestions\.(taxes:|investing:employer_match)|tiles\.|income\.(yearCents|fromMonthCents|payOnly|chatYearGross)$)/,
     on: newYear,
   },
   // The tax calendar's December: year-end moves become urgent and "by Dec 31" comes up.
