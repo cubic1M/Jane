@@ -34,7 +34,7 @@ import { CHASE_OVERDRAFT, OVERDRAFT_OPT_IN } from "@/config/student-money";
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
 // cash, the emergency fund and debt in trouble. Pure; see ./contract.ts.
 
-const SUBSCRIPTION_CATEGORIES = new Set([
+export const SUBSCRIPTION_CATEGORIES = new Set([
   "ENTERTAINMENT_TV_AND_MOVIES",
   "ENTERTAINMENT_MUSIC_AND_AUDIO",
   "ENTERTAINMENT_VIDEO_GAMES",

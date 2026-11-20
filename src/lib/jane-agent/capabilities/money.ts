@@ -41,6 +41,7 @@ import {
 } from "../replies";
 import { changesReply } from "../replies-changes";
 import { paycheckReply } from "../replies-paycheck";
+import { fromOldStatementsReply, seenOnceSubscriptions } from "../replies-old-bills";
 import {
   chargeStoryReply,
   moneyFromPeopleReply,
@@ -114,19 +115,29 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       ]);
       // Not a regular charge: what was spent there this month, or, asked when it's due, that
       // there's no schedule to tell from yet.
-      return (
-        costReply(intent, recurring, snapshot, asOf) ??
-        (intent.when ? notRegularYet(intent.target) : await spendingOn(intent.target))
-      );
+      const known = costReply(intent, recurring, snapshot, asOf);
+      if (known) return known;
+      // Statements that ended long ago: what they show, said as of then (walk notes, upload S7).
+      const ended = await statementsEndOf(userId, client, asOf);
+      if (ended && !intent.when) {
+        const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+        const old = fromOldStatementsReply(intent.target, lines, ended);
+        if (old) return old;
+      }
+      return intent.when ? notRegularYet(intent.target) : await spendingOn(intent.target);
     }
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
         loadSnapshotFast(userId, { client, now }),
       ]);
+      const shortHistory = await shortHistoryOf(userId, client);
       return subscriptionsReply(intent, recurring, snapshot, {
         statementsEnd: await statementsEndOf(userId, client, asOf),
-        shortHistory: await shortHistoryOf(userId, client),
+        shortHistory,
+        seenOnce: shortHistory
+          ? seenOnceSubscriptions((await loadDetectionInput(userId, { client, now })).transactions)
+          : [],
       });
     }
     case "payday": {
