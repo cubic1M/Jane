@@ -35,6 +35,7 @@ import {
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
 import { snapshotAt } from "./snapshot";
+import { claimedSources } from "./claimed-sources";
 
 // The walkers' bug classes as checks on every push (debug 3, 11-19; the classes, and the PRs
 // behind each, are in the manager's notes, debug3-invariants.md). Each sweep person
@@ -102,6 +103,11 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
 
   it("reads every person", () => {
     expect([...seen.keys()]).toEqual(EVERYONE);
+  });
+
+  // Words that name a source or a thing the data doesn't have (./claimed-sources.ts).
+  it("names a source or a thing only when the person's data has it", () => {
+    expect(everyone(claimedSources)).toEqual([]);
   });
 
   // The backup chat answers what each person makes (the walkers' unanswered "how much do I make a
