@@ -80,7 +80,7 @@ import {
 } from "./company-copy";
 import { byHerselfLine } from "./goals-copy";
 import { type InvestmentAccountView, type HoldingView } from "@/insights/investments";
-import type { FeeSummary } from "@/insights/investment-fees";
+import { feeYear, type FeeSummary } from "@/insights/investment-fees";
 import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
@@ -307,7 +307,13 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
             )
             .join("\n")}`
         : "";
-  let body = `${first}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.${funds}${notKnown ? `\n${notKnown}` : ""}`;
+  // Fees from investment data that stopped long ago are its last year, said with its end day.
+  const flat = fees.advisoryCents + fees.accountFeesCents;
+  const when =
+    fees.yearTo && flat > 0
+      ? ` The ${fees.advisoryCents > 0 && fees.accountFeesCents > 0 ? "advisory and account fees are" : fees.advisoryCents > 0 ? "advisory fees are" : "account fees are"} from ${feeYear(fees)}, where your investment records end.`
+      : "";
+  let body = `${first}.${when} Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.${funds}${notKnown ? `\n${notKnown}` : ""}`;
   if (!advice || fees.equivalents.length === 0) {
     return { body, actions: [link], refs: {} };
   }
@@ -978,7 +984,7 @@ export function costlyReply(view: CostlyProductsView): Reply {
     const facts = [
       ...view.products.map((p) => `${p.name}: about ${formatCents(p.yearlyCostCents ?? 0)} a year`),
       ...(view.advisory
-        ? [`advisory fees: ${formatCents(view.advisory.yearlyCents)} in the last 12 months`]
+        ? [`advisory fees: ${formatCents(view.advisory.yearlyCents)} in ${feeYear(view.advisory)}`]
         : []),
     ];
     return {

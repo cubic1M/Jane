@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { Assumptions } from "@/components/assumptions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { equivalentsSaving, type Range } from "@/insights/investment-fees";
+import { equivalentsSaving, feeYear, type Range } from "@/insights/investment-fees";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { formatCents } from "@/lib/money";
@@ -87,13 +87,13 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
               ))}
               {fees.advisoryCents > 0 && (
                 <li className="flex justify-between gap-2">
-                  <span>Advisory fees, last 12 months</span>
+                  <span>Advisory fees, {feeYear(fees).replace(/^the /, "")}</span>
                   <span>{formatCents(fees.advisoryCents)}</span>
                 </li>
               )}
               {fees.accountFeesCents > 0 && (
                 <li className="flex justify-between gap-2">
-                  <span>Account fees, last 12 months</span>
+                  <span>Account fees, {feeYear(fees).replace(/^the /, "")}</span>
                   <span>{formatCents(fees.accountFeesCents)}</span>
                 </li>
               )}

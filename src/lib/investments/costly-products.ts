@@ -65,6 +65,8 @@ export type ProductView = {
 
 export type AdvisoryView = {
   yearlyCents: number;
+  // The fee year's end day when the data stopped long ago (feeYear).
+  yearTo?: string | null;
   assetsCents: number;
   feeBps: number;
   lowCostYearlyCents: number;
@@ -215,6 +217,7 @@ export async function loadCostlyProducts(
       const bps = Math.round((fees.fees.advisoryCents / assets) * 10_000);
       advisory = {
         yearlyCents: fees.fees.advisoryCents,
+        yearTo: fees.fees.yearTo ?? null,
         assetsCents: assets,
         feeBps: bps,
         lowCostYearlyCents: yearlyCost(assets, LOW_COST_BPS),

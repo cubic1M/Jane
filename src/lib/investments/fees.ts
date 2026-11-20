@@ -2,9 +2,10 @@ import { ACCOUNT_FEE_SUBTYPES, ADVISORY_FEE_SUBTYPES } from "@/config/market-ass
 import type { PrismaClient } from "@/generated/prisma/client";
 import { feeSummary, type FeeSummary } from "@/insights/investment-fees";
 import { db as defaultClient } from "@/lib/db";
-import { addDays } from "@/lib/dates";
+import { addDays, daysBetween } from "@/lib/dates";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
+import { STALE_AFTER_DAYS } from "@/profile/build";
 import { oneYearOf } from "./fee-year";
 import { loadInvestments, type Investments } from "./holdings";
 
@@ -49,5 +50,7 @@ export async function loadFees(
     }),
   ]);
   const year = oneYearOf(rows.map((r) => ({ ...r, date: r.date.toISOString().slice(0, 10) })));
-  return { investments, fees: feeSummary(investments.accounts, year) };
+  // Said as the year to its end day when that's long ago, not "the last 12 months" (feeYear).
+  const yearTo = daysBetween(end, today) > STALE_AFTER_DAYS ? end : null;
+  return { investments, fees: { ...feeSummary(investments.accounts, year), yearTo } };
 }
