@@ -63,7 +63,7 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
 
 // Debugger 11-04: the pane said "No renters insurance on file" and offered to add a second policy,
 // and a link on the page to another of its items changed the address and nothing else.
-test("a policy found in the payments is confirmed from its gap", async ({
+test("a policy found in the payments is confirmed from its gap @critical", async ({
   context,
   page,
   baseURL,

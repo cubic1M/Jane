@@ -96,3 +96,7 @@ investment advice in this MVP.
   docs/gates.md. Only a founder approves a PR past a gate
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects
+- npm run e2e:touched before pushing a change to what a page shows: runs every end-to-end spec
+  that opens a page the change renders (2 workers, a production build, E2E_DATABASE_URL on a
+  scratch database) and says why each was chosen; a PR runs only @critical, so a page change can
+  pass its PR and fail main. deny.mjs refuses the push until it passed on the last commit
