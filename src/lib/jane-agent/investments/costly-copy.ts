@@ -1,4 +1,5 @@
 import type { AdvisoryView, ProductView } from "@/lib/investments/costly-products";
+import { feeYear } from "@/insights/investment-fees";
 import { formatCents } from "@/lib/money";
 import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
@@ -35,7 +36,7 @@ export function productLine(p: ProductView): string {
 }
 
 export const advisoryLine = (a: AdvisoryView) =>
-  `You paid ${formatCents(a.yearlyCents)} in advisory fees in the last 12 months on about ${formatCents(a.assetsCents)} (${a.feeBps / 100}% a year), besides the funds' own costs; a low-cost fund alone would cost about ${formatCents(a.lowCostYearlyCents)}. Over ${a.gap.years} years that cost difference could be ${formatCents(a.gap.lowCents)} to ${formatCents(a.gap.highCents)}.`;
+  `You paid ${formatCents(a.yearlyCents)} in advisory fees in ${feeYear(a)} on about ${formatCents(a.assetsCents)} (${a.feeBps / 100}% a year), besides the funds' own costs; a low-cost fund alone would cost about ${formatCents(a.lowCostYearlyCents)}. Over ${a.gap.years} years that cost difference could be ${formatCents(a.gap.lowCents)} to ${formatCents(a.gap.highCents)}.`;
 
 export const premiumQuestion = (a: { provider: string; yearlyCents: number }) =>
   `You paid ${a.provider} about ${formatCents(a.yearlyCents)} in the last year. Is that a whole life policy? I'll show what it really costs and what leaving would cost, before anything else.`;

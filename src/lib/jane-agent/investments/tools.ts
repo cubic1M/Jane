@@ -22,7 +22,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "investment_fees",
     description:
-      "What investing costs the person, from their holdings and fee records: each fund's yearly cost (expense ratio times what's in it), advisory and account fees from the last 12 months, the total a year, and what it costs over 30 years as a low-to-high range (with growth). In demo advice mode, also each costly fund's lower-cost equivalent with the yearly saving and the 30-year range. Quote ranges as ranges.",
+      "What investing costs the person, from their holdings and fee records: each fund's yearly cost (expense ratio times what's in it), advisory and account fees from the last 12 months (or, when the investment data stopped long ago, the year to its last day: advisoryAndAccountFeesFrom says which; say it), the total a year, and what it costs over 30 years as a low-to-high range (with growth). In demo advice mode, also each costly fund's lower-cost equivalent with the yearly saving and the 30-year range. Quote ranges as ranges.",
     input_schema: noInput,
   },
   {

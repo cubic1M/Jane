@@ -5,6 +5,7 @@ import type { ToolOutput } from "@/lib/ask/tools";
 import { GOALS, HORIZONS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { adviceMode } from "@/lib/advice-mode";
+import { feeYear } from "@/insights/investment-fees";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
@@ -169,6 +170,8 @@ export async function runInvestmentTool(
         fundCostsAYear: money(fees.fundsYearlyCents),
         advisoryFeesLast12Months: money(fees.advisoryCents),
         accountFeesLast12Months: money(fees.accountFeesCents),
+        // Which year those two are: "the year to Oct 23" when the data stopped long ago.
+        advisoryAndAccountFeesFrom: feeYear(fees),
         [`over${fees.years}Years`]: span(fees.overYears),
         funds: fees.funds.map((f) => ({
           name: f.holding.name,
@@ -621,6 +624,7 @@ export async function runInvestmentTool(
         })),
         advisory: v.advisory && {
           paidLast12Months: money(v.advisory.yearlyCents),
+          paidIn: feeYear(v.advisory),
           assets: money(v.advisory.assetsCents),
           percent: v.advisory.feeBps / 100,
         },

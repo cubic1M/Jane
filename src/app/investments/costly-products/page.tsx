@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { LOW_COST_SOURCE } from "@/config/costly-products";
 import { loadCostlyProducts, type ProductView } from "@/lib/investments/costly-products";
+import { feeYear } from "@/insights/investment-fees";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answer, demoProducts } from "./actions";
@@ -143,9 +144,9 @@ async function Content({
         <section className={CARD}>
           <h2 className="text-xl font-semibold">Advisory fees</h2>
           <p className="text-sm">
-            You paid {formatCents(v.advisory.yearlyCents)} in advisory fees in the last 12 months on
-            about {formatCents(v.advisory.assetsCents)}: {v.advisory.feeBps / 100}% a year, besides
-            the funds&apos; own costs. A low-cost fund alone would cost about{" "}
+            You paid {formatCents(v.advisory.yearlyCents)} in advisory fees in {feeYear(v.advisory)}{" "}
+            on about {formatCents(v.advisory.assetsCents)}: {v.advisory.feeBps / 100}% a year,
+            besides the funds&apos; own costs. A low-cost fund alone would cost about{" "}
             {formatCents(v.advisory.lowCostYearlyCents)}.
           </p>
           {v.advice && (

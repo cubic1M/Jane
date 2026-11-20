@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/day-label";
 import {
   DEMO_EMPLOYER_PLAN_MENU,
   EMPLOYER_PLAN_SUBTYPES,
@@ -79,11 +80,20 @@ export type FeeSummary = {
   // Paid in the last 12 months, from the account's fee transactions.
   advisoryCents: number;
   accountFeesCents: number;
+  // When the investment data stopped long ago, the day its year of fees ends (feeYear).
+  yearTo?: string | null;
   totalYearlyCents: number;
   overYears: Range;
   equivalents: Equivalent[];
   years: number;
 };
+
+// The year the advisory and account fees are from, as it's said: "the last 12 months", or, when the
+// investment data stopped long ago and the year ends at its newest line, "the year to Oct 23" (as
+// the estimated balance names its statement day).
+export function feeYear(fees: Pick<FeeSummary, "yearTo">): string {
+  return fees.yearTo ? `the year to ${dayLabel(fees.yearTo)}` : "the last 12 months";
+}
 
 const isEmployerPlan = (subtype: string | null) =>
   EMPLOYER_PLAN_SUBTYPES.includes((subtype ?? "").toLowerCase());
