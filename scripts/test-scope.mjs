@@ -3,8 +3,8 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  changedSpecs,
   docsNamedIn,
+  scopeSpecs,
   shardsFor,
   testScope,
   testsThatReadDocs,
@@ -49,6 +49,21 @@ function integrationFilesReached() {
 }
 
 const reached = mode === "changed" ? integrationFilesReached() : null;
+
+// The end-to-end specs a PR's change could break (./e2e-touched-core.mjs), with why.
+const e2e =
+  event === "pull_request"
+    ? scopeSpecs({
+        changedPaths,
+        diff: git("diff", "--unified=0", "HEAD^1", "HEAD", "--", "src"),
+        specs: readdirSync("e2e", { recursive: true })
+          .filter((f) => String(f).endsWith(".ts"))
+          .map((f) => ({
+            file: join("e2e", String(f)),
+            text: readFileSync(join("e2e", String(f)), "utf8"),
+          })),
+      })
+    : { files: [], left: [], why: new Map() };
 const shards = shardsFor(mode, reached ?? 0);
 const lines = {
   mode,
@@ -56,12 +71,24 @@ const lines = {
   shards: JSON.stringify(Array.from({ length: shards }, (_, i) => i + 1)),
   total: String(shards),
   args: vitestArgs(mode, { event, labels }),
-  specs: changedSpecs(changedPaths).join(" "),
+  specs: e2e.files.join(" "),
 };
 const out = Object.entries(lines)
   .map(([key, value]) => `${key}=${value}\n`)
   .join("");
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, out);
-const summary = `Test scope: ${mode} (${why}). Integration files reached: ${reached ?? "n/a"}. Shards: ${shards}.\n`;
+const specLines = e2e.files.map((f) => `- ${f}: ${e2e.why.get(f).join("; ")}`);
+const summary = [
+  `Test scope: ${mode} (${why}). Integration files reached: ${reached ?? "n/a"}. Shards: ${shards}.`,
+  e2e.files.length > 0
+    ? `End-to-end specs beyond @critical (${e2e.files.length}):\n${specLines.join("\n")}`
+    : "End-to-end specs beyond @critical: none.",
+  e2e.left.length > 0
+    ? `Past the cap, left to main's full run (${e2e.left.length}): ${e2e.left.join(" ")}`
+    : "",
+]
+  .filter(Boolean)
+  .join("\n")
+  .concat("\n");
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
 console.log(summary);
