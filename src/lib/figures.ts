@@ -41,6 +41,7 @@ import { formatCents } from "@/lib/money";
 import { loadProfile } from "@/lib/profile";
 import type { PayOnSchedule } from "@/profile/pay-on-schedule";
 import { sinceStatementNote } from "@/planning/since-statement";
+import { PAY_DUE_NOTE, payDueLabel, payMissedLabel } from "@/planning/pay-due";
 import { isoDay as iso } from "@/lib/dates";
 import { monthLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -121,7 +122,7 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
   return {
     ...noLists(),
     value: formatCents(safe.safeCents),
-    summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
+    summary: `What's in checking${safe.payDue?.length ? ", plus pay due that hasn't come in yet," : ""} less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
     rows: [
       safe.sinceStatement
         ? {
@@ -130,6 +131,11 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
             note: sinceStatementNote(safe.sinceStatement),
           }
         : { label: "In checking today", value: formatCents(safe.balanceCents) },
+      ...(safe.payDue ?? []).map((p) => ({
+        label: payDueLabel(p),
+        value: `+${formatCents(p.cents)}`,
+        note: PAY_DUE_NOTE,
+      })),
       ...safe.bills.map((b) => ({
         label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
         value: `−${formatCents(b.amountCents)}`,
@@ -159,6 +165,11 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
           ]
         : []),
       { label: "Safe to spend", value: formatCents(safe.safeCents) },
+      ...(safe.payMissed ?? []).map((p) => ({
+        label: payMissedLabel(p),
+        value: formatCents(p.cents),
+        note: "Not in safe to spend",
+      })),
     ],
     rules: [
       { label: "Bills and paydays are looked for in the next", value: `${FORECAST_DAYS} days` },

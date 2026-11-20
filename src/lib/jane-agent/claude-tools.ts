@@ -631,6 +631,29 @@ async function runChatToolWork(
               estimate: `${sinceStatementNote(safe.sinceStatement)}. Say the statement's balance as the balance, and this one only as an estimate of today's.`,
             }
           : { checkingBalance: money(safe.balanceCents) }),
+        // Pay due today (or a day ago) that hasn't come in counts, as a bill due today does; pay
+        // past its wait doesn't. Neither is in the checking balance (phone debugger, 11-20).
+        ...(safe.payDue?.length
+          ? {
+              payDueNotInYet: safe.payDue.map((p) => ({
+                from: p.employer,
+                due: p.dueOn,
+                amount: money(p.cents),
+              })),
+              payDueNote:
+                "Counted in safeToSpend, not in the checking balance: say it's expected, not that it's in.",
+            }
+          : {}),
+        ...(safe.payMissed?.length
+          ? {
+              payMissed: safe.payMissed.map((p) => ({
+                from: p.employer,
+                due: p.dueOn,
+                amount: money(p.cents),
+              })),
+              payMissedNote: "Not counted in safeToSpend: it hasn't come in. Say so.",
+            }
+          : {}),
         upcomingBills: money(safe.billsCents),
         leftInBudgets: money(safe.budgetsLeftCents),
         forGoals: money(safe.goalsCents),

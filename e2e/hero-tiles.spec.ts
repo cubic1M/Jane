@@ -19,6 +19,26 @@ test.afterEach(async () => {
 
 const money = (text: string | null) => Number((text ?? "").replace(/[^\d]/g, ""));
 
+// A sum's lines with their signs, down to its total ("="): the balance, what's added ("+", pay due
+// that hasn't come in) and what's held back ("−"). Lines after the total aren't counted in it.
+async function sumLines(list: Locator) {
+  const rows = await list.locator(":scope > div").evaluateAll((divs) =>
+    divs.map((d) => ({
+      sign: d.querySelector("dt > span")?.textContent ?? "",
+      cents: d.querySelector("dd")?.textContent ?? "",
+    })),
+  );
+  const end = rows.findIndex((r) => r.sign === "=");
+  const parts = rows.slice(0, end).map((r) => ({ sign: r.sign, dollars: money(r.cents) }));
+  return {
+    start: parts[0]!.dollars,
+    added: parts.filter((p) => p.sign === "+").reduce((s, p) => s + p.dollars, 0),
+    held: parts.filter((p) => p.sign === "−").reduce((s, p) => s + p.dollars, 0),
+    total: money(rows[end]!.cents),
+    lines: end + 1,
+  };
+}
+
 // A tile's pop-up sits beside it: never over the tile, the net worth chart or the chat.
 async function clearOf(page: Page, popup: Locator, tile: Locator) {
   const box = (await popup.boundingBox())!;
@@ -62,15 +82,15 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   const why = tile.locator("[data-safe-why]");
   await expect(why).toBeVisible();
   await expect(why).toContainText("In checking now");
-  const lines = why.locator("dd");
-  const count = await lines.count();
-  expect(count).toBeGreaterThanOrEqual(3);
-  expect(count).toBeLessThanOrEqual(6);
-  const values = await lines.allTextContents();
-  const total = money(values.at(-1)!);
-  const held = values.slice(1, -1).reduce((sum, v) => sum + money(v), 0);
+  const sum = await sumLines(why.locator("[data-calc-lines]"));
+  expect(sum.lines).toBeGreaterThanOrEqual(3);
+  // Short: the balance, at most four things held back (pay due today besides) and the total.
+  expect(sum.lines - (await why.locator("dt", { hasText: /pay due/ }).count())).toBeLessThanOrEqual(
+    6,
+  );
+  const total = sum.total;
   // Whole dollars on screen: within a dollar a line for rounding.
-  expect(Math.abs(money(values[0]) - held - total)).toBeLessThanOrEqual(count);
+  expect(Math.abs(sum.start + sum.added - sum.held - total)).toBeLessThanOrEqual(sum.lines);
   expect(money(await tile.locator('[data-hub-number="safe"]').textContent())).toBe(total);
 
   // "How it's worked out" stays on Home: a pop-up beside the tile, joined to it by a dashed line,
@@ -83,13 +103,12 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   await expect(how).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
   await expectMarchingLine(page.locator("[data-popup-line]"));
-  const steps = await popup.locator("[data-calc-lines] dd").allTextContents();
   await expect(popup.locator("[data-calc-lines] dt").first()).toContainText("In checking today");
-  const stepsHeld = steps.slice(1, -1).reduce((sum, v) => sum + money(v), 0);
-  expect(Math.abs(money(steps[0]) - stepsHeld - money(steps.at(-1)!))).toBeLessThanOrEqual(
-    steps.length,
+  const steps = await sumLines(popup.locator("[data-calc-lines]"));
+  expect(Math.abs(steps.start + steps.added - steps.held - steps.total)).toBeLessThanOrEqual(
+    steps.lines,
   );
-  expect(money(steps.at(-1)!)).toBe(total);
+  expect(steps.total).toBe(total);
   // The page can still be settling just after it opens: it must end up clear.
   await expect(() => clearOf(page, popup, tile)).toPass();
   await expect(popup.getByRole("link", { name: /The full working/ })).toHaveAttribute(

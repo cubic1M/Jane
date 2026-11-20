@@ -1,4 +1,5 @@
 import { sinceStatementNote, type SinceStatement } from "@/planning/since-statement";
+import { payDueSentence, type PayDue } from "@/planning/pay-due";
 import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import {
   AFFORD_GOAL_MONTHS,
@@ -885,6 +886,9 @@ export function safeReply(
     setAsideCents?: number;
     // What the checking balance adds to a statement's, walked forward (#2142).
     sinceStatement?: SinceStatement | null;
+    // Pay due that hasn't come in, counted or missed (src/planning/pay-due.ts).
+    payDue?: PayDue[];
+    payMissed?: PayDue[];
   } | null,
   asOf: string | null = null,
   // Why there's no figure, when Jane knows: statements too old to say what's in checking today.
@@ -944,7 +948,7 @@ export function safeReply(
       ? ` Checking is estimated: ${sinceStatementNote(safe.sinceStatement)}.`
       : "";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${estimated}${leftOut}`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${payDueSentence(safe.payDue ?? [], safe.payMissed ?? [])}${estimated}${leftOut}`,
     [openLink("See today", "/home")],
   );
 }

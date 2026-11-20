@@ -3,7 +3,8 @@
 // $814.80 read "$1,120 − $306 = $815"). When the lines add up to the total in cents, each part is
 // rounded so the parts add up to the total rounded as the tile rounds it, the dollar left over going
 // to the part nearest the next dollar (largest remainder; on a tie the later part, so the balance a
-// sum starts from keeps its own rounding). Otherwise each line is rounded on its own. Pure.
+// sum starts from keeps its own rounding). Otherwise each line is rounded on its own, as are lines
+// after the total (what isn't counted, such as pay that hasn't come in). Pure.
 
 export type SignedLine = { sign: "" | "−" | "+" | "="; cents: number; unknown?: true };
 
@@ -16,7 +17,7 @@ const wholeDollars = (cents: number) => Math.sign(cents) * Math.round(Math.abs(c
 export function wholeDollarParts(lines: readonly SignedLine[]): number[] {
   const each = lines.map((l) => wholeDollars(l.cents) * 100);
   const total = lines.findIndex((l) => l.sign === "=");
-  if (total !== lines.length - 1 || lines.some((l) => l.unknown)) return each;
+  if (total < 0 || lines.some((l) => l.unknown)) return each;
   const parts = lines.slice(0, total);
   const signed = parts.map((l) => signOf(l.sign) * l.cents);
   if (signed.reduce((s, c) => s + c, 0) !== lines[total]!.cents) return each;
@@ -32,5 +33,9 @@ export function wholeDollarParts(lines: readonly SignedLine[]): number[] {
     dollars[i]! += 1;
     left -= 1;
   }
-  return [...dollars.map((d, i) => signOf(parts[i]!.sign) * d * 100), target * 100];
+  return [
+    ...dollars.map((d, i) => signOf(parts[i]!.sign) * d * 100),
+    target * 100,
+    ...each.slice(total + 1),
+  ];
 }
