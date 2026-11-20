@@ -220,9 +220,13 @@ export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     adsh: "0000794105-26-000106",
     form: "485BPOS",
   }),
-  FXNAX: sec(3, BONDS, "US total bond market index fund", "20251027", {
+  // 0.025% a year: Fidelity's 485BPOS filed 2026-10-27, its latest, gives 0.025 (percent) for this
+  // class (C000100043, oef:ExpensesOverAssets), as the 2025-10-27 one did. Kept to whole basis points,
+  // the table held 3 (0.03%), as it held FXAIX at 1 (checked beside FXAIX, 11-20; FTIHX's 0.06% and
+  // FCNTX's 0.74% agree with their latest filings).
+  FXNAX: sec(2.5, BONDS, "US total bond market index fund", "20261027", {
     cik: 35315,
-    adsh: "0000035315-25-001071",
+    adsh: "0000035315-26-000765",
     form: "485BPOS",
   }),
   VNQ: sec(13, { other: 1 }, "Real estate ETF", "20260528", {
