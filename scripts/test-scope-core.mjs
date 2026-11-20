@@ -1,6 +1,7 @@
 // How much a PR's unit tests run (docs/ci.md). The whole suite costs about 50 runner-minutes a push and
 // main runs it anyway, so a PR runs what its diff can reach (vitest --changed), unless the diff touches
 // something that graph can't see or that's too costly to miss. Pure.
+import { capSpecs, touchedSpecs } from "./e2e-touched-core.mjs";
 
 // Vitest's graph follows imports, so it can't see these. The rest are too costly to find out about
 // only after they've turned main red, since a red main stops every deploy.
@@ -95,3 +96,16 @@ export function vitestArgs(mode, { event, labels = [] }) {
 // and first running it on main would turn main red.
 export const changedSpecs = (changedPaths) =>
   changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path));
+
+// A PR's end-to-end specs beyond @critical: the ones its change could break, by the mapping
+// npm run e2e:touched uses (./e2e-touched-core.mjs, the one source). Twice a page change passed its
+// PR and failed main, the specs it broke never run on a PR (#2161, #2166, 11-20). A spec the PR
+// changes always runs; at most SCOPE_SPEC_CAP in all, the closest first, and the rest are named.
+export const SCOPE_SPEC_CAP = 25;
+
+export function scopeSpecs({ changedPaths, diff = "", specs }) {
+  const chosen = touchedSpecs({ changedPaths, diff, specs });
+  const { files, left } = capSpecs(chosen, SCOPE_SPEC_CAP);
+  const why = new Map(chosen.map((c) => [c.file, c.why]));
+  return { files, left, why };
+}

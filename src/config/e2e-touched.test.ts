@@ -37,6 +37,8 @@ describe("the pages a changed file renders", () => {
     expect(routesOf("src/lib/area-pages/tree.ts")).toBeNull();
     expect(routesOf("src/app/api/plaid/webhook/route.ts")).toEqual([]);
     expect(routesOf("src/lib/jane-agent/intents.ts")).toEqual([]);
+    expect(routesOf("src/lib/area-pages/regular-charges-line.test.ts")).toEqual([]);
+    expect(routesOf("src/lib/area-pages/__fixtures__/money.ts")).toEqual([]);
   });
 });
 
@@ -94,7 +96,12 @@ describe("the specs a change could break", () => {
     ].join("\n");
     const chosen = touchedSpecs({ changedPaths: ["src/lib/x.ts"], diff, specs: [spec] });
     expect(chosen).toEqual([
-      { file: "e2e/zz-wording.spec.ts", why: ['still expects "no renters cover on"'] },
+      {
+        file: "e2e/zz-wording.spec.ts",
+        why: ['still expects "no renters cover on"'],
+        rank: 1,
+        named: false,
+      },
     ]);
   });
 

@@ -34,6 +34,9 @@ export function pushNeedsE2e({ changedPaths, head, passedOn }) {
 // The routes a changed file renders: [] when it renders no page we can name, null when it renders
 // area pages but which isn't known.
 export function routesOf(path) {
+  // A unit test or a fixture renders no page (#2166's regular-charges-line.test.ts read as a shared
+  // area file and chose every area page).
+  if (/\.test\.tsx?$|\/__fixtures__\//.test(path)) return [];
   if (/^src\/(?:components|lib)\/hub\//.test(path)) return HUB_ROUTES;
   const area = /^src\/lib\/area-pages\/([a-z]+)[-.]/.exec(path);
   if (area) {
@@ -71,13 +74,32 @@ export function routesIn(text, helpers = new Map()) {
   return routes;
 }
 
-// The specs to run, each with why: [{ file, why: [...] }], in file order.
+// How close a reason is to the change, for a cap: a changed spec, then one that opens the very page
+// a change renders or expects its removed words, then one picked for a set of pages (a shared area
+// file, the hubs, the app's root).
+const RANK = { changed: 0, page: 1, set: 2 };
+
+// The specs to run, each with why and its closest reason's rank: [{ file, why: [...], rank }], in
+// file order.
 export function touchedSpecs({ changedPaths, diff = "", specs }) {
   const chosen = new Map();
-  const add = (file, why) => chosen.set(file, [...new Set([...(chosen.get(file) ?? []), why])]);
+  const ranks = new Map();
+  // Whether a spec's file is named for a page it was chosen for (e2e/insurance-compare.spec.ts for
+  // /insurance, e2e/hubs.spec.ts for the hubs): within a rank, those first.
+  const named = new Set();
+  const add = (file, why, rank = RANK.page, routes = []) => {
+    chosen.set(file, [...new Set([...(chosen.get(file) ?? []), why])]);
+    ranks.set(file, Math.min(rank, ranks.get(file) ?? rank));
+    const base = file.replace(/^e2e\//, "");
+    const forPage = routes.some((r) => r.length > 1 && base.startsWith(r.slice(1, 4)));
+    // A set of pages' own specs: the hubs and the area pages as a whole.
+    const forSet = rank === RANK.set && /^(?:hubs?|area|home)[-.]/.test(base);
+    if (forPage || forSet) named.add(file);
+  };
   const isSpec = (f) => /^e2e\/.*\.spec\.ts$/.test(f);
   const known = new Set(specs.map((s) => s.file));
-  for (const path of changedPaths) if (isSpec(path) && known.has(path)) add(path, "changed");
+  for (const path of changedPaths)
+    if (isSpec(path) && known.has(path)) add(path, "changed", RANK.changed);
   // The helpers' own pages (e2e/demo-upload.ts opens /import), for the specs that import them.
   const helpers = new Map(
     specs
@@ -91,9 +113,10 @@ export function touchedSpecs({ changedPaths, diff = "", specs }) {
     const routes = routesOf(path);
     const wanted = routes ?? AREA_ROUTES;
     const reason = routes === null ? `${path} is shared by the area pages` : `${path} renders`;
+    const rank = routes === null || routes.length > 1 ? RANK.set : RANK.page;
     for (const spec of visits) {
       const hit = spec.routes.has("*") ? wanted : wanted.filter((r) => spec.routes.has(r));
-      if (hit.length > 0) add(spec.file, `${reason} ${hit.join(", ")}`);
+      if (hit.length > 0) add(spec.file, `${reason} ${hit.join(", ")}`, rank, hit);
     }
   }
   // One reason a spec, the first run of words it still expects (each four-word run is a hit).
@@ -105,5 +128,22 @@ export function touchedSpecs({ changedPaths, diff = "", specs }) {
     if (!stale.has(file)) stale.set(file, wording);
   }
   for (const [file, wording] of stale) add(file, `still expects "${wording}"`);
-  return [...chosen].sort(([a], [b]) => a.localeCompare(b)).map(([file, why]) => ({ file, why }));
+  return [...chosen]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([file, why]) => ({ file, why, rank: ranks.get(file), named: named.has(file) }));
+}
+
+// At most `cap` of them, the closest first and then in file order: what a run past the cap leaves
+// out is said, never silently dropped.
+export function capSpecs(chosen, cap) {
+  const kept = [...chosen]
+    .sort(
+      (a, b) =>
+        a.rank - b.rank || Number(b.named) - Number(a.named) || a.file.localeCompare(b.file),
+    )
+    .slice(0, cap)
+    .map((c) => c.file)
+    .sort();
+  const left = chosen.filter((c) => !kept.includes(c.file)).map((c) => c.file);
+  return { files: kept, left };
 }

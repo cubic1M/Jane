@@ -2,7 +2,7 @@
 
 | When | What runs |
 | --- | --- |
-| Every PR push | Lint, format, typecheck, the migration gate, the access proof, dependency audit, secret scan, the e2e build (with the bundle-size check), the end-to-end tests tagged `@critical` and the spec files it changes, on a computer, the phone specs (`e2e/phone-*.spec.ts`, `mobile-pass.spec.ts`) on a phone, and the unit tests the diff reaches |
+| Every PR push | Lint, format, typecheck, the migration gate, the access proof, dependency audit, secret scan, the e2e build (with the bundle-size check), the end-to-end tests tagged `@critical`, the spec files it changes and the specs its change could break (below), on a computer, the phone specs (`e2e/phone-*.spec.ts`, `mobile-pass.spec.ts`) on a phone, and the unit tests the diff reaches |
 | A PR touching something the diff's imports can't show, or too costly to miss | The whole unit suite. `scripts/test-scope-core.mjs` lists these: dependencies, the database schema, config files, `src/config`, env handling, auth, database access, row-level security, `src/security`, guardrails, advice mode, import, workflows and scripts |
 | A PR labelled `full-tests` | The whole unit suite, whatever changed |
 | A PR labelled `e2e` | The whole unit suite, and every end-to-end test on a computer and a phone. Use it when a PR changes a page people see |
@@ -24,6 +24,13 @@ About 20 tests carry `@critical` in their title: signing in, access, uploading, 
 card, deleting an account, and the security headers. Tag one only if a break would stop someone using
 Jane or expose their data, and leave out anything on the flake list. `src/config/e2e-critical.test.ts`
 holds the size of the set.
+
+Beyond them, a PR runs the specs its change could break, by the mapping `npm run e2e:touched` uses
+(`scripts/e2e-touched-core.mjs`, the one source; `src/config/e2e-scope.test.ts` fails if CI's scope
+and the script drift): every spec that opens a page a changed file renders, the spec files it changes
+and specs still expecting wording it removed. A shared area-page file it can't place runs every area
+page's specs, never none. At most 25 (`SCOPE_SPEC_CAP`), the closest first; the scope's summary names
+each with why, and what the cap leaves to main's full run. A PR that changes no page runs what it did.
 
 ## Flake list
 
