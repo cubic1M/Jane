@@ -147,6 +147,8 @@ export const OVERDRAFT_OPT_IN = {
   // Its consumer page, in the words the card uses (archived, last modified 2026-06-25).
   consumerUrl:
     "https://www.consumerfinance.gov/whats-your-status-when-it-comes-to-overdraft-coverage",
+  // The fees it's about: an overdraft fee, not an insufficient-funds (returned item) fee.
+  covers: ["BANK_FEES_OVERDRAFT_FEES"] as readonly string[],
 } as const;
 
 // --- A credit file that hasn't started --------------------------------------------------------
@@ -486,6 +488,9 @@ export const CHASE_OVERDRAFT = {
   url: "https://www.chase.com/personal/checking/overdraft-services/faqs",
   graceCents: 5_000,
   words: /\bCHASE\b|JPMORGAN/,
+  // Its Overdraft Fee only: walk batch 3's upload S5 was told this rule about an insufficient
+  // funds fee "for a $16.40 item", which it doesn't cover.
+  covers: ["BANK_FEES_OVERDRAFT_FEES"] as readonly string[],
 } as const;
 
 // --- A monthly fee the person's own deposits may already waive -------------------------------
