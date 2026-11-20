@@ -35,6 +35,7 @@ import { addDays } from "@/lib/dates";
 import { employerName } from "./employer-name";
 import { stateOfPayments } from "./home-state";
 import { latestByPayer, payKeyOf, stoppedPayers } from "./stopped-payers";
+import { payOnSchedule, type PayOnSchedule } from "./pay-on-schedule";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PolicyKind } from "@/config/insurance";
 import { insurerKind } from "@/insights/found-policies";
@@ -299,6 +300,9 @@ export type Profile = {
   // The months a rate is spread over (monthsForRate): the real span of a short history. Absent
   // on profiles made by hand; rateMonthsOf falls back to months.
   rateMonths?: number;
+  // The pay on a schedule monthly income counts by its schedule (./pay-on-schedule.ts), for saying
+  // how it was worked out. Absent when income is an average (or on profiles made by hand).
+  paySchedules?: PayOnSchedule[];
 };
 
 // What a monthly or yearly rate divides by (night QA 10-30: Aug 1 to Oct 26 is "2 months" by the
@@ -583,21 +587,27 @@ function incomeFacts(b: Builder) {
       !ONE_OFF_PAY.test(t.description) &&
       !RETIREMENT_LUMP_SUM.test(t.description),
   );
-  const incomeTotal = regularIncome.reduce((s, t) => s - t.amountCents, 0);
   // Once a paycheck has stopped, a year's average says what used to come in (debugger 11-02: $5,818
   // a month for someone on $1,950 of benefits). What's come in lately, as a month.
   const lately = regularIncome
     .filter((t) => t.date > stillPaidSince)
     .reduce((s, t) => s - t.amountCents, 0);
+  // Pay on a schedule is a month by its schedule (./pay-on-schedule.ts); the rest, its average.
+  const onSchedule = payOnSchedule(regularIncome, dataEnds || today);
+  const offSchedule = regularIncome
+    .filter((t) => !onSchedule.covered.has(t))
+    .reduce((s, t) => s - t.amountCents, 0);
+  const bySchedule = months > 0 && stoppedPaying.size === 0;
   const monthlyIncome =
     months === 0
       ? 0
       : stoppedPaying.size > 0
         ? Math.round((lately * 30) / EARNER_ACTIVE_DAYS)
-        : Math.round(incomeTotal / monthsForRate(txs, today));
+        : onSchedule.monthCents + Math.round(offSchedule / monthsForRate(txs, today));
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
-  return { income, earners, pattern, monthlyIncome };
+  const paySchedules = bySchedule && income.length > 0 ? onSchedule.schedules : [];
+  return { income, earners, pattern, monthlyIncome, paySchedules };
 }
 
 // Household and home.
@@ -1022,7 +1032,7 @@ export function buildProfile(input: ProfileInput): Profile {
   };
 
   const b: Builder = { input, txs, months, facts, count, set, unknown };
-  const { income, earners, pattern, monthlyIncome } = incomeFacts(b);
+  const { income, earners, pattern, monthlyIncome, paySchedules } = incomeFacts(b);
   const { hasChildren, mortgageLiab } = householdFacts(b, { income, earners });
   lifeFacts(b);
   debtFacts(b, { monthlyIncome });
@@ -1033,5 +1043,11 @@ export function buildProfile(input: ProfileInput): Profile {
   // Keep every key present, in the declared order.
   const ordered = {} as Record<FactKey, Fact>;
   for (const spec of FACT_SPECS) ordered[spec.key] = facts[spec.key];
-  return { facts: ordered, today, months, rateMonths: Math.max(1, monthsForRate(txs, today)) };
+  return {
+    facts: ordered,
+    today,
+    months,
+    rateMonths: Math.max(1, monthsForRate(txs, today)),
+    ...(paySchedules.length > 0 ? { paySchedules } : {}),
+  };
 }

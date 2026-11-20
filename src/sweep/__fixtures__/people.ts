@@ -26,6 +26,9 @@ import { syncItem } from "@/lib/plaid/sync";
 // processor prefixes, ACH codes, transfers between their own accounts, two card exports that
 // overlap, under four months (debug 3, 11-19: names shown as the bank's raw line). Its dates are
 // fixed (July to October 2026), so read it in November 2026.
+// "biweekly-month": upload S5, one month of Chase checking with three $620 paychecks every two
+// weeks, its days moved to end the day before (debug 3, 11-19: income read as three paychecks a
+// month, $1,860, and "Income near $28,489.50" on the Saver's Credit).
 export type Who =
   | PersonId
   | "demo"
@@ -34,7 +37,8 @@ export type Who =
   | "mid-start"
   | "one-month"
   | "old-statement"
-  | "messy";
+  | "messy"
+  | "biweekly-month";
 
 export const UPLOADS: ReadonlySet<Who> = new Set<Who>([
   "upload",
@@ -43,6 +47,7 @@ export const UPLOADS: ReadonlySet<Who> = new Set<Who>([
   "one-month",
   "old-statement",
   "messy",
+  "biweekly-month",
 ]);
 
 export const EVERYONE: readonly Who[] = ["demo", ...PERSON_IDS, ...UPLOADS];
@@ -61,6 +66,27 @@ export function postedAfter(csv: string, day: Date): string {
 }
 
 const messy = (name: string) => readFileSync(`e2e/fixtures/messy/${name}`, "utf8");
+
+const S5 =
+  "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone/Chase1234_Activity_20261115.CSV";
+
+// A Chase export's lines moved by whole days so its newest one posted on `last` (MM/DD/YYYY).
+export function endingOn(csv: string, last: Date): string {
+  const [header, ...lines] = csv.trim().split("\n");
+  const dayOf = (line: string) => {
+    const [m, d, y] = line.split(",")[1]!.split("/");
+    return Date.parse(`${y}-${m}-${d}T00:00:00Z`);
+  };
+  const shift =
+    Date.parse(`${last.toISOString().slice(0, 10)}T00:00:00Z`) - Math.max(...lines.map(dayOf));
+  const moved = lines.map((line) => {
+    const [y, m, d] = new Date(dayOf(line) + shift).toISOString().slice(0, 10).split("-");
+    const cells = line.split(",");
+    cells[1] = `${m}/${d}/${y}`;
+    return cells.join(",");
+  });
+  return [header, ...moved, ""].join("\n");
+}
 
 // The statements an upload person sends, as [account name, kind, CSV]. Two with one name go to the
 // same account, as a second statement for it.
@@ -90,6 +116,8 @@ function statementsOf(
       ];
     case "old-statement":
       return [["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", ago(60))]];
+    case "biweekly-month":
+      return [["Chase checking", "checking", endingOn(readFileSync(S5, "utf8"), ago(1))]];
     case "messy":
       return [
         ["Everyday checking", "checking", messy("checking.csv")],

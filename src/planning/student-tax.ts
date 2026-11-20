@@ -3,7 +3,8 @@ import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-ta
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
-import type { ProfileInput } from "@/profile/build";
+import type { ProfileInput, ProfileTx } from "@/profile/build";
+import { payOnSchedule } from "@/profile/pay-on-schedule";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
@@ -102,6 +103,18 @@ export function studentYearOf(
   // other tax cards use, so the same pay is one figure on every card (debug 2, upload S5, 11-18).
   const grossYear = (cents: number) =>
     Math.round(Math.round(cents / Math.max(1, span)) * 12 * DETECTOR_RATES.tax.netToGross);
+  // Pay on a schedule, in data that starts this year, is a month by its schedule, as the profile
+  // has it (src/profile/pay-on-schedule.ts): one month's file with three paychecks every two weeks
+  // read "Income near $28,489.50" on the Saver's Credit, where the schedule says about $20,956
+  // (debug 3, upload S5, 11-19). This year's months from January already hold every payday but one.
+  const grossPay = (rows: readonly ProfileTx[]) => {
+    if (first < `${year}-01-01`) return grossYear(sumCents(rows));
+    const on = payOnSchedule(rows, last);
+    const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
+    return Math.round(
+      (on.monthCents + Math.round(rest / Math.max(1, span))) * 12 * DETECTOR_RATES.tax.netToGross,
+    );
+  };
   const gig = data.transactions.filter(
     (t) =>
       t.amountCents < 0 &&
@@ -110,7 +123,7 @@ export function studentYearOf(
       (t.pfc === "INCOME_GIG_ECONOMY" || t.pfc === "INCOME_CONTRACTOR"),
   );
   const said = facts.school_deposit?.value;
-  const wages = grossYear(sumCents(money.wages));
+  const wages = grossPay(money.wages);
   const stipend =
     said === "wage" || said === "aid_refund" ? 0 : pace(sumCents(money.schoolDeposits));
   const schoolPayAsWage = said === "wage" ? grossYear(sumCents(money.schoolDeposits)) : 0;

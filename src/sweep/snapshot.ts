@@ -8,13 +8,19 @@ import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { loadBnpl } from "@/lib/bnpl";
 import { forecastAccounts } from "@/detection/forecast";
-import { FORECAST_DAYS } from "@/config/detection";
+import { FORECAST_DAYS, PAYCHECKS_PER_MONTH } from "@/config/detection";
+import { paySchedules } from "@/detection/paydays";
 import { loadCash } from "@/lib/investments/cash";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { cashReply } from "@/lib/jane-agent/investments/replies";
 import { parseIntent } from "@/lib/jane-agent/intents";
 import { detectFor } from "@/lib/suggestions";
+import { DETECTOR_RATES } from "@/config/detectors";
+import { yearIncomeOf } from "@/detectors/helpers";
+import { studentYearOf } from "@/planning/student-tax";
+import { rateMonthsOf } from "@/profile/build";
 import { chatToday } from "@/lib/today";
+import { explainFigure } from "@/lib/figures";
 import { flatten, type Flat } from "./diff";
 
 // What one person sees at one moment, for the calendar sweep (gate C, mvp-ready.md): the findings
@@ -75,6 +81,16 @@ export async function snapshotAt(
   const bnpl = await loadBnpl(userId, { client, now, input });
   chat[CASH_QUESTION] = cashReply(cash);
   const trees = await loadAreaTrees(userId);
+  // Income as the profile has it a month, as the chat gives it, and as the tax cards read the year
+  // (yearIncomeOf), and whether the year is that same pay: every deposit is pay, from this year,
+  // with no gig pay or fellowship (class 4, src/sweep/invariants.ts sameFigures).
+  const monthly = found.profile.facts.monthly_income;
+  const year = studentYearOf(found.input, found.profile.facts, rateMonthsOf(found.profile));
+  const deposits = found.input.transactions.filter(
+    (t) => t.amountCents < 0 && t.pfc?.startsWith("INCOME_"),
+  );
+  const thisYear = `${found.input.today.slice(0, 4)}-01-01`;
+  const incomeFigure = await explainFigure(userId, "monthly_income", { client, now });
   return flatten({
     asOf,
     detected: Object.fromEntries(detected.map((c) => [`${c.type}:${c.key}`, c])),
@@ -95,6 +111,28 @@ export async function snapshotAt(
         balanceCents: p.balanceCents,
         canCoverPayoff: p.canCoverPayoff,
       })),
+    },
+    income: {
+      // What the chat says for "how much do I make" and "how did you get that" (explain_figure).
+      chatFigure: incomeFigure?.value ?? null,
+      // A month of pay by the schedules Home's payday and the chat's "when do I get paid" read
+      // (src/detection/paydays.ts): each employer's latest paycheck times its paychecks a month.
+      scheduleMonthCents: paySchedules(input)
+        .filter((s) => s.active)
+        .reduce((sum, s) => sum + Math.round(s.amountCents * PAYCHECKS_PER_MONTH[s.frequency]), 0),
+      monthlyCents: typeof monthly.value === "number" ? monthly.value : null,
+      yearCents: yearIncomeOf(found.profile, found.input),
+      fromMonthCents:
+        typeof monthly.value === "number"
+          ? Math.round(monthly.value * 12 * DETECTOR_RATES.tax.netToGross)
+          : null,
+      payOnly:
+        monthly.source !== "told" &&
+        year.gigCents === 0 &&
+        year.stipendCents === 0 &&
+        deposits.length > 0 &&
+        found.input.transactions.every((t) => t.date >= thisYear) &&
+        deposits.every((t) => t.pfc === "INCOME_SALARY" || t.pfc === "INCOME_WAGES"),
     },
     cash: {
       places: cash.places.map(({ name, kind, balanceCents, today }) => ({
