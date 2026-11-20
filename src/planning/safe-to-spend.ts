@@ -16,9 +16,10 @@ import {
   upcomingBills,
   type Expected,
 } from "@/detection/forecast";
-import { daysBetween } from "@/detection/units";
-import { nextPayday } from "@/detection/paydays";
+import { addDays, daysBetween } from "@/detection/units";
+import { expectedPaydays, missedPaydays, type Payday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
+import type { PayDue } from "@/planning/pay-due";
 import type { SinceStatement } from "@/planning/since-statement";
 
 // "Safe to spend until payday": checking balance today, minus regular bills and regular moves
@@ -36,8 +37,13 @@ export type SafeTax = {
 };
 
 export type SafeToSpend = {
-  // The next expected paycheck, or null when none is expected in the forecast window.
+  // The next expected paycheck after today, or null when none is expected in the forecast window.
   payday: string | null;
+  // Pay due today, or due a day ago and still expected, not in checking yet: counted in safeCents
+  // (as bills due today are), never in balanceCents.
+  payDue: PayDue[];
+  // Pay that didn't come in once the wait ran out: not counted, said so.
+  payMissed: PayDue[];
   balanceCents: number;
   // What balanceCents adds to a statement's balance for the pay and bills expected since its day
   // (the earliest, with more than one); null when it's the balance as it stands.
@@ -98,8 +104,17 @@ export function safeToSpend(
     .map((w) => w.from)
     .sort()[0];
 
-  // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
-  const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;
+  // The next paycheck (spec step 182): payroll deposits only, never interest or a refund. Pay due
+  // today that hasn't come in counts today, as a bill due today does, and safe to spend runs to
+  // the payday after it (phone debugger, 11-20: "until Dec 4: $1,150" left out Nov 20's $1,650).
+  const paydays = expectedPaydays(input, addDays(input.asOf, FORECAST_DAYS));
+  const intoChecking = (p: Payday): PayDue[] =>
+    checkingIds.has(p.accountId)
+      ? [{ employer: p.employer, cents: p.amountCents, dueOn: p.dueOn }]
+      : [];
+  const payDue = paydays.filter((p) => p.date === input.asOf).flatMap(intoChecking);
+  const payDueCents = payDue.reduce((sum, p) => sum + p.cents, 0);
+  const payday = paydays.find((p) => p.date > input.asOf)?.date ?? null;
   // Without one, pay that comes every week or two is still likely before a month's bills are due
   // (debugger 11-03: "Short $1,303" for a driver DoorDash pays each week).
   const until = payday ?? nextUnevenPayBy(input, [...checkingIds]);
@@ -143,11 +158,13 @@ export function safeToSpend(
     0,
     setAsideCents - bills.reduce((sum, b) => sum + (b.setAsideCents ?? 0), 0),
   );
-  const beforeTax = balance - billsCents - budgetsLeftCents - goalsCents - setAside;
+  const beforeTax = balance + payDueCents - billsCents - budgetsLeftCents - goalsCents - setAside;
   const taxSoFarCents = tax.holdCents;
   const taxHeldCents = Math.min(taxSoFarCents, Math.max(0, beforeTax));
   return {
     payday,
+    payDue,
+    payMissed: missedPaydays(input).flatMap(intoChecking),
     balanceCents: balance,
     sinceStatement:
       sinceFrom === undefined || sinceCents === 0 ? null : { day: sinceFrom, cents: sinceCents },

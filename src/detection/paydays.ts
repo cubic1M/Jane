@@ -57,7 +57,10 @@ export type PaySchedule = {
 };
 
 export type Payday = {
+  // The day it's expected: its payday, or today for pay due earlier that hasn't come in yet.
   date: string;
+  // The day it was due (its payday).
+  dueOn: string;
   key: string;
   employer: string;
   amountCents: number;
@@ -309,21 +312,71 @@ export function schedulePaydays(schedule: PaySchedule, from: string, until: stri
   return paydayDates(schedule, from, until);
 }
 
-// Every paycheck expected after today through `until`, soonest first.
+// Has Jane seen the account through `day`? A linked bank, always; an upload, when its statement
+// runs that far. Before then a deposit may be in a statement Jane hasn't got, and an upload's
+// balance walked forward to today already expects it (expectedBetween, src/detection/forecast.ts).
+const seenThrough = (input: DetectionInput, accountId: string, day: string) => {
+  const statementEnds = input.accounts.find((a) => a.id === accountId)?.balanceAsOf;
+  return !statementEnds || statementEnds >= day;
+};
+
+// A payday has come in when a deposit from its employer posted within PAYDAY_POSTING_DAYS of it,
+// either side (a day early counts as that payday, not the one before).
+const cameIn = (s: PaySchedule, dueOn: string) =>
+  s.lastDate >= addDays(dueOn, -PAYDAY_POSTING_DAYS);
+
+// Every paycheck expected from today through `until`, soonest first. Pay due today counts today,
+// as bills due today do (phone debugger, 11-20: Blue Bottle's $1,650 due that day was left out of
+// safe to spend and the low point ahead). Pay that was due up to PAYDAY_POSTING_DAYS ago and
+// hasn't come in is still expected, today; after that it's missed (missedPaydays), not counted.
 export function expectedPaydays(input: DetectionInput, until: string): Payday[] {
+  const late = addDays(input.asOf, -PAYDAY_POSTING_DAYS);
   return paySchedules(input)
     .filter((s) => s.active)
     .flatMap((s) =>
-      paydayDates(s, addDays(input.asOf, 1), until)
-        .filter((date) => date > s.lastDate)
-        .map((date) => ({
-          date,
+      paydayDates(s, late, until)
+        .filter(
+          (dueOn) =>
+            !cameIn(s, dueOn) && (dueOn >= input.asOf || seenThrough(input, s.accountId, dueOn)),
+        )
+        .map((dueOn) => ({
+          date: dueOn < input.asOf ? input.asOf : dueOn,
+          dueOn,
           key: s.key,
           employer: s.employer,
           amountCents: s.amountCents,
           accountId: s.accountId,
         })),
     )
+    .sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
+}
+
+// Pay that didn't come in: each employer's latest payday more than PAYDAY_POSTING_DAYS ago with no
+// deposit near it, on a schedule still paying, where Jane has seen the account through the wait.
+// It's no longer counted, and said so rather than gone without a word.
+export function missedPaydays(input: DetectionInput): Payday[] {
+  const waited = addDays(input.asOf, -PAYDAY_POSTING_DAYS - 1);
+  return paySchedules(input)
+    .filter((s) => s.active)
+    .flatMap((s) => {
+      const dueOn = paydayDates(s, s.lastDate, waited).at(-1);
+      if (
+        !dueOn ||
+        cameIn(s, dueOn) ||
+        !seenThrough(input, s.accountId, addDays(dueOn, PAYDAY_POSTING_DAYS))
+      )
+        return [];
+      return [
+        {
+          date: dueOn,
+          dueOn,
+          key: s.key,
+          employer: s.employer,
+          amountCents: s.amountCents,
+          accountId: s.accountId,
+        },
+      ];
+    })
     .sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
 }
 

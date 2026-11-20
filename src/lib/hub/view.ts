@@ -19,6 +19,7 @@ import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatWholeDollars } from "@/lib/money";
 import { sinceStatementNote, type SinceStatement } from "@/planning/since-statement";
+import { PAY_DUE_NOTE, payDueLabel, payMissedLabel, type PayDue } from "@/planning/pay-due";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 import { shownHref } from "@/config/hidden-pages";
@@ -37,6 +38,9 @@ type SafeInput = {
   balanceCents: number;
   // A statement's balance walked forward to today (src/planning/safe-to-spend.ts).
   sinceStatement?: SinceStatement | null;
+  // Pay due that hasn't come in: counted (payDue) or, once the wait ran out, not (payMissed).
+  payDue?: PayDue[];
+  payMissed?: PayDue[];
   billsCents: number;
   budgetsLeftCents: number;
   goalsCents: number;
@@ -384,6 +388,17 @@ const balanceLine = (safe: SafeInput, label: string): CalcLine =>
       }
     : { label, sign: "", cents: safe.balanceCents };
 
+// Pay due that hasn't come in: added, said as expected; missed pay, said and not counted.
+const payDueLines = (safe: SafeInput): CalcLine[] =>
+  (safe.payDue ?? []).map((p) => ({
+    label: payDueLabel(p),
+    sign: "+",
+    cents: p.cents,
+    note: PAY_DUE_NOTE,
+  }));
+const payMissedLines = (safe: SafeInput): CalcLine[] =>
+  (safe.payMissed ?? []).map((p) => ({ label: payMissedLabel(p), sign: "", cents: p.cents }));
+
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;
   const raw = [
@@ -412,8 +427,10 @@ function safeHero(safe: SafeInput): SafeHero {
     parts: raw.map((p) => ({ ...p, share: total > 0 ? p.cents / total : 0 })),
     why: [
       balanceLine(safe, "In checking now"),
+      ...payDueLines(safe),
       ...held.map((l) => ({ ...l, sign: "−" as const })),
       { label: short ? "Short before payday" : "Safe to spend", sign: "=", cents: safe.safeCents },
+      ...payMissedLines(safe),
       ...(safe.unevenPayMonthlyCents
         ? [
             {
@@ -462,6 +479,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
   ].filter((l) => l.cents > 0);
   return [
     balanceLine(safe, "In checking today"),
+    ...payDueLines(safe),
     ...billLines,
     ...held,
     {
@@ -469,6 +487,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
       sign: "=",
       cents: safe.safeCents,
     },
+    ...payMissedLines(safe),
   ];
 }
 
