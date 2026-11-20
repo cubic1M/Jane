@@ -13,6 +13,7 @@ import {
   studentYearOf,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
+import { yearElapsed } from "@/planning/tax-income";
 import { rateMonthsOf, type Profile } from "@/profile/build";
 import { type Confidence, type Detector, type Suggestion, suggestion } from "./contract";
 import { monthlyPaymentOf } from "./debt";
@@ -153,13 +154,28 @@ const studentLoanInterest: Detector = {
         ? [{ balance: Math.abs(account.balanceCents), aprBps: l.aprBps }]
         : [];
     });
+    // The lender's own figure comes first: the interest paid since January 1, paced to the year by
+    // the calendar as the tax estimate does (src/lib/tax-estimate.ts), so Taxes says one year's
+    // interest (debug 2, 11-20: "a year's interest is about $882.96" from balance and rate, beside
+    // the audit pack's $971.91 from the lender's $860.07 so far).
+    const reported = data.liabilities
+      .filter((l) => l.kind === "student")
+      .reduce((t, l) => t + Math.max(0, l.ytdInterestPaidCents ?? 0), 0);
+    const elapsed = yearElapsed(Number(data.today.slice(0, 4)), data.today);
+    const reportedYear =
+      reported > 0
+        ? elapsed > 0 && elapsed < 1
+          ? Math.round(reported / elapsed)
+          : reported
+        : null;
     const interest =
-      loans.length > 0
+      reportedYear ??
+      (loans.length > 0
         ? Math.min(
             paidYear,
             Math.round(loans.reduce((t, l) => t + (l.balance * l.aprBps) / 10_000, 0)),
           )
-        : null;
+        : null);
     const deduct = Math.round(Math.min(STUDENT_LOAN_INTEREST.max, interest ?? paidYear) * left);
     const worth = Math.round(deduct * rate);
     if (worth <= 0) return null;
@@ -183,13 +199,15 @@ const studentLoanInterest: Detector = {
               45,
               "a payment is part interest and part loan; the lender's Form 1098-E says how much",
             )
-          : notSaid(75, "a year's interest worked out from your loan's balance and rate"),
+          : reportedYear !== null
+            ? notSaid(75, "a year's interest paced from what your lender reports so far")
+            : notSaid(75, "a year's interest worked out from your loan's balance and rate"),
         dependentOf(facts) === null
           ? notSaid(55, "I don't know if someone claims you as a dependent")
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${interest === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `On ${formatCents(balance)} owed at ${formatRate(loans[0].aprBps)}${loans.length > 1 ? " and more" : ""}, a year's interest is about ${formatCents(interest)}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${interest === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${reportedYear !== null ? `Your lender reports ${formatCents(reported)} of interest paid so far this year, about ${formatCents(interest)} for the year` : `On ${formatCents(balance)} owed at ${formatRate(loans[0].aprBps)}${loans.length > 1 ? " and more" : ""}, a year's interest is about ${formatCents(interest)}`}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });

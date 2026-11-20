@@ -122,6 +122,8 @@ export type ProfileLiability = {
   loanStatus?: string | null;
   // When the status ends (a grace period's last day), YYYY-MM-DD; absent when not loaded.
   loanStatusEndDate?: string | null;
+  // The interest paid since January 1, as the lender reports it; absent when not loaded.
+  ytdInterestPaidCents?: number | null;
 };
 // What the person told Jane: corrections on the profile and answers in other places.
 export type Told = Partial<Record<FactKey, string | number | boolean>>;
