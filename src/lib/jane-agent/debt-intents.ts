@@ -245,8 +245,11 @@ const BALANCE = new RegExp(
 );
 // "How much is my car payment?": that loan, not what was spent on Transportation (debugger 11-16).
 // "How much do I pay for my car each month?" too (debugger 11-19: gas, $36.62, beside a $338.12 loan).
+// And "when is my car payment due?": the loan's answer names its next payment ("$338.12 a month to
+// Toyota Motor Credit, next Dec 7"), where the charges named "car" found none and said "I don't see a
+// regular car payment yet" (desktop sweeps 7 to 9, Toyota Financial $345.12 on the 9th).
 const PAYMENT =
-  /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b|\bhow much (?:do|does) (?:i|we) pay (?:(?:each|a|per|every) month )?(?:for|on|toward) (?:my|our|the) (car|auto|truck|student loan)\b/;
+  /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b|\bhow much (?:do|does) (?:i|we) pay (?:(?:each|a|per|every) month )?(?:for|on|toward) (?:my|our|the) (car|auto|truck|student loan)\b|\bwhen(?:'s| is| are| does) (?:my|our|the) (car|auto|truck)(?: loan)? payments?(?: due| come| go out)?\b|\bwhen (?:do|does|should) (?:i|we) pay (?:my|our|the) (car|auto|truck)(?: loan)?\b/;
 const PAID_OFF =
   /\bwhen (?:is|will|does|do|'s|are) (?:my |the |our )?(.+?) (?:be )?(?:paid off|paid down|paid for|done|finished|over)\b|\bwhen (?:do|will|can) (?:i|we) (?:finish paying|pay off|be done (?:with|paying)|be done paying off) (?:off )?(?:my |the |our )?(.+)$|\bpay ?off date (?:of|for|on) (?:my |the |our )?(.+)$/;
 const RATE =
@@ -628,7 +631,9 @@ export function parseDebtIntent(
     return target && !ALL_DEBTS.test(target) ? { kind: "debt_detail", target } : { kind: "debts" };
   }
   const payment = PAYMENT.exec(text);
-  if (payment) return { kind: "debt_detail", target: (payment[1] ?? payment[2])! };
+  if (payment) {
+    return { kind: "debt_detail", target: (payment[1] ?? payment[2] ?? payment[3] ?? payment[4])! };
+  }
   const balance = BALANCE.exec(text);
   if (balance) return { kind: "debt_detail", target: balance[1] ?? balance[2] ?? balance[3] };
   const rate = RATE.exec(text);

@@ -1,0 +1,5 @@
+{
+  "accounts": [
+    { "name": "Chase checking", "kind": "checking", "files": ["Chase1234_Activity.CSV"] }
+  ]
+}

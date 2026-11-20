@@ -485,6 +485,10 @@ export function spendingReply(
     const usual = usualMonthLine(intent.category, transactions, asOf);
     if (usual) return reply(usual, open);
   }
+  if (intent.sinceStart && intent.category) {
+    const since = sinceStartLine(intent.category, transactions, asOf);
+    if (since) return reply(since, open);
+  }
   const months = monthsEnding(asOf, INSIGHT_MONTHS);
   if (!months.includes(intent.month)) {
     return reply(`I can only see the last ${INSIGHT_MONTHS} months of spending.`, open);
@@ -693,37 +697,9 @@ function usualMonthLine(
   const first = transactions.reduce((min, t) => (t.date < min ? t.date : min), last);
   const counted =
     full.length > 0 ? full : [...new Set(transactions.map((t) => t.date.slice(0, 7)))].sort();
-  const q = target.toLowerCase();
-  const sub = matchSubcategory(target);
-  const category = matchCategory(target, [
-    ...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED]),
-  ]);
-  const named = transactions.filter((t) => {
-    if (!counted.includes(t.date.slice(0, 7)) || kindOf(t) !== "spending") return false;
-    const name = merchantOf(t).toLowerCase();
-    return sub || category ? name === q : name.split(/[^a-z0-9&+']+/).includes(q);
-  });
-  const byMonth = spendingInsights(transactions, {
-    asOf,
-    monthCount: INSIGHT_MONTHS,
-  }).categoriesByMonth;
-  // A part of a category ("gas") when the data says which part each charge is (debugger 11-17).
-  const parts = sub ? counted.map((m) => subcategorySpending(transactions, m, sub)) : [];
-  const [cents, where] =
-    named.length > 0
-      ? [named.reduce((sum, t) => sum + t.amountCents, 0), `at ${merchantOf(named[0])}`]
-      : sub && parts.every((c) => c !== null)
-        ? [parts.reduce<number>((sum, c) => sum + (c ?? 0), 0), `on ${sub.name}`]
-        : category && !sub
-          ? [
-              counted.reduce(
-                (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
-                0,
-              ),
-              `on ${category}`,
-            ]
-          : [0, ""];
-  if (!where) return null;
+  const spent = spentIn(target, transactions, counted, asOf);
+  if (!spent) return null;
+  const { cents, where } = spent;
   if (full.length === 0) {
     return `I don't have a full month yet, just ${daysBetween(first, last) + 1} days (${dayLabel(first)} to ${dayLabel(last)}): you spent ${fmt(cents)} ${where} in that time.`;
   }
@@ -734,6 +710,88 @@ function usualMonthLine(
   const from =
     names.length <= 2 ? names.join(" and ") : `${names[0]} to ${names[names.length - 1]}`;
   return `You spend about ${fmt(Math.round(cents / full.length))} a month ${where}, from ${from}.`;
+}
+
+// Words of a name, for matching one of several words ("whole foods") as a phrase: matched word by
+// word, a two-word merchant was never found, and "how much do I spend at Whole Foods a month?" fell
+// back to this month (walk notes, Plaid S6, 11-19 and 11-20).
+const wordsOf = (text: string) =>
+  ` ${text
+    .toLowerCase()
+    .split(/[^a-z0-9&+']+/)
+    .filter(Boolean)
+    .join(" ")} `;
+
+// What was spent in `months` at the merchant named, on the part or in the category: the cents, how
+// many charges when it's a merchant's, and where, said. Null when nothing goes by that name.
+function spentIn(
+  target: string,
+  transactions: InsightTransaction[],
+  months: readonly string[],
+  asOf: string,
+): { cents: number; count: number | null; where: string } | null {
+  const q = target.toLowerCase();
+  const sub = matchSubcategory(target);
+  const category = matchCategory(target, [
+    ...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED]),
+  ]);
+  const named = transactions.filter((t) => {
+    if (!months.includes(t.date.slice(0, 7)) || kindOf(t) !== "spending") return false;
+    const name = merchantOf(t).toLowerCase();
+    return sub || category ? name === q : wordsOf(name).includes(wordsOf(q));
+  });
+  if (named.length > 0) {
+    return {
+      cents: named.reduce((sum, t) => sum + t.amountCents, 0),
+      count: named.length,
+      where: `at ${merchantOf(named[0]!)}`,
+    };
+  }
+  // A part of a category ("gas") when the data says which part each charge is (debugger 11-17).
+  const parts = sub ? months.map((m) => subcategorySpending(transactions, m, sub)) : [];
+  if (sub && parts.every((c) => c !== null)) {
+    return {
+      cents: parts.reduce<number>((sum, c) => sum + (c ?? 0), 0),
+      count: null,
+      where: `on ${sub.name}`,
+    };
+  }
+  if (!category || sub) return null;
+  const byMonth = spendingInsights(transactions, {
+    asOf,
+    monthCount: INSIGHT_MONTHS,
+  }).categoriesByMonth;
+  return {
+    cents: months.reduce(
+      (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
+      0,
+    ),
+    count: null,
+    where: `on ${category}`,
+  };
+}
+
+// "How much have I spent on Uber?" with no period: everything on file, since the data starts, and
+// this month's part. A merchant or a part of a category only; a whole category keeps the month's
+// answer, with its comparison. Null when nothing goes by that name.
+function sinceStartLine(
+  target: string,
+  transactions: InsightTransaction[],
+  asOf: string,
+): string | null {
+  const months = [...new Set(transactions.map((t) => t.date.slice(0, 7)))].sort();
+  const all = spentIn(target, transactions, months, asOf);
+  // A whole category's (no merchant by that name, no part of one) keeps the month's answer.
+  if (!all || all.cents === 0 || (all.count === null && !matchSubcategory(target))) return null;
+  const first = transactions.reduce((min, t) => (t.date < min ? t.date : min), months[0]! + "-31");
+  const current = monthOf(asOf);
+  const now = months.includes(current) ? spentIn(target, transactions, [current], asOf) : null;
+  const times = all.count !== null ? ` (${all.count === 1 ? "once" : `${all.count} times`})` : "";
+  const part =
+    now && now.cents > 0 && now.cents < all.cents
+      ? `, ${fmt(now.cents)} of it in ${monthLabel(current).split(" ")[0]} so far`
+      : "";
+  return `You've spent ${fmt(all.cents)} ${all.where} since ${dayLabel(first)}${times}${part}.`;
 }
 
 // "What's due?": the coming-up list from Today, bills and deadlines together.
