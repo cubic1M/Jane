@@ -480,3 +480,10 @@ export const DECISION_MIN_CUSHION_MONTHS = 3;
 // account's $10 limit. Past either, the person gets a written answer from the same data.
 export const CHAT_TRIAL_MESSAGES = 25;
 export const CHAT_MONTHLY_CAP_CENTS_DEFAULT = 800;
+
+// The backup chat's answers about money moved by app and charges out of the ordinary
+// (src/lib/jane-agent/replies-money-moves.ts). The apps people send each other money by, as a bank's
+// line names them.
+export const PERSON_APPS = /\b(venmo|zelle|cash ?app|paypal)\b/i;
+// A charge this many times the merchant's usual (its median before) is said as far above usual.
+export const CHARGE_FAR_ABOVE_SHARE = 2;

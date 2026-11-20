@@ -85,7 +85,8 @@ export type DebtIntent =
       projectCents: number | null;
       years: number | null;
     }
-  | { kind: "card_interest" }
+  // thisYear: "this year", the calendar year's interest charges (walk notes: the 12 months answered).
+  | { kind: "card_interest"; thisYear?: true }
   | { kind: "report_fixes" }
   | { kind: "medical_bills" }
   | { kind: "home_afford"; priceCents: number | null }
@@ -254,6 +255,9 @@ const PAID_OFF =
   /\bwhen (?:is|will|does|do|'s|are) (?:my |the |our )?(.+?) (?:be )?(?:paid off|paid down|paid for|done|finished|over)\b|\bwhen (?:do|will|can) (?:i|we) (?:finish paying|pay off|be done (?:with|paying)|be done paying off) (?:off )?(?:my |the |our )?(.+)$|\bpay ?off date (?:of|for|on) (?:my |the |our )?(.+)$/;
 const RATE =
   /\b(?:what'?s |what is )?(?:the )?(?:interest rate|rate|apr) (?:on|for|of) (?:my |the |our )?(.+)$/;
+
+const MY_RATE =
+  /\bwhat(?:'s| is) (?:my|our|the) (student loan|car loan|auto loan|car|credit card|card|mortgage|loan)(?:'s)? (?:interest )?(?:rate|apr)\b/;
 
 const PAYOFF =
   /\b(?:payoff|pay off|pay-off|debt) plan\b|\b(?:fastest|quickest|best|cheapest|smartest) way (?:out of|to pay off|to pay down|to get out of|to clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bhow (?:do|can|should|could) (?:i|we) (?:pay off|pay down|get out of|get rid of|clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bdebt[- ]free\b|\bwhich (?:debt|loan|card|one) (?:should|do|would) (?:i|we) pay(?: off| down)? first\b|\bwhat (?:order|debt) (?:should|do) (?:i|we) pay\b|\bwhat (?:should|do) (?:i|we) pay (?:off|down) first\b/;
@@ -533,7 +537,9 @@ export function parseDebtIntent(
     !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text) &&
     !RATE_LOOKUP.test(text)
   ) {
-    return { kind: "card_interest" };
+    return /\b(?:this year|so far this year|year to date|ytd|in 20\d\d)\b/.test(text)
+      ? { kind: "card_interest", thisYear: true }
+      : { kind: "card_interest" };
   }
   if (BORROWING_POWER.test(text)) return { kind: "borrowing_power" };
   if (FAMILY_CREDIT.test(text)) return { kind: "family_credit" };
@@ -638,6 +644,10 @@ export function parseDebtIntent(
   if (balance) return { kind: "debt_detail", target: balance[1] ?? balance[2] ?? balance[3] };
   const rate = RATE.exec(text);
   if (rate && clean(rate[1])) return { kind: "debt_detail", target: clean(rate[1]) };
+  // "What is my student loan rate?": that debt's answer, which gives its rate (desktop sweeps 7 to 9:
+  // unanswered).
+  const ownRate = MY_RATE.exec(text);
+  if (ownRate) return { kind: "debt_detail", target: ownRate[1]! };
   if (OWE.test(text)) {
     const on = ON.exec(text.slice(OWE.exec(text)!.index));
     const target = on ? clean(on[1]) : "";

@@ -12,11 +12,12 @@ const kind = (text: string) => parseIntent(text, TODAY);
 
 describe("interest paid", () => {
   it("is the card interest answer", () => {
-    for (const text of [
-      "how much did I pay in interest this year?",
-      "how much interest did i pay",
-      "how much have i paid in interest",
-    ]) {
+    // "This year" carries its year (walk notes: the 12 months answered "this year").
+    expect(kind("how much did I pay in interest this year?")).toEqual({
+      kind: "card_interest",
+      thisYear: true,
+    });
+    for (const text of ["how much interest did i pay", "how much have i paid in interest"]) {
       expect(kind(text)).toEqual({ kind: "card_interest" });
     }
   });
