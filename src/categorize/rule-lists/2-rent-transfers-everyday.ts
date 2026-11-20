@@ -148,6 +148,22 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
     keywords: ["FROM SAV", "FROM SAVINGS"],
     direction: "in",
   },
+  // The same with the savings bank between ("ONLINE TRANSFER TO ALLY BANK SAVINGS"): walk batch 3's
+  // upload S6 sent $200 a month there, filed as a move between accounts, so the chat said nothing
+  // went into savings. Not when the line says it's from savings, and not a payment app's line to a
+  // person ("ZELLE TO JORDAN SAVINGS CLUB" says no transfer).
+  {
+    category: "TRANSFER_OUT_SAVINGS",
+    pattern:
+      /(?:TRANSFER TO|TRF TO|XFER TO)(?![A-Z0-9])(?:(?!(?<![A-Z0-9])FROM(?![A-Z0-9])).)*(?<![A-Z0-9])SAVINGS(?![A-Z0-9])/,
+    direction: "out",
+  },
+  {
+    category: "TRANSFER_IN_SAVINGS",
+    pattern:
+      /(?:TRANSFER FROM|TRF FROM|XFER FROM)(?![A-Z0-9])(?:(?!(?<![A-Z0-9])TO(?![A-Z0-9])).)*(?<![A-Z0-9])SAVINGS(?![A-Z0-9])/,
+    direction: "in",
+  },
 
   // A bank transfer to a landlord company is rent, however the bank words the transfer (debugger
   // 11-16: "ONLINE TRANSFER TO OAKWOOD RESIDENTIAL" every month read as a move between the
