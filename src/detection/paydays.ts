@@ -304,6 +304,11 @@ export function paySchedules(input: DetectionInput): PaySchedule[] {
   });
 }
 
+// The days a schedule pays on from `from` through `until` (dates), oldest first.
+export function schedulePaydays(schedule: PaySchedule, from: string, until: string): string[] {
+  return paydayDates(schedule, from, until);
+}
+
 // Every paycheck expected after today through `until`, soonest first.
 export function expectedPaydays(input: DetectionInput, until: string): Payday[] {
   return paySchedules(input)

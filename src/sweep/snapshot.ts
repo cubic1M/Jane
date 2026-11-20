@@ -117,14 +117,20 @@ export async function snapshotAt(
       chatFigure: incomeFigure?.value ?? null,
       // A month of pay by the schedules Home's payday and the chat's "when do I get paid" read
       // (src/detection/paydays.ts): each employer's latest paycheck times its paychecks a month.
-      scheduleMonthCents: paySchedules(input)
+      // Still paying is counted from where the data ends, as the profile counts it, so it doesn't
+      // move with the calendar over data held still (gate C).
+      scheduleMonthCents: paySchedules({
+        ...input,
+        asOf: input.transactions.reduce((a, t) => (t.date > a ? t.date : a), "") || input.asOf,
+      })
         .filter((s) => s.active)
         .reduce((sum, s) => sum + Math.round(s.amountCents * PAYCHECKS_PER_MONTH[s.frequency]), 0),
       monthlyCents: typeof monthly.value === "number" ? monthly.value : null,
       yearCents: yearIncomeOf(found.profile, found.input),
+      // The profile's month as a year, and a bonus once (src/planning/student-tax.ts).
       fromMonthCents:
         typeof monthly.value === "number"
-          ? Math.round(monthly.value * 12 * DETECTOR_RATES.tax.netToGross)
+          ? Math.round(monthly.value * 12 * DETECTOR_RATES.tax.netToGross) + year.extraPayCents
           : null,
       payOnly:
         monthly.source !== "told" &&

@@ -74,6 +74,8 @@ export type StudentYear = {
   stipendCents: number;
   earnedCents: number;
   agiCents: number;
+  // Of the wages, extra pay from an employer on a schedule (a bonus), grossed up and counted once.
+  extraPayCents: number;
 };
 
 export function studentYearOf(
@@ -107,13 +109,14 @@ export function studentYearOf(
   // has it (src/profile/pay-on-schedule.ts): one month's file with three paychecks every two weeks
   // read "Income near $28,489.50" on the Saver's Credit, where the schedule says about $20,956
   // (debug 3, upload S5, 11-19). This year's months from January already hold every payday but one.
+  // A bonus from that employer isn't in its month: it's paid once, so the year adds it once.
   const grossPay = (rows: readonly ProfileTx[]) => {
-    if (first < `${year}-01-01`) return grossYear(sumCents(rows));
+    if (first < `${year}-01-01`) return { cents: grossYear(sumCents(rows)), extra: 0 };
     const on = payOnSchedule(rows, last);
     const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
-    return Math.round(
-      (on.monthCents + Math.round(rest / Math.max(1, span))) * 12 * DETECTOR_RATES.tax.netToGross,
-    );
+    const extra = Math.round(on.extraCents * DETECTOR_RATES.tax.netToGross);
+    const month = on.monthCents + Math.round(rest / Math.max(1, span));
+    return { cents: Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) + extra, extra };
   };
   const gig = data.transactions.filter(
     (t) =>
@@ -128,13 +131,14 @@ export function studentYearOf(
     said === "wage" || said === "aid_refund" ? 0 : pace(sumCents(money.schoolDeposits));
   const schoolPayAsWage = said === "wage" ? grossYear(sumCents(money.schoolDeposits)) : 0;
   const gigCents = pace(sumCents(gig));
-  const wagesCents = wages + schoolPayAsWage;
+  const wagesCents = wages.cents + schoolPayAsWage;
   return {
     wagesCents,
     gigCents,
     stipendCents: stipend,
     earnedCents: wagesCents + gigCents,
     agiCents: wagesCents + gigCents + stipend,
+    extraPayCents: wages.extra,
   };
 }
 

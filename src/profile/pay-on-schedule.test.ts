@@ -11,7 +11,8 @@ import { buildProfile } from "@/profile/build";
 // file. Divided by the file's one month that read $1,860 a month, and the Saver's Credit card
 // "Income near $28,489.50"; every two weeks is 26 × $620 / 12 = $1,343.33 a month.
 
-const S5 = "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone/Chase1234_Activity_20261115.CSV";
+const S5 =
+  "src/lib/jane-agent/checks/__fixtures__/cells/upload-s5-phone/Chase1234_Activity_20261115.CSV";
 const READ = "2026-11-19";
 const MONTH = Math.round((26 * 62_000) / 12);
 const YEAR = Math.round(MONTH * 12 * DETECTOR_RATES.tax.netToGross);
@@ -36,7 +37,9 @@ describe("three paychecks every two weeks in one month's file", () => {
     expect(yearIncomeOf(profile, data)).toBe(YEAR);
     const near = suggestionsOf(data)
       .flatMap((s) => [s.short, s.why])
-      .flatMap((text) => [...String(text).matchAll(/income near (\$[\d,]+\.\d{2})/gi)].map((m) => m[1]));
+      .flatMap((text) =>
+        [...String(text).matchAll(/income near (\$[\d,]+\.\d{2})/gi)].map((m) => m[1]),
+      );
     expect(near.length).toBeGreaterThan(0);
     expect(new Set(near)).toEqual(new Set([dollars(YEAR)]));
   });
