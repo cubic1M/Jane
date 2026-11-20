@@ -225,11 +225,30 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     transactions: [],
   };
 
+  // A service a cheaper plan is suggested for is said by that suggestion, as the dock does
+  // (src/lib/jane-agent/sources/findings.ts): Subscriptions listed "A cheaper plan, same service
+  // $78/yr" and "Netflix $186/yr" for one Netflix (debugger 11-19).
+  const cheaperPlanOf = input.suggestions
+    .filter((s) => s.topic === "cheaper_tier")
+    .flatMap((s) =>
+      CHEAPER_PLANS.filter((p) => `${s.summary} ${s.headline ?? ""}`.includes(p.service)),
+    );
+  const saidAsCheaperPlan = (merchant: string) =>
+    cheaperPlanOf.some((p) => p.words.test(merchant.toUpperCase()));
+  // Each subscription's own review, by name.
+  const reviews = input.recurring.filter((r) => r.findingId && !saidAsCheaperPlan(r.merchant));
+  // A suggestion that reviews the subscriptions together says the same money as those lines
+  // (FINDING_KIND_OF_TOPIC): beside them it's left out, so each one is said once, by name
+  // (debugger 11-20: "Subscriptions to review $169/yr" above Crunch Fitness $360/yr and Apple
+  // $132/yr). Its card's link opens /subscriptions, which lists them all.
+  const saidByReviews = (topic: string) =>
+    reviews.length > 0 && FINDING_KIND_OF_TOPIC[topic as SuggestionTopic] === "subscription_review";
+
   // Suggestions first in their branch: they're what Jane brings up. Money two of them share (bank
   // fees and the late fees among them) is listed once, as in the dock.
   for (const s of oncePerMoney(input.suggestions, (x) => x.topic)) {
     const node = SUGGESTION_NODES[s.topic];
-    if (!node) continue;
+    if (!node || saidByReviews(s.topic)) continue;
     // The books branch lists each problem itself.
     if (s.topic === "data_problems" && input.books.length > 0) continue;
     const status: TreeStatus =
@@ -308,25 +327,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
-  // A service a cheaper plan is suggested for is said by that suggestion, as the dock does
-  // (src/lib/jane-agent/sources/findings.ts): Subscriptions listed "A cheaper plan, same service
-  // $78/yr" and "Netflix $186/yr" for one Netflix (debugger 11-19).
-  const cheaperPlanOf = input.suggestions
-    .filter((s) => s.topic === "cheaper_tier")
-    .flatMap((s) =>
-      CHEAPER_PLANS.filter((p) => `${s.summary} ${s.headline ?? ""}`.includes(p.service)),
-    );
-  const saidAsCheaperPlan = (merchant: string) =>
-    cheaperPlanOf.some((p) => p.words.test(merchant.toUpperCase()));
-  // Nor, beside a suggestion that reviews the subscriptions together, each one's own review: the
-  // dock says them as that one card (FINDING_KIND_OF_TOPIC; debugger 11-20: "Subscriptions to review
-  // $169/yr" above Crunch Fitness $360/yr and Apple $132/yr, the same money twice).
-  const reviewedTogether = input.suggestions.some(
-    (s) => FINDING_KIND_OF_TOPIC[s.topic as SuggestionTopic] === "subscription_review",
-  );
-  for (const r of input.recurring.filter(
-    (r) => r.findingId && !reviewedTogether && !saidAsCheaperPlan(r.merchant),
-  )) {
+  for (const r of reviews) {
     items.subscriptions.push(
       item("subscriptions", r.key, {
         label: r.merchant,

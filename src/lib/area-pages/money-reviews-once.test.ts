@@ -4,7 +4,8 @@ import { moneyTree, type MoneyTreeInput } from "./money";
 // Debugger 11-20 (r370, Plaid S2 sandbox on a phone; r357 before it): Spending & bills →
 // Subscriptions listed "Subscriptions to review $169/yr" and, under it, "Crunch Fitness $360/yr"
 // and "Apple $132/yr", the reviews that suggestion is made of: the same money twice, in one column.
-// The dock says them as that one card (one card, not four: debug 2, 11-16); the tree does too.
+// Each one is said once, by name; the combined suggestion only stands alone. (Not the other way:
+// the dock posts either the combined card or each review, as the day's cards rank them.)
 
 const recurring = (merchant: string, cents: number) => ({
   key: `merchant:${merchant.toLowerCase()}`,
@@ -60,14 +61,19 @@ const subscriptions = (i: MoneyTreeInput) =>
     ?.items.map((x) => x.label) ?? [];
 
 describe("subscriptions reviewed together on Spending & bills", () => {
-  it("are said once, by the suggestion that reviews them", () => {
+  it("are said once, each by name, not again as the suggestion that sums them", () => {
     expect(subscriptions({ ...base, suggestions: [together] })).toEqual([
-      "Subscriptions to review",
+      "Crunch Fitness",
+      "Apple",
       "All your regular charges",
     ]);
   });
 
-  it("keep each service's own line when no suggestion reviews them together", () => {
-    expect(subscriptions(base)).toEqual(["Crunch Fitness", "Apple", "All your regular charges"]);
+  it("keep the suggestion when there are no reviews by name to say it", () => {
+    const quiet = base.recurring.map((r) => ({ ...r, findingId: null }));
+    expect(subscriptions({ ...base, recurring: quiet, suggestions: [together] })).toEqual([
+      "Subscriptions to review",
+      "All your regular charges",
+    ]);
   });
 });
