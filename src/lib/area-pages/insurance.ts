@@ -267,8 +267,9 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
       .filter(Boolean),
   );
   // Cover found in payments that a gap already asks to confirm ("Car insurance, Confirm it:
-  // Progressive is in your payments") isn't listed again as a policy: Plaid + loans read that above
-  // "Progressive car, Found from your payments; confirm it to count it." (debug 2, sweep 9, 11-19).
+  // Progressive is in your payments") isn't asked about again on its policy row: Plaid + loans read
+  // that above "Progressive car, Found from your payments; confirm it to count it." (debug 2, sweep
+  // 9, 11-19). The row stays: the gap's Confirm it opens it (e2e/insurance.spec.ts; #2161 hid it).
   const askedByGap = new Set(
     input.gaps
       .filter((g) => !g.policyId && !g.limit)
@@ -277,28 +278,28 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
         return found ? [found.id] : [];
       }),
   );
-  const policies = input.policies
-    .filter((p) => !askedByGap.has(p.id))
-    .map((p) => {
-      const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
-      const status: TreeStatus = gapPolicies.has(p.id)
-        ? "act"
-        : p.status !== "active" || soon
-          ? "look"
-          : "good";
-      return item("policies", p.id, {
-        // Not "Delta Dental other" (debugger 11-04).
-        label: `${p.carrier} ${p.kind === "other" ? "policy" : POLICY_KINDS[p.kind].toLowerCase()}`,
-        status,
-        figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
-        summary:
-          p.status !== "active"
-            ? "Found from your payments; confirm it to count it."
-            : p.renewsOn
-              ? `Renews ${dayLabel(p.renewsOn)}.`
-              : "Active.",
-      });
+  const policies = input.policies.map((p) => {
+    const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
+    const status: TreeStatus = gapPolicies.has(p.id)
+      ? "act"
+      : p.status !== "active" || soon
+        ? "look"
+        : "good";
+    return item("policies", p.id, {
+      // Not "Delta Dental other" (debugger 11-04).
+      label: `${p.carrier} ${p.kind === "other" ? "policy" : POLICY_KINDS[p.kind].toLowerCase()}`,
+      status,
+      figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
+      summary:
+        p.status !== "active"
+          ? askedByGap.has(p.id)
+            ? "Found from your payments."
+            : "Found from your payments; confirm it to count it."
+          : p.renewsOn
+            ? `Renews ${dayLabel(p.renewsOn)}.`
+            : "Active.",
     });
+  });
 
   // Gaps guessed from what the bank data doesn't show, for cover that is often had another way
   // or is the person's choice: "not on file", worth a look, not an urgent "missing". Health and

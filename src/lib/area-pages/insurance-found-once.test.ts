@@ -49,6 +49,15 @@ describe("car cover found in the payments", () => {
     ]);
   });
 
+  // The gap's Confirm it opens the policy's own row (e2e/insurance.spec.ts: "a policy found in the
+  // payments is confirmed from its gap"), so the row stays, saying only where it was found.
+  it("keeps the policy's own row, which the gap's Confirm it opens", () => {
+    const { tree, summaries } = insuranceTree(input([progressive]));
+    const row = tree.branches.flatMap((b) => b.items).find((i) => i.id.endsWith("prog"));
+    expect(row).toBeDefined();
+    expect(summaries[row!.id]).toBe("Found from your payments.");
+  });
+
   it("is still a gap when nothing is found", () => {
     expect(said([])).toContain("You have a car loan, and there's no car policy on file.");
   });
