@@ -24,6 +24,7 @@ import { studentYearOf } from "@/planning/student-tax";
 import { rateMonthsOf } from "@/profile/build";
 import { chatToday } from "@/lib/today";
 import { explainFigure } from "@/lib/figures";
+import { scopedFor } from "@/lib/db-scoped";
 import { flatten, type Flat } from "./diff";
 
 // What one person sees at one moment, for the calendar sweep (gate C, mvp-ready.md): the findings
@@ -93,6 +94,7 @@ export async function snapshotAt(
   // What decides from cash, beside what it decides: checking as the bank or statement shows it, and
   // each pay-later plan's payoff (class 4's decision side, src/sweep/invariants.ts).
   const input = await loadDetectionInput(userId, { client, now });
+  const onFile = await onFileOf(userId, client, input.transactions);
   const statementCents = forecastAccounts(input, FORECAST_DAYS)[0]?.startCents ?? null;
   const bnpl = await loadBnpl(userId, { client, now, input });
   chat[CASH_QUESTION] = cashReply(cash);
@@ -119,6 +121,7 @@ export async function snapshotAt(
     /about (\$[\d,]+\.\d{2}) before tax/,
   );
   return flatten({
+    onFile,
     asOf,
     detected: Object.fromEntries(detected.map((c) => [`${c.type}:${c.key}`, c])),
     suggestions: Object.fromEntries(found.suggestions.map((s) => [s.id, s])),
@@ -180,3 +183,51 @@ export async function snapshotAt(
     funds,
   });
 }
+
+// What the person's data has, for words that name a source or a thing (./claimed-sources.ts): a
+// linked bank or broker (a figure "they report"), uploaded statements, a card, each kind of loan
+// (an account, a lender's report or its payments seen), a 401(k), a policy, a pay stub. The
+// employer is the profile's (profile.facts.employer).
+async function onFileOf(
+  userId: string,
+  client: PrismaClient,
+  transactions: readonly { pfcDetailed: string | null; amountCents: number }[],
+) {
+  const db = scopedFor(userId, client);
+  const [accounts, liabilities, policies, documents] = await Promise.all([
+    db.accounts.findMany({ select: { source: true, type: true, subtype: true } }),
+    db.liabilities.findMany({ select: { kind: true } }),
+    db.insurancePolicies.count(),
+    db.documents.findMany({ select: { kind: true } }),
+  ]);
+  const linked = (a: { source: string }) => a.source !== "csv";
+  const paid = (pfc: string) =>
+    transactions.some((t) => t.amountCents > 0 && t.pfcDetailed === pfc);
+  const loans = new Set<string>();
+  for (const a of accounts) {
+    if (a.type === "loan" || a.type === "mortgage") loans.add(loanKind(a.subtype ?? a.type));
+  }
+  for (const l of liabilities) if (l.kind !== "credit") loans.add(loanKind(l.kind));
+  if (paid("LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT")) loans.add("student");
+  if (paid("LOAN_PAYMENTS_CAR_PAYMENT")) loans.add("auto");
+  if (paid("LOAN_PAYMENTS_MORTGAGE_PAYMENT")) loans.add("mortgage");
+  return {
+    linkedBank: accounts.some((a) => linked(a) && a.type !== "investment"),
+    linkedInvestments: accounts.some((a) => linked(a) && a.type === "investment"),
+    statements: accounts.some((a) => a.source === "csv"),
+    card: accounts.some((a) => a.type === "credit") || paid("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"),
+    loans: [...loans].sort(),
+    retirement401k: accounts.some((a) => a.subtype === "401k"),
+    policies: policies > 0,
+    payStub: documents.some((d) => /pay ?stub|paystub/i.test(d.kind)),
+  };
+}
+
+const loanKind = (kind: string) =>
+  /student/i.test(kind)
+    ? "student"
+    : /auto|car|vehicle/i.test(kind)
+      ? "auto"
+      : /mortgage|home/i.test(kind)
+        ? "mortgage"
+        : "other";
