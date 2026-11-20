@@ -106,6 +106,7 @@ import { dataStamp } from "@/lib/data-stamp";
 import { openProposals } from "@/lib/proposals";
 import { listDeadlines } from "@/lib/deadlines";
 import { DEADLINE_KIND_LABELS } from "@/insights/deadlines";
+import type { RecurringCharge } from "@/detection/subscriptions";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { findingCandidate } from "./sources/findings";
@@ -209,7 +210,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "coming_up",
     description:
-      "Bills and deadlines coming up in the next month, soonest first, as on the Today page.",
+      "Bills and deadlines coming up in the next month, soonest first, as on the Today page. A bill whose amount moves with use has varies (from, to, usual): its amount is the last bill, so say the range and the usual amount, not the last bill as what it costs each time.",
     input_schema: noInput,
   },
   {
@@ -232,7 +233,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "subscriptions",
     description:
-      "Everything that charges the person on a schedule, from their transactions, as on the Subscriptions page: how often, the last charge and its date, the next expected date, the cost a year, whether it's a subscription, and the id of an open finding about it if there is one.",
+      "Everything that charges the person on a schedule, from their transactions, as on the Subscriptions page: how often, the last charge and its date, the next expected date, the cost a year, whether it's a subscription, and the id of an open finding about it if there is one. A bill whose amount moves with use has varies (from, to, usual): say that range and the usual amount, not the last charge as the monthly one.",
     input_schema: noInput,
   },
   {
@@ -587,6 +588,11 @@ async function runChatToolWork(
   if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });
   const { cents, money, out } = toolAnswer();
   const asOf = await chatToday(userId, { client, now });
+  const variesOut = (v: NonNullable<RecurringCharge["varies"]>) => ({
+    from: money(v.lowCents),
+    to: money(v.highCents),
+    usual: money(v.usualCents),
+  });
 
   switch (name) {
     case "calculate": {
@@ -635,13 +641,28 @@ async function runChatToolWork(
     }
     case "coming_up": {
       const rows = (await homeSummary(userId, { client, now }))?.comingUp ?? [];
+      // A bill that moves with use is said as its range: the amount here is its last bill. The
+      // ranges are extra, so failing to read them never costs the list.
+      const vary = new Map<string, NonNullable<RecurringCharge["varies"]>>(
+        rows.some((r) => r.href === "/bills")
+          ? await loadRecurring(userId, { client, now })
+              .then(({ charges }) =>
+                charges.flatMap((c) => (c.varies ? [[c.merchant, c.varies] as const] : [])),
+              )
+              .catch(() => [])
+          : [],
+      );
       return out({
-        items: rows.map((r) => ({
-          date: r.date,
-          what: r.label,
-          kind: r.href === "/bills" ? "bill" : "deadline",
-          amount: r.amountCents === null ? null : money(r.amountCents),
-        })),
+        items: rows.map((r) => {
+          const varies = r.href === "/bills" ? vary.get(r.label) : undefined;
+          return {
+            date: r.date,
+            what: r.label,
+            kind: r.href === "/bills" ? "bill" : "deadline",
+            amount: r.amountCents === null ? null : money(r.amountCents),
+            ...(varies ? { varies: variesOut(varies) } : {}),
+          };
+        }),
       });
     }
     case "open_findings": {
@@ -722,6 +743,7 @@ async function runChatToolWork(
           lastDate: r.lastDate,
           nextDate: r.nextDate,
           aYear: money(r.annualCostCents),
+          ...(r.varies ? { varies: variesOut(r.varies) } : {}),
           openFindingId: r.openFindingId,
         }));
       // Statements that end weeks ago read every charge as stopped, and Claude said "I don't see
