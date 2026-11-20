@@ -46,7 +46,6 @@ import {
   taxPaymentsFor,
   propertyTaxFor,
   yearCovered,
-  yearElapsed,
   type PayPicture,
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -67,6 +66,7 @@ import {
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { yearInterest } from "@/planning/lender-interest";
 import { monthsCovered, reachOf } from "@/profile/build";
 import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
 
@@ -281,10 +281,17 @@ async function loadTaxEstimateFrom(
       },
       select: { date: true, amountCents: true, subtype: true, accountId: true },
     }),
-    // Banks report loan interest for the current year only.
-    year === Number(today.slice(0, 4))
-      ? db.liabilities.findMany({ select: { kind: true, ytdInterestPaidCents: true } })
-      : Promise.resolve([]),
+    // Banks report loan interest for the year they're read in: yearInterest keeps the readings of the
+    // year asked (December's for last year's estimate in January).
+    db.liabilities.findMany({
+      select: {
+        kind: true,
+        ytdInterestPaidCents: true,
+        aprBps: true,
+        updatedAt: true,
+        account: { select: { currentBalanceCents: true } },
+      },
+    }),
     loadTaxTags(userId, year, { client }),
     db.taxProfiles.findFirst({
       select: {
@@ -606,13 +613,27 @@ async function loadTaxEstimateFrom(
   };
   // The lender's year to date runs from January 1, whenever the linked data starts: paced by the
   // calendar, not by the accounts (debug 2, 11-16: $3,119.50 paid by Nov 16 read as $6,432.87 for
-  // the year, paced over the 177 days since the data's first line).
-  const yearSoFar = yearElapsed(year, today);
+  // the year, paced over the 177 days since the data's first line), and to the day it was read, not
+  // today (gate C's calendar sweep, 12-01 to 12-31 over frozen data: the year's interest fell about
+  // $0.58 a day). As the student loan card reads it (src/planning/lender-interest.ts); the balance and
+  // rate stand in only for a loan whose lender reports interest, read too early in the year or in
+  // another year.
   const loanInterest = (kind: string) => {
-    const ytd = loans
-      .filter((l) => l.kind === kind)
-      .reduce((s, l) => s + (l.ytdInterestPaidCents ?? 0), 0);
-    return yearSoFar > 0 && yearSoFar < 1 ? Math.round(ytd / yearSoFar) : ytd;
+    const mine = loans.filter((l) => l.kind === kind);
+    const found = yearInterest(
+      mine.map((l) => ({
+        ytdInterestPaidCents: l.ytdInterestPaidCents,
+        asOf: iso(l.updatedAt),
+        balanceCents: l.account.currentBalanceCents,
+        aprBps: l.aprBps,
+      })),
+      year,
+      today,
+    );
+    if (!found) return 0;
+    return found.from === "lender" || mine.some((l) => (l.ytdInterestPaidCents ?? 0) > 0)
+      ? found.cents
+      : 0;
   };
 
   // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.

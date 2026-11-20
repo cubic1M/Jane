@@ -153,6 +153,7 @@ async function loadProfileInputFrom(
         loanStatus: true,
         loanStatusEndDate: true,
         ytdInterestPaidCents: true,
+        updatedAt: true,
       },
     }),
     db.holdings.findMany({
@@ -302,6 +303,8 @@ async function loadProfileInputFrom(
       loanStatus: l.loanStatus,
       loanStatusEndDate: l.loanStatusEndDate ? dayOf(l.loanStatusEndDate) : null,
       ytdInterestPaidCents: l.ytdInterestPaidCents,
+      // Each sync writes the lender's figures, so the row's last write is the day they were read.
+      ytdInterestAsOf: dayOf(l.updatedAt),
     })),
     state: tax?.state ?? null,
     // The person, a spouse on a joint return, and dependants, once they've answered both.

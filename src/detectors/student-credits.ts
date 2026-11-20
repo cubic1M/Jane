@@ -1,6 +1,7 @@
 import { CA_RENTERS_CREDIT, AOTC_FORM, SOURCES, TUITION_TIMING_FROM } from "@/config/student-taxes";
 import { EDUCATION_CREDITS, EITC, STUDENT_LOAN_INTEREST } from "@/config/tax-rates";
 import { formatCents, formatWholeDollars } from "@/lib/money";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { studentMoney, sumCents } from "@/planning/student-money";
 import {
@@ -13,7 +14,7 @@ import {
   studentYearOf,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
-import { yearElapsed } from "@/planning/tax-income";
+import { yearInterest } from "@/planning/lender-interest";
 import { rateMonthsOf, type Profile } from "@/profile/build";
 import { type Confidence, type Detector, type Suggestion, suggestion } from "./contract";
 import { monthlyPaymentOf } from "./debt";
@@ -146,40 +147,46 @@ const studentLoanInterest: Detector = {
     const year = studentYearOf(data, facts, months);
     const left = share(year.agiCents, range);
     const rate = marginalRateFor(year.agiCents, status, false, year.earnedCents);
-    // The interest part isn't in a payment. A loan the lender reports with its balance and rate has
-    // a year's interest worked out from them; otherwise the most it can be is the whole payment.
-    const loans = data.liabilities.flatMap((l) => {
-      const account = data.accounts.find((a) => a.id === l.accountId);
-      return l.kind === "student" && l.aprBps !== null && account && account.balanceKnown !== false
-        ? [{ balance: Math.abs(account.balanceCents), aprBps: l.aprBps }]
-        : [];
-    });
-    // The lender's own figure comes first: the interest paid since January 1, paced to the year by
-    // the calendar as the tax estimate does (src/lib/tax-estimate.ts), so Taxes says one year's
-    // interest (debug 2, 11-20: "a year's interest is about $882.96" from balance and rate, beside
-    // the audit pack's $971.91 from the lender's $860.07 so far).
-    const reported = data.liabilities
-      .filter((l) => l.kind === "student")
-      .reduce((t, l) => t + Math.max(0, l.ytdInterestPaidCents ?? 0), 0);
-    const elapsed = yearElapsed(Number(data.today.slice(0, 4)), data.today);
-    const reportedYear =
-      reported > 0
-        ? elapsed > 0 && elapsed < 1
-          ? Math.round(reported / elapsed)
-          : reported
-        : null;
+    // The interest part isn't in a payment. The lender's own year to date, paced to the year by the
+    // day it was read; else a year's interest from the balance and rate, at most the whole payment
+    // (src/planning/lender-interest.ts, as the tax estimate reads it, so Taxes says one figure:
+    // debug 2, 11-20, "about $882.96" beside the audit pack's $971.91). The year is the one this
+    // card's income is for (incomeYearOf): in January a year's interest from December's reading
+    // would be last year's.
+    const interestYear = incomeYearOf(data);
+    const found = yearInterest(
+      data.liabilities.flatMap((l) => {
+        const account = data.accounts.find((a) => a.id === l.accountId);
+        return l.kind === "student"
+          ? [
+              {
+                ytdInterestPaidCents: l.ytdInterestPaidCents ?? null,
+                asOf: l.ytdInterestAsOf ?? null,
+                balanceCents:
+                  account && account.balanceKnown !== false ? account.balanceCents : null,
+                aprBps: l.aprBps,
+              },
+            ]
+          : [];
+      }),
+      interestYear,
+      data.today,
+    );
     const interest =
-      reportedYear ??
-      (loans.length > 0
-        ? Math.min(
-            paidYear,
-            Math.round(loans.reduce((t, l) => t + (l.balance * l.aprBps) / 10_000, 0)),
-          )
-        : null);
+      found === null
+        ? null
+        : found.from === "lender"
+          ? found.cents
+          : Math.min(paidYear, found.cents);
     const deduct = Math.round(Math.min(STUDENT_LOAN_INTEREST.max, interest ?? paidYear) * left);
     const worth = Math.round(deduct * rate);
     if (worth <= 0) return null;
-    const balance = loans.reduce((t, l) => t + l.balance, 0);
+    const basis =
+      found === null
+        ? null
+        : found.from === "lender"
+          ? `Your lender reports ${formatCents(found.reportedCents)} of interest paid in ${interestYear} by ${dayLabel(found.asOf)}, about ${formatCents(found.cents)} for the year`
+          : `On ${formatCents(found.balanceCents)} owed at ${formatRate(found.aprBps)}${found.loans > 1 ? " and more" : ""}, a year's interest is about ${formatCents(Math.min(paidYear, found.cents))}`;
     const lender = nice(money.loanPayments[0].description).replace(
       // A bank's short form too: "NELNET STUDENT LN PAYMENT" read as "Nelnet Student Ln"
       // (debug 2, 11-18).
@@ -199,7 +206,7 @@ const studentLoanInterest: Detector = {
               45,
               "a payment is part interest and part loan; the lender's Form 1098-E says how much",
             )
-          : reportedYear !== null
+          : found?.from === "lender"
             ? notSaid(75, "a year's interest paced from what your lender reports so far")
             : notSaid(75, "a year's interest worked out from your loan's balance and rate"),
         dependentOf(facts) === null
@@ -207,7 +214,7 @@ const studentLoanInterest: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${interest === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${reportedYear !== null ? `Your lender reports ${formatCents(reported)} of interest paid so far this year, about ${formatCents(interest)} for the year` : `On ${formatCents(balance)} owed at ${formatRate(loans[0].aprBps)}${loans.length > 1 ? " and more" : ""}, a year's interest is about ${formatCents(interest)}`}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });
