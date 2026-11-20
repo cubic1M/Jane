@@ -37,9 +37,16 @@ export function forecastReply(forecasts: AccountForecast[]): Reply {
     lowest.balanceCents < 0
       ? `Yes: ${worst.accountName} is forecast to dip to ${formatCents(lowest.balanceCents)} on ${dayLabel(lowest.date)}.`
       : `No: ${worst.accountName} stays above zero, with its lowest point ${formatCents(lowest.balanceCents)} on ${dayLabel(lowest.date)}.`;
+  // Today's balance as every page says it: a statement's closing balance walked forward to today
+  // (debugger 11-20: "It starts at $2,310.55 today", the Nov 12 statement's, beside Home's $3,879).
+  const today = worst.days[0]?.date;
+  const start =
+    today && worst.startOn < today
+      ? `It's about ${formatCents(worst.todayCents)} today, estimated from ${formatCents(worst.startCents)} on ${dayLabel(worst.startOn)}.`
+      : `It starts at ${formatCents(worst.todayCents)} today.`;
   const lines = [
     first,
-    `It starts at ${formatCents(worst.startCents)} today.`,
+    start,
     bills.length > 0
       ? `Bills before then: ${bills
           .slice(0, SHOWN)
