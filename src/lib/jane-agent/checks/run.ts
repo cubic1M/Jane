@@ -245,6 +245,9 @@ async function runChecks(
 
       const started = performance.now();
       let firstWords: number | null = null;
+      // What Jane's own check held this answer to (walk batch 3, 11-20: seven right answers read
+      // as made up, their figures from explain_figure, calculate and a search's total).
+      let liveFigures: readonly number[] = [];
       const { reply, source, issues } = await sendToJane(who.userId, question.text, {
         client,
         now: new Date(now.getTime() + (tick += 1000)),
@@ -254,12 +257,13 @@ async function runChecks(
         onEvent: (event) => {
           if (event.type === "text" && firstWords === null) firstWords = performance.now();
         },
+        onFigures: (allowed) => (liveFigures = allowed),
       });
       const totalMs = Math.round(performance.now() - started);
       const firstWordsMs = Math.round((firstWords ?? performance.now()) - started);
       const checks = fixedChecks(
         question,
-        { body: reply.body, actions: reply.actions, source },
+        { body: reply.body, actions: reply.actions, source, allowedCents: liveFigures },
         facts,
       );
       const fixed = fixedScore(checks);

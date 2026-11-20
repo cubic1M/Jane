@@ -70,6 +70,8 @@ type Options = {
   // This sign-in's start (src/lib/chat-start.ts): what was said before it isn't the
   // conversation any more, so "it" and Claude's history look only after it.
   since?: Date;
+  // The figures Claude's answer was held to (./claude): for the answer checks' grade.
+  onFigures?: (allowedCents: readonly number[]) => void;
 };
 
 export type ChatInputErrorCode = "empty" | "too_long" | "rate_limited";
@@ -208,6 +210,7 @@ async function answer(
     onEvent,
     primerMs,
     since,
+    onFigures,
   }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = await chatToday(userId, { client, now });
@@ -344,6 +347,7 @@ async function answer(
         claude: claude ?? scripted ?? undefined,
         onEvent,
         primerMs,
+        onFigures,
         advice: await adviceMode(userId, { client }),
         concierge: await conciergeMode(userId, { client }),
         style: styleInstructions(style),
@@ -399,7 +403,15 @@ export async function sendToJane(
 async function sendToJaneWork(
   userId: string,
   raw: string,
-  { client = defaultClient, now = new Date(), claude, onEvent, primerMs, since }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    claude,
+    onEvent,
+    primerMs,
+    since,
+    onFigures,
+  }: Options = {},
 ): Promise<Sent> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
@@ -439,6 +451,7 @@ async function sendToJaneWork(
     onEvent,
     primerMs,
     since,
+    onFigures,
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);

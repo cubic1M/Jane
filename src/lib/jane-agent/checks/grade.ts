@@ -19,6 +19,9 @@ export type Answer = {
   actions: MessageAction[];
   // How it was answered (src/lib/jane-agent/typing.ts).
   source: AnswerSource;
+  // The figures Claude's answer was held to on its own turn, tool results and calculate's
+  // included (./run.ts): a figure from them is supported, as Jane's own check found it.
+  allowedCents?: readonly number[];
 };
 
 export type Check = { name: string; ok: boolean; reason: string };
@@ -107,7 +110,7 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
   // figures from the same loaders, so only Claude's are held to the figures the lookups gave.
   // As Jane's own check: the question, never an earlier answer (card-chat mismatch).
   const allowed = dollarFigures(question.text).map((f) => f.cents);
-  allowed.push(...facts.allowedCents);
+  allowed.push(...facts.allowedCents, ...(answer.allowedCents ?? []));
   const guard = checkGuardrails(
     body,
     answer.source === "claude" ? allowed : [...shown],
