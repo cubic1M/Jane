@@ -41,10 +41,9 @@ describe("money coming in each month", () => {
     const withZelle = buildProfile(person(true)).facts;
     const payOnly = buildProfile(person(false)).facts;
     expect(withZelle.monthly_income.value).toBe(payOnly.monthly_income.value);
-    // About $1,400 a month: 23 paychecks of $620 over the ten months from the first (main counted
-    // the Zelle too: about $1,793).
-    expect(withZelle.monthly_income.value as number).toBeGreaterThan(135_000);
-    expect(withZelle.monthly_income.value as number).toBeLessThan(145_000);
+    // $620 every two weeks is $1,343.33 a month (./pay-on-schedule.ts; main counted the Zelle too:
+    // about $1,793, and 23 paychecks over the ten months from the first, about $1,400).
+    expect(withZelle.monthly_income.value).toBe(Math.round((62_000 * 26) / 12));
     expect(withZelle.employer.value).toBe(payOnly.employer.value);
   });
 

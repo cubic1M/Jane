@@ -53,6 +53,10 @@ export const PAYDAY_GAP_DAYS = {
   SEMI_MONTHLY: 15,
   MONTHLY: 31,
 } as const;
+// A payday's deposit at least this share above the usual paycheck carries extra pay (a bonus), which
+// a month of pay leaves out and a year counts once (src/profile/pay-on-schedule.ts). Below it, a
+// raise or a longer week is the paycheck.
+export const PAY_EXTRA_MIN_SHARE = 0.25;
 // How many paychecks a month each schedule brings, on average (the paycheck split, spec step 206).
 export const PAYCHECKS_PER_MONTH = {
   WEEKLY: 52 / 12,

@@ -302,7 +302,8 @@ const CENTS = (text: unknown) => {
 const reads = (text: unknown, cents: number) => {
   const shown = CENTS(text);
   if (shown === null) return true;
-  const short = typeof text === "string" && /\$[\d,.]+[kmM]\b/.test(text);
+  // "$4.7k", or whole dollars ("$877" for $877.38, a tree's figure).
+  const short = typeof text === "string" && /\$[\d,.]+[kmM]\b|\$[\d,]+(?![\d,]|\.\d)/.test(text);
   return (
     Math.abs(shown - cents) <= (short ? SLACK((text as string).replace(/[−-]/, "")) * 100 : 0.5)
   );
@@ -386,6 +387,52 @@ export function sameFigures(flat: Flat): string[] {
       flat["trees.money.tree.branches.have.items.have:loans.figure"],
     ],
   ]);
+  // Income a month is the profile's wherever it's said: the chat's answer (explain_figure, behind
+  // "how much do I make" and /figures/monthly_income) and "You earn about $X a month" on a card. The
+  // chat read the last full months' deposits: "$5,251.69" beside the card's "$5,083.50" (debug 3,
+  // 11-19).
+  check("the profile's monthly income", flat["income.monthlyCents"], [
+    ["income.chatFigure", flat["income.chatFigure"]],
+    ...shownTexts(flat).flatMap(([path, text]) =>
+      [...text.matchAll(/\byou earn about (\$[\d,]+\.\d{2}) a month\b/gi)].map(
+        (m): [string, unknown] => [path, m[1]],
+      ),
+    ),
+  ]);
+  // Income on the tax cards ("income near $X", the Saver's Credit and Match, CARE, the renters
+  // credit) is one year (yearIncomeOf), and when that year is only pay it's the profile's month of
+  // it (debug 3, upload S5, 11-19: three paychecks every two weeks in a month's file read "$1,860 a
+  // month" and "Income near $28,489.50"; the schedule says $1,343 and about $20,956).
+  const yearCents = flat["income.yearCents"];
+  if (typeof yearCents === "number" && yearCents > 0) {
+    check(
+      "the year's income",
+      yearCents,
+      shownTexts(flat).flatMap(([path, text]) =>
+        [...text.matchAll(/\bincome near (\$[\d,]+\.\d{2})/gi)].map((m): [string, unknown] => [
+          path,
+          m[1],
+        ]),
+      ),
+    );
+    if (flat["income.payOnly"] === true)
+      check("the profile's month of pay, as a year", flat["income.fromMonthCents"], [
+        ["income.yearCents", `$${(yearCents / 100).toFixed(2)}`],
+      ]);
+  }
+  // And a month that's only pay is the pay schedule's month: the paycheck Home's payday names
+  // times the paychecks a month its schedule brings, whatever paydays the data happens to hold.
+  const scheduleMonth = flat["income.scheduleMonthCents"];
+  const month = flat["income.monthlyCents"];
+  if (
+    flat["income.payOnly"] === true &&
+    typeof scheduleMonth === "number" &&
+    scheduleMonth > 0 &&
+    typeof month === "number"
+  )
+    check("the pay schedule's month", scheduleMonth, [
+      ["income.monthlyCents", `$${(month / 100).toFixed(2)}`],
+    ]);
   return found;
 }
 

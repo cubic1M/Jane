@@ -11,6 +11,7 @@ import {
   ONE_OFF_MIN_CENTS,
   ONE_OFF_PRIMARIES,
   ONE_OFF_SHARE,
+  PAYCHECKS_PER_MONTH,
 } from "@/config/detection";
 import {
   HEALTH_CARDS_ZERO_MONTHS,
@@ -37,6 +38,8 @@ import { healthFor, healthInput } from "@/lib/health-score";
 import { homeSummary } from "@/lib/home";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { formatCents } from "@/lib/money";
+import { loadProfile } from "@/lib/profile";
+import type { PayOnSchedule } from "@/profile/pay-on-schedule";
 import { sinceStatementNote } from "@/planning/since-statement";
 import { isoDay as iso } from "@/lib/dates";
 import { monthLabel } from "@/lib/day-label";
@@ -163,6 +166,26 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
   };
 }
 
+const PAID: Record<PayOnSchedule["frequency"], string> = {
+  WEEKLY: "every week",
+  BIWEEKLY: "every two weeks",
+  SEMI_MONTHLY: "twice a month",
+  MONTHLY: "once a month",
+};
+
+// How the profile's monthly income was worked out, in its words: pay on a schedule by its
+// schedule, the rest as what comes in regularly.
+function incomeHow(schedules: readonly PayOnSchedule[], monthCents: number): string {
+  if (schedules.length === 0)
+    return "What comes in regularly, as a month: paychecks and other deposits, not refunds, interest, one-off pay or money from people you know.";
+  const each = schedules.map(
+    (p) =>
+      `${formatCents(p.paycheckCents)} ${PAID[p.frequency]} is ${Math.round(PAYCHECKS_PER_MONTH[p.frequency] * 12)} paychecks a year, ${formatCents(p.monthCents)} a month`,
+  );
+  const rest = monthCents - schedules.reduce((s, p) => s + p.monthCents, 0);
+  return `Your pay comes on a schedule, so a month is counted by it, not by how many paydays one month held: ${each.join("; ")}.${rest > 0 ? ` Other deposits that come in regularly add ${formatCents(rest)} a month.` : ""}`;
+}
+
 async function monthly({ userId, id, input, db, client, now }: Ctx): Promise<Part> {
   const health = await healthInput(userId, input, { client, now });
   const month = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))).slice(0, 7);
@@ -190,7 +213,17 @@ async function monthly({ userId, id, input, db, client, now }: Ctx): Promise<Par
     .sort((a, b) => Math.abs(b.amountCents) - Math.abs(a.amountCents));
   const prefs = await listPreferences(userId, { client });
   const said = incomeOverride(prefs);
-  const value = id === "monthly_spending" ? health.monthlySpendingCents : health.monthlyIncomeCents;
+  // Income is the profile's, the figure the cards and the tax estimate use (class 4,
+  // src/sweep/invariants.ts): the chat said "$5,251.69" from the last full months' deposits beside
+  // the disability card's "You earn about $5,083.50 a month" (debug 3, 11-19).
+  const profile = id === "monthly_income" ? await loadProfile(userId, { client, now }) : null;
+  const earned = profile?.facts.monthly_income.value;
+  const value =
+    id === "monthly_spending"
+      ? health.monthlySpendingCents
+      : typeof earned === "number"
+        ? earned
+        : null;
   return {
     value: value === null ? "unknown" : formatCents(value),
     summary:
@@ -198,10 +231,10 @@ async function monthly({ userId, id, input, db, client, now }: Ctx): Promise<Par
         ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthLabel(month, { long: true })}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
         : said !== null
           ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
-          : `The average of the paychecks and other deposits in your last full months. ${monthLabel(month, { long: true })}'s biggest are below.`,
+          : `${incomeHow(profile?.paySchedules ?? [], value ?? 0)} ${monthLabel(month, { long: true })}'s biggest deposits are below.`,
     rows: [
       {
-        label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
+        label: id === "monthly_spending" ? "Average monthly spending" : "Monthly income",
         value: value === null ? "unknown" : formatCents(value),
       },
       ...(id === "monthly_spending" && (health.unseenCardPaymentsCents ?? 0) > 0

@@ -245,8 +245,25 @@ describe("monthly income on a short history", () => {
 
   it("spreads the pay over the days the history covers, not over the calendar months it touches", () => {
     const base = inputFor("renter");
-    // Six $4,000 paychecks from 75 days ago to 5 days ago: the history starts in August, so the
-    // calendar count says 2 months ($12,000 a month), but it is 2.5 months of data.
+    // Six $4,000 payments from a client from 75 days ago to 5 days ago, on no pay schedule: the
+    // history starts in August, so the calendar count says 2 months ($12,000 a month), but it is
+    // 2.5 months of data.
+    const pays = [5, 19, 33, 47, 61, 75].map((b) => ({
+      date: day(b),
+      amountCents: -400_000,
+      description: "ACME DESIGN",
+      pfc: "INCOME_CONTRACTOR",
+      accountId: base.accounts[0].id,
+    }));
+    const profile = buildProfile({ ...base, today, transactions: pays });
+    const monthly = profile.facts.monthly_income.value as number;
+    expect(monthly).toBeGreaterThan(9_500_00);
+    expect(monthly).toBeLessThan(10_000_00);
+  });
+
+  it("takes paychecks every two weeks as 26 a year, whatever the window holds", () => {
+    const base = inputFor("renter");
+    // The same six, as payroll every two weeks (./pay-on-schedule.ts): $4,000 × 26 / 12.
     const pays = [5, 19, 33, 47, 61, 75].map((b) => ({
       date: day(b),
       amountCents: -400_000,
@@ -255,9 +272,7 @@ describe("monthly income on a short history", () => {
       accountId: base.accounts[0].id,
     }));
     const profile = buildProfile({ ...base, today, transactions: pays });
-    const monthly = profile.facts.monthly_income.value as number;
-    expect(monthly).toBeGreaterThan(9_500_00);
-    expect(monthly).toBeLessThan(10_000_00);
+    expect(profile.facts.monthly_income.value).toBe(Math.round((400_000 * 26) / 12));
   });
 
   it("leaves a full year as the calendar count (the sample people do not move)", () => {

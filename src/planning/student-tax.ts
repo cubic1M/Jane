@@ -3,7 +3,8 @@ import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-ta
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
-import type { ProfileInput } from "@/profile/build";
+import type { ProfileInput, ProfileTx } from "@/profile/build";
+import { payOnSchedule } from "@/profile/pay-on-schedule";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
@@ -73,6 +74,8 @@ export type StudentYear = {
   stipendCents: number;
   earnedCents: number;
   agiCents: number;
+  // Of the wages, extra pay from an employer on a schedule (a bonus), grossed up and counted once.
+  extraPayCents: number;
 };
 
 export function studentYearOf(
@@ -102,6 +105,19 @@ export function studentYearOf(
   // other tax cards use, so the same pay is one figure on every card (debug 2, upload S5, 11-18).
   const grossYear = (cents: number) =>
     Math.round(Math.round(cents / Math.max(1, span)) * 12 * DETECTOR_RATES.tax.netToGross);
+  // Pay on a schedule, in data that starts this year, is a month by its schedule, as the profile
+  // has it (src/profile/pay-on-schedule.ts): one month's file with three paychecks every two weeks
+  // read "Income near $28,489.50" on the Saver's Credit, where the schedule says about $20,956
+  // (debug 3, upload S5, 11-19). This year's months from January already hold every payday but one.
+  // A bonus from that employer isn't in its month: it's paid once, so the year adds it once.
+  const grossPay = (rows: readonly ProfileTx[]) => {
+    if (first < `${year}-01-01`) return { cents: grossYear(sumCents(rows)), extra: 0 };
+    const on = payOnSchedule(rows, last);
+    const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
+    const extra = Math.round(on.extraCents * DETECTOR_RATES.tax.netToGross);
+    const month = on.monthCents + Math.round(rest / Math.max(1, span));
+    return { cents: Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) + extra, extra };
+  };
   const gig = data.transactions.filter(
     (t) =>
       t.amountCents < 0 &&
@@ -110,18 +126,19 @@ export function studentYearOf(
       (t.pfc === "INCOME_GIG_ECONOMY" || t.pfc === "INCOME_CONTRACTOR"),
   );
   const said = facts.school_deposit?.value;
-  const wages = grossYear(sumCents(money.wages));
+  const wages = grossPay(money.wages);
   const stipend =
     said === "wage" || said === "aid_refund" ? 0 : pace(sumCents(money.schoolDeposits));
   const schoolPayAsWage = said === "wage" ? grossYear(sumCents(money.schoolDeposits)) : 0;
   const gigCents = pace(sumCents(gig));
-  const wagesCents = wages + schoolPayAsWage;
+  const wagesCents = wages.cents + schoolPayAsWage;
   return {
     wagesCents,
     gigCents,
     stipendCents: stipend,
     earnedCents: wagesCents + gigCents,
     agiCents: wagesCents + gigCents + stipend,
+    extraPayCents: wages.extra,
   };
 }
 
