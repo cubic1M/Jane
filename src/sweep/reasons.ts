@@ -71,7 +71,7 @@ export const DATED: readonly Reason[] = [
   {
     name: "a new month",
     paths:
-      /^(tiles\.[^.]+\.(caption|value|chart)|trees\.(money|loans)\.|chat\.how much did I spend this month\.|suggestions\.(close:month_close|spending:budget_overrun|debt:consolidation|safe_to_spend:emergency_fund)\.|detected\.idle_cash:|suggestions\.investing:idle_cash\.)/,
+      /^(close\.|tiles\.[^.]+\.(caption|value|chart)|trees\.(money|loans)\.|chat\.how much did I spend this month\.|suggestions\.(close:month_close|spending:budget_overrun|debt:consolidation|safe_to_spend:emergency_fund)\.|detected\.idle_cash:|suggestions\.investing:idle_cash\.)/,
     on: firstOfMonth,
   },
   // A new year: this year's taxes, contributions and moves start again.
