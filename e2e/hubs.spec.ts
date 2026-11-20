@@ -17,7 +17,7 @@ test.afterEach(async () => {
 
 const DOLLARS = /\$[\d,]+\.\d{2}/;
 
-test("the hubs gather every page, with live numbers from the demo bank", async ({
+test("the hubs gather every page, with live numbers from the demo bank @critical", async ({
   context,
   page,
   baseURL,

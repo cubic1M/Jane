@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PASS_FILE, pushNeedsE2e } from "../../scripts/e2e-touched-core.mjs";
 
 const MAIN = new Set(["main", "master", "refs/heads/main", "refs/heads/master"]);
 
@@ -184,6 +185,37 @@ function checkPush(args, cwd, branchOf) {
   return toMain ? "no pushes to main. Open a pull request from a branch." : null;
 }
 
+// A branch that changes a page, pushed before npm run e2e:touched passed on its last commit: a PR
+// runs only the @critical specs, so a page change that broke another spec reddened main instead
+// (#2161, #2166, 11-20). Steps aside when git can't say (no origin/main, not a repository).
+function checkPagesTested(cwd) {
+  try {
+    const git = (...a) =>
+      execFileSync("git", ["-C", cwd, ...a], {
+        encoding: "utf8",
+        stdio: "pipe",
+        timeout: 4000,
+      }).trim();
+    const base = git("merge-base", "origin/main", "HEAD");
+    const changedPaths = git("diff", "--name-only", base, "HEAD").split("\n").filter(Boolean);
+    let passedOn = null;
+    try {
+      passedOn = readFileSync(resolve(cwd, git("rev-parse", "--git-path", PASS_FILE)), "utf8");
+    } catch {
+      // No pass yet.
+    }
+    const pages = pushNeedsE2e({ changedPaths, head: git("rev-parse", "HEAD"), passedOn });
+    if (pages.length === 0) return null;
+    const named = pages.slice(0, 3).join(", ") + (pages.length > 3 ? ", …" : "");
+    return (
+      `this branch changes what pages show (${named}) and npm run e2e:touched hasn't passed on its ` +
+      "last commit. Run it (E2E_DATABASE_URL on a scratch database), then push."
+    );
+  } catch {
+    return null;
+  }
+}
+
 function checkGit(args, cwd, branchOf) {
   let here = cwd;
   let rest = args;
@@ -195,7 +227,8 @@ function checkGit(args, cwd, branchOf) {
       rest = rest.slice(2);
     } else rest = rest.slice(1);
   }
-  return rest[0] === "push" ? checkPush(rest.slice(1), here, branchOf) : null;
+  if (rest[0] !== "push") return null;
+  return checkPush(rest.slice(1), here, branchOf) ?? checkPagesTested(here);
 }
 
 function checkGh(args) {
