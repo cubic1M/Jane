@@ -2,6 +2,7 @@ import {
   ACTIVE_WITHIN_INTERVALS,
   NEVER_PAYROLL_CATEGORIES,
   PAYCHECK_MIN_CENTS,
+  PAYDAY_CLOSE_WEIGHT,
   PAYDAY_GAP_DAYS,
   PAYDAY_MAX_SHIFT_DAYS,
   PAYDAY_MIN_PAYCHECKS,
@@ -13,7 +14,7 @@ import {
   SEMI_MONTHLY_MIN_GAP_DAYS,
 } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { isBankingDay } from "./business-days";
+import { bankingDayOnOrBefore, isBankingDay } from "./business-days";
 import { byDate, inLookback } from "./helpers";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import {
@@ -275,9 +276,10 @@ function payRule(deposits: Deposit[]): Rule | null {
     const scored = score(rule, days, allowed);
     if (!scored || scored.missing > allowed) continue;
     const { exact, unmatched, missing } = scored;
-    const off = unmatched + missing;
-    // Fewest paychecks off the schedule, then most on the day; the first such rule wins
-    // (shift "before" first: what most payroll does).
+    const close = days.length - exact - unmatched;
+    const off = unmatched + missing + close * PAYDAY_CLOSE_WEIGHT;
+    // Fewest paychecks off the schedule (a day or so off counting part of one), then most on
+    // the day; the first such rule wins (shift "before" first: what most payroll does).
     if (!best || off < best.off || (off === best.off && exact > best.exact))
       best = { rule, off, exact };
   }
@@ -321,9 +323,15 @@ const seenThrough = (input: DetectionInput, accountId: string, day: string) => {
 };
 
 // A payday has come in when a deposit from its employer posted within PAYDAY_POSTING_DAYS of it,
-// either side (a day early counts as that payday, not the one before).
-const cameIn = (s: PaySchedule, dueOn: string) =>
-  s.lastDate >= addDays(dueOn, -PAYDAY_POSTING_DAYS);
+// either side (a day early counts as that payday, not the one before). Early, those are banking
+// days: Friday's pay is in on Wednesday when Thursday is Thanksgiving, and Monday's on Friday, so
+// pay paid ahead of a holiday or weekend is never expected again or called missed (manager, 11-20).
+const postedFrom = (dueOn: string) => {
+  let day = dueOn;
+  for (let n = 0; n < PAYDAY_POSTING_DAYS; n += 1) day = bankingDayOnOrBefore(addDays(day, -1));
+  return day;
+};
+const cameIn = (s: PaySchedule, dueOn: string) => s.lastDate >= postedFrom(dueOn);
 
 // Every paycheck expected from today through `until`, soonest first. Pay due today counts today,
 // as bills due today do (phone debugger, 11-20: Blue Bottle's $1,650 due that day was left out of

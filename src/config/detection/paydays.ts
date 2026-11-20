@@ -39,8 +39,13 @@ export const NEVER_PAYROLL_CATEGORIES: readonly PfcDetailed[] = [
 // may have no paycheck.
 export const PAYDAY_MIN_PAYCHECKS = 3;
 export const PAYDAY_OFF_SCHEDULE_SHARE = 0.2;
-// A deposit can post this many days off its payday and still count as that payday.
+// A deposit can post this many days off its payday and still count as that payday. Before
+// payday these are banking days: pay before a holiday or weekend comes that much earlier.
 export const PAYDAY_POSTING_DAYS = 1;
+// Choosing a schedule, a paycheck a day or so off its payday counts this much of one off the
+// schedule: twelve Fridays a day off a Thursday schedule aren't a better fit than twelve on a
+// Friday one with one early (Thanksgiving week's pay on Wednesday read as Thursdays, 11-20).
+export const PAYDAY_CLOSE_WEIGHT = 0.5;
 // Twice a month: the two paydays are this many days apart at least.
 export const SEMI_MONTHLY_MIN_GAP_DAYS = 10;
 // How far a weekend or holiday can move a payday, in days.
