@@ -2,6 +2,7 @@ import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-ca
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { freshSwitches } from "@/lib/ops-switches";
+import { recordOpsEvent } from "@/lib/ops-alerts";
 import { redactRequestBody } from "@/lib/person-payees";
 
 // One shared client for the explanation and subscription calls. Everything that calls
@@ -26,18 +27,27 @@ export function chatModel(): string {
   return process.env.ANTHROPIC_CHAT_MODEL || DEFAULT_CHAT_MODEL;
 }
 
-// Every request to Claude's last step, so the store's switch holds whichever path made it, and so
-// no path sends a person's name from a payment app's merchant text (src/lib/person-payees.ts).
+// Every request to Claude's last step, so the store's switch holds whichever path made it, so no
+// path sends a person's name from a payment app's merchant text (src/lib/person-payees.ts), and so
+// a refused key raises the team's alarm whichever path met it (claude_key_refused).
 export const claudeFetch: typeof fetch = async (input, init) => {
   await freshSwitches();
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
+  const response = await send(input, init);
+  if (response.status === 401 || response.status === 403) {
+    await recordOpsEvent("claude_key_refused", { code: `HTTP_${response.status}` });
+  }
+  return response;
+};
+
+function send(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) {
   if (typeof init?.body !== "string") return fetch(input, init);
   const body = redactRequestBody(init.body);
   if (body === init.body) return fetch(input, init);
   const headers = new Headers(init.headers);
   headers.delete("content-length");
   return fetch(input, { ...init, body, headers });
-};
+}
 
 export function anthropic(): Anthropic {
   // For a caller that didn't check llmEnabled() first: it fails rather than reaching Claude.

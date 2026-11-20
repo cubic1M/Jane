@@ -18,6 +18,10 @@ export const OPS_EVENT_KINDS = {
   },
   // Plaid will disconnect a bank in about 7 days unless the person signs in again.
   bank_disconnect_pending: { label: "bank connections will end in 7 days", urgent: false },
+  // Claude refused Jane's API key (401, or 403 for a key not allowed): every call fails until the
+  // key is replaced. The background calls only logged it ("Explanation request failed { status:
+  // 401 }", "Strategist failed") and answered 200 with a template, daily from 11-17.
+  claude_key_refused: { label: "Claude refused Jane's API key", urgent: true },
 } as const;
 
 export type OpsEventKind = keyof typeof OPS_EVENT_KINDS;
