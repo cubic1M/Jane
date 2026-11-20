@@ -78,6 +78,11 @@ export type Intent =
   | { kind: "payday" }
   // "How much do I make a month?", "what's my yearly income?": what comes in, as the profile has it.
   | { kind: "income"; period: "month" | "year" }
+  // Fees and charges by amount (./replies-fees.ts): "why did I get charged $34?", "what fees have I
+  // paid?", "can I get my bank fee waived?".
+  | { kind: "charge_amount"; amountCents: number; day: string | null }
+  | { kind: "fees_paid"; late: boolean }
+  | { kind: "fee_waiver" }
   // Spec step 94: how the savings goals are doing.
   | { kind: "goals" }
   // Spec step 95: a guided flow to start, or the one left open to pick up again.
@@ -450,6 +455,52 @@ const COMING_UP =
 const INCOME =
   /\bhow much (?:money )?(?:do|did) (?:i|we) (?:make|earn|bring in|take home)\b|\bwhat(?:'s| is| are) (?:my|our) (?:monthly |yearly |annual )?(?:income|take[- ]home(?: pay)?|earnings)\b|\b(?:my|our) (?:monthly|yearly|annual) (?:income|take[- ]home|earnings)\b|\bhow much (?:money )?comes in (?:a|each|every|per) (?:month|year)\b/;
 const YEARLY = /\b(?:a|per|each|every|this) year\b|\byearly\b|\bannual(?:ly)?\b/;
+// A charge asked about by its amount: "why was I charged $35 on Oct 28?", "why do I pay $12 every
+// month?", "what's this $20 charge?" (the walkers' backup chat said "I can't answer that one yet").
+const CHARGED =
+  /\bwhy (?:was|were|did|am|do|does|is) (?:i|we|it|there) (?:get |getting |being |a )?(?:charged|billed|pay(?:ing)?|taken)\b[^$]*\$([\d,]+(?:\.\d{1,2})?)|\bwhat(?:'s| is| was) (?:this|that|the) \$([\d,]+(?:\.\d{1,2})?) (?:charge|payment)\b/;
+// What was paid, in the past: "how much do I pay in fees" is what one thing costs, and a fund's
+// fees are the investing answer's.
+const FEES_PAID =
+  /\bwhat (?:bank )?fees (?:have|did) (?:i|we) (?:paid|pay|been charged)\b|\bhow much (?:have|did) (?:i|we) (?:paid|pay|spent|spend|been charged) (?:in|on|for) (?:bank |late |overdraft |account )?fees\b|\bhow many (?:bank |late |overdraft )?fees (?:have|did)\b/;
+const INVESTING_FEES = /\b(?:401\(?k\)?|ira|funds?|invest\w*|brokerage|portfolio)\b/;
+const FEE_WAIVER =
+  /\b(?:can|could|how (?:do|can|could)) (?:i|we) (?:get|have) (?:my|the|a|this|that|these|those) (?:\w+ ){0,2}fees? (?:waived|refunded|reversed|removed|taken off)\b|\bwaive (?:my|the|this|that) (?:\w+ ){0,2}fees?\b/;
+const MONTH_WORDS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
+
+// "on Oct 28", "on 10/28": the day, in the year before asOf when it would be after it.
+export function dayAsked(text: string, asOf: string): string | null {
+  const named =
+    /\bon (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? (\d{1,2})(?:st|nd|rd|th)?\b/i.exec(
+      text,
+    );
+  const slashed = /\bon (\d{1,2})\/(\d{1,2})\b/.exec(text);
+  const month = named
+    ? MONTH_WORDS.indexOf(named[1]!.toLowerCase()) + 1
+    : slashed
+      ? Number(slashed[1])
+      : 0;
+  const date = named ? Number(named[2]) : slashed ? Number(slashed[2]) : 0;
+  if (month < 1 || month > 12 || date < 1 || date > 31) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  let year = Number(asOf.slice(0, 4));
+  if (`${year}-${pad(month)}-${pad(date)}` > asOf) year -= 1;
+  return `${year}-${pad(month)}-${pad(date)}`;
+}
+
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 // Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
 // when the next paycheck comes (11-03).
@@ -620,6 +671,20 @@ export function parseIntent(
   if (INCOME.test(text) && !/\b(?:tax|taxes|after|if|would|could|should)\b/.test(text)) {
     return { kind: "income", period: YEARLY.test(text) ? "year" : "month" };
   }
+  const charged = CHARGED.exec(text);
+  if (charged) {
+    const dollars = Number((charged[1] ?? charged[2])!.replace(/,/g, ""));
+    if (dollars > 0) {
+      return {
+        kind: "charge_amount",
+        amountCents: Math.round(dollars * 100),
+        day: dayAsked(text, asOf),
+      };
+    }
+  }
+  if (FEES_PAID.test(text) && !INVESTING_FEES.test(text))
+    return { kind: "fees_paid", late: /\blate fees?\b/.test(text) };
+  if (FEE_WAIVER.test(text)) return { kind: "fee_waiver" };
   if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {

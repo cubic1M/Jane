@@ -26,7 +26,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "cost",
     bank: ["cost", "subs", "spent"],
-    kinds: ["cost", "about"],
+    kinds: ["cost", "about", "charge_amount", "fees_paid", "fee_waiver"],
     tools: ["subscriptions", "finding_details"],
     answer: moneyAnswer,
   },

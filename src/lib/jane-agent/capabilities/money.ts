@@ -45,6 +45,7 @@ import { incomeReply } from "../replies-income";
 import { loadProfileInput } from "@/lib/profile";
 import { buildProfile, rateMonthsOf } from "@/profile/build";
 import { yearIncomeOf } from "@/detectors/helpers";
+import { chargeReply, feesPaidReply, waiverReply, type FeeContext } from "../replies-fees";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
@@ -148,6 +149,38 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         yearGrossCents: yearIncomeOf(profile, input),
         statementsEnd: await statementsEndOf(userId, client, asOf),
       });
+    }
+    case "charge_amount":
+    case "fees_paid":
+    case "fee_waiver": {
+      // The lines and accounts the pages read, and the dock's waiver card when Jane raised one.
+      const input = await loadDetectionInput(userId, { client, now });
+      const { detectFor } = await import("@/lib/suggestions");
+      const waiver = (await detectFor(userId, { client, now })).suggestions.find(
+        (s) => s.topic === "fee_waiver_met",
+      );
+      const ctx: FeeContext = {
+        asOf,
+        lines: input.transactions,
+        accounts: new Map(
+          input.accounts.map((a) => [
+            a.id,
+            {
+              name: a.name,
+              cash:
+                a.type === "depository" && (a.subtype === "checking" || a.subtype === "savings"),
+            },
+          ]),
+        ),
+        waiver: waiver ? { why: waiver.why, href: waiver.action.href } : null,
+      };
+      if (intent.kind === "charge_amount") return chargeReply(intent.amountCents, intent.day, ctx);
+      if (intent.kind === "fee_waiver") return waiverReply(ctx);
+      const months = Math.max(
+        1,
+        Math.min(12, Math.round(historyDaysOf({ transactions: input.transactions }) / 30.44)),
+      );
+      return feesPaidReply(intent.late, months, ctx);
     }
     // Spec step 94.
     case "goals":
