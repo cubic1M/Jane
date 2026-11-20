@@ -48,11 +48,14 @@ const input: MoneyTreeInput = {
 };
 
 describe("all your regular charges", () => {
-  it("counts every charge its yearly figure adds up, not just the subscriptions", () => {
+  it("counts every charge its yearly total adds up, not just the subscriptions", () => {
     const { tree, summaries } = moneyTree(input);
     const all = tree.branches.flatMap((b) => b.items).find((i) => i.id === "subscriptions:all");
-    expect(all?.line).toBe("3 regular charges");
-    // The detail still says which are which.
-    expect(summaries["subscriptions:all"]).toContain("2 subscriptions and 1 other regular bill");
+    // Its figure is the count, beside the subscriptions it adds up (class 7 in a list, 11-20); the
+    // yearly total is in the detail, which still says which are which.
+    expect(all?.figure).toBe("3 charges");
+    expect(summaries["subscriptions:all"]).toContain(
+      "2 subscriptions and 1 other regular bill, about $26,739.48 a year in all",
+    );
   });
 });

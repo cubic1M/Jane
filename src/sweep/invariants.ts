@@ -472,3 +472,76 @@ export function decidedOnEstimate(flat: Flat): string[] {
         : [];
     });
 }
+
+// Class 7 inside a list (the manager, 11-20): within one column of an area page, no charge,
+// merchant or holding is counted in two lines' figures, and a line that adds up others isn't shown
+// beside them. Spending's Subscriptions listed one Netflix as "A cheaper plan, same service $78/yr"
+// and as "Netflix $186/yr" (#2147), and "Subscriptions to review $169/yr" ("across 3
+// subscriptions") above the reviews it adds up (#2160). A named line is one thing (its id carries a
+// merchant, account, holding, policy or plan); any other line with a figure is drawn from them:
+// - it never names a named line beside it ("A cheaper plan …: Netflix …" beside "Netflix");
+// - when it adds up several things ("3 subscriptions", "10 regular charges"), no named line is
+//   beside it;
+// - two such lines never add up the same kind of thing ("4 bills" this week, "16 bills" this
+//   month), unless one says it's what the other leaves ("After this week", "the rest of").
+// The branch's own figure, its header, is the column's total and isn't a line.
+const MANY =
+  /\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten) (subscriptions|regular charges|charges|bills|fees|funds|holdings|cards|loans|debts|accounts|policies|payments|plans)\b/i;
+const MONEY = /\$\d/;
+const REST = /\b(?:after|rest of|other|besides)\b/i;
+const NAMED = /merchant:|account:|bnpl:|:c[a-z0-9]{20,}/;
+const nounOf = (noun: string) =>
+  ({ "regular charges": "charges", subscriptions: "charges" })[noun.toLowerCase()] ??
+  noun.toLowerCase();
+
+export function listDoubles(flat: Flat): string[] {
+  const found: string[] = [];
+  const areas = Object.keys(flat).flatMap((k) => /^trees\.([^.]+)\.tree\.sub$/.exec(k)?.[1] ?? []);
+  for (const area of areas) {
+    for (const b of childrenOf(flat, `trees.${area}.tree.branches`)) {
+      const branch = `trees.${area}.tree.branches.${b}`;
+      const lines = childrenOf(flat, `${branch}.items`)
+        .map((id) => {
+          const at = `${branch}.items.${id}`;
+          const line = String(flat[`${at}.line`] ?? "");
+          const summary = String(flat[`trees.${area}.summaries.${id}`] ?? "");
+          return {
+            at,
+            named: NAMED.test(id),
+            label: String(flat[`${at}.label`] ?? ""),
+            shown: `"${String(flat[`${at}.label`] ?? "")} ${String(flat[`${at}.figure`] ?? "")}"`,
+            figure: String(flat[`${at}.figure`] ?? ""),
+            words: `${String(flat[`${at}.label`] ?? "")} ${line} ${summary}`,
+            many: MANY.exec(`${line} ${summary}`),
+          };
+        })
+        .filter((l) => MONEY.test(l.figure));
+      const named = lines.filter((l) => l.named);
+      const drawn = lines.filter((l) => !l.named);
+      for (const a of drawn) {
+        for (const n of named) {
+          const name = n.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          if (n.label.length >= 3 && new RegExp(`\\b${name}\\b`, "i").test(a.words))
+            found.push(`${a.at}: ${a.shown} counts ${n.label}, which ${n.shown} counts too`);
+        }
+        if (a.many && named.length > 0)
+          found.push(
+            `${a.at}: ${a.shown} adds up ${a.many[0]}, beside ${named.length} of them by name`,
+          );
+      }
+      for (const [i, a] of drawn.entries())
+        for (const c of drawn.slice(i + 1))
+          if (
+            a.many &&
+            c.many &&
+            nounOf(a.many[1]!) === nounOf(c.many[1]!) &&
+            !REST.test(a.words) &&
+            !REST.test(c.words)
+          )
+            found.push(
+              `${a.at}: ${a.shown} (${a.many[0]}) and ${c.shown} (${c.many[0]}) count the same ${nounOf(a.many[1]!)}`,
+            );
+    }
+  }
+  return found;
+}
