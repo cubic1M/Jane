@@ -4,7 +4,7 @@ import type { Rule } from "./rule";
 const SAVINGS_BANK =
   "BANK|CU|FCU|CREDIT UNION|FEDERAL|FINANCIAL|ONLINE|360|ALLY|MARCUS|DISCOVER|SYNCHRONY|AMEX|AMERICAN EXPRESS|SOFI|CIT|BARCLAYS|CAPITAL ONE|CHIME|VARO";
 // Words of a payment, which a transfer to savings never has.
-const PAYS = "LOAN|MORTGAGE|MTG|AUTO|CARD|PYMT|PMT";
+const PAYS = "LOAN|MORTGAGE|MTG|CARD|PYMT|PMT";
 const word = (words: string) => `(?<![A-Z0-9])(?:${words})(?![A-Z0-9])`;
 // "TRANSFER TO <a bank> ... SAVINGS" (or FROM), with nothing of the other way between and no
 // payment words anywhere.

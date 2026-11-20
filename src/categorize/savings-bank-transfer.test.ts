@@ -29,6 +29,16 @@ describe("a bank transfer to savings at another bank", () => {
     expect(filed(description, -10_000)).toBe("TRANSFER_IN_SAVINGS");
   });
 
+  // A bank's own automatic transfer says AUTO, and is still money put into savings (manager
+  // 11-20); a car loan at a savings-named bank is caught by LOAN.
+  it.each([
+    "AUTO TRANSFER TO ALLY BANK SAVINGS",
+    "RECURRING AUTO XFER TO MARCUS ONLINE SAVINGS",
+    "AUTOMATIC TRANSFER TO DISCOVER BANK SAVINGS",
+  ])("an automatic transfer is a transfer to savings: %s", (description) => {
+    expect(filed(description, 20_000)).toBe("TRANSFER_OUT_SAVINGS");
+  });
+
   it.each([
     // To a person, by a payment app.
     "ZELLE TO JORDAN SAVINGS CLUB ON 11/01 REF # PP0QWERTY12",
