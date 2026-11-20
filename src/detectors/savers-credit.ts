@@ -10,7 +10,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestion } from "./contract";
-import { factEvidence, headlineOf, weakest, yearIncomeOf } from "./helpers";
+import { factEvidence, headlineOf, incomeYearOf, weakest, yearIncomeOf } from "./helpers";
 import { dayLabel } from "@/lib/day-label";
 
 // The Saver's Credit in its last year (connectors roadmap round 17, savers_credit_2026): someone
@@ -31,7 +31,9 @@ const statusOf = (filing: unknown, household: unknown, earners: unknown): Filing
 
 // The year's income as every income-tested card reads it (yearIncomeOf), so "income near" is one
 // figure (debug 2, upload S6, 11-19).
-const agiOf = ({ profile, data }: Parameters<Detector["detect"]>[0]) => yearIncomeOf(profile, data);
+// The Saver's Credit is the 2026 tax year's: its income is that year's, also in January.
+const agiOf = ({ profile, data }: Parameters<Detector["detect"]>[0], taxYear?: number) =>
+  yearIncomeOf(profile, data, taxYear);
 
 const saversCredit: Detector = {
   capability: "taxes",
@@ -47,7 +49,7 @@ const saversCredit: Detector = {
     if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     // Someone in debt trouble needs relief and a plan first, not a nudge to save more.
     if (facts.debt_trouble.value === true) return null;
-    const agi = agiOf(input);
+    const agi = agiOf(input, SAVERS_CREDIT.taxYear);
     if (agi <= 0) return null;
     const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
     const limit = SAVERS_CREDIT.agiLimit[status];
@@ -71,7 +73,7 @@ const saversCredit: Detector = {
       title: `You may qualify for the Saver's Credit on retirement money you put in for ${SAVERS_CREDIT.taxYear}`,
       // Its last year, so worth this once, not every year (debugger 11-09).
       headline: headlineOf("Check the Saver's Credit", least, "earns", true),
-      short: `Income near ${formatCents(agi)} is under its ${formatCents(limit)} limit; ${SAVERS_CREDIT.taxYear} is its last year.`,
+      short: `${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)} is under its ${formatCents(limit)} limit; ${SAVERS_CREDIT.taxYear} is its last year.`,
       worthCents: least,
       worthKind: "earns",
       confidence: weakest([
@@ -134,7 +136,7 @@ const saversMatch: Detector = {
         },
       ]),
       urgency: "later",
-      why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.`,
+      why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With ${incomeYearOf(data)} income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.`,
       action: { label: "See your tax plan", href: "/taxes" },
     });
   },

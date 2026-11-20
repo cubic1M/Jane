@@ -52,7 +52,7 @@ import {
 import { incomeReply } from "../replies-income";
 import { loadProfileInput } from "@/lib/profile";
 import { buildProfile, rateMonthsOf } from "@/profile/build";
-import { yearIncomeOf } from "@/detectors/helpers";
+import { incomeYearOf, yearIncomeOf } from "@/detectors/helpers";
 import { chargeReply, feesPaidReply, waiverReply, type FeeContext } from "../replies-fees";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -165,6 +165,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         schedules: profile.paySchedules ?? [],
         months: Math.max(1, Math.round(rateMonthsOf(profile))),
         yearGrossCents: yearIncomeOf(profile, input),
+        taxYear: incomeYearOf(input),
         statementsEnd: await statementsEndOf(userId, client, asOf),
       });
     }

@@ -219,7 +219,10 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
                 });
               }
               if (mode === "frozen" && yesterday && day > stale) {
-                for (const c of unexplained(day, changes(yesterday, afternoon), DATED, dates)) {
+                for (const c of unexplained(day, changes(yesterday, afternoon), DATED, dates, {
+                  before: yesterday,
+                  after: afternoon,
+                })) {
                   mine.push({
                     person: who,
                     mode,

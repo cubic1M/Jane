@@ -18,6 +18,7 @@ const S5: IncomeFacts = {
   ],
   months: 1,
   yearGrossCents: 2_095_595,
+  taxYear: 2026,
   statementsEnd: null,
 };
 
@@ -30,7 +31,7 @@ describe("what you make", () => {
 
   it("gives a year take-home and before tax, the tax cards' figure", () => {
     expect(incomeReply("year", S5).body).toBe(
-      "You take home about $16,119.96 a year ($1,343.33 a month: $620.00 every two weeks from Univ Of California, 26 paychecks a year), about $20,955.95 before tax, the figure the tax cards use. It's from 1 month of data, so it's an estimate.",
+      "You take home about $16,119.96 a year ($1,343.33 a month: $620.00 every two weeks from Univ Of California, 26 paychecks a year), about $20,955.95 before tax for 2026, the figure the tax cards use. It's from 1 month of data, so it's an estimate.",
     );
   });
 

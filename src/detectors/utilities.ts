@@ -17,6 +17,7 @@ import {
   statementsTooOld,
   tx,
   weakest,
+  incomeYearOf,
   yearIncomeOf,
 } from "./helpers";
 
@@ -109,7 +110,7 @@ const careDiscount: Detector = {
     return suggestion("cost", "utility_discount", {
       title: `Your household may qualify for California's ${program} discount on energy bills`,
       headline: headlineOf(`Check the ${program} energy discount`, worth, "saves"),
-      short: `Income near ${formatCents(gross)} for ${people} ${people === 1 ? "person" : "people"} is under ${program}'s ${formatCents(limit)} limit.`,
+      short: `${incomeYearOf(data)} income near ${formatCents(gross)} for ${people} ${people === 1 ? "person" : "people"} is under ${program}'s ${formatCents(limit)} limit.`,
       worthCents: worth,
       worthKind: "saves",
       confidence: weakest([
@@ -120,7 +121,7 @@ const careDiscount: Detector = {
         },
       ]),
       urgency: "later",
-      why: `For a household of ${people}, ${program} takes gross yearly income up to ${formatCents(limit)} (${CA_CARE_FERA.from} to ${CA_CARE_FERA.until}); yours looks to be near ${formatCents(gross)}. ${program === "CARE" ? "CARE takes 30-35% off electric and 20% off gas" : "FERA takes 18% off electric"}: on your ${formatCents(yearlyEnergy)} a year of gas and electric, at least ${formatCents(worth)}. Your utility decides; you apply with it${program === "CARE" ? ", and getting SNAP, Medi-Cal or similar help can also qualify you" : ""}.`,
+      why: `For a household of ${people}, ${program} takes gross yearly income up to ${formatCents(limit)} (${CA_CARE_FERA.from} to ${CA_CARE_FERA.until}); yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${program === "CARE" ? "CARE takes 30-35% off electric and 20% off gas" : "FERA takes 18% off electric"}: on your ${formatCents(yearlyEnergy)} a year of gas and electric, at least ${formatCents(worth)}. Your utility decides; you apply with it${program === "CARE" ? ", and getting SNAP, Medi-Cal or similar help can also qualify you" : ""}.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${program}`, href: rule.url }],
     });
@@ -164,7 +165,7 @@ const lifeline: Detector = {
     return suggestion("cost", "lifeline", {
       title: "Your household may qualify for Lifeline: money off a phone or internet bill",
       headline: headlineOf("Check Lifeline for your phone bill", yearly, "saves"),
-      short: `Income near ${formatCents(gross)} for ${people} is under Lifeline's ${formatCents(limit)} line.`,
+      short: `${incomeYearOf(data)} income near ${formatCents(gross)} for ${people} is under Lifeline's ${formatCents(limit)} line.`,
       worthCents: yearly,
       worthKind: "saves",
       confidence: weakest([
@@ -221,7 +222,7 @@ const lowCostInternet: Detector = {
         { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
       ]),
       urgency: "later",
-      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours looks to be near ${formatCents(gross)}. ${plan.isp} decides who qualifies, and its terms are its own.`,
+      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${plan.isp} decides who qualifies, and its terms are its own.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
     });

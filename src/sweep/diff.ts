@@ -105,12 +105,16 @@ export function atLocal(day: string, hour: number, timeZone: string): Date {
 // (`follows(path)` matches that change's path) is explained by a reason of its own.
 // `on` may read the person's own dates: the day they linked or uploaded, their newest line, and
 // each account's newest line.
+// A reason with `holds` explains a change only when the day's two snapshots add up the way it says
+// (the tax year's turn: the new year's figure is its month as a year, last year's is yesterday's),
+// so a figure that moves by a cent more than that is still a finding. Without the snapshots, never.
 export type Dates = { linked: string; lastLine: string; accountsLast?: string[] };
 export type Reason = {
   name: string;
   paths: RegExp;
   on?: (day: string, person: Dates) => boolean;
   follows?: (path: string) => RegExp;
+  holds?: (before: Flat, after: Flat) => boolean;
 };
 
 export function unexplained(
@@ -118,8 +122,12 @@ export function unexplained(
   found: Change[],
   reasons: readonly Reason[],
   person: Dates = { linked: "", lastLine: "", accountsLast: [] },
+  flats?: { before: Flat; after: Flat },
 ): Change[] {
-  const named = (c: Change, r: Reason) => r.paths.test(c.path) && (r.on ? r.on(day, person) : true);
+  const holds = (r: Reason) =>
+    !r.holds || (flats !== undefined && r.holds(flats.before, flats.after));
+  const named = (c: Change, r: Reason) =>
+    r.paths.test(c.path) && (r.on ? r.on(day, person) : true) && holds(r);
   const direct = reasons.filter((r) => !r.follows);
   const explained = (c: Change) => direct.some((r) => named(c, r));
   return found.filter(

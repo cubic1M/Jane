@@ -17,7 +17,7 @@ import { yearElapsed } from "@/planning/tax-income";
 import { rateMonthsOf, type Profile } from "@/profile/build";
 import { type Confidence, type Detector, type Suggestion, suggestion } from "./contract";
 import { monthlyPaymentOf } from "./debt";
-import { evidence, factEvidence, headlineOf, nameOf, nice, weakest } from "./helpers";
+import { evidence, factEvidence, headlineOf, incomeYearOf, nameOf, nice, weakest } from "./helpers";
 
 // Credits and deductions a student or first-job earner commonly leaves unclaimed (suggest-taxes,
 // 11-18), each from what the bank shows: tuition they paid, student-loan payments, low pay, rent in
@@ -300,7 +300,7 @@ const caRentersCredit: Detector = {
             ),
       ]),
       urgency: "later",
-      why: `You paid rent to ${nameOf(rent[0]).replace(/\s+Rent.*$/i, "")} in ${span(profile)}, and income near ${formatCents(year.agiCents)} a year is under the ${formatWholeDollars(limit)} limit (the ${CA_RENTERS_CREDIT.limitsYear} return's; 2026's is set later and indexed up). California takes ${formatWholeDollars(credit)} off state income tax for someone who rented in California at least half the year, in a place that isn't exempt from property tax (campus housing usually is), and didn't live with someone who has them as a dependent (FTB). It lowers California tax owed and isn't paid beyond it.`,
+      why: `You paid rent to ${nameOf(rent[0]).replace(/\s+Rent.*$/i, "")} in ${span(profile)}, and ${incomeYearOf(data)} income near ${formatCents(year.agiCents)} is under the ${formatWholeDollars(limit)} limit (the ${CA_RENTERS_CREDIT.limitsYear} return's; 2026's is set later and indexed up). California takes ${formatWholeDollars(credit)} off state income tax for someone who rented in California at least half the year, in a place that isn't exempt from property tax (campus housing usually is), and didn't live with someone who has them as a dependent (FTB). It lowers California tax owed and isn't paid beyond it.`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "FTB: renter's credit", href: SOURCES.ftbRenters.url }],
     });

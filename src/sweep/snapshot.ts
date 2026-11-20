@@ -159,6 +159,12 @@ export async function snapshotAt(
         .reduce((sum, s) => sum + Math.round(s.amountCents * PAYCHECKS_PER_MONTH[s.frequency]), 0),
       monthlyCents: typeof monthly.value === "number" ? monthly.value : null,
       yearCents: yearIncomeOf(found.profile, found.input),
+      // Last tax year's, as a card for it reads it after it ends (the Saver's Credit in January).
+      lastYearCents: yearIncomeOf(
+        found.profile,
+        found.input,
+        Number(found.input.today.slice(0, 4)) - 1,
+      ),
       // The profile's month as a year, and a bonus once (src/planning/student-tax.ts).
       fromMonthCents:
         typeof monthly.value === "number"
