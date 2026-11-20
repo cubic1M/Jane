@@ -18,6 +18,8 @@ import {
 } from "./tree";
 import { plural } from "@/lib/plural";
 import { CHEAPER_PLANS } from "@/config/student-money";
+import { FINDING_KIND_OF_TOPIC } from "@/config/suggestions";
+import type { SuggestionTopic } from "@/config/people";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
 // (charges to look at, what's coming up, subscriptions, budgets, yearly bills, where it goes,
@@ -316,7 +318,15 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   const saidAsCheaperPlan = (merchant: string) =>
     cheaperPlanOf.some((p) => p.words.test(merchant.toUpperCase()));
-  for (const r of input.recurring.filter((r) => r.findingId && !saidAsCheaperPlan(r.merchant))) {
+  // Nor, beside a suggestion that reviews the subscriptions together, each one's own review: the
+  // dock says them as that one card (FINDING_KIND_OF_TOPIC; debugger 11-20: "Subscriptions to review
+  // $169/yr" above Crunch Fitness $360/yr and Apple $132/yr, the same money twice).
+  const reviewedTogether = input.suggestions.some(
+    (s) => FINDING_KIND_OF_TOPIC[s.topic as SuggestionTopic] === "subscription_review",
+  );
+  for (const r of input.recurring.filter(
+    (r) => r.findingId && !reviewedTogether && !saidAsCheaperPlan(r.merchant),
+  )) {
     items.subscriptions.push(
       item("subscriptions", r.key, {
         label: r.merchant,
