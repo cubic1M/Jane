@@ -55,6 +55,7 @@ import {
   isDemoToken,
   isSecondLoginToken,
 } from "./demo";
+import { closeSettled } from "@/lib/jane-agent/messages";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { recordArrivalsSafely, whatSetOffSync } from "@/lib/live/arrivals";
@@ -965,6 +966,12 @@ async function syncItemWork(
     // … if no pay comes in" until the night's run, though the paydays had come in (debug 2, 11-16).
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       log.error("Rescanning the suggestions after a sync failed", { error: String(error) }),
+    );
+    // And the cards of findings the rescan removed go now, as after a removal: Jane's run below
+    // does it too, but says nothing in quiet hours (debug 2, 11-20 at 06:01: the dock kept "could
+    // drop to -$272.26 … if no pay comes in" after the paychecks came in).
+    await closeSettled(item.userId, { client, now }).catch((error) =>
+      log.error("Putting away settled cards after a sync failed", { error: String(error) }),
     );
   }
   // After detection these don't depend on each other, so they run together; the sample
