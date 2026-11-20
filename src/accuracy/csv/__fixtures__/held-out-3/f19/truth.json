@@ -60,7 +60,7 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 6
+      "perYear": 3
     },
     {
       "type": "bank_fees",

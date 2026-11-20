@@ -55,12 +55,12 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 72
+      "perYear": 123.43
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 6.42
+      "perYear": 11.01
     },
     {
       "type": "subscription_review",

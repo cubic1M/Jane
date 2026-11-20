@@ -36,7 +36,7 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 80
+      "perYear": 40
     },
     {
       "type": "card_interest",
