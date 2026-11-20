@@ -48,3 +48,8 @@ export const ACCOUNT_FEE_SUBTYPES: readonly string[] = [
   "legal fee",
   "miscellaneous fee",
 ];
+// A fee charged on a cadence (each quarter, each month) is that cadence's count in a year, even when
+// a posting date drifts a few days (a quarter's fee posted early one year and on time the next can
+// be 364 days apart, five quarters in 365 days). Spacings within this share of their middle one are
+// a cadence; anything less regular (transfer fees) is counted as charged.
+export const FEE_CADENCE_TOLERANCE = 0.15;
