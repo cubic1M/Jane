@@ -4,7 +4,9 @@ import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
 import { FILING, FORMS_COMING, W4 } from "@/config/student-taxes";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
-import type { Reason } from "./diff";
+import { DETECTOR_RATES } from "@/config/detectors";
+import { formatCents } from "@/lib/money";
+import type { Flat, Reason } from "./diff";
 
 // The reasons a figure or finding may change from one day to the next while a person's data is
 // held fixed and is past STALE_AFTER_DAYS (gate C, mvp-ready.md). Each names what moves and why.
@@ -12,6 +14,25 @@ import type { Reason } from "./diff";
 // keep each one as narrow as the change it explains.
 
 const firstOfMonth = (day: string) => day.endsWith("-01");
+
+// Jan 1's income adds up from Dec 31's, to the cent, with nothing else moving: last year's figure is
+// exactly what yesterday said this year's was (the cards that are for 2026, the Saver's Credit, still
+// read it), the new year has no pay in it yet so its figure is the same month as a year with no
+// bonus in it, and the chat says that figure. The month itself hasn't moved.
+export function taxYearTurned(before: Flat, after: Flat): boolean {
+  const month = after["income.monthlyCents"];
+  const year = after["income.yearCents"];
+  return (
+    typeof month === "number" &&
+    month === before["income.monthlyCents"] &&
+    typeof before["income.yearCents"] === "number" &&
+    after["income.lastYearCents"] === before["income.yearCents"] &&
+    after["income.fromMonthCents"] === Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) &&
+    year === after["income.fromMonthCents"] &&
+    after["income.payOnly"] !== true &&
+    after["income.chatYearGross"] === (year > 0 ? formatCents(year) : null)
+  );
+}
 const newYear = (day: string) => day.endsWith("-01-01");
 const december = (day: string) => day.slice(5, 7) === "12";
 // A path as a pattern that matches only itself: every character a pattern reads is escaped, the
@@ -53,15 +74,20 @@ export const DATED: readonly Reason[] = [
       /^(tiles\.[^.]+\.(caption|value|chart)|trees\.(money|loans)\.|chat\.how much did I spend this month\.|suggestions\.(close:month_close|spending:budget_overrun|debt:consolidation|safe_to_spend:emergency_fund)\.|detected\.idle_cash:|suggestions\.investing:idle_cash\.)/,
     on: firstOfMonth,
   },
-  // A new year: this year's taxes, contributions and moves start again. The tax year's income is
-  // the new year's: on Jan 1 with no pay in it yet, its month as a year, where Dec 31 had the year's
-  // own pay (the snapshot's income, #2165; the cards say which year, "2027 income near …"; the
-  // calendar sweep, 1-1: the renter's 5,261,568 to 5,116,800 cents, mid-start's payOnly).
+  // A new year: this year's taxes, contributions and moves start again.
   {
     name: "a new year",
-    paths:
-      /^(trees\.(taxes|insurance)\.|suggestions\.(taxes:|investing:employer_match)|tiles\.|income\.(yearCents|fromMonthCents|payOnly|chatYearGross)$)/,
+    paths: /^(trees\.(taxes|insurance)\.|suggestions\.(taxes:|investing:employer_match)|tiles\.)/,
     on: newYear,
+  },
+  // The tax year turning: on Jan 1 this year's income is the new year's, and it adds up (gate C's
+  // calendar sweep, 1-1, ten frozen runs: the renter's 5,261,568 to 5,116,800 cents, mid-start's
+  // payOnly). See taxYearTurned.
+  {
+    name: "the tax year turning",
+    paths: /^income\.(yearCents|lastYearCents|fromMonthCents|payOnly|chatYearGross)$/,
+    on: newYear,
+    holds: taxYearTurned,
   },
   // The tax calendar's December: year-end moves become urgent and "by Dec 31" comes up.
   {

@@ -257,17 +257,35 @@ export function feeEvidence(
 // and with none of that seen (a pension), the profile's monthly income grossed up. Debug 2, uploads
 // S6 and the 14-month Plaid person, 11-19: "income near $27,444.46" on the Saver's Credit beside
 // "$18,744.80" on the renter's credit, then Lifeline's "$21,204.46" beside "$21,530.03".
+//
+// A card for a tax year that has ended (the 2026 Saver's Credit, read in January 2027) reads that
+// year's own pay: its figure doesn't move when the calendar turns (gate C's sweep, 1-1: the renter's
+// year went from 2026's pay to 2027's month as a year overnight). Say which year it is with
+// incomeYearOf.
 export function yearIncomeOf(
   profile: Pick<Profile, "facts" | "months" | "rateMonths">,
   data: Pick<ProfileInput, "transactions" | "today">,
+  taxYear?: number,
 ): number {
   const income = profile.facts.monthly_income;
+  const asOf =
+    incomeYearOf(data, taxYear) < Number(data.today.slice(0, 4))
+      ? { ...data, today: `${taxYear}-12-31` }
+      : data;
   const year =
     income.source === "told"
       ? 0
-      : studentYearOf(data, profile.facts, rateMonthsOf(profile)).agiCents;
+      : studentYearOf(asOf, profile.facts, rateMonthsOf(profile)).agiCents;
   if (year > 0) return year;
   return typeof income.value === "number" && income.value > 0
     ? Math.round(income.value * 12 * DETECTOR_RATES.tax.netToGross)
     : 0;
+}
+
+// The year yearIncomeOf's figure is for: the tax year asked, when it has ended, or this one. Every
+// "income near" says it ("2026 income near $X"), so a new year's figure isn't read as the same year's
+// dropping overnight.
+export function incomeYearOf(data: Pick<ProfileInput, "today">, taxYear?: number): number {
+  const now = Number(data.today.slice(0, 4));
+  return taxYear !== undefined && taxYear < now ? taxYear : now;
 }

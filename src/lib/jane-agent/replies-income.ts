@@ -21,6 +21,8 @@ export type IncomeFacts = {
   months: number;
   // The year before tax as the tax cards read it; 0 when not known.
   yearGrossCents: number;
+  // The tax year it's for: said with it, so January's new year isn't read as last year dropping.
+  taxYear: number;
   // Where the statements end, when that's too long ago to say what comes in now.
   statementsEnd: string | null;
 };
@@ -36,7 +38,7 @@ const ESTIMATE_UNDER_MONTHS = 3;
 
 export function incomeReply(period: "month" | "year", facts: IncomeFacts): Reply {
   const actions = [openLink("See how it's worked out", "/figures/monthly_income")];
-  const { monthCents, told, schedules, months, yearGrossCents, statementsEnd } = facts;
+  const { monthCents, told, schedules, months, yearGrossCents, taxYear, statementsEnd } = facts;
   if (monthCents === null || monthCents <= 0) {
     return {
       body: statementsEnd
@@ -60,7 +62,7 @@ export function incomeReply(period: "month" | "year", facts: IncomeFacts): Reply
       : "";
   const gross =
     yearGrossCents > 0
-      ? `, about ${formatCents(yearGrossCents)} before tax, the figure the tax cards use`
+      ? `, about ${formatCents(yearGrossCents)} before tax for ${taxYear}, the figure the tax cards use`
       : "";
   if (told) {
     return {

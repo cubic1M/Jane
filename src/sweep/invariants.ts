@@ -404,16 +404,26 @@ export function sameFigures(flat: Flat): string[] {
   // credit) is one year (yearIncomeOf), and when that year is only pay it's the profile's month of
   // it (debug 3, upload S5, 11-19: three paychecks every two weeks in a month's file read "$1,860 a
   // month" and "Income near $28,489.50"; the schedule says $1,343 and about $20,956).
+  // Each says its year ("2026 income near $X"): a card for last year, after it ends, reads last
+  // year's (the Saver's Credit in January).
+  const thisYear = Number(String(flat.asOf ?? "").slice(0, 4));
+  const near = shownTexts(flat).flatMap(([path, text]) =>
+    [...text.matchAll(/\b(?:(\d{4}) )?income near (\$[\d,]+\.\d{2})/gi)].map((m) => ({
+      path,
+      cents: m[2],
+      last: m[1] !== undefined && Number(m[1]) < thisYear,
+    })),
+  );
+  const shownAs = (last: boolean) =>
+    near.filter((n) => n.last === last).map((n): [string, unknown] => [n.path, n.cents]);
+  const lastYearCents = flat["income.lastYearCents"];
+  if (typeof lastYearCents === "number" && lastYearCents > 0)
+    check("last year's income", lastYearCents, shownAs(true));
   const yearCents = flat["income.yearCents"];
   if (typeof yearCents === "number" && yearCents > 0) {
     check("the year's income", yearCents, [
       ["income.chatYearGross", flat["income.chatYearGross"]],
-      ...shownTexts(flat).flatMap(([path, text]) =>
-        [...text.matchAll(/\bincome near (\$[\d,]+\.\d{2})/gi)].map((m): [string, unknown] => [
-          path,
-          m[1],
-        ]),
-      ),
+      ...shownAs(false),
     ]);
     if (flat["income.payOnly"] === true)
       check("the profile's month of pay, as a year", flat["income.fromMonthCents"], [
