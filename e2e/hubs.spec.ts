@@ -72,7 +72,14 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   );
   const loans = await pickItem(page, "Spending & bills", "What you have", "Loans and cards");
   await expect(loans).toContainText(/Owed across \d+ accounts/);
-  const month = await pickItem(page, "Spending & bills", "Coming up", "The next month of bills");
+  // The month's bills after this week's, or the whole month when nothing is due this week
+  // (src/lib/area-pages/money.ts): which one depends on the day the demo bank is read.
+  const month = await pickItem(
+    page,
+    "Spending & bills",
+    "Coming up",
+    /After this week|The next month of bills/,
+  );
   await expect(month).toContainText(DOLLARS);
   await page
     .getByRole("navigation", { name: "Spending and bills pages" })
