@@ -75,13 +75,15 @@ export function chargeReply(amountCents: number, day: string | null, ctx: FeeCon
     };
   }
   const [latest] = found as [FeeLine, ...FeeLine[]];
+  // The first time it was charged: a calendar day, not a moment.
+  const firstDay = found[found.length - 1]!.date;
   const account = ctx.accounts.get(latest.accountId)?.name ?? "your account";
   if (isFee(latest, cash)) {
     const item = ITEM.exec(latest.description)?.[1];
     const kind = feeKind(latest);
     const times =
       found.length > 1
-        ? ` It's been charged ${found.length} times since ${dayLabel(found.at(-1)!.date)}.`
+        ? ` It's been charged ${found.length} times since ${dayLabel(firstDay)}.`
         : "";
     const ask = /overdraft|insufficient/.test(kind)
       ? " Banks often refund a first one if you ask."
@@ -107,7 +109,7 @@ export function chargeReply(amountCents: number, day: string | null, ctx: FeeCon
   }
   const times =
     found.length > 1
-      ? ` It's been ${money} ${found.length} times since ${dayLabel(found.at(-1)!.date)}.`
+      ? ` It's been ${money} ${found.length} times since ${dayLabel(firstDay)}.`
       : "";
   return {
     body: `That's ${names[0]}, ${money} on ${dayLabel(latest.date)}, from ${account}.${times}`,
