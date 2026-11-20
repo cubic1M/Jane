@@ -201,6 +201,10 @@ type Options = {
   primerMs?: number;
   // Their payment-app payees' names, kept out of what Claude is sent (./payee-mask.ts).
   mask?: PayeeMask;
+  // The figures this answer may use, as the guardrails hold it to them: the same list, which
+  // grows as tools answer. Only the answer checks ask, to grade a Claude answer by the figures it
+  // was given (./checks/grade.ts).
+  onFigures?: (allowedCents: readonly number[]) => void;
 };
 
 // Spec step 93: when Claude last failed, free questions get the rules' answer at once until
@@ -1132,6 +1136,7 @@ async function askClaude(
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
     primerMs = CHAT_PRIMER_BUDGET_MS,
     mask = NO_MASK,
+    onFigures,
   }: Options,
   timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
@@ -1167,6 +1172,7 @@ async function askClaude(
     { client, now, advice, memory, topic, primerMs },
     timing,
   );
+  onFigures?.(allowedCents);
   const figuresPass = (text: string) => ledger.problems(text, onToday).length === 0;
   let rewrites = 0;
   let decisionUsed = false;
