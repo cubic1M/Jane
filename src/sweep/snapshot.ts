@@ -1,4 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
+import { loadFees } from "@/lib/investments/fees";
+import { formatExpenseRatio } from "@/lib/percent";
 import { detect } from "@/detection/detect";
 import { loadDetectionInput } from "@/detection/input";
 import { withAreaStatus } from "@/lib/hub/area-status";
@@ -12,7 +15,7 @@ import { FORECAST_DAYS, PAYCHECKS_PER_MONTH } from "@/config/detection";
 import { paySchedules } from "@/detection/paydays";
 import { loadCash } from "@/lib/investments/cash";
 import { answerByRules } from "@/lib/jane-agent/answer";
-import { cashReply } from "@/lib/jane-agent/investments/replies";
+import { cashReply, feesReply } from "@/lib/jane-agent/investments/replies";
 import { parseIntent } from "@/lib/jane-agent/intents";
 import { detectFor } from "@/lib/suggestions";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -32,6 +35,7 @@ import { flatten, type Flat } from "./diff";
 
 // Questions a student asks about their own money, answered without Claude.
 export const CASH_QUESTION = "how much cash do I have";
+const FEES_QUESTION = "what fees am I paying on my investments";
 export const SWEEP_QUESTIONS = [
   "what's safe to spend",
   "how much did I spend this month",
@@ -71,6 +75,18 @@ export async function snapshotAt(
     );
     chat[question] = reply;
   }
+  // The chat's fees answer, and each fund it or a card may name with its yearly cost as Jane's
+  // fund table has it: class 4 holds every ratio shown to the table's (./invariants.ts fundRatios).
+  const { investments, fees } = await loadFees(userId, { client, now });
+  chat[FEES_QUESTION] = feesReply(fees, false);
+  const named = new Map<string, string>(Object.entries(FUND_NAMES).filter(([t]) => FUND_FACTS[t]));
+  for (const h of investments.accounts.flatMap((a) => a.holdings))
+    if (h.ticker && FUND_FACTS[h.ticker]) named.set(h.ticker, h.name);
+  const funds = [...named].map(([ticker, name]) => ({
+    ticker,
+    name,
+    ratio: formatExpenseRatio(FUND_FACTS[ticker]!.expenseRatioBps),
+  }));
   // The chat's cash answer (cashReply, as "how much cash do I have" gets it), with the places it
   // adds up: class 4 holds its checking to Home's (src/sweep/invariants.ts sameFigures).
   const cash = await loadCash(userId, { client, now });
@@ -148,5 +164,6 @@ export async function snapshotAt(
         today: today ?? null,
       })),
     },
+    funds,
   });
 }

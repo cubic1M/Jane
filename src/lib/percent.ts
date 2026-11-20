@@ -6,3 +6,8 @@ export const formatPercentTenths = (share: number): string => `${Math.round(shar
 
 // Basis points as a percent with two decimals: 1999 is "19.99%" (a rate, a fund's yearly cost).
 export const formatRate = (bps: number): string => `${(bps / 100).toFixed(2)}%`;
+
+// A fund's yearly cost: two decimals, or three where it holds half a basis point (Fidelity 500
+// Index's 0.015%, which two decimals rounded to "0.01%"; src/config/funds.ts).
+export const formatExpenseRatio = (bps: number): string =>
+  `${(bps / 100).toFixed(Number.isInteger(bps) ? 2 : 3)}%`;

@@ -8,7 +8,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { formatRate } from "@/lib/percent";
+import { formatExpenseRatio } from "@/lib/percent";
 import { CARD_TIGHT } from "@/components/card";
 
 // What investing costs the person (spec step 130): each fund's yearly cost, advisory and
@@ -78,7 +78,8 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
                   <span className="min-w-0 break-words">
                     {f.holding.name} <span className="text-zinc-500">({f.accountName})</span>
                     <span className="block text-xs text-zinc-500">
-                      {formatRate(f.expenseRatioBps)} a year on {formatCents(f.holding.valueCents)}
+                      {formatExpenseRatio(f.expenseRatioBps)} a year on{" "}
+                      {formatCents(f.holding.valueCents)}
                     </span>
                   </span>
                   <span>{formatCents(f.yearlyCents)} a year</span>
@@ -115,9 +116,10 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
                 {fees.equivalents.map((e) => (
                   <li key={e.holding.id} className="flex flex-col gap-1">
                     <span>
-                      <strong>{e.holding.name}</strong> ({formatRate(e.holding.expenseRatioBps!)})
-                      in your {e.accountName} → <strong>{e.name}</strong> (
-                      {formatRate(e.expenseRatioBps)}), {e.category}
+                      <strong>{e.holding.name}</strong> (
+                      {formatExpenseRatio(e.holding.expenseRatioBps!)}) in your {e.accountName} →{" "}
+                      <strong>{e.name}</strong> ({formatExpenseRatio(e.expenseRatioBps)}),{" "}
+                      {e.category}
                       {e.inPlanMenu ? ", offered in your plan" : ""}.
                     </span>
                     <span className="text-zinc-600 dark:text-zinc-400">

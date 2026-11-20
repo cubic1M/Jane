@@ -16,6 +16,7 @@ import {
   clip,
 } from "./helpers";
 import type { ProfileHolding } from "@/profile/build";
+import { formatExpenseRatio } from "@/lib/percent";
 
 // Detectors that read what the person holds (spec step 262): fees, drift from a sensible mix,
 // automatic investing, old employer plans, where bonds sit and costly annuities. Pure; see
@@ -41,7 +42,7 @@ const feeDrag: Detector = {
       .filter((m) => rows.some((r) => sameHolding(r.h, m.h)))
       .map(
         (m) =>
-          ` Your 401(k)'s menu also has ${FUND_NAMES[m.to] ?? m.to} (${(m.bps / 100).toFixed(2)}% a year), a fund of the same kind as ${FUND_NAMES[m.h.ticker!] ?? m.h.ticker} (your plan's fund list).`,
+          ` Your 401(k)'s menu also has ${FUND_NAMES[m.to] ?? m.to} (${formatExpenseRatio(m.bps)} a year), a fund of the same kind as ${FUND_NAMES[m.h.ticker!] ?? m.h.ticker} (your plan's fund list).`,
       )
       .join("");
     return suggestion("investing", "investment_fees", {

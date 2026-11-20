@@ -23,6 +23,7 @@ import {
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 import { isoDay as iso } from "@/lib/dates";
+import { formatExpenseRatio } from "@/lib/percent";
 
 // The workplace plan's menu, used well (spec step 232, demo advice), for its page, Jane's
 // answers and its buttons. The menu is read from a fee disclosure the person pastes, shown
@@ -52,7 +53,7 @@ export function sampleDisclosure(): string {
     "Plan fee disclosure (annual operating expenses)",
     ...DEMO_EMPLOYER_PLAN_MENU.map(
       (t) =>
-        `${t}  ${FUND_FACTS[t].category}  ${(FUND_FACTS[t].expenseRatioBps / 100).toFixed(2)}%  ${kind(t)}`,
+        `${t}  ${FUND_FACTS[t].category}  ${formatExpenseRatio(FUND_FACTS[t].expenseRatioBps)}  ${kind(t)}`,
     ),
   ].join("\n");
 }

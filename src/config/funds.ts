@@ -125,12 +125,15 @@ export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     adsh: "0000036405-26-000181",
     form: "485BPOS",
   }),
-  FXAIX: sec(1, US, "S&P 500 index fund", "20260424", {
+  // 0.015% a year: the filing's risk/return data (oef:ExpensesOverAssets) gives 0.00015 for this
+  // class (C000100045), and FSKAX's (C000103359) the same. Kept to whole basis points, the table
+  // held 1, and the chat said "0.01%" where the walkers read 0.015% (walk notes, 11-18).
+  FXAIX: sec(1.5, US, "S&P 500 index fund", "20260424", {
     cik: 819118,
     adsh: "0000819118-26-000072",
     form: "485BPOS",
   }),
-  FSKAX: sec(1, US, "US total stock market index fund", "20260424", {
+  FSKAX: sec(1.5, US, "US total stock market index fund", "20260424", {
     cik: 819118,
     adsh: "0000819118-26-000072",
     form: "485BPOS",
