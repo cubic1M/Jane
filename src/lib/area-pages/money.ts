@@ -315,14 +315,18 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       }),
     );
   }
-  if (input.bills.length > 0) {
+  // Beside this week's, the month's line is what comes after it: each bill in one line's figure
+  // (class 7 in a list, 11-20: "Bills this week $274" and "The next month of bills $2.8k" both
+  // counted this week's four).
+  const later = week.length > 0 ? input.bills.filter((b) => b.date > input.weekEnds) : input.bills;
+  if (later.length > 0) {
     items.coming.push(
       item("coming", "month", {
-        label: "The next month of bills",
-        line: plural(input.bills.length, "bill"),
+        label: week.length > 0 ? "After this week" : "The next month of bills",
+        line: plural(later.length, "bill"),
         status: "good",
-        figure: shortMoney(sum(input.bills)),
-        summary: `${plural(input.bills.length, "regular charge")} expected over the next month, about ${formatCents(sum(input.bills))} in all.`,
+        figure: shortMoney(sum(later)),
+        summary: `${plural(later.length, "regular charge")} expected over ${week.length > 0 ? "the rest of the next month" : "the next month"}, about ${formatCents(sum(later))} in all.`,
       }),
     );
   }
@@ -342,12 +346,13 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     items.subscriptions.push(
       item("subscriptions", "all", {
         label: "All your regular charges",
-        // What the figure adds up: every regular charge, not just the subscriptions (debugger 11-13:
-        // "$44k/yr · 9 subscriptions" read as nine subscriptions costing $44k, a mortgage among the rest).
-        line: plural(input.recurring.length, "regular charge"),
+        // What it adds up: every regular charge, not just the subscriptions (debugger 11-13: "$44k/yr
+        // · 9 subscriptions" read as nine subscriptions costing $44k, a mortgage among the rest). Its
+        // figure is the count: a yearly total beside the subscriptions it adds up counted each twice
+        // in the column (class 7 in a list, 11-20); the total is in its detail.
         status: "good",
-        figure: perYear(input.recurring.reduce((t, r) => t + r.annualCostCents, 0)),
-        summary: `${plural(subs.length, "subscription")} and ${plural(input.recurring.length - subs.length, "other regular bill")}, from your transactions.`,
+        figure: plural(input.recurring.length, "charge"),
+        summary: `${plural(subs.length, "subscription")} and ${plural(input.recurring.length - subs.length, "other regular bill")}, about ${formatCents(input.recurring.reduce((t, r) => t + r.annualCostCents, 0))} a year in all, from your transactions.`,
       }),
     );
   }
