@@ -13,7 +13,6 @@ import { listFacts, toldFromFacts } from "@/lib/memory/facts";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec, factWords } from "@/profile/facts";
 import { isoDay as dayOf } from "@/lib/dates";
-import { readingDay } from "@/planning/lender-interest";
 import { cachedCopy } from "@/lib/read-cache";
 import { formatWholeDollars as dollars } from "@/lib/money";
 import { systemDb } from "@/lib/system-db";
@@ -305,10 +304,10 @@ async function loadProfileInputFrom(
       loanStatus: l.loanStatus,
       loanStatusEndDate: l.loanStatusEndDate ? dayOf(l.loanStatusEndDate) : null,
       ytdInterestPaidCents: l.ytdInterestPaidCents,
-      ytdInterestAsOf: readingDay(
-        l.lastPaymentDate ? dayOf(l.lastPaymentDate) : null,
-        dayOf(l.updatedAt),
-      ),
+      // Each sync writes the lender's figures, and nothing else updates the row: its last write is
+      // the day they were read.
+      ytdInterestReadOn: dayOf(l.updatedAt),
+      lastPaymentDate: l.lastPaymentDate ? dayOf(l.lastPaymentDate) : null,
     })),
     state: tax?.state ?? null,
     // The person, a spouse on a joint return, and dependants, once they've answered both.

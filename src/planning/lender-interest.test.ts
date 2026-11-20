@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { LENDER_INTEREST_MIN_DAYS } from "@/config/tax";
 import { yearInterest } from "./lender-interest";
 
-const loan = (ytd: number | null, asOf: string | null) => ({
+const loan = (ytd: number | null, readOn: string | null) => ({
   ytdInterestPaidCents: ytd,
-  asOf,
+  readOn,
+  lastPaymentDate: null,
   balanceCents: 1_605_374,
   aprBps: 550,
 });

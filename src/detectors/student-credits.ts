@@ -3,6 +3,7 @@ import { EDUCATION_CREDITS, EITC, STUDENT_LOAN_INTEREST } from "@/config/tax-rat
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { plural } from "@/lib/plural";
 import { studentMoney, sumCents } from "@/planning/student-money";
 import {
   age25to64,
@@ -147,8 +148,9 @@ const studentLoanInterest: Detector = {
     const year = studentYearOf(data, facts, months);
     const left = share(year.agiCents, range);
     const rate = marginalRateFor(year.agiCents, status, false, year.earnedCents);
-    // The interest part isn't in a payment. The lender's own year to date, paced to the year by the
-    // day it was read; else a year's interest from the balance and rate, at most the whole payment
+    // The interest part isn't in a payment. The lender's own year to date, paced to the year by its
+    // payments (the ones seen here) or the day it was read; else a year's interest from the balance
+    // and rate, at most the whole payment
     // (src/planning/lender-interest.ts, as the tax estimate reads it, so Taxes says one figure:
     // debug 2, 11-20, "about $882.96" beside the audit pack's $971.91). The year is the one this
     // card's income is for (incomeYearOf): in January a year's interest from December's reading
@@ -161,7 +163,8 @@ const studentLoanInterest: Detector = {
           ? [
               {
                 ytdInterestPaidCents: l.ytdInterestPaidCents ?? null,
-                asOf: l.ytdInterestAsOf ?? null,
+                readOn: l.ytdInterestReadOn ?? null,
+                lastPaymentDate: l.lastPaymentDate ?? null,
                 balanceCents:
                   account && account.balanceKnown !== false ? account.balanceCents : null,
                 aprBps: l.aprBps,
@@ -171,6 +174,13 @@ const studentLoanInterest: Detector = {
       }),
       interestYear,
       data.today,
+      {
+        dates: money.loanPayments.map((t) => t.date),
+        dataFrom: data.transactions.reduce<string | null>(
+          (a, t) => (a === null || t.date < a ? t.date : a),
+          null,
+        ),
+      },
     );
     const interest =
       found === null
@@ -185,7 +195,7 @@ const studentLoanInterest: Detector = {
       found === null
         ? null
         : found.from === "lender"
-          ? `Your lender reports ${formatCents(found.reportedCents)} of interest paid in ${interestYear} by ${dayLabel(found.asOf)}, about ${formatCents(found.cents)} for the year`
+          ? `Your lender reports ${formatCents(found.reportedCents)} of interest paid in ${interestYear} ${found.payments !== null ? `through ${plural(found.payments, "payment")} (last ${dayLabel(found.asOf)})` : `by ${dayLabel(found.asOf)}`}, about ${formatCents(found.cents)} for the year`
           : `On ${formatCents(found.balanceCents)} owed at ${formatRate(found.aprBps)}${found.loans > 1 ? " and more" : ""}, a year's interest is about ${formatCents(Math.min(paidYear, found.cents))}`;
     const lender = nice(money.loanPayments[0].description).replace(
       // A bank's short form too: "NELNET STUDENT LN PAYMENT" read as "Nelnet Student Ln"
