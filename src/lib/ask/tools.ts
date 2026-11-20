@@ -36,7 +36,7 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
   {
     name: "search_transactions",
     description:
-      "Find the person's transactions. Filter by merchant name (partial match), spending category, and dates. Returns the matching transactions (newest first, up to 25), how many matched, and the total money out and in across all matches. When a merchant has none in those dates, outsideTheseDates lists its charges at other times: say those, never that there are none.",
+      "Find the person's transactions. Filter by merchant name (partial match), spending category, and dates. Returns the matching transactions (newest first, up to 25), how many matched, and the total money out and in across all matches. When a merchant has none in those dates, outsideTheseDates lists its charges at other times: say those, never that there are none. Transfers show as Transfer, or Transfer to savings for money moved into savings.",
     input_schema: {
       type: "object",
       properties: {
@@ -122,10 +122,19 @@ function displayMerchant(t: {
   merchantName: string | null;
   description: string;
   pfcPrimary: string | null;
+  pfcDetailed: string | null;
+  amountCents: number;
 }): string {
-  // Transfers name people ("Zelle to ..."), so they're never shown by name.
+  // Transfers name people ("Zelle to ..."), so they're never shown by name. One out to savings
+  // says so, as the bank files it or as its line says ("ONLINE TRANSFER TO ALLY BANK SAVINGS"):
+  // walk batch 3's upload S6 asked how much goes into savings and was told none, beside $200 a
+  // month of these shown only as "Transfer". The same test as the backup's (replies-money-moves.ts).
   if (t.pfcPrimary && (NON_SPENDING_PRIMARIES as readonly string[]).includes(t.pfcPrimary)) {
-    return "Transfer";
+    const toSavings =
+      t.amountCents > 0 &&
+      (t.pfcDetailed === "TRANSFER_OUT_SAVINGS" ||
+        (/\btransfer\b/i.test(t.description) && /\bsavings\b/i.test(t.description)));
+    return toSavings ? "Transfer to savings" : "Transfer";
   }
   if (t.pfcPrimary === "INCOME") return "Income";
   return t.merchantName ?? normalizeMerchant(t.description)?.name ?? "Unknown merchant";
