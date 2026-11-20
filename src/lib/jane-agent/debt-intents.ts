@@ -244,8 +244,9 @@ const BALANCE = new RegExp(
   `\\b(?:what(?:'s| is) (?:my|our|the) ((?:[a-z&]+ ){0,2}(?:${DEBT_WORDS}))(?:'s)? balance|what(?:'s| is) the balance (?:on|of) (?:my |our |the )?(${DEBT_WORDS})|how much is (?:left )?on (?:my|our|the) (${DEBT_WORDS}))\\b`,
 );
 // "How much is my car payment?": that loan, not what was spent on Transportation (debugger 11-16).
+// "How much do I pay for my car each month?" too (debugger 11-19: gas, $36.62, beside a $338.12 loan).
 const PAYMENT =
-  /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b/;
+  /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b|\bhow much (?:do|does) (?:i|we) pay (?:(?:each|a|per|every) month )?(?:for|on|toward) (?:my|our|the) (car|auto|truck|student loan)\b/;
 const PAID_OFF =
   /\bwhen (?:is|will|does|do|'s|are) (?:my |the |our )?(.+?) (?:be )?(?:paid off|paid down|paid for|done|finished|over)\b|\bwhen (?:do|will|can) (?:i|we) (?:finish paying|pay off|be done (?:with|paying)|be done paying off) (?:off )?(?:my |the |our )?(.+)$|\bpay ?off date (?:of|for|on) (?:my |the |our )?(.+)$/;
 const RATE =
@@ -627,7 +628,7 @@ export function parseDebtIntent(
     return target && !ALL_DEBTS.test(target) ? { kind: "debt_detail", target } : { kind: "debts" };
   }
   const payment = PAYMENT.exec(text);
-  if (payment) return { kind: "debt_detail", target: payment[1] };
+  if (payment) return { kind: "debt_detail", target: (payment[1] ?? payment[2])! };
   const balance = BALANCE.exec(text);
   if (balance) return { kind: "debt_detail", target: balance[1] ?? balance[2] ?? balance[3] };
   const rate = RATE.exec(text);
