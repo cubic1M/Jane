@@ -35,6 +35,7 @@ The baseline and protected-file gates used to block until a founder approved the
 - **`deny.mjs`, before every tool call.** Refuses pushes to main, force pushes, hand deploys (`vercel deploy`, `--prod`, `promote`, `rollback`, `rm`), `gh pr update-branch`, `gh pr merge --admin`, a session approving a PR, `gh pr checkout` (it would run that PR's hooks and test config here), changing `FOUNDER_LOGINS` or the ruleset, reading or writing `.env*` (not `.env.example`), changing `src/config/advice.ts`, and pushing a branch that changes what a page shows (an area module, a route under `src/app`, the hubs) before `npm run e2e:touched` passed on its last commit. Each refusal says what to do instead.
   - Rebasing your own branch stays open, in one form: `git push --force-with-lease=<branch>:<sha> origin <branch>`. A bare `--force-with-lease` is refused, since it trusts a tracking ref any session may have moved.
   - For a local server, pass settings on the command line or use `dev-localdb` in `.claude/launch.json`, not a `.env.local`.
+  - **It warns, without stopping the push, on accuracy drift.** A push of a branch that changes `src/categorize`, `src/detection`, `src/detectors`, `src/insights`, `src/profile` or `src/accuracy` gets a warning when `npm run accuracy:drift` hasn't run on its last commit, or when that run found a fall.
 - **`stop-check.mjs`, when a session ends its turn.** On the files the branch changed: `eslint`, `prettier --check`, the tests that import those files directly, and `tsc` if the incremental cache is warm (the first stop warms it in the background). A failure goes back to the session once. It has a 170-second budget, kills whatever runs over and says so, and does nothing if the code hasn't changed since its last clean run.
   - It runs the repo's lint config, test config and tests, so it runs only on this repo's branches: not on a detached HEAD, a branch that follows a fork, or one that follows `refs/pull/*`. It passes on a short list of environment variables (no tokens, no `DATABASE_URL`).
   - That doesn't make a stranger's code safe. A checkout replaces the hook file itself, and `HOME` still reaches the machine's logins. Read a stranger's PR with `gh pr diff`.
@@ -42,5 +43,13 @@ The baseline and protected-file gates used to block until a founder approved the
   - **It doesn't use `vitest related`.** That follows imports all the way: one small rule file reached 832 test files and took 105s on 6 cores. So a break only a distant test would see waits for CI.
 
 These are guardrails against a slip, not walls: a script can do anything they refuse. CI is the control.
+
+## Accuracy drift
+
+The baseline gate in CI compares only the baseline files: a PR that moves a score without rewriting `baseline.json` passes it. #1852's bank-fee change raised `dollarError` in all five CSV sets that way, unseen for five days (found 11-20).
+
+`npm run accuracy:drift` runs both scoreboards on the commit's code, in a throwaway worktree of `HEAD` (nothing is rewritten, and what isn't committed isn't scored). It compares them with that commit's baselines by CI's own rule (`baselineDrops`, `.github/scripts/gates/core.mjs`), prints each score that fell or rose, and exits 1 on a fall. It keeps its result in the git dir for the push warning above. It's a flag, as the founder made the baselines on 11-06: nothing blocks.
+
+A fall is the first line of the PR's body, with its reason ("Accuracy: held-out dollarError 0.75% → 1.31%, because …"), and the PR opens with auto-merge off, like any change to a figure people see. That's how it reaches whoever merges. A rise is worth a line too; rewrite the baseline (`ACCURACY_WRITE=1 npm run accuracy`) in the same PR, so the next fall shows.
 
 **Drop the Stop hook** if first-push CI failures haven't fallen after two weeks.
