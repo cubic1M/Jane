@@ -41,6 +41,7 @@ import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { SIGN_IN_PLAID_CODES } from "@/config/plaid";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
+import { policiesFromPayments } from "@/lib/found-policies";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { ensureDemoBalanceHistory } from "./demo-history";
 import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
@@ -964,6 +965,12 @@ async function syncItemWork(
     // (src/lib/import/background.ts): Plaid sends a new link's older history after its first 30
     // days, and the day's cards kept "3 accounts in 1 month of data" and "could drop to -$272.26
     // … if no pay comes in" until the night's run, though the paydays had come in (debug 2, 11-16).
+    // Insurers in the payments join the profile first, so the rescan reads them: Jane's run
+    // below adds them too, but says nothing in quiet hours (debug 2, 11-20 at 06:01: Bills had
+    // "Progressive Insurance $154.99" while Insurance said car cover was "Not on file").
+    await policiesFromPayments(item.userId, { client, now }).catch((error) =>
+      log.error("Finding policies from payments after a sync failed", { error: String(error) }),
+    );
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       log.error("Rescanning the suggestions after a sync failed", { error: String(error) }),
     );
