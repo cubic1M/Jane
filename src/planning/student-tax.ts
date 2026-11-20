@@ -4,7 +4,7 @@ import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
-import { payOnSchedule } from "@/profile/pay-on-schedule";
+import { payForYear, payOnSchedule } from "@/profile/pay-on-schedule";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
@@ -110,8 +110,18 @@ export function studentYearOf(
   // read "Income near $28,489.50" on the Saver's Credit, where the schedule says about $20,956
   // (debug 3, upload S5, 11-19). This year's months from January already hold every payday but one.
   // A bonus from that employer isn't in its month: it's paid once, so the year adds it once.
+  // In data from before January, the year so far is what was paid, each paycheck once, and the
+  // rest of it the paydays each employer still paying has left by Dec 31 (payForYear): paced over
+  // the months the data covers, 20 paychecks twice a month by Oct 23 read as 24.68 a year (gate C,
+  // 11-20). Pay with no schedule is still paced. A year with no pay yet is left to the month.
   const grossPay = (rows: readonly ProfileTx[]) => {
-    if (first < `${year}-01-01`) return { cents: grossYear(sumCents(rows)), extra: 0 };
+    if (first < `${year}-01-01`) {
+      const history = data.transactions.filter((t) => t.amountCents < 0 && t.date <= last);
+      const pay = payForYear(history, rows, last, `${year}-12-31`);
+      const rest = sumCents(rows.filter((t) => !pay.covered.has(t)));
+      const scheduled = Math.round((pay.paidCents + pay.leftCents) * DETECTOR_RATES.tax.netToGross);
+      return { cents: (pay.covered.size > 0 ? scheduled : 0) + grossYear(rest), extra: 0 };
+    }
     const on = payOnSchedule(rows, last);
     const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
     const extra = Math.round(on.extraCents * DETECTOR_RATES.tax.netToGross);
