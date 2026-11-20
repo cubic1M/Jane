@@ -118,7 +118,9 @@ const MONTH = /^\d{4}-\d{2}$/;
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
-function displayMerchant(t: {
+// The name a tool gives a transaction: a cleaned merchant name (no ids, no account numbers), and a
+// transfer only as Transfer, since transfers name people. Also explain_figure's rows.
+export function displayMerchant(t: {
   merchantName: string | null;
   description: string;
   pfcPrimary: string | null;

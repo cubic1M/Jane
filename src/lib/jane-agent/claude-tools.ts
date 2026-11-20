@@ -21,7 +21,15 @@ import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { loansNotCounted, notCounting, owedIsKnown } from "@/insights/net-worth";
 import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-history";
-import { ASK_TOOLS, runAskTool, type ToolOutput, toolAnswer, noInput } from "@/lib/ask/tools";
+import { normalizeMerchant } from "@/data-sources/merchant";
+import {
+  ASK_TOOLS,
+  displayMerchant,
+  runAskTool,
+  type ToolOutput,
+  toolAnswer,
+  noInput,
+} from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { selfServe } from "@/lib/diy";
@@ -1040,9 +1048,21 @@ async function runChatToolWork(
         asOf: working.asOf,
         how: working.summary,
         rows: working.rows,
+        // Named as the other tools name them, never by the bank's raw line: an income row read
+        // "UNIV OF CALIFORNIA PAYROLL PPD ID: 1234567890" (walk batch 3). Pay keeps its payer's
+        // cleaned name, which says who pays them; a transfer names no one.
         transactions: working.transactions.map((t) => ({
           date: t.date,
-          what: t.description,
+          what:
+            t.category === "INCOME"
+              ? (normalizeMerchant(t.description)?.name ?? "Income")
+              : displayMerchant({
+                  merchantName: null,
+                  description: t.description,
+                  pfcPrimary: t.category,
+                  pfcDetailed: t.detailed,
+                  amountCents: t.amountCents,
+                }),
           amount: money(t.amountCents),
           category: t.category_label,
         })),
