@@ -12,6 +12,7 @@ import { monthsEnding } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
+import { HOLDINGS_ORDER } from "./holdings-order";
 
 // What the person owns (spec step 128), loaded once for the investments page, Jane's
 // answers and its tools, all scoped to the person. Every later investment step starts
@@ -58,6 +59,7 @@ export async function loadInvestments(
         valueCents: true,
         costBasisCents: true,
       },
+      orderBy: [...HOLDINGS_ORDER],
     }),
     accountCopies(db),
   ]);

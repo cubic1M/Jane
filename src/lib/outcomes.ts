@@ -24,6 +24,7 @@ import {
   type HoldingsNow,
 } from "@/planning/outcomes-holdings";
 import { addDays, DAY_MS, isoDay as isoDate } from "@/lib/dates";
+import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
 // opened, answered, marked done) and what their later transactions showed. A saving counts as
@@ -338,6 +339,7 @@ async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<Ho
         valueCents: true,
         security: { select: { ticker: true, isCashEquivalent: true, type: true } },
       },
+      orderBy: [...HOLDINGS_ORDER],
     }),
   ]);
   return {

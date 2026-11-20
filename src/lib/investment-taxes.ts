@@ -17,6 +17,7 @@ import {
 } from "@/planning/investment-taxes";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
 
 // Investment taxes (spec step 124), from what's in the person's taxable investment accounts
 // (step 128's holdings and investment transactions). Retirement and health accounts aren't
@@ -120,6 +121,7 @@ export async function loadInvestmentTaxes(
         costBasisCents: true,
         security: { select: { ticker: true, name: true, type: true, isCashEquivalent: true } },
       },
+      orderBy: [...HOLDINGS_ORDER],
     }),
     db.investmentTransactions.findMany({
       where: { type: { in: ["buy", "sell"] } },
