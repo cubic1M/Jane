@@ -26,6 +26,7 @@ import { listPolicies } from "@/lib/insurance/policies";
 import { loadMatchPace } from "@/lib/investments/match-pace";
 import { subscriptionYear } from "@/lib/jane-agent/recurring";
 import { taxSetAsideForDetector } from "@/lib/tax-set-aside";
+import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
 // told Jane here and what they answered elsewhere (their tax, insurance and investor
@@ -120,6 +121,10 @@ async function loadProfileInputFrom(
         source: true,
         createdAt: true,
       },
+      // Oldest first, a day's lines by what they say: a list built from them (a card's payees,
+      // "Xfinity and Verizon Wireless") reads the same on every load, not in the table's order,
+      // which a sync's updates move (#2165's sweep, 11-20). The id last, for lines alike.
+      orderBy: [{ date: "asc" }, { description: "asc" }, { amountCents: "asc" }, { id: "asc" }],
     }),
     db.accounts.findMany({
       select: {
@@ -156,6 +161,7 @@ async function loadProfileInputFrom(
         costBasisCents: true,
         security: { select: { ticker: true, isCashEquivalent: true, type: true } },
       },
+      orderBy: [...HOLDINGS_ORDER],
     }),
     db.janePreferences.findMany({
       where: { kind: "fact", OR: [{ key: { startsWith: PREF_PREFIX } }, { key: "income" }] },
