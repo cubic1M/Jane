@@ -82,7 +82,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
 
 function varies(s: Stream): Pick<RecurringCharge, "varies"> {
   const amounts = s.charges.map((c) => c.amountCents);
-  if (amounts.length < 2 || !isVariable(s.charges)) return {};
+  if (amounts.length <= 1 || !isVariable(s.charges)) return {};
   const lowCents = Math.min(...amounts);
   const highCents = Math.max(...amounts);
   if (lowCents === highCents) return {};
