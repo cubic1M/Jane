@@ -63,7 +63,8 @@ export type Intent =
   | { kind: "safe_to_spend" }
   // category is the person's own words ("food"), matched loosely later; month YYYY-MM.
   // perMonth: "a month", a usual month rather than this one.
-  | { kind: "spending"; category: string | null; month: string; perMonth?: true }
+  // sinceStart: "how much have I spent at Uber?", no period: everything since the data starts.
+  | { kind: "spending"; category: string | null; month: string; perMonth?: true; sinceStart?: true }
   // days is null for the usual coming-up list; beforePayday: only what's due before the next pay.
   | { kind: "coming_up"; days: number | null; beforePayday?: true }
   // findingId: one finding exactly (a clarifying question's button, spec step 88).
@@ -853,7 +854,15 @@ export function parseIntent(
     // "On amazon a month": how often, not part of the name; a usual month, when no month is named
     // (debugger 11-17).
     const month = parseMonth(text, asOf, "past");
-    const perMonth = month === null && RECURRING.test(text);
+    // "How much do I spend at Coupa Cafe?" is a usual month too, and "how much have I spent on Uber?"
+    // with no period is everything on file: both read as this month so far (walk notes, 11-18 to
+    // 11-20: "You spent $14.20 at Uber in November 2026 so far" for $95.80 since Aug 28).
+    const habitual = /\bdo (?:i|we) (?:usually |normally |typically )?spend\b/.test(text);
+    const perMonth = month === null && (RECURRING.test(text) || habitual);
+    const sinceStart =
+      month === null &&
+      !perMonth &&
+      /\b(?:have (?:i|we) spent|did (?:i|we) spend|(?:i|we)'ve spent)\b/.test(text);
     // "On spotify a year": what it costs a year, the cost answer's own (debugger 11-17).
     const yearly = / (?:(?:a|per|each|every) year|yearly|annually)$/;
     if (month === null && yearly.test(category)) {
@@ -865,6 +874,7 @@ export function parseIntent(
       category: target && !/^(?:month|week|year)$/.test(target) ? target : null,
       month: month ?? asOf.slice(0, 7),
       ...(perMonth ? { perMonth: true as const } : {}),
+      ...(sinceStart ? { sinceStart: true as const } : {}),
     };
   }
   if (COMING_UP.test(text)) {

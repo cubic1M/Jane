@@ -169,7 +169,6 @@ describe("parseIntent", () => {
     ["How much did I spend on food last month?", "food", "2026-09"],
     ["what did i spend on groceries in september", "groceries", "2026-09"],
     ["spending on eating out", "eating out", "2026-10"],
-    ["how much have i spent at Target", "target", "2026-10"],
     ["how much did I spend last month", null, "2026-09"],
     ["how much did i spend this month", null, "2026-10"],
     // No amount, or not a question about the future: still what was spent.

@@ -296,7 +296,8 @@ describe("spendingReply", () => {
       transactions,
       TODAY,
     );
-    expect(reply.body).toBe("You spent $179.98 at Target in October 2026 so far.");
+    // No period asked: everything on file (walk notes, 11-18 to 11-20), not this month alone.
+    expect(reply.body).toBe("You've spent $179.98 at Target since Sep 5 (2 times).");
     expect(reply.actions).toEqual([
       { id: "open", label: "See insights", kind: "link", href: "/insights" },
     ]);
