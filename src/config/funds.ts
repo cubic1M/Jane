@@ -138,6 +138,48 @@ export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     adsh: "0000819118-26-000072",
     form: "485BPOS",
   }),
+  // Fidelity's other index funds, each at its latest filing's oef:ExpensesOverAssets for its class
+  // (11-20): a half basis point is kept, as FXAIX's is, and the zero funds cost nothing.
+  FSMAX: sec(3.5, US, "US extended market (mid and small company) index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  FSMDX: sec(2.5, US, "US mid-company index fund", "20260624", {
+    cik: 35315,
+    adsh: "0000035315-26-000387",
+    form: "485BPOS",
+  }),
+  FSSNX: sec(2.5, US, "US small-company index fund", "20260624", {
+    cik: 35315,
+    adsh: "0000035315-26-000387",
+    form: "485BPOS",
+  }),
+  FSPGX: sec(3.5, US, "US large-company growth index fund", "20260624", {
+    cik: 35315,
+    adsh: "0000035315-26-000387",
+    form: "485BPOS",
+  }),
+  FLCOX: sec(3.5, US, "US large-company value index fund", "20260624", {
+    cik: 35315,
+    adsh: "0000035315-26-000387",
+    form: "485BPOS",
+  }),
+  FZROX: sec(0, US, "US total stock market index fund", "20251229", {
+    cik: 819118,
+    adsh: "0000819118-25-000470",
+    form: "485BPOS",
+  }),
+  FSPSX: sec(3.5, INTL, "International developed-markets index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  FZILX: sec(0, INTL, "International stock index fund", "20251229", {
+    cik: 819118,
+    adsh: "0000819118-25-000470",
+    form: "485BPOS",
+  }),
   SWTSX: sec(3, US, "US total stock market index fund", "20260226", {
     cik: 904333,
     adsh: "0000884546-26-000041",
