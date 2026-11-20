@@ -66,7 +66,7 @@ import {
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
-import { yearInterest } from "@/planning/lender-interest";
+import { readingDay, yearInterest } from "@/planning/lender-interest";
 import { monthsCovered, reachOf } from "@/profile/build";
 import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
 
@@ -288,6 +288,7 @@ async function loadTaxEstimateFrom(
         kind: true,
         ytdInterestPaidCents: true,
         aprBps: true,
+        lastPaymentDate: true,
         updatedAt: true,
         account: { select: { currentBalanceCents: true } },
       },
@@ -623,7 +624,7 @@ async function loadTaxEstimateFrom(
     const found = yearInterest(
       mine.map((l) => ({
         ytdInterestPaidCents: l.ytdInterestPaidCents,
-        asOf: iso(l.updatedAt),
+        asOf: readingDay(l.lastPaymentDate ? iso(l.lastPaymentDate) : null, iso(l.updatedAt)),
         balanceCents: l.account.currentBalanceCents,
         aprBps: l.aprBps,
       })),

@@ -14,7 +14,7 @@ import { yearElapsed } from "./tax-income";
 export type LenderLoan = {
   // Interest paid since January 1 of asOf's year, as the lender reports it.
   ytdInterestPaidCents: number | null;
-  // YYYY-MM-DD: the day the lender's figure was read.
+  // YYYY-MM-DD: the day the lender's figure is as of (readingDay).
   asOf: string | null;
   balanceCents: number | null;
   aprBps: number | null;
@@ -23,6 +23,19 @@ export type LenderLoan = {
 export type YearInterest =
   | { from: "lender"; cents: number; reportedCents: number; asOf: string }
   | { from: "rate"; cents: number; balanceCents: number; aprBps: number; loans: number };
+
+// The day a lender's year to date is as of. Interest is paid with payments, so with a last payment
+// in the read's own year the figure is as of that payment (Plaid's student loans and mortgages
+// carry last_payment_date in production); else the day it was read, the sync that wrote it. Each
+// sync writes the row, and nothing else updates it (debug 2, 11-20: a Method credit report writes
+// its own accounts' rows, with no interest; a disconnect deletes them).
+export function readingDay(lastPaymentDate: string | null, readOn: string): string {
+  return lastPaymentDate &&
+    lastPaymentDate <= readOn &&
+    lastPaymentDate.slice(0, 4) === readOn.slice(0, 4)
+    ? lastPaymentDate
+    : readOn;
+}
 
 const daysInto = (asOf: string) =>
   Math.round(
