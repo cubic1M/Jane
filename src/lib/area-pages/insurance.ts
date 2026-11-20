@@ -266,26 +266,39 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
       .map((g) => g.policyId)
       .filter(Boolean),
   );
-  const policies = input.policies.map((p) => {
-    const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
-    const status: TreeStatus = gapPolicies.has(p.id)
-      ? "act"
-      : p.status !== "active" || soon
-        ? "look"
-        : "good";
-    return item("policies", p.id, {
-      // Not "Delta Dental other" (debugger 11-04).
-      label: `${p.carrier} ${p.kind === "other" ? "policy" : POLICY_KINDS[p.kind].toLowerCase()}`,
-      status,
-      figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
-      summary:
-        p.status !== "active"
-          ? "Found from your payments; confirm it to count it."
-          : p.renewsOn
-            ? `Renews ${dayLabel(p.renewsOn)}.`
-            : "Active.",
+  // Cover found in payments that a gap already asks to confirm ("Car insurance, Confirm it:
+  // Progressive is in your payments") isn't listed again as a policy: Plaid + loans read that above
+  // "Progressive car, Found from your payments; confirm it to count it." (debug 2, sweep 9, 11-19).
+  const askedByGap = new Set(
+    input.gaps
+      .filter((g) => !g.policyId && !g.limit)
+      .flatMap((g) => {
+        const found = foundFor(g.key);
+        return found ? [found.id] : [];
+      }),
+  );
+  const policies = input.policies
+    .filter((p) => !askedByGap.has(p.id))
+    .map((p) => {
+      const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
+      const status: TreeStatus = gapPolicies.has(p.id)
+        ? "act"
+        : p.status !== "active" || soon
+          ? "look"
+          : "good";
+      return item("policies", p.id, {
+        // Not "Delta Dental other" (debugger 11-04).
+        label: `${p.carrier} ${p.kind === "other" ? "policy" : POLICY_KINDS[p.kind].toLowerCase()}`,
+        status,
+        figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
+        summary:
+          p.status !== "active"
+            ? "Found from your payments; confirm it to count it."
+            : p.renewsOn
+              ? `Renews ${dayLabel(p.renewsOn)}.`
+              : "Active.",
+      });
     });
-  });
 
   // Gaps guessed from what the bank data doesn't show, for cover that is often had another way
   // or is the person's choice: "not on file", worth a look, not an urgent "missing". Health and
