@@ -205,6 +205,18 @@ const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
 // A name as a label: its first six words (a merchant's or a category's name is rarely more).
 const asLabel = (name: string) => shortLabel(name);
 
+// This week's bills, and the month's after them: beside this week's, the month's line is what
+// comes after it, each bill in one line's figure (class 7 in a list, 11-20: "Bills this week $274"
+// and "The next month of bills $2.8k" both counted this week's four). The page lists each the same
+// way (debug 2, 11-20: "After this week: 6 regular charges" listed eight, this week's two first).
+export function billsByWeek<T extends { date: string }>(
+  bills: readonly T[],
+  weekEnds: string,
+): { week: T[]; later: T[] } {
+  const week = bills.filter((b) => b.date <= weekEnds);
+  return { week, later: week.length > 0 ? bills.filter((b) => b.date > weekEnds) : [...bills] };
+}
+
 export function moneyTree(input: MoneyTreeInput): AreaTree {
   const item = (branch: MoneyBranch, key: string, rest: Omit<AreaItem, "id">): AreaItem => ({
     id: itemId(branch, key),
@@ -302,7 +314,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       }),
     );
   }
-  const week = input.bills.filter((b) => b.date <= input.weekEnds);
+  const { week, later } = billsByWeek(input.bills, input.weekEnds);
   const sum = (rows: { amountCents: number }[]) => rows.reduce((t, b) => t + b.amountCents, 0);
   if (week.length > 0) {
     items.coming.push(
@@ -315,10 +327,6 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       }),
     );
   }
-  // Beside this week's, the month's line is what comes after it: each bill in one line's figure
-  // (class 7 in a list, 11-20: "Bills this week $274" and "The next month of bills $2.8k" both
-  // counted this week's four).
-  const later = week.length > 0 ? input.bills.filter((b) => b.date > input.weekEnds) : input.bills;
   if (later.length > 0) {
     items.coming.push(
       item("coming", "month", {

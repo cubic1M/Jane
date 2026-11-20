@@ -5,7 +5,7 @@ import { type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { HorizontalBars } from "@/app/insights/bars";
-import { SUGGESTION_NODES, itemId, moneyTree } from "@/lib/area-pages/money";
+import { SUGGESTION_NODES, billsByWeek, itemId, moneyTree } from "@/lib/area-pages/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -81,13 +81,12 @@ async function MoneyContent({
       Regular charges we expect, from your past transactions. Dates and amounts are estimates.
     </p>
   );
-  details[itemId("coming", "week")] = (
-    <Rows rows={billRows(data.bills.filter((b) => b.date <= data.weekEnds))} />
-  );
+  const { week, later } = billsByWeek(data.bills, data.weekEnds);
+  details[itemId("coming", "week")] = <Rows rows={billRows(week)} />;
   more[itemId("coming", "week")] = estimates;
   details[itemId("coming", "month")] = (
     <>
-      <Rows rows={billRows(data.bills)} />
+      <Rows rows={billRows(later)} />
       <Go href="/bills">Coming up, by account</Go>
     </>
   );
