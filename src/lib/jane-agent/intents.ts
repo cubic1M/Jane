@@ -77,6 +77,11 @@ export type Intent =
   | { kind: "subscriptions"; total: boolean; all: boolean }
   // The next paycheck.
   | { kind: "payday" }
+  | { kind: "charge_story"; target: string }
+  | { kind: "money_from_people" }
+  | { kind: "sent_by_app"; app: string }
+  | { kind: "savings_moves" }
+  | { kind: "plan_switch"; target: string }
   // "How much do I make a month?", "what's my yearly income?": what comes in, as the profile has it.
   | { kind: "income"; period: "month" | "year" }
   // Fees and charges by amount (./replies-fees.ts): "why did I get charged $34?", "what fees have I
@@ -413,7 +418,7 @@ const WHOLE_NOW =
 const WHOLE_MONTH =
   /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
 const BALANCE_FORECAST =
-  /\b(?:why|will|would|am i going to|is) (?:is |will )?(?:my )?(?:checking|account|balance)\b.{0,30}\b(?:negative|overdr\w+|below zero|under zero|zero|low|short)\b|\b(?:run|running) (?:out of money|short)\b|\b(?:dip|go|fall|drop) (?:below|under) zero\b|\bwhere is my (?:checking|balance) (?:heading|going)\b/;
+  /\b(?:why|will|would|am i going to|is) (?:is |will )?(?:my )?(?:checking|account|balance)\b.{0,30}\b(?:negative|overdr\w+|below zero|under zero|zero|low|short)\b|\b(?:run|running) (?:out of money|short)\b|\b(?:dip|go|fall|drop) (?:below|under) zero\b|\bwhere is my (?:checking|balance) (?:heading|going)\b|\bhow much (?:money )?will (?:i|we) have (?:at|by) the end of (?:the|this) month\b/;
 // "set a budget for restaurants": what they spend there, with the button that sets it.
 const BUDGET_FOR =
   /^(?:set|make|create|add|start)(?: me)?(?: a| my)? budget (?:for|on) (.+)$|^budget (?:for|on) (.+)$/;
@@ -502,6 +507,20 @@ export function dayAsked(text: string, asOf: string): string | null {
   return `${year}-${pad(month)}-${pad(date)}`;
 }
 
+// One merchant's charges and money moved by app or to savings (./replies-money-moves.ts): the walkers'
+// "what happened with the Amazon charge?", "when did Netflix go up?", "how much does my mom send me?",
+// "how much do I send on Venmo?", "how much do I put into savings each month?" (desktop sweeps 7 to 9,
+// phone passes 5 to 7), and "should I switch Netflix plans?".
+const CHARGE_STORY =
+  /\bwhat (?:happened|is going on|'s going on) (?:with|to) (?:the|my|that|this) (.+?) (?:charge|payment|purchase)\b|\bwhat (?:was|is) (?:the|that|this) (.+?) charge\b/;
+const FROM_PEOPLE =
+  /\bhow much (?:money )?(?:does|do|did) (?:my )?(?:mom|mum|dad|mother|father|parents?|family|grandma|grandpa|sister|brother|\w+) (?:send|give|venmo|zelle|pay) (?:me|us)\b/;
+const SENT_BY_APP =
+  /\bhow much (?:money )?(?:do|did|have) (?:i|we) (?:send|sent|pay|paid|spend|spent) (?:on|by|through|with|via|over|using) (venmo|zelle|cash ?app|paypal)\b/;
+const TO_SAVINGS =
+  /\bhow much (?:money )?(?:do|did|have) (?:i|we) (?:put|move|moved|transfer|transferred|save|saved|send|sent) (?:in(?:to)?|to) (?:my |our )?savings\b|\bhow much (?:do|did) (?:i|we) save (?:each|a|per|every) month\b/;
+const PLAN_SWITCH =
+  /\b(?:should|can|could) (?:i|we) (?:switch|change|downgrade|move) (?:my |our |the )?(.+?) plans?\b/;
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 // Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
 // when the next paycheck comes (11-03).
@@ -669,6 +688,14 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  const story = CHARGE_STORY.exec(text);
+  if (story) return { kind: "charge_story", target: cleanTarget((story[1] ?? story[2])!) };
+  if (FROM_PEOPLE.test(text)) return { kind: "money_from_people" };
+  const byApp = SENT_BY_APP.exec(text);
+  if (byApp) return { kind: "sent_by_app", app: byApp[1]! };
+  if (TO_SAVINGS.test(text)) return { kind: "savings_moves" };
+  const plans = PLAN_SWITCH.exec(text);
+  if (plans) return { kind: "plan_switch", target: cleanTarget(plans[1]!) };
   if (INCOME.test(text) && !/\b(?:tax|taxes|after|if|would|could|should)\b/.test(text)) {
     return { kind: "income", period: YEARLY.test(text) ? "year" : "month" };
   }

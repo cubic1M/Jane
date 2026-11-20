@@ -71,6 +71,10 @@ import { debtReviewReply } from "./debt-review-replies";
 import { debtTroubleReply } from "./debt-trouble-replies";
 import { homeEquityReply } from "./home-equity-replies";
 import type { Reply } from "./replies";
+import { CARD_INTEREST_CATEGORIES } from "@/config/detection";
+import { loadDetectionInput } from "@/detection/input";
+import { formatCents } from "@/lib/money";
+import { monthLabel } from "@/lib/day-label";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
 // pages, scoped to the person. Called from ./answer.ts.
@@ -227,13 +231,38 @@ export async function answerDebt(
             orderBy: { createdAt: "desc" },
             select: { id: true, title: true, annualSavingsCents: true },
           });
-      return cardInterestReply(
+      const reply = cardInterestReply(
         data,
         finding
           ? { findingId: finding.id, title: finding.title, yearlyCents: finding.annualSavingsCents }
           : null,
         loans.map((l) => ({ name: l.account.name, ytdCents: l.ytdInterestPaidCents ?? 0 })),
       );
+      if (!("thisYear" in intent) || !intent.thisYear) return reply;
+      // "This year": the calendar year's interest charges first (walk notes, Plaid S6: "$371.00 …
+      // in the last 12 months" for "this year", where 2026's ten charges came to $340.00).
+      const input = await loadDetectionInput(userId, { client, now });
+      const year = data.asOf.slice(0, 4);
+      const charges = input.transactions
+        .filter(
+          (t) =>
+            t.amountCents > 0 &&
+            t.date.startsWith(`${year}-`) &&
+            (CARD_INTEREST_CATEGORIES as readonly string[]).includes(t.pfcDetailed ?? ""),
+        )
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const total = charges.reduce((sum, t) => sum + t.amountCents, 0);
+      const first = charges[0]?.date.slice(0, 7);
+      const last = charges.at(-1)?.date.slice(0, 7);
+      const line =
+        charges.length === 0
+          ? `I don't see card interest charged in ${year}.`
+          : `You've paid ${formatCents(total)} in card interest in ${year}: ${charges.length === 1 ? "one charge" : `${charges.length} charges`}${
+              first && last && first !== last
+                ? `, ${monthLabel(first).split(" ")[0]} to ${monthLabel(last).split(" ")[0]}`
+                : ""
+            }.`;
+      return { ...reply, body: `${line}\n\n${reply.body}` };
     }
     case "report_fixes":
       return reportFixReply(await loadReportFixes(userId, { client, now }));

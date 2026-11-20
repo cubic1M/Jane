@@ -41,6 +41,13 @@ import {
 } from "../replies";
 import { changesReply } from "../replies-changes";
 import { paycheckReply } from "../replies-paycheck";
+import {
+  chargeStoryReply,
+  moneyFromPeopleReply,
+  priceChangeReply,
+  savingsTransfersReply,
+  sentByAppReply,
+} from "../replies-money-moves";
 import { incomeReply } from "../replies-income";
 import { loadProfileInput } from "@/lib/profile";
 import { buildProfile, rateMonthsOf } from "@/profile/build";
@@ -182,6 +189,42 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       );
       return feesPaidReply(intent.late, months, ctx);
     }
+    case "charge_story":
+    case "money_from_people":
+    case "sent_by_app":
+    case "savings_moves": {
+      // The lines the pages read (./replies-money-moves.ts).
+      const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+      if (intent.kind === "charge_story") return chargeStoryReply(intent.target, lines);
+      if (intent.kind === "money_from_people") return moneyFromPeopleReply(lines);
+      if (intent.kind === "sent_by_app") return sentByAppReply(intent.app, lines);
+      return savingsTransfersReply(lines);
+    }
+    case "plan_switch": {
+      // Another plan's price is the cheaper-plan card's, when Jane found one; never a pick.
+      const { detectFor } = await import("@/lib/suggestions");
+      const target = intent.target.toLowerCase();
+      const tier = (await detectFor(userId, { client, now })).suggestions.find(
+        (s) => s.topic === "cheaper_tier" && `${s.title} ${s.why}`.toLowerCase().includes(target),
+      );
+      if (tier) {
+        return {
+          body: `${tier.why} Whether it's worth it is yours to say.`,
+          actions: [openLink(tier.action.label, tier.action.href)],
+          refs: {},
+        };
+      }
+      const [recurring, snapshot] = await Promise.all([
+        loadRecurring(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
+      ]);
+      const cost = costReply({ target: intent.target, year: false }, recurring, snapshot, asOf);
+      return {
+        body: `${cost ? `${cost.body} ` : ""}I don't have ${intent.target}'s other plans and prices to compare, so I can't answer that from what I have.`,
+        actions: cost?.actions ?? [openLink("See your subscriptions", "/subscriptions")],
+        refs: {},
+      };
+    }
     // Spec step 94.
     case "goals":
       return goalsReply(await listGoals(userId, { client, now }));
@@ -192,6 +235,13 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       ]);
       const known = aboutReply(intent, recurring, snapshot, asOf);
       if (known) return known;
+      // A merchant's own charges, with no card about it: when its price changed, if it did ("when
+      // did Netflix go up?" got "I can't answer that one yet", walk notes 11-19).
+      if (!matchCategory(intent.target, CATEGORY_LIST)) {
+        const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+        const story = priceChangeReply(intent.target, lines);
+        if (!story.body.startsWith("I don't see")) return story;
+      }
       if (matchCategory(intent.target, CATEGORY_LIST)) return spendingOn(intent.target);
       return null;
     }
