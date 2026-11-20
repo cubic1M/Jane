@@ -32,6 +32,11 @@ and specs still expecting wording it removed. A shared area-page file it can't p
 page's specs, never none. At most 25 (`SCOPE_SPEC_CAP`), the closest first; the scope's summary names
 each with why, and what the cap leaves to main's full run. A PR that changes no page runs what it did.
 
+`npm run e2e:touched` runs them on your machine the way CI's end-to-end job does: the checkout's
+`.env` files stay out of the build and the servers (`__NEXT_PROCESSED_ENV`; CI has no `.env`, and a
+local `ADMIN_EMAILS` or `APP_URL` failed specs that pass there), and the scratch database is migrated
+and given row-level security first (`src/config/e2e-touched-env.test.ts`).
+
 ## Flake list
 
 A green run says little alone: Playwright tries a test up to 3 times, and `rerun-flaky.yml` re-runs a

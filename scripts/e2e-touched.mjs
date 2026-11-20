@@ -56,13 +56,40 @@ if (!process.env.E2E_DATABASE_URL) {
   );
   process.exit(1);
 }
+// As CI's end-to-end job runs them, which has no .env: Next.js skips a checkout's .env files once
+// __NEXT_PROCESSED_ENV is set, for the build and every server the specs start. A developer's
+// ADMIN_EMAILS closed /admin to the tests' admin and their APP_URL sent Robinhood's way back to
+// another address, so upload.spec.ts:265 and robinhood.spec.ts:86 failed here and passed in CI
+// (11-20, ./e2e-touched-env.test.ts).
 const env = {
   ...process.env,
+  __NEXT_PROCESSED_ENV: "true",
   TRY_JANE: "1",
   DEMO_BANK: "1",
   DEMO_ADVICE: "1",
   SIMULATED_AGENT: "1",
 };
+// And the scratch database as CI readies it before the specs: migrated, with row-level security on
+// every table (.github/workflows/ci.yml, the e2e job).
+const database = {
+  ...env,
+  DATABASE_URL: process.env.E2E_DATABASE_URL,
+  DIRECT_URL: process.env.E2E_DATABASE_URL,
+};
+for (const step of [
+  ["prisma", "migrate", "deploy"],
+  ["node", "scripts/rls-protect.mjs", process.env.E2E_DATABASE_URL],
+]) {
+  const ran = spawnSync(
+    step[0] === "node" ? "node" : "npx",
+    step[0] === "node" ? step.slice(1) : step,
+    {
+      stdio: "inherit",
+      env: database,
+    },
+  );
+  if (ran.status !== 0) process.exit(ran.status ?? 1);
+}
 if (!args.includes("--no-build")) {
   const built = spawnSync("npx", ["next", "build"], { stdio: "inherit", env });
   if (built.status !== 0) process.exit(built.status ?? 1);
