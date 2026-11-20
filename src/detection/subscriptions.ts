@@ -6,7 +6,7 @@ import {
   isOnlyAGuess,
   isSubscriptionUnless,
 } from "./rules/subscription-review";
-import { buildStreams, type Stream } from "./streams";
+import { buildStreams, isVariable, type Stream } from "./streams";
 import type { DetectionInput } from "./types";
 import { addDays } from "./units";
 
@@ -35,6 +35,11 @@ export type RecurringCharge = {
   // Rent by its category: paid to a landlord or property company, its name never says "rent"
   // (debugger 11-18: "when is rent due?" didn't find Essex Property Trust).
   rent?: true;
+  // A bill that moves with use: its lowest, highest and usual (average) amount over the charges
+  // seen, so the chat says a range and not the last bill as the monthly one (walk batch 3's upload
+  // S1: "Xcel Energy is $57.49 a month" over bills of $46.60, $38.72 and $57.49). The yearly
+  // cost above stays the last bill's, as the pages show it.
+  varies?: { lowCents: number; highCents: number; usualCents: number };
 };
 
 export function recurringCharges(input: DetectionInput): RecurringCharge[] {
@@ -68,10 +73,21 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
           subscription: subscription && !guess,
           maybeSubscription: guess,
           ...(s.pfcDetailed === "RENT_AND_UTILITIES_RENT" ? { rent: true as const } : {}),
+          ...varies(s),
         };
       })
       .sort((a, b) => b.annualCostCents - a.annualCostCents || a.merchant.localeCompare(b.merchant))
   );
+}
+
+function varies(s: Stream): Pick<RecurringCharge, "varies"> {
+  const amounts = s.charges.map((c) => c.amountCents);
+  if (amounts.length < 2 || !isVariable(s.charges)) return {};
+  const lowCents = Math.min(...amounts);
+  const highCents = Math.max(...amounts);
+  if (lowCents === highCents) return {};
+  const usualCents = Math.round(amounts.reduce((a, b) => a + b, 0) / amounts.length);
+  return { varies: { lowCents, highCents, usualCents } };
 }
 
 // Cards whose own charges are on file: a card account left empty (its upload removed) counts

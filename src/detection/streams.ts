@@ -288,7 +288,8 @@ function usageBillShape(charges: DetectionTransaction[]): boolean {
   return Math.max(...days) - Math.min(...days) <= USAGE_BILL_DAY_SPREAD;
 }
 
-const isVariable = (charges: DetectionTransaction[]) =>
+// A bill that moves with use (electricity, water), by its category or by its shape.
+export const isVariable = (charges: DetectionTransaction[]) =>
   inList(mostCommon(charges.map((c) => c.pfcDetailed)), VARIABLE_BILL_CATEGORIES) ||
   usageBillShape(charges);
 
