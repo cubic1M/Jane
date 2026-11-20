@@ -1,5 +1,20 @@
 import type { Rule } from "./rule";
 
+// A bank's name, or the word bank, between the transfer words and "SAVINGS".
+const SAVINGS_BANK =
+  "BANK|CU|FCU|CREDIT UNION|FEDERAL|FINANCIAL|ONLINE|360|ALLY|MARCUS|DISCOVER|SYNCHRONY|AMEX|AMERICAN EXPRESS|SOFI|CIT|BARCLAYS|CAPITAL ONE|CHIME|VARO";
+// Words of a payment, which a transfer to savings never has.
+const PAYS = "LOAN|MORTGAGE|MTG|AUTO|CARD|PYMT|PMT";
+const word = (words: string) => `(?<![A-Z0-9])(?:${words})(?![A-Z0-9])`;
+// "TRANSFER TO <a bank> ... SAVINGS" (or FROM), with nothing of the other way between and no
+// payment words anywhere.
+function toSavingsBank(way: "TO" | "FROM", other: "TO" | "FROM"): RegExp {
+  const not = `(?:(?!${word(other)}).)*`;
+  return new RegExp(
+    `^(?!.*${word(PAYS)}).*(?:TRANSFER|TRF|XFER) ${way}(?![A-Z0-9])${not}${word(SAVINGS_BANK)}${not}${word("SAVINGS")}`,
+  );
+}
+
 export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
   // Money put into an investing app or a brokerage is moved, not spent (CSV bench, second tuning
   // set: "ACORNS INVEST" at $25 every month read as a subscription).
@@ -150,18 +165,18 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
   },
   // The same with the savings bank between ("ONLINE TRANSFER TO ALLY BANK SAVINGS"): walk batch 3's
   // upload S6 sent $200 a month there, filed as a move between accounts, so the chat said nothing
-  // went into savings. Not when the line says it's from savings, and not a payment app's line to a
-  // person ("ZELLE TO JORDAN SAVINGS CLUB" says no transfer).
+  // went into savings. Only with a bank between (SAVINGS_BANK), so a person's name ("TRANSFER TO
+  // JORDAN LEE SAVINGS") stays a transfer, and never a line that pays a loan or a card at a bank
+  // with "Savings" in its name ("TRANSFER TO CITIZENS SAVINGS BANK CREDIT CARD PYMT"): filed as
+  // savings, it would drop out of the bills and raise safe to spend.
   {
     category: "TRANSFER_OUT_SAVINGS",
-    pattern:
-      /(?:TRANSFER TO|TRF TO|XFER TO)(?![A-Z0-9])(?:(?!(?<![A-Z0-9])FROM(?![A-Z0-9])).)*(?<![A-Z0-9])SAVINGS(?![A-Z0-9])/,
+    pattern: toSavingsBank("TO", "FROM"),
     direction: "out",
   },
   {
     category: "TRANSFER_IN_SAVINGS",
-    pattern:
-      /(?:TRANSFER FROM|TRF FROM|XFER FROM)(?![A-Z0-9])(?:(?!(?<![A-Z0-9])TO(?![A-Z0-9])).)*(?<![A-Z0-9])SAVINGS(?![A-Z0-9])/,
+    pattern: toSavingsBank("FROM", "TO"),
     direction: "in",
   },
 

@@ -5,7 +5,8 @@ import { categorizeByRules } from "./rules";
 // month, "ONLINE TRANSFER TO ALLY BANK SAVINGS", was filed as a move between the person's own
 // accounts, not as money put into savings, so "how much do I put into savings each month?" got
 // "none". A transfer to a savings bank's savings is a transfer to savings, however long the line;
-// a payment app's line to a person, or one from savings, is not.
+// a payment app's line to a person, one from savings, a person's named savings and a payment to a
+// bank with "Savings" in its name are not.
 
 const filed = (description: string, amountCents: number) =>
   categorizeByRules({ description, amountCents, hints: {} })?.detailed;
@@ -37,6 +38,27 @@ describe("a bank transfer to savings at another bank", () => {
     "ONLINE TRANSFER TO CHK ...1234 TRANSACTION#: 18293746501",
   ])("leaves other transfers out as they were: %s", (description) => {
     expect(filed(description, 20_000)).not.toBe("TRANSFER_OUT_SAVINGS");
+  });
+
+  // A bank with "Savings" in its name that takes loan and card payments (manager, 11-20): filed as
+  // savings, the payment would drop out of the bills and raise safe to spend. Each stays as main
+  // files it.
+  it.each([
+    [
+      "ONLINE TRANSFER TO THIRD FEDERAL SAVINGS AND LOAN MTG PMT 0044821",
+      "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+    ],
+    ["TRANSFER TO DOLLAR SAVINGS BANK MORTGAGE", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+    ["XFER TO EMIGRANT SAVINGS BANK AUTO LOAN 7781", "LOAN_PAYMENTS_CAR_PAYMENT"],
+    ["TRANSFER TO CITIZENS SAVINGS BANK CREDIT CARD PYMT", "TRANSFER_OUT_ACCOUNT_TRANSFER"],
+  ])("a payment to a savings-named bank is no transfer to savings: %s", (description, category) => {
+    expect(filed(description, 50_000)).toBe(category);
+  });
+
+  // A person's name between: the line can't say the savings is theirs, so it stays a transfer, as
+  // on main (and as a bill when it repeats), not money the person put away.
+  it("leaves a transfer to someone's named savings as a transfer", () => {
+    expect(filed("TRANSFER TO JORDAN LEE SAVINGS", 20_000)).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
   });
 
   it("keeps a landlord transfer as rent", () => {
