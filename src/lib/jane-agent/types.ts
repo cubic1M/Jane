@@ -454,7 +454,8 @@ export type MessageRefs = {
   // Spec step 176: the buy now, pay later plan "Pay it off" pays.
   bnplPlan?: { key: string };
   // Spec step 177: the request "Send" sends when money is tight.
-  tightItem?: { id: string };
+  // shortfallOn: the day the plan's shortfall was forecast for, on cards posted since 11-21.
+  tightItem?: { id: string; shortfallOn?: string };
   // Spec step 179: the home price the down payment goal is sized for.
   homeGoal?: { priceCents: number };
   // Spec step 180: the request "Send" sends about a medical bill.

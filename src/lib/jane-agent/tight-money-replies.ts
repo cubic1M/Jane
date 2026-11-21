@@ -16,7 +16,7 @@ export const sendButton = (label: string): MessageAction => ({
   kind: "primary",
 });
 
-export const billLines = (data: TightMoney, limit = 5) =>
+const billLines = (data: TightMoney, limit = 5) =>
   data.billsFirst
     .slice(0, limit)
     .map(
@@ -24,10 +24,21 @@ export const billLines = (data: TightMoney, limit = 5) =>
         `- ${b.payee}, ${formatCents(b.amountCents)} on ${dayLabel(b.date)}${b.essential ? ` (${b.essential})` : ""}`,
     );
 
-export function shortLine(data: TightMoney): string | null {
+function shortLine(data: TightMoney): string | null {
   const s = data.shortfall;
   if (!s) return null;
   return `Your checking is forecast to be ${s.balanceCents < 0 ? `${formatCents(-s.balanceCents)} overdrawn` : `down to ${formatCents(s.balanceCents)}`} on ${dayLabel(s.date)}, ${formatCents(s.shortCents)} under the cushion I like to keep.`;
+}
+
+// The tight month's plan card (./sources/tight-money.ts): the shortfall, the bills to pay first and
+// the next request, ready to send. An open one is said again from today's figures (./still-true.ts).
+export function tightPlanBody(data: TightMoney, next: { label: string }): string {
+  return [
+    shortLine(data)!,
+    "Pay these first, essentials before anything else:",
+    ...billLines(data, 4),
+    `To ease it: ${next.label.charAt(0).toLowerCase()}${next.label.slice(1)}. I've written the request; nothing is sent until you tap.`,
+  ].join("\n");
 }
 
 export function firstUnsent(data: TightMoney) {
