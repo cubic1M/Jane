@@ -360,13 +360,12 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
     sureNow !== undefined &&
     (said.percent !== sureNow.percent || said.reason !== sureNow.reason);
   // A change's card about a finding (./sources/changes.ts: "Audible is a new regular charge. Did you
-  // mean to sign up?") says the change, not the finding: its words and question stay, and only its
-  // fingerprint follows, so its Yes doesn't say the finding changed (debug 3, 11-21: it was said as
-  // "Review your Audible subscription.", its question dropped, a second card of the finding's own).
-  if (finding && change && m.refs.fingerprint)
-    return finding.fingerprint === m.refs.fingerprint
-      ? m
-      : { ...m, refs: { ...m.refs, fingerprint: finding.fingerprint } };
+  // mean to sign up?") says the change, not the finding: only its fingerprint follows, so its Yes
+  // doesn't say the finding changed, and it's checked as a change's card below, going or said as of
+  // today with its change (debug 3, 11-21: it was said as "Review your Audible subscription.", its
+  // question dropped, a second card of the finding's own).
+  if (finding && change && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint)
+    return asNow({ ...m, refs: { ...m.refs, fingerprint: finding.fingerprint } }, facts);
   if (
     finding &&
     !change &&

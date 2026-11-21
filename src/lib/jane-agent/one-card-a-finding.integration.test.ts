@@ -3,6 +3,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+// The changes as they are now (src/lib/changes.ts), set by each test.
+const now = vi.hoisted(() => ({ changes: [] as { key: string; title: string }[] }));
+vi.mock("@/lib/changes", async (actual) => ({
+  ...(await actual<typeof import("@/lib/changes")>()),
+  loadChanges: vi.fn(async () => now.changes),
+}));
 
 import { BUNDLED_UNTIL } from "./messages";
 import { loadPopupStack } from "./popup-stack";
@@ -87,11 +93,30 @@ describe.runIf(url)("one card a finding", () => {
       .map((m) => m.body)
       .filter((b) => b.includes("Audible"));
 
+  const listed = (title = CHANGE) => {
+    now.changes = [{ key: "new:merchant:audible", title }];
+  };
+
   it("shows the newest card of a finding once, a change's card in its own words", async () => {
+    listed();
     expect(await audible()).toEqual([`${CHANGE} ${ASK}`]);
   });
 
+  it("says a change's card with its change's title as it is now, question kept", async () => {
+    const moved = "Audible is a new regular charge: $16.95, since Nov 8.";
+    listed(moved);
+    expect(await audible()).toEqual([`${moved} ${ASK}`]);
+  });
+
+  it("puts a change's card away once its change goes, and the finding's own card shows", async () => {
+    now.changes = [];
+    const shown = await audible();
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toMatch(/^Review your Audible subscription\..*Want me to handle it\?$/);
+  });
+
   it("shows the finding's own card again once the change's is answered", async () => {
+    listed();
     await client.janeMessage.update({ where: { id: changeId }, data: { status: "answered" } });
     const shown = await audible();
     expect(shown).toHaveLength(1);
