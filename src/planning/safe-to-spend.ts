@@ -13,6 +13,7 @@ import {
   scheduledTransfers,
   scheduledTransfersIn,
   unevenPay,
+  unevenPayMonths,
   upcomingBills,
   type Expected,
 } from "@/detection/forecast";
@@ -64,6 +65,8 @@ export type SafeToSpend = {
   safeCents: number;
   // About what comes in a month into checking with no payday to count it on; not in safeCents.
   unevenPayMonthlyCents: number | null;
+  // The months that figure is over (unevenPayMonths), which Home says beside it.
+  unevenPayMonths: number | null;
   // Checking accounts with no balance on file: neither their money nor their bills are counted.
   leftOut: string[];
 };
@@ -181,6 +184,13 @@ export function safeToSpend(
     safeCents: beforeTax - taxHeldCents,
     unevenPayMonthlyCents:
       checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
+    unevenPayMonths:
+      Math.max(
+        0,
+        ...checking.flatMap((a) =>
+          unevenPay(input, a.id) === null ? [] : [unevenPayMonths(input, a.id)],
+        ),
+      ) || null,
     leftOut: input.accounts
       .filter(
         (a) =>

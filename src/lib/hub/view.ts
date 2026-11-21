@@ -58,6 +58,7 @@ type SafeInput = {
   bills?: { merchant: string; date: string; amountCents: number; transfer?: true }[];
   // About what comes in a month with no payday to count it on (debugger 11-02).
   unevenPayMonthlyCents?: number | null;
+  unevenPayMonths?: number | null;
 };
 
 // "Bills", or "Bills and transfers" when a regular move out is among them.
@@ -434,7 +435,7 @@ function safeHero(safe: SafeInput): SafeHero {
       ...(safe.unevenPayMonthlyCents
         ? [
             {
-              label: "Not counted: your pay, which has no set schedule yet, about this a month",
+              label: `Not counted: your pay, which has no set schedule yet, about this a month ${overLast(safe.unevenPayMonths)}`,
               sign: "" as const,
               cents: safe.unevenPayMonthlyCents,
             },
@@ -856,4 +857,11 @@ export function chartText(chart: TileChart): string {
     case "none":
       return "";
   }
+}
+
+// The window a month of uneven pay is from (unevenPayMonths): the last three months, or the history
+// when shorter. The chat's month is the year's (src/lib/jane-agent/replies-income.ts), and says so.
+function overLast(months: number | null | undefined): string {
+  const n = Math.min(3, Math.max(1, Math.round(months ?? 3)));
+  return n === 1 ? "over the last month" : `over the last ${n} months`;
 }

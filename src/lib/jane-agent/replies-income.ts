@@ -59,7 +59,11 @@ export function incomeReply(period: "month" | "year", facts: IncomeFacts): Reply
     ? ` That's from your statements, which end ${dayLabel(statementsEnd)}.`
     : months < ESTIMATE_UNDER_MONTHS
       ? ` It's from ${months === 1 ? "1 month" : `${months} months`} of data, so it's an estimate.`
-      : "";
+      : // Pay on no schedule, averaged over the months seen: Home says its own month of it over the
+        // last 3 months, a different window (src/lib/hub/view.ts), so each says which it is.
+        pay
+        ? ""
+        : ` That's an average over the last ${months} months.`;
   const gross =
     yearGrossCents > 0
       ? `, about ${formatCents(yearGrossCents)} before tax for ${taxYear}, the figure the tax cards use`
