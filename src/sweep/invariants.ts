@@ -696,3 +696,16 @@ export function premiumsOnFile(flat: Flat): string[] {
     .filter((merchant) => !onFile.has(merchant))
     .map((merchant) => `insurance.premiums: "${merchant}" is paid as insurance with no policy row`);
 }
+
+// Class 4 for pay off any schedule (debug 2, sweep 13; the manager, 11-21): Home's "Not counted: your
+// pay, which has no set schedule yet, about this a month" is the profile's month, the one the chat and
+// the tax cards read. Two paychecks read $1,377 on Home and $1,351.82 on the profile the day after.
+// Only where every deposit is pay (income.payOnly): a freelancer's or a shop's uneven income is read
+// over Home's 90 days and the profile's year apart, a gap of its own (sweep 13's report).
+export function unscheduledMonth(flat: Flat): string[] {
+  if (flat["income.payOnly"] !== true) return [];
+  const home = flat["home.summary.safeToSpend.unevenPayMonthlyCents"];
+  const month = flat["profile.facts.monthly_income.value"];
+  if (typeof home !== "number" || typeof month !== "number" || home === month) return [];
+  return [`home's uneven pay ${home} a month, the profile's month ${month}`];
+}

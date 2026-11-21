@@ -1,3 +1,4 @@
+import { monthsBetweenLines } from "@/detection/units";
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { ONE_OFF_PAY, RETIREMENT_LUMP_SUM } from "@/config/profile";
@@ -422,9 +423,22 @@ async function loadTaxEstimateFrom(
   // (scheduledTakeHome); the rest is paced.
   const scheduled =
     elapsed > 0 && elapsed < 1 ? scheduledTakeHome(paychecks, year, firstSeen, dataEnds) : null;
+  // Pay off any schedule is a year of the profile's month: spread over the lines' span this year
+  // (monthsBetweenLines), not paced by the days to today, so it holds still with no new data (debug 2,
+  // sweep 13: federal $123 on Nov 20, $65 on Nov 21 from the same two paychecks).
+  const payElapsed =
+    elapsed > 0 && elapsed < 1 && dataEnds
+      ? Math.min(
+          1,
+          monthsBetweenLines(
+            firstSeen && firstSeen > `${year}-01-01` ? firstSeen : `${year}-01-01`,
+            dataEnds,
+          ) / 12,
+        )
+      : elapsed;
   const unscheduled = takeHomePay(
     [...paychecks.filter((t) => !scheduled?.covered.has(t)), ...bonuses],
-    elapsed,
+    payElapsed,
     (description) => stoppedPay.has(payerKeyOf(description)),
   );
   const takeHome = unscheduled.soFarCents + (scheduled?.soFarCents ?? 0);

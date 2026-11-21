@@ -11,7 +11,6 @@ import {
   OWN_ACCOUNT_TRANSFERS,
   PLAID_STREAM_MIN_CHARGES,
   UNEVEN_PAY_LOOKBACK_DAYS,
-  UNEVEN_PAY_LOOKBACK_MONTHS,
   UNEVEN_PAY_MIN_DEPOSITS,
   UNEVEN_PAY_MIN_MONTHLY_CENTS,
   UNEVEN_PAY_NOT_PAY,
@@ -29,7 +28,7 @@ import {
   type Stream,
 } from "./streams";
 import type { DetectionAccount, DetectionInput, DetectionTransaction } from "./types";
-import { addDays, daysBetween } from "./units";
+import { addDays, daysBetween, monthsBetweenLines } from "./units";
 
 // Upcoming bills and income, and a day-by-day balance forecast for checking accounts.
 // Pure: built from the same recurring streams the detection rules use.
@@ -117,8 +116,16 @@ export function incomeStreams(input: DetectionInput): Stream[] {
 // About what comes in a month into this account, when it's pay with no schedule to forecast: a
 // freelancer's payouts have no next date, so the forecast counts none of them (debugger 11-02).
 // Null with a payday expected, or without enough pay. Interest and dividends aren't pay.
+// The account's newest line on or before today: where its uneven pay is counted back from, so with no
+// new data its month holds still (debug 2, sweep 13).
+const newestLine = (input: DetectionInput, accountId: string) =>
+  input.transactions
+    .filter((t) => t.accountId === accountId && t.date <= input.asOf)
+    .reduce((day, t) => (t.date > day ? t.date : day), "") || input.asOf;
+
 function unevenDeposits(input: DetectionInput, accountId: string) {
-  const since = addDays(input.asOf, -UNEVEN_PAY_LOOKBACK_DAYS);
+  const newest = newestLine(input, accountId);
+  const since = addDays(newest, -UNEVEN_PAY_LOOKBACK_DAYS);
   return input.transactions.filter(
     (t) =>
       t.accountId === accountId &&
@@ -126,19 +133,21 @@ function unevenDeposits(input: DetectionInput, accountId: string) {
       t.pfcPrimary === "INCOME" &&
       !UNEVEN_PAY_NOT_PAY.includes(t.pfcDetailed ?? "") &&
       t.date > since &&
-      t.date <= input.asOf,
+      t.date <= newest,
   );
 }
 
 // The months of this account's rows, up to the lookback and at least one: a month of history is a
 // month's pay, not a third of three months' (debugger 11-18: two $1,100 paychecks in the month a
-// new account had read "about $733 a month").
+// new account had read "about $733 a month"). Between its lines, as the profile's month is
+// (monthsBetweenLines), never to today.
 function monthsSeen(input: DetectionInput, accountId: string): number {
+  const newest = newestLine(input, accountId);
+  const since = addDays(newest, 1 - UNEVEN_PAY_LOOKBACK_DAYS);
   const first = input.transactions
     .filter((t) => t.accountId === accountId)
-    .reduce((day, t) => (t.date < day ? t.date : day), input.asOf);
-  const days = Math.min(UNEVEN_PAY_LOOKBACK_DAYS, daysBetween(first, input.asOf));
-  return Math.max(1, (days * UNEVEN_PAY_LOOKBACK_MONTHS) / UNEVEN_PAY_LOOKBACK_DAYS);
+    .reduce((day, t) => (t.date < day ? t.date : day), newest);
+  return monthsBetweenLines(first > since ? first : since, newest);
 }
 
 export function unevenPay(input: DetectionInput, accountId: string): number | null {

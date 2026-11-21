@@ -246,8 +246,8 @@ describe("monthly income on a short history", () => {
   it("spreads the pay over the days the history covers, not over the calendar months it touches", () => {
     const base = inputFor("renter");
     // Six $4,000 payments from a client from 75 days ago to 5 days ago, on no pay schedule: the
-    // history starts in August, so the calendar count says 2 months ($12,000 a month), but it is
-    // 2.5 months of data.
+    // history starts in August, so the calendar count says 2 months ($12,000 a month), but its lines
+    // span 71 days, 2.33 months: $10,288.73, between the lines and not to today (debug 2, sweep 13).
     const pays = [5, 19, 33, 47, 61, 75].map((b) => ({
       date: day(b),
       amountCents: -400_000,
@@ -257,8 +257,7 @@ describe("monthly income on a short history", () => {
     }));
     const profile = buildProfile({ ...base, today, transactions: pays });
     const monthly = profile.facts.monthly_income.value as number;
-    expect(monthly).toBeGreaterThan(9_500_00);
-    expect(monthly).toBeLessThan(10_000_00);
+    expect(monthly).toBe(Math.round(2_400_000 / (71 / (365.25 / 12))));
   });
 
   it("takes paychecks every two weeks as 26 a year, whatever the window holds", () => {

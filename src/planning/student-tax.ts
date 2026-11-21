@@ -5,6 +5,7 @@ import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { payForYear, payInYearData } from "@/profile/pay-on-schedule";
+import { monthsBetweenLines } from "@/detection/units";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
@@ -128,7 +129,8 @@ export function studentYearOf(
     const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
     const extra = Math.round(on.extraCents * DETECTOR_RATES.tax.netToGross);
     const started = Math.round(on.startedCents * DETECTOR_RATES.tax.netToGross);
-    const month = on.monthCents + Math.round(rest / Math.max(1, span));
+    // Pay off any schedule is spread over the lines' span, as the profile's month (payMonths).
+    const month = on.monthCents + Math.round(rest / monthsBetweenLines(first, last));
     return {
       cents: Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) + started + extra,
       extra,
