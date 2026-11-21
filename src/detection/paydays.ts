@@ -286,7 +286,16 @@ function payRule(deposits: Deposit[]): Rule | null {
   return best?.rule ?? null;
 }
 
-// Every employer that pays on a schedule.
+// Where Jane has seen an account to: a linked bank, today; an upload, its statement's last day.
+const seenTo = (input: DetectionInput, accountId: string) => {
+  const statementEnds = input.accounts.find((a) => a.id === accountId)?.balanceAsOf;
+  return statementEnds && statementEnds < input.asOf ? statementEnds : input.asOf;
+};
+
+// Every employer that pays on a schedule. Still paying is judged where the account's data ends: a
+// statement that ended a month ago shows no pay since because it ended, not because the job did
+// (debug 2, upload S7, 11-20: pay on the 1st and the 15th to Oct 15, a statement to Oct 20, read on
+// Nov 20 as "no set schedule yet, about $2,000 a month").
 export function paySchedules(input: DetectionInput): PaySchedule[] {
   return byEmployer(input).flatMap(([key, { name, deposits }]): PaySchedule[] => {
     const rule = payRule(deposits);
@@ -302,7 +311,7 @@ export function paySchedules(input: DetectionInput): PaySchedule[] {
         lastDate: last.date,
         paychecks: deposits.length,
         active:
-          daysBetween(last.date, input.asOf) <=
+          daysBetween(last.date, seenTo(input, last.accountId)) <=
           PAYDAY_GAP_DAYS[rule.frequency] * ACTIVE_WITHIN_INTERVALS,
       },
     ];
@@ -317,10 +326,8 @@ export function schedulePaydays(schedule: PaySchedule, from: string, until: stri
 // Has Jane seen the account through `day`? A linked bank, always; an upload, when its statement
 // runs that far. Before then a deposit may be in a statement Jane hasn't got, and an upload's
 // balance walked forward to today already expects it (expectedBetween, src/detection/forecast.ts).
-const seenThrough = (input: DetectionInput, accountId: string, day: string) => {
-  const statementEnds = input.accounts.find((a) => a.id === accountId)?.balanceAsOf;
-  return !statementEnds || statementEnds >= day;
-};
+const seenThrough = (input: DetectionInput, accountId: string, day: string) =>
+  seenTo(input, accountId) >= day;
 
 // A payday has come in when a deposit from its employer posted within PAYDAY_POSTING_DAYS of it,
 // either side (a day early counts as that payday, not the one before). Early, those are banking
