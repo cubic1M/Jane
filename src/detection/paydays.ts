@@ -1,5 +1,6 @@
 import {
   ACTIVE_WITHIN_INTERVALS,
+  BALANCE_ROLL_MAX_DAYS,
   NEVER_PAYROLL_CATEGORIES,
   PAYCHECK_MIN_CENTS,
   PAYDAY_CLOSE_WEIGHT,
@@ -292,10 +293,23 @@ const seenTo = (input: DetectionInput, accountId: string) => {
   return statementEnds && statementEnds < input.asOf ? statementEnds : input.asOf;
 };
 
+// A statement too old to walk its balance to today (BALANCE_ROLL_MAX_DAYS, as safe to spend has it)
+// can't say pay comes now either: a payday from it would read as current where nothing else does
+// (manager, 11-20: an S7-shaped statement read 46 days on said "Your next payday is Dec 15", and 200
+// days on "May 15", while safe to spend said where the statements end).
+const tooOldToSay = (input: DetectionInput, accountId: string) => {
+  const statementEnds = input.accounts.find((a) => a.id === accountId)?.balanceAsOf;
+  return Boolean(
+    statementEnds &&
+    statementEnds < input.asOf &&
+    daysBetween(statementEnds, input.asOf) > BALANCE_ROLL_MAX_DAYS,
+  );
+};
+
 // Every employer that pays on a schedule. Still paying is judged where the account's data ends: a
 // statement that ended a month ago shows no pay since because it ended, not because the job did
 // (debug 2, upload S7, 11-20: pay on the 1st and the 15th to Oct 15, a statement to Oct 20, read on
-// Nov 20 as "no set schedule yet, about $2,000 a month").
+// Nov 20 as "no set schedule yet, about $2,000 a month"), while it's recent enough to say so.
 export function paySchedules(input: DetectionInput): PaySchedule[] {
   return byEmployer(input).flatMap(([key, { name, deposits }]): PaySchedule[] => {
     const rule = payRule(deposits);
@@ -311,8 +325,9 @@ export function paySchedules(input: DetectionInput): PaySchedule[] {
         lastDate: last.date,
         paychecks: deposits.length,
         active:
+          !tooOldToSay(input, last.accountId) &&
           daysBetween(last.date, seenTo(input, last.accountId)) <=
-          PAYDAY_GAP_DAYS[rule.frequency] * ACTIVE_WITHIN_INTERVALS,
+            PAYDAY_GAP_DAYS[rule.frequency] * ACTIVE_WITHIN_INTERVALS,
       },
     ];
   });
