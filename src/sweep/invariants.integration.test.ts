@@ -63,8 +63,7 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // (./__fixtures__/people.ts).
   const own = (): OwnRows => ({
     person: (data) => client.user.create({ data }),
-    token: (id, accessTokenEncrypted) =>
-      client.plaidItem.update({ where: { id }, data: { accessTokenEncrypted } }),
+    item: (id, data) => client.plaidItem.update({ where: { id }, data }),
   });
 
   beforeAll(async () => {

@@ -3,6 +3,7 @@ import { PERSON_IDS, type PersonId } from "@/config/people";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { madeUpChaseCsv } from "@/lib/__fixtures__/made-up-statement";
 import { NO_PLAID } from "@/lib/__fixtures__/plaid";
+import { addDays } from "@/detection/units";
 import { encrypt } from "@/lib/crypto";
 import { scopedFor } from "@/lib/db-scoped";
 import { finishImport } from "@/lib/import/background";
@@ -26,6 +27,10 @@ import { syncItem } from "@/lib/plaid/sync";
 // processor prefixes, ACH codes, transfers between their own accounts, two card exports that
 // overlap, under four months (debug 3, 11-19: names shown as the bank's raw line). Its dates are
 // fixed (July to October 2026), so read it in November 2026.
+// "linked-month": the renter's demo bank linked, its first sync bringing only the last 24 days: two
+// paychecks every two weeks, too few for a schedule (debug 2's desktop sweep 13, Plaid sandbox "one
+// month", #2211: the month read off them drifted with no new data). Every other linked person has
+// pay on a schedule.
 // "biweekly-month": upload S5, one month of Chase checking with three $620 paychecks every two
 // weeks, its days moved to end the day before (debug 3, 11-19: income read as three paychecks a
 // month, $1,860, and "Income near $28,489.50" on the Saver's Credit).
@@ -38,7 +43,8 @@ export type Who =
   | "one-month"
   | "old-statement"
   | "messy"
-  | "biweekly-month";
+  | "biweekly-month"
+  | "linked-month";
 
 export const UPLOADS: ReadonlySet<Who> = new Set<Who>([
   "upload",
@@ -50,7 +56,12 @@ export const UPLOADS: ReadonlySet<Who> = new Set<Who>([
   "biweekly-month",
 ]);
 
-export const EVERYONE: readonly Who[] = ["demo", ...PERSON_IDS, ...UPLOADS];
+// Linked like the sample people, with a history that starts this many days before the link.
+const SHORT_LINKED: Partial<Record<Who, { person?: PersonId; days: number }>> = {
+  "linked-month": { person: "renter", days: 24 },
+};
+
+export const EVERYONE: readonly Who[] = ["demo", ...PERSON_IDS, "linked-month", ...UPLOADS];
 
 const DAY_MS = 86_400_000;
 
@@ -142,12 +153,16 @@ function statementsOf(
   }
 }
 
-// The rows a test makes itself, not through the app: the person, and the demo bank's token. They
+// The rows a test makes itself, not through the app: the person, and the demo bank's token (and
+// where its first sync starts, for a short history). They
 // go through the database's owner only when the test file writes them (TEST_CODE in
 // src/config/deny-by-default.ts goes by the file calling), so the test passes these in.
 export type OwnRows = {
   person: (data: { email: string; timezone: string }) => Promise<{ id: string }>;
-  token: (itemId: string, accessTokenEncrypted: string) => Promise<unknown>;
+  item: (
+    itemId: string,
+    data: { accessTokenEncrypted: string; transactionsCursor?: string },
+  ) => Promise<unknown>;
 };
 
 // A person with their bank linked at `linked` and its first sync done, or with their statements
@@ -183,17 +198,22 @@ export async function makePerson(
     }
     return { userId: user.id, itemId: null };
   }
-  const sample = who === "demo" ? undefined : (who as PersonId);
+  const short = SHORT_LINKED[who];
+  const sample = short ? short.person : who === "demo" ? undefined : (who as PersonId);
   const { itemId } = await linkDemoBank(user.id, {
     client,
     now: linked,
     ...(sample ? { person: sample } : {}),
   });
   const anchor = linked.toISOString().slice(0, 10);
-  await own.token(
-    itemId,
-    encrypt(`${DEMO_TOKEN_PREFIX}${seed}:${anchor}${sample ? `:${sample}` : ""}`),
-  );
+  // The demo bank's cursor is the last day it has sent (src/lib/plaid/demo.ts): from the day before
+  // the history starts, the first sync brings only the days since.
+  await own.item(itemId, {
+    accessTokenEncrypted: encrypt(
+      `${DEMO_TOKEN_PREFIX}${seed}:${anchor}${sample ? `:${sample}` : ""}`,
+    ),
+    ...(short ? { transactionsCursor: addDays(anchor, -(short.days + 1)) } : {}),
+  });
   await syncItem(itemId, { client, api: NO_PLAID, now: linked });
   return { userId: user.id, itemId };
 }
