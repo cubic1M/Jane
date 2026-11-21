@@ -9,6 +9,9 @@ import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { loadStudentLoans } from "@/lib/student-loans";
+import { loadNetWorthInputs } from "@/lib/net-worth-history";
+import { previousMonth } from "@/insights/check-in";
+import { balancesAtMonthEnd, closeNetWorth } from "@/planning/month-close";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { loadBnpl } from "@/lib/bnpl";
 import { forecastAccounts } from "@/detection/forecast";
@@ -108,6 +111,15 @@ export async function snapshotAt(
   const studentPlans = Object.fromEntries(
     (student.comparison?.results ?? []).map((r) => [r.plan, r.monthlyNowCents]),
   );
+  // Last month's close as it's taken today (src/lib/month-close.ts: each account on the month's last
+  // day): class 4 holds its net worth to the chart's on that day (./invariants.ts sameFigures).
+  const closeMonth = previousMonth(asOf);
+  const worthInputs = await loadNetWorthInputs(userId, { client });
+  const closeWorth = closeNetWorth(
+    balancesAtMonthEnd(worthInputs.accounts, worthInputs.snapshots, closeMonth),
+    worthInputs.owned,
+    worthInputs.crypto,
+  );
   // Income as the profile has it a month, as the chat gives it, and as the tax cards read the year
   // (yearIncomeOf), and whether the year is that same pay: every deposit is pay, from this year,
   // with no gig pay or fellowship (class 4, src/sweep/invariants.ts sameFigures).
@@ -143,6 +155,7 @@ export async function snapshotAt(
     trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
     loansStudent: student.loan ? { agiCents: student.agiCents, plans: studentPlans } : null,
+    close: { month: closeMonth, netWorthCents: closeWorth.netWorthCents },
     chat,
     decides: {
       checkingAsShown: statementCents,

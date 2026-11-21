@@ -289,7 +289,8 @@ export function owedTotals(flat: Flat): string[] {
 // Class 4: the same figure reads the same everywhere it's shown. Net worth on Home's hero, its
 // chart's last point, the chat and both trees; safe to spend on Home, its hero and the chat; what's
 // owed in the chat's net worth, the loans tile and Money's "Loans and cards". A short figure
-// ("$178k") agrees when it's the exact one rounded. Walkers found net worth one figure on Home and
+// ("$178k") agrees when it's the exact one rounded. Last month's close, its net worth to the chart's
+// on the month's last day. Walkers found net worth one figure on Home and
 // another in the chat (#1904, #2011), safe to spend two ways (#1938, #2014), income two ways
 // (#2063, #2097).
 const CENTS = (text: unknown) => {
@@ -367,6 +368,26 @@ export function sameFigures(flat: Flat): string[] {
       Math.min(...plans),
       cards.map((c): [string, unknown] => [`${c.path} (a month)`, c.month]),
     );
+  }
+  // Last month's close says net worth as the chart has it on the month's last day (debug 2, 11-18:
+  // "Net worth at the close: $642.18", that day's balance, for an Oct 31 the chart had at $915.16).
+  const closeMonth = flat["close.month"];
+  const closeWorth = flat["close.netWorthCents"];
+  if (
+    typeof closeMonth === "string" &&
+    typeof closeWorth === "number" &&
+    typeof last === "number"
+  ) {
+    const [y, m] = closeMonth.split("-").map(Number);
+    const end = new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
+    for (let i = 0; i < last; i += 1)
+      if (flat[`netWorth.${i}.date`] === end)
+        check(`net worth on the chart on ${end}`, flat[`netWorth.${i}.cents`], [
+          [
+            "close.netWorthCents",
+            `${closeWorth < 0 ? "-" : ""}$${(Math.abs(closeWorth) / 100).toFixed(2)}`,
+          ],
+        ]);
   }
   check("safe to spend", flat["home.summary.safeToSpend.safeCents"], [
     [
