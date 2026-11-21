@@ -7,14 +7,15 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { stubTestKeys } from "@/lib/__fixtures__/env";
-import { STALE_UPLOAD_DAYS } from "@/config/import";
+import { BALANCE_ROLL_MAX_DAYS } from "@/config/detection";
 import { answerByRules } from "./answer";
 import { parseIntent } from "./intents";
 
 // Gate C's calendar sweep (src/sweep/), 11-16: whether statements were too old for safe to spend
 // was counted in hours since their last day's UTC midnight. On the day they turned old, "what's
 // safe to spend?" asked for a checking balance at 3pm in Los Angeles and said "Your statements end
-// …" at 7pm. The person's own day decides.
+// …" at 7pm. The person's own day decides. The answer turns where safe to spend stops walking the
+// statements to today, BALANCE_ROLL_MAX_DAYS (manager, 11-20), no longer at STALE_UPLOAD_DAYS.
 
 const url = process.env.TEST_DATABASE_URL;
 const LAST = "2026-10-01";
@@ -70,12 +71,14 @@ describe.runIf(url)("safe to spend from old statements, all day", { timeout: 120
     )?.body;
 
   it("gives one answer at 3pm and at 7pm, on the last day they're recent and the first they're old", async () => {
-    for (const n of [STALE_UPLOAD_DAYS - 1, STALE_UPLOAD_DAYS, STALE_UPLOAD_DAYS + 1]) {
+    for (const n of [BALANCE_ROLL_MAX_DAYS - 1, BALANCE_ROLL_MAX_DAYS, BALANCE_ROLL_MAX_DAYS + 1]) {
       const day = daysAfterLast(n);
       expect(await ask(evening(day)), day).toBe(await ask(afternoon(day)));
     }
-    expect(await ask(evening(daysAfterLast(STALE_UPLOAD_DAYS)))).not.toMatch(/^Your statements/);
-    expect(await ask(afternoon(daysAfterLast(STALE_UPLOAD_DAYS + 1)))).toMatch(
+    expect(await ask(evening(daysAfterLast(BALANCE_ROLL_MAX_DAYS)))).not.toMatch(
+      /^Your statements/,
+    );
+    expect(await ask(afternoon(daysAfterLast(BALANCE_ROLL_MAX_DAYS + 1)))).toMatch(
       /^Your statements end Oct 1, 2026/,
     );
   });
