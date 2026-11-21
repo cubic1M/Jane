@@ -1,4 +1,4 @@
-import { FORECAST_DAYS } from "@/config/detection";
+import { BALANCE_ROLL_MAX_DAYS, FORECAST_DAYS } from "@/config/detection";
 import { loadSnapshotFast } from "../snapshot-store";
 import type { Snapshot } from "../snapshot";
 import { loadDetectionInput } from "@/detection/input";
@@ -72,9 +72,10 @@ async function statementsEndOf(
   userId: string,
   client: CapabilityContext["client"],
   asOf: string,
+  after?: number,
 ): Promise<string | null> {
   const read = await scopedFor(userId, client).transactions.aggregate({ _max: { date: true } });
-  return staleStatementsEnd(read._max.date, asOf);
+  return staleStatementsEnd(read._max.date, asOf, after);
 }
 
 // Less history than bills show in: Home's strip's rule (src/lib/hub/view.ts cashFlowView).
@@ -150,8 +151,10 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
           refs: {},
         };
       }
+      // No payday is expected from statements too old to walk to today (src/detection/paydays.ts),
+      // so where they end is said from then, not only past STALE_UPLOAD_DAYS.
       return paydayReply(await loadRecurring(userId, { client, now }), asOf, {
-        statementsEnd: await statementsEndOf(userId, client, asOf),
+        statementsEnd: await statementsEndOf(userId, client, asOf, BALANCE_ROLL_MAX_DAYS),
       });
     }
     case "income": {
