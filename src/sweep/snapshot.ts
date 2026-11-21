@@ -14,6 +14,8 @@ import { loadBnpl } from "@/lib/bnpl";
 import { forecastAccounts } from "@/detection/forecast";
 import { FORECAST_DAYS, PAYCHECKS_PER_MONTH } from "@/config/detection";
 import { paySchedules } from "@/detection/paydays";
+import { buildStreams } from "@/detection/streams";
+import { policiesFromStreams } from "@/insights/found-policies";
 import { loadCash } from "@/lib/investments/cash";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { cashReply, feesReply } from "@/lib/jane-agent/investments/replies";
@@ -195,6 +197,25 @@ export async function snapshotAt(
       })),
     },
     funds,
+    // The insurers the stored rows show as premiums, and the merchants with a policy row
+    // (class 10, ./invariants.ts premiumsOnFile). Read where the data ends, as the schedule above
+    // is, so it doesn't move with the calendar over data held still (gate C).
+    insurance: {
+      premiums: ((asOfData) => policiesFromStreams(asOfData, buildStreams(asOfData)))({
+        ...input,
+        asOf: input.transactions.reduce((a, t) => (t.date > a ? t.date : a), "") || input.asOf,
+      })
+        .map((f) => f.merchantKey)
+        .sort(),
+      onFile: (
+        await scopedFor(userId, client).insurancePolicies.findMany({
+          where: { merchantKey: { not: null } },
+          select: { merchantKey: true },
+          // In one order, so two copies of a person read the same (./same-twice.ts).
+          orderBy: { merchantKey: "asc" },
+        })
+      ).map((p) => p.merchantKey),
+    },
   });
 }
 
