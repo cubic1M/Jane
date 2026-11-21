@@ -32,6 +32,7 @@ import {
   fundRatios,
   walkedUnlabelled,
   sameFigures,
+  premiumsOnFile,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
 import { snapshotAt } from "./snapshot";
@@ -198,6 +199,10 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   });
 
   // And one holding, one card (the fee card and the 401(k) menu card, 11-19; #2090, #2094).
+  it("has a policy row for every insurer paid as a bill", () => {
+    expect(everyone(premiumsOnFile)).toEqual([]);
+  });
+
   it("raises one card for one holding", () => {
     expect(everyone(twoCardsOneHolding)).toEqual([]);
   });

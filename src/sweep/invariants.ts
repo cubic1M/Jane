@@ -659,3 +659,19 @@ export function fundRatios(flat: Flat): string[] {
     ),
   );
 }
+
+// Class 10 (debug 2, sweep 12; the manager, 11-20): a bill that reads as an insurance premium has a
+// policy row: found from the payments, the person's own, or one they said isn't insurance (a removed
+// row keeps its merchant). Bills listed "Progressive Insurance $154.99" while Insurance said car
+// cover was "Not on file" on 2 of 4 links of one sandbox person. The snapshot's insurance.premiums
+// are the insurers the stored rows show (policiesFromStreams), insurance.onFile the rows' merchants.
+export function premiumsOnFile(flat: Flat): string[] {
+  const listed = (key: string) =>
+    Object.entries(flat)
+      .filter(([path]) => new RegExp(`^insurance\\.${key}\\.\\d+$`).test(path))
+      .map(([, value]) => String(value));
+  const onFile = new Set(listed("onFile"));
+  return listed("premiums")
+    .filter((merchant) => !onFile.has(merchant))
+    .map((merchant) => `insurance.premiums: "${merchant}" is paid as insurance with no policy row`);
+}
