@@ -30,7 +30,10 @@ export async function loadPopupStack(
   );
   const shown = (list: typeof others) =>
     list.flatMap((m) => current.get(m.id) ?? []).map((m) => toView(m, now, zone, { concierge }));
-  const [first, rest] = [shown(suggestions), shown(others)];
+  const [first, rest] = [
+    shown(suggestions),
+    shown(oneCardAFinding(others.filter((m) => current.has(m.id)))),
+  ];
   // Advice stored while the person only had the demo bank, once a real account has joined: gone from
   // the cards at once, before the chat next opens and closes the message (./settled.ts).
   const adviceAllowed =
@@ -67,4 +70,18 @@ async function notAskedByPicks(
     })),
   );
   return posts.filter((m) => !said.has(m.refs.findingId ?? ""));
+}
+
+// One card a finding (debug 3, 11-21: a linked month's dock had Dec 9's "Review your Audible
+// subscription" and Dec 15's "Audible is a new regular charge", which carries the same finding, so
+// one Yes twice). The newest still true says it (they come newest first); the other waits, open.
+function oneCardAFinding(posts: ChatMessage[]): ChatMessage[] {
+  const seen = new Set<string>();
+  return posts.filter((m) => {
+    const id = m.refs.findingId;
+    if (id === undefined) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }

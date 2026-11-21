@@ -359,7 +359,20 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
     said !== undefined &&
     sureNow !== undefined &&
     (said.percent !== sureNow.percent || said.reason !== sureNow.reason);
-  if (finding && m.refs.fingerprint && (finding.fingerprint !== m.refs.fingerprint || sureMoved)) {
+  // A change's card about a finding (./sources/changes.ts: "Audible is a new regular charge. Did you
+  // mean to sign up?") says the change, not the finding: its words and question stay, and only its
+  // fingerprint follows, so its Yes doesn't say the finding changed (debug 3, 11-21: it was said as
+  // "Review your Audible subscription.", its question dropped, a second card of the finding's own).
+  if (finding && change && m.refs.fingerprint)
+    return finding.fingerprint === m.refs.fingerprint
+      ? m
+      : { ...m, refs: { ...m.refs, fingerprint: finding.fingerprint } };
+  if (
+    finding &&
+    !change &&
+    m.refs.fingerprint &&
+    (finding.fingerprint !== m.refs.fingerprint || sureMoved)
+  ) {
     // Its pick and its question stay as they were; how sure is said as it is now (debug 2, 11-16:
     // after a bank's older history came in, "50% sure: 1 charge in 1 month of data" stayed on a
     // Netflix card with three charges in three months).
