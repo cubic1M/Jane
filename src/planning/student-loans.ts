@@ -82,6 +82,20 @@ export const paycheckYearCents = (payCents: number, coveredDays: number) =>
     (Math.abs(payCents) * 365) / Math.min(365, Math.max(STUDENT_INCOME_MIN_DAYS, coveredDays)),
   );
 
+// With no paychecks, a year of the income Jane sees, when it knows how they're paid without them:
+// as a contractor or gig worker, or a pension. Anything else left in the accounts (interest, a
+// refund, money from family) isn't an income to size a plan on (Plaid sandbox walk, 11-17). The
+// student loan card and /loans/student both read it, so the card says what the page it opens says
+// (debug 3, rule 83, 11-20: a contractor's card at $70,416.72 a year, the page at $0).
+const PAID_WITHOUT_PAYCHECKS: readonly unknown[] = ["uneven", "pension"];
+export function incomeYearWithoutPaychecks(
+  facts: Readonly<Record<string, { value: unknown } | undefined>>,
+): number | null {
+  const monthly = facts.monthly_income?.value;
+  if (!PAID_WITHOUT_PAYCHECKS.includes(facts.income_pattern?.value)) return null;
+  return typeof monthly === "number" && monthly > 0 ? monthly * 12 : null;
+}
+
 export const standardPaymentCents = (balanceCents: number, aprBps: number) =>
   Math.max(
     STANDARD_MIN_PAYMENT_CENTS,
