@@ -29,6 +29,7 @@ import {
   twoCardsOneHolding,
   decidedOnEstimate,
   listDoubles,
+  dockDoubles,
   fundRatios,
   walkedUnlabelled,
   sameFigures,
@@ -197,6 +198,11 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
   // And inside a list: one column of an area page counts each charge once (#2147, #2160).
   it("counts each charge, merchant and holding once in a column", () => {
     expect(everyone(listDoubles)).toEqual([]);
+  });
+
+  // And in the dock: one merchant, one card, whatever posted it (the 24/7 engine's, #2153).
+  it("raises one dock card for one merchant", () => {
+    expect(everyone(dockDoubles)).toEqual([]);
   });
 
   // And one holding, one card (the fee card and the 401(k) menu card, 11-19; #2090, #2094).

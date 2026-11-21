@@ -24,6 +24,8 @@ import { answerByRules } from "@/lib/jane-agent/answer";
 import { cashReply, feesReply } from "@/lib/jane-agent/investments/replies";
 import { parseIntent } from "@/lib/jane-agent/intents";
 import { detectFor } from "@/lib/suggestions";
+import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
+import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { yearIncomeOf } from "@/detectors/helpers";
 import { studentYearOf } from "@/planning/student-tax";
@@ -111,6 +113,45 @@ export async function snapshotAt(
   const studentPlans = Object.fromEntries(
     (student.comparison?.results ?? []).map((r) => [r.plan, r.monthlyNowCents]),
   );
+  // The dock as it's drawn (/api/chat/cards: src/lib/jane-agent/popup-stack.ts), each card with
+  // what it's about: a day's suggestion by its key and the payees it watches, a finding Jane posted
+  // by its type and merchant. Class 7 holds it to one card a matter (./invariants.ts dockDoubles).
+  const drawn = await loadPopupStack(userId, { client, now });
+  const refsOf = new Map(
+    (
+      await scopedFor(userId, client).janeMessages.findMany({
+        where: { id: { in: drawn.map((c) => c.id) } },
+        select: { id: true, refs: true },
+      })
+    ).map((m) => [m.id, (m.refs ?? {}) as { findingId?: unknown; suggestion?: unknown }]),
+  );
+  const idOf = (id: string, field: "findingId" | "suggestion") => {
+    const value = refsOf.get(id)?.[field];
+    return typeof value === "string" ? value : null;
+  };
+  const findingRows = await scopedFor(userId, client).findings.findMany({
+    where: { id: { in: drawn.flatMap((c) => idOf(c.id, "findingId") ?? []) } },
+    select: { id: true, type: true, evidence: true },
+  });
+  const suggestionRows = await scopedFor(userId, client).suggestions.findMany({
+    where: { key: { in: drawn.flatMap((c) => idOf(c.id, "suggestion") ?? []) } },
+    select: { key: true, watch: true },
+  });
+  const merchantKeys = (names: unknown[]) => [
+    ...new Set(names.flatMap((n) => (typeof n === "string" ? (normalizeAlias(n) ?? []) : []))),
+  ];
+  const dock = drawn.map((card) => {
+    const finding = findingRows.find((f) => f.id === idOf(card.id, "findingId"));
+    const suggestion = suggestionRows.find((r) => r.key === idOf(card.id, "suggestion"));
+    const payees = (suggestion?.watch as { payees?: { description?: unknown }[] } | null)?.payees;
+    return {
+      headline: card.body.split("\n")[0],
+      about: suggestion ? suggestion.key : finding ? `finding:${finding.type}` : null,
+      merchants: suggestion
+        ? merchantKeys((payees ?? []).map((p) => p.description))
+        : merchantKeys([(finding?.evidence as { merchant?: unknown } | null)?.merchant]),
+    };
+  });
   // Last month's close as it's taken today (src/lib/month-close.ts: each account on the month's last
   // day): class 4 holds its net worth to the chart's on that day (./invariants.ts sameFigures).
   const closeMonth = previousMonth(asOf);
@@ -154,6 +195,7 @@ export async function snapshotAt(
     tiles: areas ? withAreaStatus(tilesView(areas), trees) : null,
     trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
+    dock,
     loansStudent: student.loan ? { agiCents: student.agiCents, plans: studentPlans } : null,
     close: { month: closeMonth, netWorthCents: closeWorth.netWorthCents },
     chat,

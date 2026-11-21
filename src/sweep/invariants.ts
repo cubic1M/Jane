@@ -1,3 +1,4 @@
+import { matterOf, sameMerchant } from "@/lib/jane-agent/same-matter";
 import { PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
 import { FUND_NAMES } from "@/config/funds";
 import { isHiddenPage } from "@/config/hidden-pages";
@@ -647,6 +648,44 @@ export function listDoubles(flat: Flat): string[] {
     }
   }
   return found;
+}
+
+// Class 7 in the dock (debug 2, sweep 8, 11-19; debug 3, 11-21): the dock says one thing once.
+// After a refresh it had "Note Netflix's Standard with ads plan" beside "Review your Netflix
+// subscription.", posted the moment the sync found it (#2153); on demo's Nov 28, "Drop an
+// overlapping subscription", which drops Spotify, beside "Review your Spotify subscription". A card
+// Jane posted about a merchant is never beside another, a pick or a post, that asks the same
+// matter about that merchant (src/lib/jane-agent/same-matter.ts). Read as drawn (./snapshot.ts):
+// one card a headline, so a post repeated word for word shows once.
+export function dockDoubles(flat: Flat): string[] {
+  const cards: { at: string; about: string; headline: string; merchants: string[] }[] = [];
+  for (let i = 0; typeof flat[`dock.${i}.headline`] === "string"; i += 1) {
+    const merchants: string[] = [];
+    for (let k = 0; typeof flat[`dock.${i}.merchants.${k}`] === "string"; k += 1)
+      merchants.push(flat[`dock.${i}.merchants.${k}`] as string);
+    const about = flat[`dock.${i}.about`];
+    if (typeof about === "string")
+      cards.push({
+        at: `dock.${i}`,
+        about,
+        headline: flat[`dock.${i}.headline`] as string,
+        merchants,
+      });
+  }
+  const matter = (about: string) => matterOf(about.split(":")[1] ?? about);
+  const posted = (about: string) => about.startsWith("finding:");
+  return cards.flatMap((card, j) =>
+    cards.slice(0, j).flatMap((other) => {
+      if (!posted(card.about) && !posted(other.about)) return [];
+      if (matter(card.about) !== matter(other.about)) return [];
+      const shared = card.merchants.find((m) => other.merchants.some((o) => sameMerchant(m, o)));
+      return shared
+        ? [
+            `${card.at}: "${card.headline.slice(0, 80)}" asks what ${other.at} "${other.headline.slice(0, 80)}" asks, about ${shared}`,
+          ]
+        : [];
+    }),
+  );
 }
 
 // Class 4 for a fund's yearly cost (debug 3, 11-20): a ratio shown beside a fund's name or ticker
