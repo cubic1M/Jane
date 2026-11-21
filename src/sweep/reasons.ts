@@ -194,6 +194,10 @@ export const DATED: readonly Reason[] = [
     paths: /^chat\.what should I do first\./,
     on: daysAfter("linked", RESELECT_AFTER_DAYS),
   },
+  // The dock is a stack of what's open today (src/lib/jane-agent/popup-stack.ts): the day's picks,
+  // bills coming up, heads-ups. Each is held to its own reason where it's shown (suggestions., home.,
+  // chat.); in the dock a card moves when they do, and class 7 reads what it says (dockDoubles).
+  { name: "the dock's stack", paths: /^dock\./ },
   // A tree's count of what's urgent and what to look at moves with its items.
   {
     name: "a tree's items",

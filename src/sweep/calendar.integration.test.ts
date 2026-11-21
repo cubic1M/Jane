@@ -26,6 +26,7 @@ import { scanSuggestions } from "@/lib/suggestions";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import { atLocal, changes, daysFrom, unexplained, type Change, type Flat } from "./diff";
+import { dockDoubles } from "./invariants";
 import { DATED } from "./reasons";
 import { makePerson, UPLOADS, type OwnRows, type Who } from "./__fixtures__/people";
 import { snapshotAt } from "./snapshot";
@@ -217,6 +218,21 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
                   kind: "7pm vs 3pm",
                   ...c,
                 });
+              }
+              // Each morning's sync posts what it found at once (the 24/7 engine, src/lib/live/
+              // arrivals.ts): the dock keeps one card a merchant through it (#2153).
+              if (mode === "daily") {
+                for (const path of [...dockDoubles(afternoon), ...dockDoubles(evening)])
+                  mine.push({
+                    person: who,
+                    mode,
+                    window: window.name,
+                    day,
+                    kind: "one merchant, two dock cards",
+                    path,
+                    before: undefined,
+                    after: undefined,
+                  });
               }
               if (mode === "frozen" && yesterday && day > stale) {
                 for (const c of unexplained(day, changes(yesterday, afternoon), DATED, dates, {
