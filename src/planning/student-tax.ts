@@ -4,7 +4,7 @@ import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
-import { payForYear, payOnSchedule } from "@/profile/pay-on-schedule";
+import { payForYear, payInYearData } from "@/profile/pay-on-schedule";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
@@ -109,7 +109,8 @@ export function studentYearOf(
   // has it (src/profile/pay-on-schedule.ts): one month's file with three paychecks every two weeks
   // read "Income near $28,489.50" on the Saver's Credit, where the schedule says about $20,956
   // (debug 3, upload S5, 11-19). This year's months from January already hold every payday but one.
-  // A bonus from that employer isn't in its month: it's paid once, so the year adds it once.
+  // A bonus from that employer isn't in its month: it's paid once, so the year adds it once. A job
+  // whose first paycheck comes well after the data starts began then: its paid and paydays left.
   // In data from before January, the year so far is what was paid, each paycheck once, and the
   // rest of it the paydays each employer still paying has left by Dec 31 (payForYear): paced over
   // the months the data covers, 20 paychecks twice a month by Oct 23 read as 24.68 a year (gate C,
@@ -122,11 +123,16 @@ export function studentYearOf(
       const scheduled = Math.round((pay.paidCents + pay.leftCents) * DETECTOR_RATES.tax.netToGross);
       return { cents: (pay.covered.size > 0 ? scheduled : 0) + grossYear(rest), extra: 0 };
     }
-    const on = payOnSchedule(rows, last);
+    // A job that began after the data starts is what it paid and its paydays left (payInYearData).
+    const on = payInYearData(rows, last, `${year}-12-31`, first);
     const rest = sumCents(rows.filter((t) => !on.covered.has(t)));
     const extra = Math.round(on.extraCents * DETECTOR_RATES.tax.netToGross);
+    const started = Math.round(on.startedCents * DETECTOR_RATES.tax.netToGross);
     const month = on.monthCents + Math.round(rest / Math.max(1, span));
-    return { cents: Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) + extra, extra };
+    return {
+      cents: Math.round(month * 12 * DETECTOR_RATES.tax.netToGross) + started + extra,
+      extra,
+    };
   };
   const gig = data.transactions.filter(
     (t) =>

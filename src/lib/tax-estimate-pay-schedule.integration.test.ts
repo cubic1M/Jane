@@ -18,7 +18,16 @@ import { loadTaxEstimate } from "./tax-estimate";
 const url = process.env.TEST_DATABASE_URL;
 const DAY = 86_400_000;
 
-async function person(client: PrismaClient, email: string, first: string, pay: number[]) {
+async function person(
+  client: PrismaClient,
+  email: string,
+  first: string,
+  pay: number[],
+  [cents, description]: readonly [number, string] = [
+    -68_840,
+    "UC DAVIS PAYROLL PPD ID: 9460001234",
+  ],
+) {
   await client.user.deleteMany({ where: { email } });
   const userId = (await client.user.create({ data: { email, createdAt: new Date(first) } })).id;
   const checking = await client.account.create({
@@ -48,8 +57,8 @@ async function person(client: PrismaClient, email: string, first: string, pay: n
         accountId: checking.id,
         source: "plaid",
         date: new Date(d),
-        amountCents: -68_840,
-        description: "UC DAVIS PAYROLL PPD ID: 9460001234",
+        amountCents: cents,
+        description,
         pfcDetailed: "INCOME_SALARY",
       },
     });
@@ -65,6 +74,8 @@ describe.runIf(url)("the estimate's pay on its schedule", { timeout: 120_000 }, 
   let client: PrismaClient;
   let month: string;
   let year: string;
+  let started: string;
+  let fromStart: string;
 
   beforeAll(async () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
@@ -77,10 +88,40 @@ describe.runIf(url)("the estimate's pay on its schedule", { timeout: 120_000 }, 
     for (let d = Date.UTC(2025, 10, 14); d <= Date.UTC(2026, 10, 13); d += 14 * DAY)
       fridays.push(d);
     year = await person(client, "tax-pay-schedule-year-d2@example.com", "2025-11-14", fridays);
+    // A TA's statements from Jun 1: the first paycheck Oct 1, then twice a month (manager, 11-20).
+    const stanford = [-150_000, "STANFORD UNIV DES:PAYROLL ID:X"] as const;
+    const days = (list: string[]) => list.map((d) => Date.parse(`${d}T00:00:00Z`));
+    started = await person(
+      client,
+      "tax-pay-schedule-started-d2@example.com",
+      "2026-06-01",
+      days(["2026-10-01", "2026-10-15", "2026-10-30", "2026-11-13"]),
+      stanford,
+    );
+    fromStart = await person(
+      client,
+      "tax-pay-schedule-from-start-d2@example.com",
+      "2026-06-01",
+      days([
+        "2026-06-01",
+        "2026-06-15",
+        "2026-07-01",
+        "2026-07-15",
+        "2026-07-31",
+        "2026-08-14",
+        "2026-09-01",
+        "2026-09-15",
+        "2026-10-01",
+        "2026-10-15",
+        "2026-10-30",
+        "2026-11-13",
+      ]),
+      stanford,
+    );
   });
 
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: { in: [month, year] } } });
+    await client.user.deleteMany({ where: { id: { in: [month, year, started, fromStart] } } });
     await client.$disconnect();
   });
 
@@ -94,5 +135,14 @@ describe.runIf(url)("the estimate's pay on its schedule", { timeout: 120_000 }, 
     // 23 paychecks from Jan 9 to Nov 13, and Nov 27, Dec 11 and Dec 25 to come.
     expect(await wagesOn(client, year, "2026-11-20")).toBe(26 * 68_840);
     expect(await wagesOn(client, year, "2026-11-26")).toBe(26 * 68_840);
+  });
+
+  it("a job that began in the data: what it paid and its paydays left, as the tax cards read it", async () => {
+    // 4 paid, then Dec 1, Dec 15 and Jan 1's paid Dec 31 (student-year-job-starts.test.ts).
+    expect(await wagesOn(client, started, "2026-11-20")).toBe(7 * 150_000);
+  });
+
+  it("pay from the data's first days: a month of its schedule as a year", async () => {
+    expect(await wagesOn(client, fromStart, "2026-11-20")).toBe(2 * 150_000 * 12);
   });
 });

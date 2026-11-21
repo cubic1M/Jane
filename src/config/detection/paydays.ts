@@ -58,6 +58,11 @@ export const PAYDAY_GAP_DAYS = {
   SEMI_MONTHLY: 15,
   MONTHLY: 31,
 } as const;
+// A job whose first paycheck comes more than this many of its pay intervals (plus PAYDAY_POSTING_DAYS)
+// after the data starts began in the data, so its year is what it paid and the paydays it has left,
+// not a whole year of its schedule (src/profile/pay-on-schedule.ts): a TA's first paycheck on Oct 1
+// in statements from Jun 1 is about 6 paydays to Dec 31, not 24 (manager, 11-20).
+export const PAY_STARTED_IN_DATA_INTERVALS = 1;
 // A payday's deposit at least this share above the usual paycheck carries extra pay (a bonus), which
 // a month of pay leaves out and a year counts once (src/profile/pay-on-schedule.ts). Below it, a
 // raise or a longer week is the paycheck.
