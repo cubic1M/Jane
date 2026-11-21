@@ -204,11 +204,15 @@ export async function snapshotAt(
       premiums: ((asOfData) => policiesFromStreams(asOfData, buildStreams(asOfData)))({
         ...input,
         asOf: input.transactions.reduce((a, t) => (t.date > a ? t.date : a), "") || input.asOf,
-      }).map((f) => f.merchantKey),
+      })
+        .map((f) => f.merchantKey)
+        .sort(),
       onFile: (
         await scopedFor(userId, client).insurancePolicies.findMany({
           where: { merchantKey: { not: null } },
           select: { merchantKey: true },
+          // In one order, so two copies of a person read the same (./same-twice.ts).
+          orderBy: { merchantKey: "asc" },
         })
       ).map((p) => p.merchantKey),
     },
