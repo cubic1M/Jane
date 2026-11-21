@@ -36,8 +36,7 @@ describe.runIf(url)("one person made twice from the same data", () => {
 
   const own = (): OwnRows => ({
     person: (data) => client.user.create({ data }),
-    token: (id, accessTokenEncrypted) =>
-      client.plaidItem.update({ where: { id }, data: { accessTokenEncrypted } }),
+    item: (id, data) => client.plaidItem.update({ where: { id }, data }),
   });
 
   beforeAll(async () => {

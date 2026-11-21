@@ -26,7 +26,7 @@ import { scanSuggestions } from "@/lib/suggestions";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import { atLocal, changes, daysFrom, unexplained, type Change, type Flat } from "./diff";
-import { dockDoubles } from "./invariants";
+import { dockDoubles, unscheduledMonth } from "./invariants";
 import { DATED } from "./reasons";
 import { makePerson, UPLOADS, type OwnRows, type Who } from "./__fixtures__/people";
 import { snapshotAt } from "./snapshot";
@@ -77,6 +77,7 @@ const people: Who[] = (listed("SWEEP_PEOPLE") as Who[]) ?? [
   "upload",
   "two-uploads",
   "mid-start",
+  "linked-month",
 ];
 const windows = WINDOWS.filter((w) => listed("SWEEP_WINDOWS")?.includes(w.name) ?? true);
 const modes = (listed("SWEEP_MODES") as Mode[]) ?? ["frozen", "daily"];
@@ -96,8 +97,7 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
   // (./__fixtures__/people.ts).
   const own = (): OwnRows => ({
     person: (data) => client.user.create({ data }),
-    token: (id, accessTokenEncrypted) =>
-      client.plaidItem.update({ where: { id }, data: { accessTokenEncrypted } }),
+    item: (id, data) => client.plaidItem.update({ where: { id }, data }),
   });
 
   beforeAll(() => {
@@ -234,6 +234,20 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
                     after: undefined,
                   });
               }
+              // Before the data is stale a day can't be held to yesterday (figures end at today by
+              // design), but pay off any schedule is one month wherever it's said, every day (#2211:
+              // the profile's month drifted a day after the link while Home's held, sweep 13).
+              for (const path of [...unscheduledMonth(afternoon), ...unscheduledMonth(evening)])
+                mine.push({
+                  person: who,
+                  mode,
+                  window: window.name,
+                  day,
+                  kind: "pay off any schedule, two months",
+                  path,
+                  before: undefined,
+                  after: undefined,
+                });
               if (mode === "frozen" && yesterday && day > stale) {
                 for (const c of unexplained(day, changes(yesterday, afternoon), DATED, dates, {
                   before: yesterday,
