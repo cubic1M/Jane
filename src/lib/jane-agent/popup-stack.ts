@@ -2,9 +2,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
+import { scopedFor } from "@/lib/db-scoped";
 import { openPopupMessages, POPUP_LIMIT, stackedSuggestions } from "./messages";
 import { timezoneOf } from "@/lib/today";
 import { popupStack } from "./popups";
+import { saidByPicks } from "./same-matter";
+import type { ChatMessage } from "./types";
 import { stillTrue } from "./still-true";
 import { toView, type MessageView } from "./view";
 
@@ -14,12 +17,13 @@ export async function loadPopupStack(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<MessageView[]> {
-  const [suggestions, zone, others, concierge] = await Promise.all([
+  const [suggestions, zone, posted, concierge] = await Promise.all([
     stackedSuggestions(userId, { client, now }),
     timezoneOf(userId, { client }),
     openPopupMessages(userId, { client, now }),
     conciergeMode(userId, { client }),
   ]);
+  const others = await notAskedByPicks(userId, suggestions, posted, client);
   // Each card checked against the data now, and said as of today (./still-true.ts).
   const current = new Map(
     (await stillTrue(userId, [...suggestions, ...others], { client, now })).map((m) => [m.id, m]),
@@ -33,4 +37,34 @@ export async function loadPopupStack(
     ![...first, ...rest].some((m) => m.advice) || (await adviceMode(userId, { client }));
   const allowed = (list: MessageView[]) => (adviceAllowed ? list : list.filter((m) => !m.advice));
   return popupStack(allowed(first), allowed(rest), POPUP_LIMIT);
+}
+
+// A finding Jane posted that one of the day's picks already asks, the same matter about the same
+// merchant (./same-matter.ts), waits behind the pick: it's still open, and back once the pick goes.
+async function notAskedByPicks(
+  userId: string,
+  picks: readonly ChatMessage[],
+  posts: ChatMessage[],
+  client: PrismaClient,
+): Promise<ChatMessage[]> {
+  const keys = picks.flatMap((m) => m.refs.suggestion ?? []);
+  const findingIds = posts.flatMap((m) => m.refs.findingId ?? []);
+  if (keys.length === 0 || findingIds.length === 0) return posts;
+  const db = scopedFor(userId, client);
+  const [rows, findings] = await Promise.all([
+    db.suggestions.findMany({ where: { key: { in: keys } }, select: { topic: true, watch: true } }),
+    db.findings.findMany({
+      where: { id: { in: findingIds } },
+      select: { id: true, type: true, evidence: true },
+    }),
+  ]);
+  const said = saidByPicks(
+    rows,
+    findings.map((f) => ({
+      id: f.id,
+      type: f.type,
+      merchant: (f.evidence as { merchant?: unknown } | null)?.merchant,
+    })),
+  );
+  return posts.filter((m) => !said.has(m.refs.findingId ?? ""));
 }
