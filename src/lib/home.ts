@@ -3,6 +3,7 @@ import { staleBalanceFrom } from "@/detection/forecast";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { COMING_UP_DAYS, COMING_UP_LIMIT } from "@/config/home";
+import { BALANCE_ROLL_MAX_DAYS } from "@/config/detection";
 import { PLAN_SHOWN } from "@/config/areas";
 import { groupsCountedElsewhere, planTotal } from "@/detection/overlap";
 import { budgetSummary } from "@/insights/budgets";
@@ -199,7 +200,14 @@ export async function homeSummary(
       deadlines,
       // How much history there is to see bills in (src/lib/hub/view.ts cashFlowView).
       historyDays: historyDaysOf(input),
-      statementsEnd: staleStatementsEnd(lastDay ? new Date(`${lastDay}T00:00:00Z`) : null, asOf),
+      // Where the statements end, from the day pay from them is no longer expected (BALANCE_ROLL_MAX_DAYS,
+      // src/detection/paydays.ts): their bills with no pay beside them would read as a shortfall that
+      // isn't there (manager, 11-20). The cards still wait for STALE_UPLOAD_DAYS.
+      statementsEnd: staleStatementsEnd(
+        lastDay ? new Date(`${lastDay}T00:00:00Z`) : null,
+        asOf,
+        BALANCE_ROLL_MAX_DAYS,
+      ),
     },
     lastUpdated: updated ?? null,
     // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
