@@ -945,6 +945,13 @@ async function syncItemWork(
     // those are worked out first, right after detection and before the slow sector work. Never
     // the old, generic brief for someone whose first scan is running. A problem here falls
     // back to the findings alone.
+    // Insurers in the payments join the profile first, as a later sync does, so the first cards
+    // read them and the scan never ends short of what its rows show (debug 2, sweep 12).
+    await policiesFromPayments(item.userId, { client, now }).catch((error) =>
+      log.error("Finding policies from payments in the first scan failed", {
+        error: String(error),
+      }),
+    );
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       log.error("The first scan's suggestions failed", { error: String(error) }),
     );
@@ -960,17 +967,22 @@ async function syncItemWork(
     await markScanDone(item.userId, { client, now }).catch((error) =>
       log.error("Marking the scan done failed", { error: String(error) }),
     );
-  } else if (result.added + result.updated + result.removed > 0) {
+  } else {
+    // Insurers in the payments join the profile on every later sync, whether or not it changed
+    // anything: Jane's run below adds them too, but says nothing in quiet hours (debug 2, 11-20 at
+    // 06:01: Bills had "Progressive Insurance $154.99" while Insurance said car cover was "Not on
+    // file"), and a link left short of what its rows show was never repaired by a refresh that
+    // brought nothing new (debug 2, sweep 12: 2 of 4 links of one sandbox person). Idempotent.
+    await policiesFromPayments(item.userId, { client, now }).catch((error) =>
+      log.error("Finding policies from payments after a sync failed", { error: String(error) }),
+    );
+  }
+  if (!(progressive && result.firstSync) && result.added + result.updated + result.removed > 0) {
     // A later sync that changed transactions rescans the suggestions, as an upload does
     // (src/lib/import/background.ts): Plaid sends a new link's older history after its first 30
     // days, and the day's cards kept "3 accounts in 1 month of data" and "could drop to -$272.26
     // … if no pay comes in" until the night's run, though the paydays had come in (debug 2, 11-16).
-    // Insurers in the payments join the profile first, so the rescan reads them: Jane's run
-    // below adds them too, but says nothing in quiet hours (debug 2, 11-20 at 06:01: Bills had
-    // "Progressive Insurance $154.99" while Insurance said car cover was "Not on file").
-    await policiesFromPayments(item.userId, { client, now }).catch((error) =>
-      log.error("Finding policies from payments after a sync failed", { error: String(error) }),
-    );
+    // The insurers above are in by now, so the rescan reads them.
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       log.error("Rescanning the suggestions after a sync failed", { error: String(error) }),
     );
