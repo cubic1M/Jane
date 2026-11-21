@@ -491,6 +491,11 @@ async function putAway(
         status: "answered",
         answeredAt: now,
         actions: m.actions.filter((a) => a.kind === "link") as Prisma.InputJsonArray,
+        // A tight month's plan put away because its shortfall went can come back, once, when one
+        // returns that month for the same request: the brain and postMessages let a key through
+        // once its snooze is over (debug 3, 11-21: its dedupeKey, tight:<month>:<item>, kept a
+        // returning shortfall from ever being said).
+        ...(m.refs.tightItem ? { snoozedUntil: now } : {}),
       },
     });
     count += result.count;
