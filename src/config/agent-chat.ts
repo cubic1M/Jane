@@ -75,7 +75,9 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
-// 8am, unless the person opens the chat themselves.
+// 8am, unless the person opens the chat themselves. The daily run's cron hour (vercel.json) must
+// be outside them in every timezone offered, all year: checked by
+// src/lib/jane-agent/daily-run-schedule.test.ts.
 export const QUIET_START_HOUR = 21;
 export const QUIET_END_HOUR = 8;
 

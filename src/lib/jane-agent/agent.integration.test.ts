@@ -30,7 +30,8 @@ import { stubTestKeys } from "@/lib/__fixtures__/env";
 // only on the person's own open message.
 
 const url = process.env.TEST_DATABASE_URL;
-// 8am in Los Angeles (the default timezone): after quiet hours.
+// 8am in Los Angeles (the default timezone), just after quiet hours, because it's on daylight
+// time (UTC-7) in October. In winter 15:00 UTC is 7am there, still quiet: winter dates need 16:00.
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const SECOND = 1000;
 const HOUR = 60 * 60 * SECOND;
