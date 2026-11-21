@@ -1,5 +1,11 @@
-import { PAY_EXTRA_MIN_SHARE, PAYCHECKS_PER_MONTH, PAYDAY_POSTING_DAYS } from "@/config/detection";
-import { addDays } from "@/lib/dates";
+import {
+  PAY_EXTRA_MIN_SHARE,
+  PAY_STARTED_IN_DATA_INTERVALS,
+  PAYCHECKS_PER_MONTH,
+  PAYDAY_GAP_DAYS,
+  PAYDAY_POSTING_DAYS,
+} from "@/config/detection";
+import { addDays, daysBetween } from "@/lib/dates";
 import { inLookback } from "@/detection/helpers";
 import {
   paychecksByEmployer,
@@ -103,6 +109,51 @@ export function payForYear(
     leftCents,
     covered,
   };
+}
+
+// A year of pay from employers on a schedule, in data that starts this year at `dataFrom`. An employer
+// paying from the data's start is a month of its schedule as a year (payOnSchedule's month, x12, and
+// its extra pay once): Jane can't see when that job began. One whose first paycheck comes more than
+// PAY_STARTED_IN_DATA_INTERVALS of its pay intervals after the data starts began in the data, so its
+// year is what it paid and the paydays it has left through `yearEnd`, as payForYear counts them: a
+// first paycheck on Oct 1 twice a month in statements from Jun 1 is about 6 paydays to Dec 31, not
+// 24 (manager, 11-20). The tax cards (studentYearOf) and the federal estimate (scheduledTakeHome) read
+// it, so they read one year. `covered` is the lines it counted. Pure.
+export function payInYearData(
+  lines: readonly ProfileTx[],
+  asOf: string,
+  yearEnd: string,
+  dataFrom: string,
+): { monthCents: number; startedCents: number; extraCents: number; covered: Set<ProfileTx> } {
+  const input = inputOf(lines, asOf);
+  const groups = new Map(paychecksByEmployer(input).map((g) => [`employer:${g.key}`, g]));
+  const recent = new Set(inLookback(input).map((t) => t.id));
+  const covered = new Set<ProfileTx>();
+  let monthCents = 0;
+  let startedCents = 0;
+  let extraCents = 0;
+  for (const schedule of paySchedules(input)) {
+    const group = groups.get(schedule.key);
+    if (!schedule.active || !group) continue;
+    for (const t of group.deposits) covered.add(lines[Number(t.id)]!);
+    const paycheckCents = usualPaycheck(group.deposits, recent);
+    const started =
+      daysBetween(dataFrom, group.deposits[0]!.date) >
+      PAYDAY_GAP_DAYS[schedule.frequency] * PAY_STARTED_IN_DATA_INTERVALS + PAYDAY_POSTING_DAYS;
+    if (started) {
+      const left = schedulePaydays(
+        schedule,
+        addDays(schedule.lastDate, PAYDAY_POSTING_DAYS + 1),
+        yearEnd,
+      ).length;
+      startedCents +=
+        group.deposits.reduce((sum, t) => sum - t.amountCents, 0) + left * paycheckCents;
+    } else {
+      monthCents += Math.round(paycheckCents * PAYCHECKS_PER_MONTH[schedule.frequency]);
+      extraCents += extraPay(schedule, group.deposits, paycheckCents);
+    }
+  }
+  return { monthCents, startedCents, extraCents, covered };
 }
 
 function inputOf(lines: readonly ProfileTx[], asOf: string): DetectionInput {
