@@ -18,10 +18,13 @@ import { suggestionCard } from "./sources/suggestions";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 import { loadChanges } from "@/lib/changes";
+import { dayLabel } from "@/lib/day-label";
+import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
 import { loadComingUp } from "@/lib/coming-up";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { findingFingerprint } from "./fingerprint";
+import { firstUnsent, tightPlanBody } from "./tight-money-replies";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { findingSure } from "@/lib/report-state";
 
@@ -84,6 +87,8 @@ type Facts = {
   // The topics of the suggestions the last scans offered (answered or not), when a card here is
   // about a finding: a suggestion on a finding's type already brings that finding up.
   suggestionTopics: Set<string> | null;
+  // The tight month's plan as it is today, when a card here is one (./sources/tight-money.ts).
+  tight: TightMoney | null;
   // The plan as /plan has it now, for the week's plan card; null when no card here is one.
   plan: { now: Snapshot["plan"]; concierge: boolean } | null;
 };
@@ -190,8 +195,10 @@ async function factsFor(
     m.refs.findingId && m.refs.fingerprint ? [m.refs.findingId] : [],
   );
   const withPlan = messages.some((m) => m.refs.weekStart !== undefined);
+  const withTight = messages.some((m) => m.refs.tightItem !== undefined);
   if (
     !withPlan &&
+    !withTight &&
     !withDeadlines &&
     !withChanges &&
     !withGaps &&
@@ -202,7 +209,7 @@ async function factsFor(
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals, insurance, findings, plan, offered] =
+  const [coming, changes, suggestions, proposals, insurance, findings, plan, offered, tight] =
     await Promise.all([
       withDeadlines ? comingUp(userId, client, now) : null,
       withChanges ? loadChanges(userId, { client, now }) : null,
@@ -248,6 +255,7 @@ async function factsFor(
       findingIds.length > 0 || proposalKeys.some((k) => k.startsWith("goal:"))
         ? offeredTopics(userId, { client, now })
         : null,
+      withTight ? loadTightMoney(userId, { client, now }) : null,
     ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
@@ -288,6 +296,7 @@ async function factsFor(
       ),
     suggestionTopics: offered,
     plan,
+    tight,
   };
 }
 
@@ -344,6 +353,27 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   if (m.refs.weekStart !== undefined && facts.plan) {
     const { now, concierge } = facts.plan;
     return now.items === 0 ? null : { ...m, body: planWords(now, concierge) };
+  }
+  // The tight month's plan is said from today's forecast (debug 3, 11-21: a linked month's dock said
+  // "forecast to be down to $56.46 on Dec 12" until Dec 20). It goes once there's no shortfall, its
+  // request isn't the next to send, or the shortfall is in another month, whose card is its own. A
+  // card from before it kept its day stays only while it names today's shortfall day.
+  if (m.refs.tightItem && facts.tight) {
+    const { shortfall } = facts.tight;
+    const next = firstUnsent(facts.tight);
+    const was = m.refs.tightItem.shortfallOn;
+    if (!shortfall || !next || next.id !== m.refs.tightItem.id) return null;
+    if (
+      was
+        ? was.slice(0, 7) !== shortfall.date.slice(0, 7)
+        : !m.body.includes(dayLabel(shortfall.date))
+    )
+      return null;
+    return {
+      ...m,
+      body: tightPlanBody(facts.tight, next),
+      refs: { ...m.refs, tightItem: { id: next.id, shortfallOn: shortfall.date } },
+    };
   }
   if (insuranceGap && facts.gaps && !facts.gaps.has(insuranceGap)) return null;
   const finding = m.refs.findingId ? facts.findings?.get(m.refs.findingId) : undefined;

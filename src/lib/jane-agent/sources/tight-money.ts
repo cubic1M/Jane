@@ -1,6 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { dayLabel } from "@/lib/day-label";
-import { TIGHT_PAGE, billLines, firstUnsent, sendButton, shortLine } from "../tight-money-replies";
+import { TIGHT_PAGE, firstUnsent, sendButton, tightPlanBody } from "../tight-money-replies";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
@@ -17,13 +17,8 @@ export const tightMoneySource: MessageSource = {
     if (data.shortfall && next) {
       out.push({
         kind: "decision",
-        body: [
-          shortLine(data)!,
-          "Pay these first, essentials before anything else:",
-          ...billLines(data, 4),
-          `To ease it: ${next.label.charAt(0).toLowerCase()}${next.label.slice(1)}. I've written the request; nothing is sent until you tap.`,
-        ].join("\n"),
-        refs: { advice: true, tightItem: { id: next.id } },
+        body: tightPlanBody(data, next),
+        refs: { advice: true, tightItem: { id: next.id, shortfallOn: data.shortfall.date } },
         actions: [sendButton(next.label), TIGHT_PAGE, snoozeButton()],
         dedupeKey: `tight:${data.shortfall.date.slice(0, 7)}:${next.id}`,
         priority: MESSAGE_PRIORITY.tight_plan,
