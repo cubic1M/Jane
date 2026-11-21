@@ -8,6 +8,7 @@ import { withAreaStatus } from "@/lib/hub/area-status";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { loadStudentLoans } from "@/lib/student-loans";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { loadBnpl } from "@/lib/bnpl";
 import { forecastAccounts } from "@/detection/forecast";
@@ -99,6 +100,12 @@ export async function snapshotAt(
   const bnpl = await loadBnpl(userId, { client, now, input });
   chat[CASH_QUESTION] = cashReply(cash);
   const trees = await loadAreaTrees(userId);
+  // The page the student loan card opens (/loans/student): the year of pay its plans use and what
+  // each income-driven plan asks a month. Class 4 holds the card's figures to it (./invariants.ts).
+  const student = await loadStudentLoans(userId, { client, now });
+  const studentPlans = Object.fromEntries(
+    (student.comparison?.results ?? []).map((r) => [r.plan, r.monthlyNowCents]),
+  );
   // Income as the profile has it a month, as the chat gives it, and as the tax cards read the year
   // (yearIncomeOf), and whether the year is that same pay: every deposit is pay, from this year,
   // with no gig pay or fellowship (class 4, src/sweep/invariants.ts sameFigures).
@@ -133,6 +140,7 @@ export async function snapshotAt(
     tiles: areas ? withAreaStatus(tilesView(areas), trees) : null,
     trees,
     netWorth: worth === null ? null : await netWorthHistory(userId, worth, { client, now }),
+    loansStudent: student.loan ? { agiCents: student.agiCents, plans: studentPlans } : null,
     chat,
     decides: {
       checkingAsShown: statementCents,

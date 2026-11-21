@@ -14,8 +14,10 @@ import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { parseMoneyToCents } from "@/lib/money";
+import { loadProfile } from "@/lib/profile";
 import {
   compareStudentPlans,
+  incomeYearWithoutPaychecks,
   paycheckYearCents,
   PLAN_DEFAULTS,
   type StudentComparison,
@@ -53,10 +55,11 @@ export type StudentLoans = {
   loan: Debt | null;
   profile: StudentProfile;
   // The income the plans use, and whether the person gave it, Jane estimated it from paychecks
-  // (take-home pay, so a low estimate; the tax return's AGI is what counts), or Jane saw no
-  // paychecks at all, so the $0 is unknown, not an estimate.
+  // (take-home pay, so a low estimate; the tax return's AGI is what counts), from the income it
+  // sees with no paychecks (a contractor or a pension, as the student loan card reads it), or
+  // Jane saw no income at all, so the $0 is unknown, not an estimate.
   agiCents: number;
-  agiFrom: "you" | "paychecks" | "none";
+  agiFrom: "you" | "paychecks" | "income" | "none";
   comparison: StudentComparison | null;
   // Forgiveness tracking: payments Jane saw (one a month) and the total counted.
   paymentsSeen: number;
@@ -125,15 +128,27 @@ export async function loadStudentLoans(
       .filter((d) => d.kind === "student" && (d.balanceCents ?? 0) > 0 && d.aprBps !== null)
       .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ?? null;
   // No pay seen isn't an income of $0 (Plaid sandbox walk, 11-17: "$0.00 a year (estimated from
-  // your paychecks)" with none in the accounts, and IBR at $0 a month).
+  // your paychecks)" with none in the accounts, and IBR at $0 a month). Someone paid as a contractor
+  // or a pension has one, as the student loan card reads it (incomeYearWithoutPaychecks).
+  const incomeYear =
+    profile.agiCents === null && (pay._sum.amountCents ?? 0) === 0
+      ? incomeYearWithoutPaychecks((await loadProfile(userId, { client, now })).facts)
+      : null;
   const agiFrom =
-    profile.agiCents !== null ? "you" : (pay._sum.amountCents ?? 0) !== 0 ? "paychecks" : "none";
+    profile.agiCents !== null
+      ? "you"
+      : (pay._sum.amountCents ?? 0) !== 0
+        ? "paychecks"
+        : incomeYear !== null
+          ? "income"
+          : "none";
   // A year's pay: under a year of statements, the paychecks paced over the days they cover.
   const coveredDays =
     seen._min.date && seen._max.date
       ? Math.round((seen._max.date.getTime() - seen._min.date.getTime()) / DAY_MS) + 1
       : 365;
-  const agiCents = profile.agiCents ?? paycheckYearCents(pay._sum.amountCents ?? 0, coveredDays);
+  const agiCents =
+    profile.agiCents ?? incomeYear ?? paycheckYearCents(pay._sum.amountCents ?? 0, coveredDays);
   // One qualifying payment a month at most.
   const paymentsSeen = new Set(payments.map((p) => p.date.toISOString().slice(0, 7))).size;
   const paymentsCounted = profile.countedBefore + paymentsSeen;

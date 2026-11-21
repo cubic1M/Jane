@@ -132,7 +132,9 @@ async function StudentContent({
                 ? "(the income you gave)"
                 : data.agiFrom === "paychecks"
                   ? "(estimated from your paychecks: give your tax return's income below for a closer number)"
-                  : "(no paychecks seen in your accounts, so this isn't your income: give your tax return's income below)"}
+                  : data.agiFrom === "income"
+                    ? "(estimated from the income in your accounts, with no paychecks: give your tax return's income below for a closer number)"
+                    : "(no paychecks seen in your accounts, so this isn't your income: give your tax return's income below)"}
               , income unchanged.
             </p>
             <table className="w-full text-left text-sm">

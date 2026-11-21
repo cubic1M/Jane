@@ -283,7 +283,9 @@ export function studentToolOutput(data: StudentLoans, money: (cents: number) => 
         ? "the person gave it"
         : data.agiFrom === "paychecks"
           ? "estimated from paychecks (take-home)"
-          : "unknown: no paychecks seen, so the plans use $0; ask for their tax return's income",
+          : data.agiFrom === "income"
+            ? "estimated from the income in their accounts (no paychecks)"
+            : "unknown: no paychecks seen, so the plans use $0; ask for their tax return's income",
     plans: data.comparison.results.map((r) => ({
       plan: PLAN_NAMES[r.plan],
       monthlyNow: money(r.monthlyNowCents),

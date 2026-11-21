@@ -7,7 +7,11 @@ import { formatCents } from "@/lib/money";
 import type { Profile, ProfileTx } from "@/profile/build";
 import { median } from "@/detection/units";
 import { addonCandidates, refundFor } from "@/planning/car-loan";
-import { lowestIncomeDrivenCents, paycheckYearCents } from "@/planning/student-loans";
+import {
+  incomeYearWithoutPaychecks,
+  lowestIncomeDrivenCents,
+  paycheckYearCents,
+} from "@/planning/student-loans";
 import { type Detector, suggestion } from "./contract";
 import {
   evidence,
@@ -81,9 +85,9 @@ const studentRepayment: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
     const owed = balanceOf(data.accounts, "student");
     if (payments.length < D.studentPaymentsMin || owed <= 0) return null;
-    // No paychecks (someone paid as a contractor): the year of income the profile sees.
+    // No paychecks: a contractor's or a pension's year of income, as /loans/student reads it.
     const pay = paycheckYear(data);
-    const agi = pay > 0 ? pay : income(profile) * 12;
+    const agi = pay > 0 ? pay : (incomeYearWithoutPaychecks(profile.facts) ?? 0);
     if (agi <= 0) return null;
     const monthly = monthlyPaymentOf(payments);
     const loan = data.liabilities.find((l) => l.kind === "student" && l.aprBps !== null);

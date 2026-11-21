@@ -343,6 +343,31 @@ export function sameFigures(flat: Flat): string[] {
       flat["trees.money.tree.branches.have.items.have:net-worth.figure"],
     ],
   ]);
+  // A card says what the page it opens says. The student loan card's "the lowest income-driven plan
+  // at about $Y a year of pay would ask about $X a month" is /loans/student's year of pay and its
+  // lowest of IBR and RAP (debug 2, sweep 7, 11-18: the card said $139.98, the page RAP $41.36).
+  const plans = ["ibr", "rap"]
+    .map((p) => flat[`loansStudent.plans.${p}`])
+    .filter((c): c is number => typeof c === "number");
+  if (plans.length > 0) {
+    const cards = shownTexts(flat).flatMap(([path, text]) => {
+      const m =
+        /lowest income-driven plan at about (\$[\d,]+\.\d{2}) a year of \w+ would ask about (\$[\d,]+\.\d{2}) a month/.exec(
+          text,
+        );
+      return m ? [{ path, year: m[1], month: m[2] }] : [];
+    });
+    check(
+      "/loans/student's year of pay",
+      flat["loansStudent.agiCents"],
+      cards.map((c): [string, unknown] => [`${c.path} (year)`, c.year]),
+    );
+    check(
+      "/loans/student's lowest income-driven plan a month",
+      Math.min(...plans),
+      cards.map((c): [string, unknown] => [`${c.path} (a month)`, c.month]),
+    );
+  }
   check("safe to spend", flat["home.summary.safeToSpend.safeCents"], [
     [
       "home.hero.safe.cents",
