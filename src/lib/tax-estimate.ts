@@ -43,6 +43,7 @@ import {
   payFromStubs,
   payFromYtd,
   projectOther,
+  scheduledTakeHome,
   takeHomePay,
   taxPaymentsFor,
   propertyTaxFor,
@@ -417,11 +418,17 @@ async function loadTaxEstimateFrom(
         { date: t.date, label: formPayer(t.merchantName ?? t.description) },
       ]),
   );
-  const { soFarCents: takeHome, projectedCents: takeHomeProjected } = takeHomePay(
-    [...paychecks, ...bonuses],
+  // Pay from an employer on a schedule is the year its schedule makes, as the tax cards read it
+  // (scheduledTakeHome); the rest is paced.
+  const scheduled =
+    elapsed > 0 && elapsed < 1 ? scheduledTakeHome(paychecks, year, firstSeen, dataEnds) : null;
+  const unscheduled = takeHomePay(
+    [...paychecks.filter((t) => !scheduled?.covered.has(t)), ...bonuses],
     elapsed,
     (description) => stoppedPay.has(payerKeyOf(description)),
   );
+  const takeHome = unscheduled.soFarCents + (scheduled?.soFarCents ?? 0);
+  const takeHomeProjected = unscheduled.projectedCents + (scheduled?.yearCents ?? 0);
   if (pay.source === "none" && elapsed < 1) {
     for (const { date, label } of stoppedPay.values()) {
       assumptions.push(

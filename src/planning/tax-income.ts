@@ -13,6 +13,8 @@ import { DAY_MS, daysBetween } from "@/lib/dates";
 import { DATA_ENDED_DAYS } from "@/config/import";
 import { ONE_OFF_PAY } from "@/config/profile";
 import { IRA_DISTRIBUTION, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
+import { payForYear, payOnSchedule } from "@/profile/pay-on-schedule";
+import type { ProfileTx } from "@/profile/build";
 
 // The year's income for the tax estimate (spec step 120): so far, from the person's
 // transactions and pay stubs, and projected to the end of the year at the same pace. Pure;
@@ -287,6 +289,59 @@ export function otherIncomeSoFar(
     rentalCents: money(categories("rental")),
     retirementCents: money(categories("retirement"), (t) => !ownLine(t)),
     unemploymentCents: money(categories("unemployment")),
+  };
+}
+
+// Take-home pay from employers on a schedule, for the year in progress: the year the tax cards'
+// "income near" reads (studentYearOf, src/planning/student-tax.ts) before its gross-up. With data from
+// before January, each paycheck paid this year once and the paydays each employer still paying has
+// left by Dec 31 (payForYear); with data that starts this year, a month of each one's schedule as a
+// year, and pay over the usual paycheck once (payOnSchedule). Paced over the share of the year the
+// data covers instead, the paydays a window happened to hold set the year, and on a linked bank it
+// fell each day between paydays: three paychecks of $688.40 every two weeks in a month read as
+// $21,537.09 of pay on Nov 20 and $18,385.32 on Nov 26, where the schedule says $17,898.36 (debug 2,
+// desktop sweep 11, upload S5: federal $1,088 against about $243). `covered` is the paychecks it
+// counted; the rest are left to takeHomePay. Pure.
+export function scheduledTakeHome<
+  T extends {
+    date: string;
+    amountCents: number;
+    description: string;
+    merchantName?: string | null;
+    pfcDetailed: string | null;
+  },
+>(
+  paychecks: readonly T[],
+  year: number,
+  firstSeen: string | null,
+  dataEnds: string,
+): { soFarCents: number; yearCents: number; covered: Set<T> } {
+  const lines: ProfileTx[] = paychecks.map((t) => ({
+    date: t.date,
+    amountCents: t.amountCents,
+    description: t.description,
+    merchantName: t.merchantName ?? null,
+    pfc: t.pfcDetailed,
+    accountId: "",
+  }));
+  const back = (covered: ReadonlySet<ProfileTx>) =>
+    new Set(paychecks.filter((_, i) => covered.has(lines[i]!)));
+  if (lines.length === 0 || !dataEnds) return { soFarCents: 0, yearCents: 0, covered: new Set() };
+  if (firstSeen !== null && firstSeen < `${year}-01-01`) {
+    const pay = payForYear(lines, lines, dataEnds, `${year}-12-31`);
+    return {
+      soFarCents: pay.paidCents,
+      yearCents: pay.paidCents + pay.leftCents,
+      covered: back(pay.covered),
+    };
+  }
+  const on = payOnSchedule(lines, dataEnds);
+  const covered = back(on.covered);
+  const soFarCents = [...covered].reduce((s, t) => s - t.amountCents, 0);
+  return {
+    soFarCents,
+    yearCents: covered.size > 0 ? on.monthCents * 12 + on.extraCents : 0,
+    covered,
   };
 }
 
