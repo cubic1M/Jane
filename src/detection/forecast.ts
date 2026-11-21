@@ -150,6 +150,11 @@ function monthsSeen(input: DetectionInput, accountId: string): number {
   return monthsBetweenLines(first > since ? first : since, newest);
 }
 
+// The months that figure is a month of, as Home says it: the lookback, or the account's history
+// when that's shorter (debug 3, 11-21: Home's "about this a month" beside the chat's year-long month
+// for a freelancer, $8,461.89 against $5,868.06, two windows with neither said).
+export const unevenPayMonths = monthsSeen;
+
 export function unevenPay(input: DetectionInput, accountId: string): number | null {
   if (nextPayday(input, FORECAST_DAYS)) return null;
   // Data this old expects no payday because it's old, not because the pay is uneven.

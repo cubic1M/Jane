@@ -116,9 +116,12 @@ describe("the hero row", () => {
 
   it("says when a shortfall counts no pay, because the pay is uneven", () => {
     const short = { ...hero().safe!, payday: null, safeCents: -5_000 };
-    const { safe } = heroView(hero({ safe: { ...short, unevenPayMonthlyCents: 297_500 } }));
+    const { safe } = heroView(
+      hero({ safe: { ...short, unevenPayMonthlyCents: 297_500, unevenPayMonths: 3 } }),
+    );
     expect(safe?.why.at(-1)).toEqual({
-      label: "Not counted: your pay, which has no set schedule yet, about this a month",
+      label:
+        "Not counted: your pay, which has no set schedule yet, about this a month over the last 3 months",
       sign: "",
       cents: 297_500,
     });
