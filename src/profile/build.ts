@@ -41,6 +41,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { insurerKind } from "@/insights/found-policies";
 import { lifeEventGuesses } from "@/insights/life-signals";
 import type { DetectionInput } from "@/detection/types";
+import { monthsBetweenLines } from "@/detection/units";
 import {
   CAR_SIGNAL,
   KIDS_SIGNALS,
@@ -395,6 +396,18 @@ export function monthsForRate(txs: readonly ProfileTx[], today: string): number 
   return Math.max(1, (days + 1) / (365.25 / 12));
 }
 
+// The months pay off any schedule is spread over: a short history's span between its first and newest
+// lines (monthsBetweenLines, as Home's "about this a month" reads it), never to today, so with no new
+// data the month holds still (debug 2, sweep 13: $1,376.80 on Nov 20, $1,351.82 on Nov 21); a year or
+// more, the calendar count as other rates.
+export function payMonths(txs: readonly ProfileTx[], today: string): number {
+  const whole = monthsOfData(txs, today);
+  if (whole === 0 || whole >= PROFILE_MONTHS) return Math.max(1, whole);
+  const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
+  const newest = txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), first);
+  return monthsBetweenLines(first, newest);
+}
+
 // The year that ends at the newest line, never after today. Ending it at today lost a day: data
 // that runs to yesterday (a bank's usual) left out last year's payday on the day this year's is
 // due and not in yet, so pay read 23 paychecks a year, not 24 (debugger 11-15: the demo person's
@@ -608,7 +621,7 @@ function incomeFacts(b: Builder) {
       ? 0
       : stoppedPaying.size > 0
         ? Math.round((lately * 30) / EARNER_ACTIVE_DAYS)
-        : onSchedule.monthCents + Math.round(offSchedule / monthsForRate(txs, today));
+        : onSchedule.monthCents + Math.round(offSchedule / payMonths(txs, today));
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
   const paySchedules = bySchedule && income.length > 0 ? onSchedule.schedules : [];

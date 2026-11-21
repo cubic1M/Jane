@@ -122,7 +122,8 @@ describe("a low balance for someone paid at uneven times", () => {
       "Everyday Checking could drop to -$48.00 around Nov 1 if no pay comes in",
     );
     expect(finding.confidence).toBe("low");
-    expect(finding.evidence.unevenPayMonthlyCents).toBe(Math.round(893_000 / 3));
+    // The lookback's 90 days between lines, as every month of uneven pay is (monthsBetweenLines).
+    expect(finding.evidence.unevenPayMonthlyCents).toBe(Math.round(893_000 / (90 / (365.25 / 12))));
   });
 
   it("stays as it was with no pay at all coming in", () => {

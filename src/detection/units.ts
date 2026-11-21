@@ -1,4 +1,4 @@
-import { addDays, isoDay as isoDate } from "@/lib/dates";
+import { addDays, daysBetween, isoDay as isoDate } from "@/lib/dates";
 
 // Unit conversions and date math. These are facts about calendars, not tunable
 // thresholds, so they live here rather than in src/config/detection.ts.
@@ -15,6 +15,15 @@ function toUtc(date: string): number {
 
 // The same day math as src/lib/dates.ts, under the names the detectors use.
 export { addDays, daysBetween, isoDay as isoDate } from "@/lib/dates";
+
+// The months a history spans for pay too sparse for a schedule, from its first line to its newest:
+// at least one. Counted between lines, never to today, so with no new data it holds still: two
+// paychecks every two weeks read $1,376.80 a month on Nov 20 and $1,351.82 on Nov 21 on the profile
+// while Home's line read $1,377 (debug 2, sweep 13). Home, the profile, the tax cards and the federal
+// estimate all spread such pay over this.
+export function monthsBetweenLines(first: string, newest: string): number {
+  return Math.max(1, (daysBetween(first, newest) + 1) / DAYS_PER_MONTH);
+}
 
 export function monthsBefore(date: string, months: number): string {
   const d = new Date(toUtc(date));
