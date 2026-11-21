@@ -320,7 +320,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
           shortHistory: tooLittle(home.cashFlow.historyDays),
         });
       }
-      return safeReply(null, asOf, { statementsEnd: await statementsEndOf(userId, client, asOf) });
+      // Where the statements end from the day safe to spend stops walking them to today, not a
+      // request for a balance (manager, 11-20).
+      return safeReply(null, asOf, {
+        statementsEnd: await statementsEndOf(userId, client, asOf, BALANCE_ROLL_MAX_DAYS),
+      });
     }
     case "paycheck": {
       const plan = await latestPaycheckPlan(userId, { client, now });

@@ -548,8 +548,12 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     const d = daysBetween(input.asOf, date);
     return d >= 0 && d <= days;
   };
-  const bills = input.bills.filter((b) => inWindow(b.date));
-  const pays = input.deposits.filter((p) => inWindow(p.date));
+  // Statements too old to say what's due now (statementsEnd) list nothing as coming up: it says where
+  // they end instead, as Home does once they're older still.
+  const listed = <T extends { date: string }>(list: readonly T[]) =>
+    input.statementsEnd ? [] : list.filter((x) => inWindow(x.date));
+  const bills = listed(input.bills);
+  const pays = listed(input.deposits);
   const maxBill = Math.max(1, ...bills.map((b) => b.amountCents));
   const maxPay = Math.max(1, ...pays.map((p) => p.amountCents));
   const events: CashEvent[] = [
@@ -573,8 +577,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       weight: p.amountCents / maxPay,
       href: shownHref("/transfers"),
     })),
-    ...input.deadlines
-      .filter((d) => inWindow(d.date))
+    ...listed(input.deadlines)
       // A deadline about a bill already on the strip (same day, its name) is that bill.
       .filter(
         (d) =>

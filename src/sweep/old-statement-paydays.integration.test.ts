@@ -144,23 +144,22 @@ describe.runIf(url)("an S7-shaped statement read long after it ends", () => {
     ["2026-12-05", 46],
     ["2027-05-08", 200],
   ] as const) {
-    it(`${days} days on: no payday and no safe to spend as if current`, async () => {
+    it(`${days} days on: no payday, bill or safe to spend as if current`, async () => {
       const r = await read(day);
       expect(r.safe).toBeNull();
       expect(r.tile).toBeNull();
       expect(r.income).toEqual([]);
-      expect(r.strip.events.filter((e) => e.kind === "pay")).toEqual([]);
       expect(r.paid).toBe(OLD);
-      expect(r.safeChat).not.toMatch(/\$[\d,]+\.\d{2} safe to spend/);
-      if (days > 45) {
-        expect(r.strip.events).toEqual([]);
-        expect(r.strip.empty).toBe(
-          "Your statements end Oct 20, 2026: upload newer ones to see what's due now.",
-        );
-        expect(r.safeChat).toBe(
-          "Your statements end Oct 20, 2026, so I can't say what's safe to spend today. Upload newer statements and I'll work it out.",
-        );
-      }
+      // From 36 days, not only past STALE_UPLOAD_DAYS: the strip lists none of the statement's bills,
+      // which with no pay beside them read as a shortfall, and the chat doesn't ask for a balance
+      // (manager, 11-20: Nov 25 listed rent Dec 3 and Comcast Dec 7).
+      expect(r.strip.events).toEqual([]);
+      expect(r.strip.empty).toBe(
+        "Your statements end Oct 20, 2026: upload newer ones to see what's due now.",
+      );
+      expect(r.safeChat).toBe(
+        "Your statements end Oct 20, 2026, so I can't say what's safe to spend today. Upload newer statements and I'll work it out.",
+      );
     });
   }
 });
