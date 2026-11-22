@@ -58,7 +58,7 @@ export function FeeList({
                   </span>
                 </span>
               </span>
-              <span className={back ? "text-emerald-700" : ""}>
+              <span className={back ? "text-zinc-600 dark:text-zinc-400" : ""}>
                 {back ? "+" : ""}
                 {formatCents(Math.abs(t.amountCents))}
               </span>
