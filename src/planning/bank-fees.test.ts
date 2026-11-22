@@ -16,6 +16,7 @@ describe("bankFeesYear", () => {
       count: 2,
       monthsOfData: 3,
       estimated: true,
+      lines: [fee("2026-09-24", 3400), fee("2026-08-20", 3400)],
     });
   });
 
@@ -28,6 +29,7 @@ describe("bankFeesYear", () => {
       count: 1,
       monthsOfData: 3,
       estimated: true,
+      lines: [fee("2026-09-24", 3400)],
     });
   });
 
@@ -74,6 +76,7 @@ describe("bankFeesYear", () => {
       count: 1,
       monthsOfData: 3,
       estimated: true,
+      lines: [foreign],
     });
     expect(bankFeesYear([fee("2026-09-24", 3400), fee("2026-09-26", -3400)], 3)).toBeNull();
   });

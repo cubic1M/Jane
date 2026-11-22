@@ -3,6 +3,8 @@ import { inLookback } from "@/detection/helpers";
 import { loadDetectionInput } from "@/detection/input";
 import { feeMonthsOf } from "@/detection/rules/fee-totals";
 import { db as defaultClient } from "@/lib/db";
+import { bankFeesOf } from "@/detectors/bank-fees-of";
+import { loadProfileInput } from "@/lib/profile";
 import { bankFeesYear, type BankFees } from "@/planning/bank-fees";
 
 // The person's bank fees for a year (src/planning/bank-fees.ts), for Jane's answer in the chat:
@@ -26,4 +28,17 @@ export async function loadBankFees(
     })),
     (accountId) => feeMonthsOf(input, [accountId]),
   );
+}
+
+// The fee list the bank-fees card opens (/transactions?fees=1): the card's own figure and lines
+// (src/detectors/bank-fees-of.ts) over the rows the card was made from, with each account's name.
+export async function loadFeeList(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<{ fees: BankFees | null; accounts: Map<string, string> }> {
+  const input = await loadProfileInput(userId, { client, now });
+  return {
+    fees: bankFeesOf(input),
+    accounts: new Map(input.accounts.map((a) => [a.id, a.name ?? "your account"])),
+  };
 }

@@ -31,6 +31,23 @@ export function isBankFee(t: Pick<FeeTx, "description" | "pfc" | "onCash">): boo
     !(t.onCash && t.pfc === "BANK_FEES_LATE_FEES")
   );
 }
+// What kind of fee a line is, in words: the chat's answer and the fee list say it alike.
+const FEE_KINDS: Record<string, string> = {
+  BANK_FEES_OVERDRAFT_FEES: "an overdraft fee",
+  BANK_FEES_INSUFFICIENT_FUNDS: "an insufficient funds fee",
+  BANK_FEES_LATE_FEES: "a late fee",
+  BANK_FEES_ATM_FEES: "an ATM fee",
+  BANK_FEES_FOREIGN_TRANSACTION_FEES: "a foreign transaction fee",
+  BANK_FEES_CASH_ADVANCE: "a cash advance fee",
+};
+const MONTHLY = /\b(?:monthly|maintenance|service charge|service fee|account fee)\b/i;
+export function feeKindOf(t: Pick<FeeTx, "description" | "pfc">): string {
+  return (
+    FEE_KINDS[t.pfc ?? ""] ??
+    (MONTHLY.test(t.description) ? "a monthly maintenance fee" : "a bank fee")
+  );
+}
+
 export type BankFees = {
   // The fees seen, and a year's worth of them (equal with twelve months of data).
   seenCents: number;
@@ -38,6 +55,9 @@ export type BankFees = {
   count: number;
   monthsOfData: number;
   estimated: boolean;
+  // The lines the figure is: each fee counted, and a fee given back that isn't paired with one
+  // (money in, negative), newest first. They add up to seenCents; the fees among them are count.
+  lines: FeeTx[];
 };
 
 // Each account's fees, on its own (debugger 11-01: a card's one late fee was paced along with
@@ -51,6 +71,8 @@ export type AccountFees = {
   count: number;
   // The months its own data covers, which its fees are paced over.
   months: number;
+  // Its fees counted and its unpaired refunds, adding up to seenCents (BankFees.lines).
+  lines: FeeTx[];
 };
 
 // The months of data: one count for every account, or each account's own (feeMonthsOf).
@@ -86,11 +108,10 @@ export function bankFeesByAccount(
       Math.max(1, typeof monthsOfData === "number" ? monthsOfData : monthsOfData(account)),
     );
     const own = fees.filter((t) => t.accountId === account);
-    const back = unpaired
-      .filter((r) => r.accountId === account)
-      .reduce((s, r) => s - r.amountCents, 0);
-    const seen = Math.max(0, own.reduce((s, t) => s + t.amountCents, 0) - back);
-    if (seen === 0) return [];
+    const given = unpaired.filter((r) => r.accountId === account);
+    const back = given.reduce((s, r) => s - r.amountCents, 0);
+    const seen = own.reduce((s, t) => s + t.amountCents, 0) - back;
+    if (seen <= 0) return [];
     // A card's annual fee comes once a year, so it counts once, not scaled up with the rest.
     const yearly = Math.min(
       seen,
@@ -108,6 +129,7 @@ export function bankFeesByAccount(
         yearCents: paced ? Math.round((seen - yearly) * (12 / months)) + yearly : seen,
         count: own.length,
         months,
+        lines: [...own, ...given],
       },
     ];
   });
@@ -127,6 +149,9 @@ export function bankFeesYear(
     count: accounts.reduce((s, a) => s + a.count, 0),
     monthsOfData: months,
     estimated: months < 12,
+    lines: accounts
+      .flatMap((a) => a.lines)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.amountCents - a.amountCents),
   };
 }
 

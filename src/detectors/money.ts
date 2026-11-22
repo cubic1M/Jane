@@ -2,9 +2,10 @@ import { plural } from "@/lib/plural";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
-import { bankFeesYear, isBankFee } from "@/planning/bank-fees";
+import { isBankFee } from "@/planning/bank-fees";
+import { bankFeesOf, FEE_LIST_PATH } from "./bank-fees-of";
 import { LOOKBACK_MONTHS } from "@/config/detection";
-import { feeMonthsOf, paceOf } from "@/detection/rules/fee-totals";
+import { paceOf } from "@/detection/rules/fee-totals";
 import { inList, lookbackEnd } from "@/detection/helpers";
 import { monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
@@ -125,14 +126,9 @@ const bankFees: Detector = {
   topic: "bank_fees",
   needs: [],
   detect({ profile, data }) {
-    // A year of fees, the one definition (src/planning/bank-fees.ts) over the one count of months
-    // (feeMonthsOf) the report's findings and the chat's answer use too (gate B).
+    // A year of fees, as the fee list the card opens reads it (./bank-fees-of.ts).
     const cash = new Set(data.accounts.filter((a) => a.type === "depository").map((a) => a.id));
-    const fees = bankFeesYear(
-      data.transactions.map((t) => ({ ...t, onCash: cash.has(t.accountId) })),
-      (accountId) =>
-        feeMonthsOf({ transactions: data.transactions, asOf: data.today }, [accountId]),
-    );
+    const fees = bankFeesOf(data);
     // Any fee the report finds, as the report finds it (gate B, 11-16: one $35 overdraft was a
     // report finding and "Money found $35/yr" but under this card's old two-fee floor, so the
     // Spending tree, which lists the dock's cards, said nothing). The report's rule is the right one:
@@ -190,14 +186,15 @@ const bankFees: Detector = {
         : "Stop paying bank fees";
     const span = fees.estimated
       ? `${plural(fees.count, "bank fee")} in ${plural(fees.monthsOfData, "month")}, about ${formatCents(total)} over a year (an estimate)`
-      : `${formatCents(total)} in ${plural(fees.count, "bank fee")} in the last 12 months`;
+      : `${formatCents(fees.seenCents)} in ${plural(fees.count, "bank fee")} in the last 12 months`;
     return suggestion("cost", "bank_fees", {
       title: phrase,
       headline: headlineOf(phrase, total, "saves"),
       short: fees.estimated
         ? // Counted as said: "1 bank fees in 1 months" since one fee can make the card (debug 2, 11-16).
           `You paid ${formatCents(fees.seenCents)} in ${plural(fees.count, "bank fee")} in ${plural(fees.monthsOfData, "month")}.`
-        : `You paid ${formatCents(total)} in ${plural(fees.count, "bank fee")} in a year.`,
+        : // What was paid, as the fee list adds it up; a year of it is the headline's (worthCents).
+          `You paid ${formatCents(fees.seenCents)} in ${plural(fees.count, "bank fee")} in a year.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.count, "bank fees"),
@@ -211,7 +208,7 @@ const bankFees: Detector = {
           ? ` Chase's own rule: no overdraft fee if you're overdrawn by ${formatWholeDollars(CHASE_OVERDRAFT.graceCents)} or less at the end of the business day, or if you bring it back to that by 11 p.m. Eastern the next business day, with a deposit, a transfer or Zelle.`
           : ""
       }`,
-      action: { label: "See the fees", href: "/insights" },
+      action: { label: "See the fees", href: FEE_LIST_PATH },
       ...(optIn
         ? {
             more: [
