@@ -238,6 +238,8 @@ export const TAXES_ANCHORS: Record<string, string> = {
 };
 
 export type TaxesTreeInput = {
+  // The working of an offered card that opens an item (src/lib/offered-card.ts), said there.
+  cards?: { giving: string | null; family: string | null };
   asOf: string;
   year: number;
   moves: {
@@ -567,7 +569,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         label: "Family tax choices",
         status: input.family.choices > 0 ? "look" : "good",
         figure: input.family.choices > 0 ? plural(input.family.choices, "choice") : undefined,
-        summary: "Each family choice with the federal tax both ways.",
+        summary: input.cards?.family ?? "Each family choice with the federal tax both ways.",
       }),
     );
   if (input.giving) {
@@ -578,9 +580,10 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         status: g.receiptsMissing > 0 || g.options > 0 ? "look" : "good",
         figure: g.totalCents > 0 ? shortMoney(g.totalCents) : undefined,
         summary:
-          g.receiptsMissing > 0
+          input.cards?.giving ??
+          (g.receiptsMissing > 0
             ? `${plural(g.receiptsMissing, "gift")} of $250 or more ${g.receiptsMissing === 1 ? "needs" : "need"} the charity's receipt.`
-            : "Your gifts to charity this year, and their receipts.",
+            : "Your gifts to charity this year, and their receipts."),
       }),
     );
   }

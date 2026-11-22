@@ -13,3 +13,16 @@ export async function offeredCard(
   const card = (await offeredToday(userId, { client, now })).find((s) => s.key === key);
   return card ? { headline: card.headline, why: card.why } : null;
 }
+
+// Every card offered now that opens `path` (its link without a #part or ?query), each with its own
+// headline and working: the page shows them all (debug 2's class 11, 11-22: four cards open Coming
+// up beside the bill rate).
+export async function offeredCardsOpening(
+  userId: string,
+  path: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<{ key: string; headline: string; why: string }[]> {
+  return (await offeredToday(userId, { client, now }))
+    .filter((s) => s.actionHref.split(/[?#]/)[0] === path)
+    .map((s) => ({ key: s.key, headline: s.headline, why: s.why }));
+}

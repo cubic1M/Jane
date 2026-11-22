@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { balanceLine, otherMoneyLine, unevenPayLine } from "./balance-line";
 import { BillsOnward } from "./onward";
 import { OfferedCard } from "@/components/offered-card";
-import { offeredCard } from "@/lib/offered-card";
+import { offeredCardsOpening } from "@/lib/offered-card";
 import { PageShell } from "@/components/page-shell";
 
 const dayLabel = (iso: string) =>
@@ -28,7 +28,7 @@ async function Bills() {
   const bills = comingUpBills(input, FORECAST_DAYS);
   const forecasts = forecastAccounts(input, FORECAST_DAYS);
   const byDate = Map.groupBy(bills, (b) => b.date);
-  const ask = await offeredCard(user.id, "cost:bill_negotiation");
+  const cards = await offeredCardsOpening(user.id, "/bills");
 
   return (
     <>
@@ -77,9 +77,12 @@ async function Bills() {
         );
       })}
 
-      {/* "Ask for a lower bill rate" opens here: its figure and how it's worked out, while it's
-          offered (debug 2, 11-22: the demo's "save $1,080/yr" opened a page with neither). */}
-      <OfferedCard card={ask} />
+      {/* The cards that open Coming up (the bill rate, budget billing, the energy and internet
+          discounts, pay that stopped): each one's figure and how it's worked out, while offered
+          (debug 2, 11-22: the demo's "save $1,080/yr" opened a page with neither). */}
+      {cards.map((c) => (
+        <OfferedCard key={c.key} card={c} id={`card-${c.key.replace(/\W+/g, "-")}`} />
+      ))}
 
       {bills.length === 0 ? (
         <EmptyState
