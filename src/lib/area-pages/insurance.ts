@@ -132,6 +132,8 @@ export type InsuranceTreeInput = {
     carrier: string;
     status: string;
     yearlyCents: number | null;
+    // Its premium as the found-policy card says it, with the year (src/lib/insurance/premium-words.ts).
+    premium?: string | null;
     renewsOn: string | null;
   }[];
   gaps: {
@@ -292,9 +294,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
       figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
       summary:
         p.status !== "active"
-          ? askedByGap.has(p.id)
-            ? "Found from your payments."
-            : "Found from your payments; confirm it to count it."
+          ? `Found from your payments${p.premium ? `: ${p.premium}` : ""}${askedByGap.has(p.id) ? "." : "; confirm it to count it."}`
           : p.renewsOn
             ? `Renews ${dayLabel(p.renewsOn)}.`
             : "Active.",

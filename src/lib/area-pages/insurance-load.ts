@@ -1,3 +1,4 @@
+import { premiumWithYear } from "@/lib/insurance/premium-words";
 import { nextRenewal, yearlyPremium } from "@/lib/insurance/policies";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadInsurance } from "@/lib/insurance/profile";
@@ -99,6 +100,7 @@ export async function loadInsuranceArea(
       carrier: p.carrier,
       status: p.status,
       yearlyCents: yearlyPremium(p),
+      premium: premiumWithYear(p),
       renewsOn: nextRenewal(p, asOf),
     })),
     gaps,

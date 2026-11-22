@@ -130,12 +130,12 @@ export async function snapshotAt(
     ).map((m) => [
       m.id,
       {
-        ...((m.refs ?? {}) as { findingId?: unknown; suggestion?: unknown }),
+        ...((m.refs ?? {}) as { findingId?: unknown; suggestion?: unknown; policyId?: unknown }),
         family: keyFamily(m.dedupeKey),
       },
     ]),
   );
-  const idOf = (id: string, field: "findingId" | "suggestion") => {
+  const idOf = (id: string, field: "findingId" | "suggestion" | "policyId") => {
     const value = refsOf.get(id)?.[field];
     return typeof value === "string" ? value : null;
   };
@@ -158,6 +158,8 @@ export async function snapshotAt(
       headline: card.body.split("\n")[0],
       about: suggestion ? suggestion.key : finding ? `finding:${finding.type}` : null,
       family: refsOf.get(card.id)?.family ?? null,
+      // A found policy's card, held to its item on Insurance (class 11, ./invariants.ts).
+      policyId: idOf(card.id, "policyId"),
       merchants: suggestion
         ? merchantKeys((payees ?? []).map((p) => p.description))
         : merchantKeys([(finding?.evidence as { merchant?: unknown } | null)?.merchant]),

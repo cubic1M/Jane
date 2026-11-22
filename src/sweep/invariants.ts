@@ -809,6 +809,27 @@ const PAGE_GAPS: Record<string, string> = {
 };
 
 export function cardOpensItsFigure(flat: Flat): string[] {
+  return [...suggestionPages(flat), ...policyPages(flat)];
+}
+
+// A found policy's card ("I found your car insurance from your payments: GEICO, $112.40 a month")
+// opens its item on Insurance (?focus=policies:<id>), which says the same premium (debug 2, 11-22:
+// the page said "$1.3k/yr" and not $112.40).
+function policyPages(flat: Flat): string[] {
+  return Object.entries(flat).flatMap(([path, id]) => {
+    const card = /^dock\.(\d+)\.policyId$/.exec(path)?.[1];
+    if (!card || typeof id !== "string") return [];
+    const said = figuresIn(String(flat[`dock.${card}.headline`] ?? ""));
+    const shown = Object.entries(flat)
+      .filter(([p]) => p.startsWith("trees.insurance.") && p.includes(`policies:${id}`))
+      .flatMap(([, v]) => figuresIn(String(v)));
+    return said
+      .filter((f) => !near(f.value, shown))
+      .map((f) => `dock.${card}: the card says $${f.value}; its Insurance item doesn't`);
+  });
+}
+
+function suggestionPages(flat: Flat): string[] {
   return Object.entries(flat).flatMap(([path, value]) => {
     const id = /^suggestions\.(.+)\.action\.href$/.exec(path)?.[1];
     if (!id) return [];

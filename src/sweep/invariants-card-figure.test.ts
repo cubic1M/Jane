@@ -106,4 +106,26 @@ describe("class 11: a card's count and total are the page it opens", () => {
       "suggestions.cost:bank_fees.action.href: the card's headline says $358; the page says $68.00",
     ]);
   });
+
+  it("holds a found policy's card to its item on Insurance", () => {
+    const card = {
+      "dock.3.policyId": "pol1",
+      "dock.3.headline":
+        "I found your car insurance from your payments: GEICO, $112.40 a month. Is that right?",
+    };
+    expect(
+      cardOpensItsFigure({
+        ...card,
+        "trees.insurance.tree.branches.policies.items.policies:pol1.figure": "$1.3k/yr",
+        "trees.insurance.summaries.policies:pol1":
+          "Found from your payments: $112.40 a month, $1,348.80 a year; confirm it to count it.",
+      }),
+    ).toEqual([]);
+    expect(
+      cardOpensItsFigure({
+        ...card,
+        "trees.insurance.tree.branches.policies.items.policies:pol1.figure": "$1.3k/yr",
+      }),
+    ).toEqual(["dock.3: the card says $112.4; its Insurance item doesn't"]);
+  });
 });
