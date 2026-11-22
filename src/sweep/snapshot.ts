@@ -34,6 +34,8 @@ import { chatToday } from "@/lib/today";
 import { explainFigure } from "@/lib/figures";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadFeeList } from "@/lib/bank-fees";
+import { cheaperPlansOf } from "@/detectors/cover-facts";
+import { cushionOf } from "@/detectors/money";
 import { flatten, type Flat } from "./diff";
 
 // What one person sees at one moment, for the calendar sweep (gate C, mvp-ready.md): the findings
@@ -194,7 +196,15 @@ export async function snapshotAt(
   // The fee list the bank-fees card opens, as the page shows it: its fee rows and what they add up
   // to (class 11, ./invariants.ts cardOpensItsFigure).
   const feeList = (await loadFeeList(userId, { client, now })).fees;
+  // What the pages the cheaper-plan and cushion cards open add up to (class 11): Subscriptions'
+  // plans, and the goal page's cushion line.
+  const plans = cheaperPlansOf(found.input);
+  const cushion = cushionOf({ profile: found.profile, data: found.input });
   return flatten({
+    cardPages: {
+      plansYearlyCents: plans.length > 0 ? plans.reduce((n, p) => n + p.yearly, 0) : null,
+      cushionShortCents: cushion?.short ?? null,
+    },
     feeList: {
       rows: feeList?.lines.filter((l) => l.amountCents > 0).length ?? 0,
       sumCents: feeList?.lines.reduce((s, l) => s + l.amountCents, 0) ?? 0,

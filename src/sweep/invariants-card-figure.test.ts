@@ -38,4 +38,57 @@ describe("class 11: a card's count and total are the page it opens", () => {
     ).toEqual([]);
     expect(cardOpensItsFigure({ "suggestions.cost:cushion.action.href": "/goals" })).toEqual([]);
   });
+
+  it("holds a card with a figure to the area item its link focuses", () => {
+    const lifeline = {
+      "suggestions.cost:lifeline.headline": "Check Lifeline for your phone bill, save $111/yr",
+      "suggestions.cost:lifeline.action.href": "/money?focus=charges:lifeline",
+    };
+    expect(
+      cardOpensItsFigure({
+        ...lifeline,
+        "trees.money.tree.branches.charges.items.charges:lifeline.figure": "$111/yr",
+      }),
+    ).toEqual([]);
+    expect(
+      cardOpensItsFigure({
+        ...lifeline,
+        "trees.money.tree.branches.charges.items.charges:lifeline.figure": "$96/yr",
+      }),
+    ).toEqual([
+      'suggestions.cost:lifeline.action.href: the card says $111; "/money?focus=charges:lifeline" shows $96',
+    ]);
+  });
+
+  it("holds the cheaper-plan card to Subscriptions' plans and the cushion to its goal page", () => {
+    expect(
+      cardOpensItsFigure({
+        "suggestions.subscriptions:cheaper_tier.headline":
+          "Note cheaper plans of what you pay, save $271/yr",
+        "suggestions.subscriptions:cheaper_tier.action.href": "/subscriptions",
+        "cardPages.plansYearlyCents": 27_084,
+      }),
+    ).toEqual([]);
+    expect(
+      cardOpensItsFigure({
+        "suggestions.safe_to_spend:emergency_fund.headline":
+          "Build an emergency cushion, protect $3,875",
+        "suggestions.safe_to_spend:emergency_fund.action.href": "/goals?draft=emergency_fund",
+        "cardPages.cushionShortCents": null,
+      }),
+    ).toEqual([
+      'suggestions.safe_to_spend:emergency_fund.action.href: the card says $3875; "/goals?draft=emergency_fund" shows no figure',
+    ]);
+  });
+
+  it("reads a tree's short figure as the range it rounds", () => {
+    const setAside = (figure: string) =>
+      cardOpensItsFigure({
+        "suggestions.taxes:tax_set_aside.headline": "Set aside for taxes, $13,541",
+        "suggestions.taxes:tax_set_aside.action.href": "/taxes?focus=estimate:set-aside",
+        "trees.taxes.tree.branches.estimate.items.estimate:set-aside.figure": figure,
+      });
+    expect(setAside("$14k")).toEqual([]);
+    expect(setAside("$12k")).toHaveLength(1);
+  });
 });

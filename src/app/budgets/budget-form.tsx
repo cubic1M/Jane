@@ -6,8 +6,11 @@ import { saveBudget, type BudgetState } from "./actions";
 export function BudgetForm({
   categories,
   suggestions,
+  draft = null,
 }: {
   categories: readonly string[];
+  // A set-up card's budget, drafted (../page.tsx).
+  draft?: { category: string; amount: string } | null;
   // Average monthly spending per category (cents), shown as a starting point.
   suggestions: Record<string, number>;
 }) {
@@ -18,6 +21,7 @@ export function BudgetForm({
         Category
         <select
           name="category"
+          defaultValue={draft?.category}
           className="h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
         >
           {categories.map((c) => (
@@ -32,6 +36,7 @@ export function BudgetForm({
         Monthly budget ($)
         <input
           name="amount"
+          defaultValue={draft?.amount}
           inputMode="decimal"
           className="h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
         />

@@ -152,7 +152,13 @@ describe("set-up suggestions", () => {
     expect(message.actions).toEqual([
       { id: "setup.yes", label: "Set it up", kind: "primary" },
       { id: "setup.no", label: "No", kind: "secondary" },
-      { id: "open", label: "See the plan", kind: "link", href: "/plan" },
+      // Its own form, drafted with the $420.00 (debug 2, 11-22: /plan didn't say it).
+      {
+        id: "open",
+        label: "Open the form",
+        kind: "link",
+        href: "/budgets?draft=Food%20and%20drink",
+      },
     ]);
   });
 

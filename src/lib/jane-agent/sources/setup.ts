@@ -13,7 +13,7 @@ import { monthLabel } from "@/lib/day-label";
 
 const monthYear = (iso: string) => monthLabel(iso, { long: true });
 
-function describe(p: BudgetProposal | GoalProposal): string {
+export function describe(p: BudgetProposal | GoalProposal): string {
   if (p.kind === "budget") {
     return `I could set a ${formatCents(p.amountCents)} monthly budget for ${p.category}. That's your own average over the last ${completeMonthsWords(p.months)}, rounded up: math from your data, not advice.`;
   }
@@ -27,6 +27,14 @@ function describe(p: BudgetProposal | GoalProposal): string {
 // from it).
 export const setupBody = (p: BudgetProposal | GoalProposal) =>
   `${describe(p)} Want me to set it up?`;
+
+// The form the card fills in, drafted with the card's own figure (debug 2, 11-22: "See the plan"
+// opened /plan, which didn't say the $40.00). The address names the category or the goal's kind,
+// never an amount (#1807).
+export const setupHref = (p: BudgetProposal | GoalProposal) =>
+  p.kind === "budget"
+    ? `/budgets?draft=${encodeURIComponent(p.category)}`
+    : `/goals?draft=${p.key.replace(/^goal:/, "")}`;
 
 const amountOf = (p: BudgetProposal | GoalProposal) =>
   p.kind === "budget" ? p.amountCents : p.targetCents;
@@ -46,7 +54,7 @@ export const setupSource: MessageSource = {
       }
       actions.push(
         { id: "setup.no", label: "No", kind: "secondary" },
-        openLink("See the plan", "/plan"),
+        openLink("Open the form", setupHref(proposal)),
       );
       return {
         kind: "decision",

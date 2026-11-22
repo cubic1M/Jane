@@ -212,26 +212,7 @@ const cheaperTier: Detector = {
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    // "You pay $17.99" says what's paid now: not from statements that ended long ago. Seen lately
-    // is counted back from where the data ends, as car cover's year is (gate C, debug 3, 11-19:
-    // with no new lines the card went 46 days after the last charge, a day nothing named).
-    if (statementsTooOld(data)) return null;
-    const since = addDays(newestLine(data), -CHEAPER_PLAN_SEEN_DAYS);
-    const found = CHEAPER_PLANS.flatMap((p) => {
-      const charges = data.transactions
-        .filter(
-          (t) =>
-            t.amountCents > 0 &&
-            t.date <= data.today &&
-            p.words.test(lineOf(t)) &&
-            !(t.pfc ?? "").startsWith("TRANSFER"),
-        )
-        .sort((a, b) => b.date.localeCompare(a.date));
-      const latest = charges[0];
-      if (!latest || latest.date < since) return [];
-      if (latest.amountCents <= Math.round(p.cents * CHEAPER_PLAN_TAX_ROOM)) return [];
-      return [{ ...p, latest, count: charges.length, yearly: (latest.amountCents - p.cents) * 12 }];
-    });
+    const found = cheaperPlansOf(data);
     if (found.length === 0) return null;
     const yearly = found.reduce((n, f) => n + f.yearly, 0);
     const one = found.length === 1 ? found[0]! : null;
@@ -285,6 +266,32 @@ const cheaperTier: Detector = {
   },
 };
 
+// Each service paid lately that lists a cheaper plan, with what's paid and a year of the
+// difference: the card's figure is their sum, and Subscriptions, which the card opens, lists each
+// (src/app/subscriptions/page.tsx; debug 2, 11-22: the page showed none of them).
+export function cheaperPlansOf(data: { transactions: readonly ProfileTx[]; today: string }) {
+  // "You pay $17.99" says what's paid now: not from statements that ended long ago. Seen lately
+  // is counted back from where the data ends, as car cover's year is (gate C, debug 3, 11-19:
+  // with no new lines the card went 46 days after the last charge, a day nothing named).
+  if (statementsTooOld(data)) return [];
+  const since = addDays(newestLine(data), -CHEAPER_PLAN_SEEN_DAYS);
+  return CHEAPER_PLANS.flatMap((p) => {
+    const charges = data.transactions
+      .filter(
+        (t) =>
+          t.amountCents > 0 &&
+          t.date <= data.today &&
+          p.words.test(lineOf(t)) &&
+          !(t.pfc ?? "").startsWith("TRANSFER"),
+      )
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const latest = charges[0];
+    if (!latest || latest.date < since) return [];
+    if (latest.amountCents <= Math.round(p.cents * CHEAPER_PLAN_TAX_ROOM)) return [];
+    return [{ ...p, latest, count: charges.length, yearly: (latest.amountCents - p.cents) * 12 }];
+  });
+}
+
 // A T-Mobile bill that looks like one line on a plan above T-Mix Standard: the carrier's own
 // cheaper plan, as its plans page prices it.
 // The phone bill a carrier's own cheaper plan is under, when there is one: the plan card's, and
@@ -335,7 +342,9 @@ const phonePlanCheaper: Detector = {
       ]),
       urgency: "later",
       why: `You paid T-Mobile ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. T-Mobile's own plans page lists T-Mix Standard at ${formatCents(p.cheapestCents)} a month for one line with AutoPay (${formatCents(p.cheapestCents + p.autopayCents)} without), plus taxes and fees; its dearer plans add perks. Even with taxes that's about ${formatCents(yearly)} a year under your bill, if it's one line with no phone being paid off on it. The T-Mobile app and t-mobile.com show your plan beside T-Mix Standard.`,
-      action: { label: "See your bills", href: "/bills" },
+      // Its own item on Spending, with the plan and the saving; Coming up listed T-Mobile's $70.00
+      // and neither (debug 2, 11-22).
+      action: { label: "See how it's worked out", href: "/money?focus=charges:phone_plan_cheaper" },
       more: [{ label: "T-Mobile's plans", href: p.url }],
       watch: {
         kind: "bill_drops",

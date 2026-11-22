@@ -174,7 +174,9 @@ const lifeline: Detector = {
       ]),
       urgency: "later",
       why: `For a household of ${people}, Lifeline takes income up to ${formatCents(limit)} a year (135% of the poverty line); yours looks to be near ${formatCents(gross)}. It takes up to $9.25 a month off one phone or internet bill per household, and getting SNAP, Medicaid, SSI, Federal Public Housing or a VA pension also qualifies. You apply yourself through the FCC's National Verifier.`,
-      action: { label: "See your bills", href: "/bills" },
+      // Its own item on Spending, which says the $111 a year and how it's worked out; Coming up
+      // didn't say Lifeline at all (debug 2, 11-22).
+      action: { label: "See how it's worked out", href: "/money?focus=charges:lifeline" },
       more: [
         { label: "Apply: National Verifier", href: LIFELINE.apply },
         { label: "Who qualifies", href: LIFELINE.url },
