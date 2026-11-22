@@ -310,6 +310,8 @@ export function cashClearsCard(data: Data): {
   keepCents: number;
   aprBps: number | null;
   interestCents: number;
+  // A year of interest on everything owed, the figure interestCents is the cleared share of.
+  wholeCents: number;
   charges: number;
 } | null {
   if (!cashKnown(data) || !fresh(data)) return null;
@@ -341,19 +343,19 @@ export function cashClearsCard(data: Data): {
   // else at the card's rate when the bank says it, else the charges seen, at a year's pace.
   const first = charges.reduce((m, t) => (t.date < m ? t.date : m), data.today);
   const spanDays = Math.max(30, daysBetween(first, data.today) + 15);
-  const reported = reportsWorth(data, "card_interest");
-  const seenYear =
-    reported ?? Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays);
-  const interest =
-    reported === null && aprBps !== null
-      ? Math.round((clear * aprBps) / 10_000)
-      : Math.round((seenYear * clear) / owed);
+  const whole =
+    reportsWorth(data, "card_interest") ??
+    (aprBps !== null
+      ? Math.round((owed * aprBps) / 10_000)
+      : Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays));
+  const interest = Math.round((whole * clear) / owed);
   return {
     owedCents: owed,
     clearCents: clear,
     keepCents: keep,
     aprBps,
     interestCents: interest,
+    wholeCents: whole,
     charges: charges.length,
   };
 }
@@ -382,7 +384,7 @@ const cardFromCash: Detector = {
       worthKind: "saves",
       confidence: evidence("seen", profile.months, c.charges, "interest charges"),
       urgency: "soon",
-      why: `Your cards charged interest ${c.charges} time${c.charges === 1 ? "" : "s"} lately and hold ${formatCents(c.owedCents)}${c.aprBps !== null ? ` at ${formatRate(c.aprBps)}` : ""}. You hold ${formatCents(cash)} in checking and savings. Keeping ${formatCents(c.keepCents)} back (about a month of spending), ${formatCents(c.clearCents)} could go to the card${all ? " and clear it" : ""}, which stops about ${formatCents(c.interestCents)} a year of interest; a savings account pays far less than that. To do it: from your bank or the card's app, pay ${formatCents(c.clearCents)} to the card before its statement closes, then pay each new statement in full.`,
+      why: `Your cards charged interest ${c.charges} time${c.charges === 1 ? "" : "s"} lately and hold ${formatCents(c.owedCents)}${c.aprBps !== null ? ` at ${formatRate(c.aprBps)}` : ""}. You hold ${formatCents(cash)} in checking and savings. Keeping ${formatCents(c.keepCents)} back (about a month of spending), ${formatCents(c.clearCents)} could go to the card${all ? " and clear it" : ""}, which stops about ${formatCents(c.interestCents)} a year of interest${all ? "" : `: that share of the ${formatCents(c.wholeCents)} a year all ${formatCents(c.owedCents)} costs`}; a savings account pays far less than that. To do it: from your bank or the card's app, pay ${formatCents(c.clearCents)} to the card before its statement closes, then pay each new statement in full.`,
       action: { label: "Cut your card interest", href: "/loans/interest" },
       watch: {
         kind: "fee_stops",

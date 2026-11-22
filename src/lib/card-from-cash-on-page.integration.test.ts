@@ -7,6 +7,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 // No lending partner, as for a real account: the card interest page opens the report's finding.
+// For the whole file, not switched per test: a file's demo syncs are copied from its first one
+// (src/test-setup/sync-snapshots.ts keys them by the file's mocked modules, not a mock's value),
+// so a person synced after a partnered one would get the partnered person's findings.
 vi.mock("@/lib/lender-partner", () => ({ lenderPartnerFor: vi.fn(async () => null) }));
 
 import type { FindingType } from "@/generated/prisma/client";

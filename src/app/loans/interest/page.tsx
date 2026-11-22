@@ -15,6 +15,8 @@ import { addPromoAction, removePromoAction, sendRateAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { formatRate } from "@/lib/percent";
+import { OfferedCard } from "@/components/offered-card";
+import { offeredCard } from "@/lib/offered-card";
 
 // Less interest on every card (spec step 224): each card's interest, what paying earlier
 // saves, 0% promotions with their pace, and a request for a lower rate sent only on a tap.
@@ -33,6 +35,7 @@ async function InterestContent({
   const raw = await searchParams;
   const p = (k: string) => (Array.isArray(raw[k]) ? raw[k]?.[0] : (raw[k] as string | undefined));
   const data = await loadCardInterest(user.id);
+  const fromCash = data.available ? await offeredCard(user.id, "debt:card_from_cash") : null;
   // The rate requests and promotions here need a lending partner, which no real account has yet.
   // "Cut your card interest" (the suggestion, the Loans tree, the chat) then opens the card
   // interest finding, whose steps and call script the person follows themselves (debugger 11-16:
@@ -62,6 +65,8 @@ async function InterestContent({
       {data.available && (
         <>
           <DemoAdviceLabel />
+          {/* "Pay off your card from cash" opens here: its figure and working, while offered. */}
+          <OfferedCard card={fromCash} />
           {p("sent") && (
             <p role="status" className="text-sm text-emerald-800 dark:text-emerald-200">
               Sent just now.

@@ -71,10 +71,10 @@ describe.runIf(url)("a card's figure on the page it opens", { timeout: 300_000 }
     const card = await suggestion(userId, "cost:bill_negotiation");
     expect(card.worthCents).toBe(108_000);
     expect(card.headline).toBe("Ask for a lower bill rate, save $1,080 a year");
-    // What /bills#ask shows: the card's headline and this working.
+    // What /bills#card shows: the card's headline and this working.
     expect(card.why).toBe(
       "Comcast is $165.00 a month, $45.00 above the typical top of $120.00; Verizon Wireless is $145.00 a month, $45.00 above the typical top of $100.00. Brought down to the typical price, that's $1,080.00 a year.",
     );
-    expect(card.actionHref).toBe("/bills#ask");
+    expect(card.actionHref).toBe("/bills#card");
   });
 });

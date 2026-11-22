@@ -33,6 +33,8 @@ import { FROM_PARAM, chatMessageHref } from "@/lib/jane-agent/back-link";
 import { CARD_TIGHT } from "@/components/card";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { findingSure } from "@/lib/report-state";
+import { OfferedCard } from "@/components/offered-card";
+import { offeredCard } from "@/lib/offered-card";
 
 async function Card({
   params,
@@ -58,6 +60,8 @@ async function Card({
     });
   }
   const card = buildCard(finding, await partnerForUser(user.id, ACTION_FOR_FINDING[finding.type]));
+  const fromCash =
+    finding.type === "card_interest" ? await offeredCard(user.id, "debt:card_from_cash") : null;
   const open = finding.status === "new" || finding.status === "shown";
   // How sure Jane is, as /report and the chat's card say it (gate D: this page said nothing).
   const [sureFacts, sameType] = await Promise.all([
@@ -145,6 +149,9 @@ async function Card({
       )}
 
       <article className="flex flex-col gap-6">
+        {/* With no lending partner, "Pay off your card from cash" opens its card's interest here
+            (/loans/interest): the card's figure and working, while offered (debug 2, 11-22). */}
+        <OfferedCard card={fromCash} />
         <header className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{card.title}</h1>
           <p className="text-zinc-700 dark:text-zinc-300">{card.explanation}</p>

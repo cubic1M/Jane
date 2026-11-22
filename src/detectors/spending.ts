@@ -240,7 +240,7 @@ const billNegotiation: Detector = {
         asks.length > 0
           ? `${asks.map((a) => `${nice(a.merchant)} is ${formatCents(a.monthlyCents)} a month, ${formatCents(a.monthlyCents - a.typicalHighCents)} above the typical top of ${formatCents(a.typicalHighCents)}`).join("; ")}. Brought down to the typical price, that's ${formatCents(worth)} a year.`
           : `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. Even at a typical price it's still worth asking: people who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
-      action: { label: "See your bills", href: "/bills#ask" },
+      action: { label: "See your bills", href: "/bills#card" },
       watch: {
         kind: "bill_drops",
         payees: bills.map((b) => ({

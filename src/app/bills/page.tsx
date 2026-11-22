@@ -5,11 +5,12 @@ import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
 import { comingUpBills, forecastAccounts, otherMoneyIn, unevenPay } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
-import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
 import { balanceLine, otherMoneyLine, unevenPayLine } from "./balance-line";
 import { BillsOnward } from "./onward";
+import { OfferedCard } from "@/components/offered-card";
+import { offeredCard } from "@/lib/offered-card";
 import { PageShell } from "@/components/page-shell";
 
 const dayLabel = (iso: string) =>
@@ -20,8 +21,6 @@ const dayLabel = (iso: string) =>
     timeZone: "UTC",
   });
 
-const BILL_ASK_KEY = "cost:bill_negotiation";
-
 async function Bills() {
   const user = await requireUser();
   const input = await loadDetectionInput(user.id);
@@ -29,14 +28,7 @@ async function Bills() {
   const bills = comingUpBills(input, FORECAST_DAYS);
   const forecasts = forecastAccounts(input, FORECAST_DAYS);
   const byDate = Map.groupBy(bills, (b) => b.date);
-  // "Ask for a lower bill rate" opens here: its figure and how it's worked out, as the card has
-  // them (debug 2, 11-22: the demo's "save $1,080/yr" opened a page with neither).
-  const ask = await (
-    await scopedDb()
-  ).suggestions.findFirst({
-    where: { key: BILL_ASK_KEY },
-    select: { headline: true, why: true },
-  });
+  const ask = await offeredCard(user.id, "cost:bill_negotiation");
 
   return (
     <>
@@ -85,18 +77,9 @@ async function Bills() {
         );
       })}
 
-      {ask && (
-        <section
-          id="ask"
-          aria-labelledby="ask-title"
-          className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
-          <h2 id="ask-title" className="font-semibold">
-            {ask.headline}
-          </h2>
-          <p className="text-sm">{ask.why}</p>
-        </section>
-      )}
+      {/* "Ask for a lower bill rate" opens here: its figure and how it's worked out, while it's
+          offered (debug 2, 11-22: the demo's "save $1,080/yr" opened a page with neither). */}
+      <OfferedCard card={ask} />
 
       {bills.length === 0 ? (
         <EmptyState
