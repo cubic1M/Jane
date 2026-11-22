@@ -370,23 +370,12 @@ const emergencyFund: Detector = {
   topic: "emergency_fund",
   needs: ["income_pattern"],
   detect({ profile, data }) {
-    // "You keep $X in cash" says what's held now: not from statements that ended long ago.
-    if (statementsTooOld(data)) return null;
-    const spend = cushionSpendCents(data);
+    const cushion = cushionOf({ profile, data });
+    if (!cushion) return null;
+    const { target, short } = cushion;
     const pattern = profile.facts.income_pattern;
     const trouble = profile.facts.debt_trouble;
     const incomeFact = profile.facts.monthly_income;
-    // Sized for this person (src/planning/emergency-fund.ts): more when pay moves around, a
-    // small starter buffer in debt trouble, the spending gap for a pension, never one size.
-    const target = emergencyTarget({
-      spendingCents: spend,
-      incomeCents: typeof incomeFact.value === "number" ? incomeFact.value : null,
-      pattern: typeof pattern.value === "string" ? pattern.value : null,
-      debtTrouble: trouble.value === true,
-    });
-    if (!target || !cashKnown(data)) return null;
-    const short = target.targetCents - liquidCents(data);
-    if (short <= 0) return null;
     const starter = target.kind === "starter";
     const gap = target.kind === "gap";
     return suggestion("safe_to_spend", "emergency_fund", {
@@ -416,17 +405,57 @@ const emergencyFund: Detector = {
         ...(gap ? [factEvidence(incomeFact)] : []),
       ]),
       urgency: "soon",
-      why: starter
-        ? `${liquidCents(data) < 0 ? `You're ${formatCents(-liquidCents(data))} overdrawn` : `Your cash is ${formatCents(liquidCents(data))}`} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
-        : gap
-          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(liquidCents(data))}.`
-          : `You spend about ${formatCents(spend)} a month. ${cashLine(liquidCents(data))}; ${target.months} months is ${formatCents(target.targetCents)}.`,
+      why: cushionWhy(cushion),
       // The goal form opens drafted with this cushion (src/app/goals/page.tsx); the address names
       // the draft, never an amount (debug 2, 11-16: Yes opened an empty form).
       action: { label: "Set a savings goal", href: "/goals?draft=emergency_fund" },
     });
   },
 };
+
+// The cushion the card says and the goal page it opens shows with its working
+// (src/app/goals/page.tsx): what this person spends, keeps and should keep. Null with none to build.
+export type Cushion = {
+  spend: number;
+  cash: number;
+  income: number | null;
+  target: NonNullable<ReturnType<typeof emergencyTarget>>;
+  short: number;
+};
+export function cushionOf({
+  profile,
+  data,
+}: Pick<Parameters<Detector["detect"]>[0], "profile" | "data">): Cushion | null {
+  // "You keep $X in cash" says what's held now: not from statements that ended long ago.
+  if (statementsTooOld(data)) return null;
+  const spend = cushionSpendCents(data);
+  const incomeFact = profile.facts.monthly_income;
+  const income = typeof incomeFact.value === "number" ? incomeFact.value : null;
+  // Sized for this person (src/planning/emergency-fund.ts): more when pay moves around, a
+  // small starter buffer in debt trouble, the spending gap for a pension, never one size.
+  const target = emergencyTarget({
+    spendingCents: spend,
+    incomeCents: income,
+    pattern:
+      typeof profile.facts.income_pattern.value === "string"
+        ? profile.facts.income_pattern.value
+        : null,
+    debtTrouble: profile.facts.debt_trouble.value === true,
+  });
+  if (!target || !cashKnown(data)) return null;
+  const cash = liquidCents(data);
+  const short = target.targetCents - cash;
+  return short > 0 ? { spend, cash, income, target, short } : null;
+}
+
+// How the cushion is worked out, as the card's "why" and the goal page say it.
+export function cushionWhy({ spend, cash, income, target }: Cushion): string {
+  if (target.kind === "starter")
+    return `${cash < 0 ? `You're ${formatCents(-cash)} overdrawn` : `Your cash is ${formatCents(cash)}`} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`;
+  if (target.kind === "gap")
+    return `You spend about ${formatCents(spend)} a month against ${formatCents(income ?? 0)} coming in, a gap of ${formatCents(spend - (income ?? 0))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(cash)}.`;
+  return `You spend about ${formatCents(spend)} a month. ${cashLine(cash)}; ${target.months} months is ${formatCents(target.targetCents)}.`;
+}
 
 const highCostLoans: Detector = {
   covers: ["debt_trouble", "costly_borrowing"],

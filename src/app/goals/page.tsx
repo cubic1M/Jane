@@ -8,8 +8,11 @@ import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
 import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
-import { EMPTY_GOAL, draftedGoal } from "./draft";
+import { EMPTY_GOAL, cushionDraft, draftedGoal } from "./draft";
+import { loadCushion } from "@/lib/cushion";
 import { currentProposals } from "@/lib/proposals";
+import { describe } from "@/lib/jane-agent/sources/setup";
+import type { GoalProposal } from "@/planning/proposals";
 import { GoalTradeoffs } from "./tradeoffs";
 import { SubmitButton } from "@/components/submit-button";
 import { ProgressBar } from "@/components/progress-bar";
@@ -39,7 +42,16 @@ async function Goals({ searchParams }: { searchParams: Search }) {
     // Spec step 241: only worth the year plan's work with two goals or more.
     db.savingsGoals.count().then((n) => (n >= 2 ? loadTradeoffs(user.id) : null)),
   ]);
-  const drafted = draft ? draftedGoal(await currentProposals(user.id), draft) : EMPTY_GOAL;
+  const proposals = draft ? await currentProposals(user.id) : [];
+  const proposed = draft ? draftedGoal(proposals, draft) : EMPTY_GOAL;
+  // A set-up card's goal says its own words above the form (src/lib/jane-agent/sources/setup.ts).
+  const proposal = proposals.find(
+    (p): p is GoalProposal => p.kind === "goal" && p.key === `goal:${String(draft)}`,
+  );
+  // The cushion card's goal: its figure and working above the form (./draft.ts cushionDraft).
+  const cushion = draft === "emergency_fund" ? await loadCushion(user.id) : null;
+  const cushioned = cushion?.cushion ? cushionDraft(cushion.cushion, proposed, cushion.asOf) : null;
+  const drafted = cushioned?.values ?? proposed;
 
   return (
     <>
@@ -109,6 +121,11 @@ async function Goals({ searchParams }: { searchParams: Search }) {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Add a goal</h2>
+        {(cushioned || proposal) && (
+          <p data-card-working="" className="text-sm text-zinc-600 dark:text-zinc-400">
+            {cushioned?.line ?? describe(proposal!)}
+          </p>
+        )}
         <GoalForm values={drafted} accounts={accounts} />
       </section>
 

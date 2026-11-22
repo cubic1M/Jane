@@ -31,7 +31,12 @@ export function FeeList({
       <h2 className="text-xl font-semibold">Bank fees</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {formatCents(fees.seenCents)} in {plural(fees.count, "fee")} in {months}
-        {fees.estimated && `, about ${formatCents(fees.yearCents)} over a year`}.{" "}
+        {/* The card's headline is the year (yearCents): said whenever it isn't what was paid, an
+            account with fewer months paced to a year too, not only when every account is short
+            (the manager, 11-22). */}
+        {fees.yearCents !== fees.seenCents &&
+          `, about ${formatCents(fees.yearCents)} over a year at this pace`}
+        .{" "}
         <Link href="/transactions" className="font-medium underline">
           All transactions
         </Link>

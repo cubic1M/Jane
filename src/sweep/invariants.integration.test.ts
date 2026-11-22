@@ -212,6 +212,9 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
 
   it("has a policy row for every insurer paid as a bill", () => {
     expect(everyone(premiumsOnFile)).toEqual([]);
+  });
+
+  it("opens, for every card with a figure, a page that shows it (class 11)", () => {
     expect(everyone(cardOpensItsFigure)).toEqual([]);
   });
 

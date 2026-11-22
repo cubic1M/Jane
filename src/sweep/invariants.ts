@@ -769,28 +769,100 @@ export function unscheduledMonth(flat: Flat): string[] {
   return [`home's uneven pay ${home} a month, the profile's month ${month}`];
 }
 
-// Class 11 (debug 2, sweep 16; the manager, 11-22): a card that says a count and a total opens a page
-// that shows that many rows adding up to that total. The bank-fees card's "See the fees" opened Where
-// your money goes, which lists categories, not the 7 fees ($139.00) it counted. The snapshot's
-// feeList is what the fee list page shows (src/app/transactions/fee-list.tsx): its fee rows and
-// their sum, fees given back included.
+// Class 11 (debug 2, sweep 16; the manager, 11-22): a card with a figure opens a page that shows
+// that figure and how it was worked out. The bank-fees card's "See the fees" opened Where your money
+// goes, which lists categories, not the 7 fees ($139.00) it counted. Each suggestion's headline
+// figure is held to what the snapshot has of the page its link opens:
+// - the fee list (/transactions?fees=1): as many rows as the card counts, adding up to its total;
+// - an area page's item (/money, /taxes, /investments, /insurance, /loans with ?focus=<item>): the
+//   item's figure, line or detail;
+// - Subscriptions: its cheaper plans' sum (cardPages.plansYearlyCents);
+// - the cushion's goal page (/goals?draft=emergency_fund): its line's figure (cardPages.cushionShortCents).
+// Not checked here, because the snapshot doesn't hold the page: a finding's report (/report/<id>,
+// which says the finding's own title), an outside site (a bank's or a program's page), and a page
+// with no figure of the card's to look for (an insurance add form, /plan, Settings). The walk's
+// dockcheck.js opens every card's links and looks for each figure on the page itself. The set-up
+// cards ("I could set a $X monthly budget") aren't suggestions: their form says the card's own words
+// (src/lib/jane-agent/sources/setup.ts describe).
+const AREA_OF_PATH: Record<string, string> = {
+  "/money": "money",
+  "/taxes": "taxes",
+  "/investments": "investing",
+  "/insurance": "insurance",
+  "/loans": "loans",
+};
+// Each dollar figure in a text, with how far off it may be as shown: "$14k" is $13,500 to $14,499,
+// "$1.6k" $1,550 to $1,649, "$111" within a dollar of rounding.
+const figuresIn = (text: string) =>
+  [...text.replace(/,/g, "").matchAll(/\$(\d+(?:\.\d+)?)([km])?/g)].map((m) => {
+    const places = m[1]!.split(".")[1]?.length ?? 0;
+    const scale = m[2] === "m" ? 1e6 : m[2] === "k" ? 1e3 : 1;
+    return { value: Number(m[1]) * scale, off: m[2] ? scale / 10 ** places / 2 : 1 };
+  });
+const near = (figure: number, shown: readonly { value: number; off: number }[]) =>
+  shown.some((f) => Math.abs(f.value - figure) <= f.off);
+// Cards found holding a figure their page doesn't show, listed for the manager (debug 2, 11-22),
+// each out of this list once its page says it.
+const PAGE_GAPS: Record<string, string> = {
+  "taxes:charity_receipts": "Taxes' giving item lists the gifts, not the tax the receipts save",
+  "taxes:childcare_tax_break": "Taxes' family item has no figure of the credit",
+};
+
 export function cardOpensItsFigure(flat: Flat): string[] {
-  return Object.entries(flat).flatMap(([path, href]) => {
+  return Object.entries(flat).flatMap(([path, value]) => {
     const id = /^suggestions\.(.+)\.action\.href$/.exec(path)?.[1];
-    const said = id
-      ? /You paid (\$[\d,]+\.\d{2}) in (\d+) bank fees?\b/.exec(
-          String(flat[`suggestions.${id}.short`] ?? ""),
-        )
-      : null;
-    if (!said) return [];
-    if (href !== FEE_LIST_PATH)
-      return [`${path}: "${String(href)}" doesn't list the fees the card counts`];
-    const rows = flat["feeList.rows"];
-    const sum = flat["feeList.sumCents"];
-    return rows === Number(said[2]) && typeof sum === "number" && formatCents(sum) === said[1]
-      ? []
-      : [
+    if (!id) return [];
+    const href = String(value);
+    const said = /You paid (\$[\d,]+\.\d{2}) in (\d+) bank fees?\b/.exec(
+      String(flat[`suggestions.${id}.short`] ?? ""),
+    );
+    if (said) {
+      if (href !== FEE_LIST_PATH)
+        return [`${path}: "${href}" doesn't list the fees the card counts`];
+      const rows = flat["feeList.rows"];
+      const sum = flat["feeList.sumCents"];
+      if (!(rows === Number(said[2]) && typeof sum === "number" && formatCents(sum) === said[1]))
+        return [
           `${path}: the card says ${said[2]} fees, ${said[1]}; the page lists ${String(rows)}, ${typeof sum === "number" ? formatCents(sum) : "nothing"}`,
         ];
+      // And its headline, a year of them: what was paid, or the year the page says beside it.
+      const [year] = figuresIn(String(flat[`suggestions.${id}.headline`] ?? ""));
+      const yearShown = flat["feeList.yearShownCents"];
+      const onPage = [sum, ...(typeof yearShown === "number" ? [yearShown] : [])];
+      return !year ||
+        near(
+          year.value,
+          onPage.map((c) => ({ value: c / 100, off: 1 })),
+        )
+        ? []
+        : [
+            `${path}: the card's headline says $${year.value}; the page says ${onPage.map((c) => formatCents(c)).join(" and ")}`,
+          ];
+    }
+    const [said1] = figuresIn(String(flat[`suggestions.${id}.headline`] ?? ""));
+    if (said1 === undefined || PAGE_GAPS[id]) return [];
+    const figure = said1.value;
+    const [page, query = ""] = href.split("?");
+    const focus = new URLSearchParams(query).get("focus");
+    const area = AREA_OF_PATH[page ?? ""];
+    let shown: { value: number; off: number }[] | null = null;
+    if (area && focus) {
+      const item = Object.entries(flat).filter(
+        ([p]) =>
+          p.startsWith(`trees.${area}.`) &&
+          (p.includes(`.items.${focus}.`) || p === `trees.${area}.summaries.${focus}`),
+      );
+      shown = item.flatMap(([, v]) => figuresIn(String(v)));
+    } else if (page === "/subscriptions" && /cheaper_tier$/.test(id)) {
+      const cents = flat["cardPages.plansYearlyCents"];
+      shown = typeof cents === "number" ? [{ value: cents / 100, off: 1 }] : [];
+    } else if (href === "/goals?draft=emergency_fund") {
+      const cents = flat["cardPages.cushionShortCents"];
+      shown = typeof cents === "number" ? [{ value: cents / 100, off: 1 }] : [];
+    }
+    if (shown === null || near(figure, shown)) return [];
+    return [
+      `${path}: the card says $${figure}; "${href}" shows ${shown.length ? shown.map((f) => `$${Math.round(f.value)}`).join(", ") : "no figure"}`,
+    ];
   });
 }

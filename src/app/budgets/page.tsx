@@ -7,7 +7,10 @@ import { loadInsightTransactions } from "@/insights/load";
 import { BUDGET_CATEGORIES } from "@/lib/budgets";
 import { scopedDb } from "@/lib/db-scoped";
 import { irregularCosts } from "@/lib/irregular";
-import { formatCents } from "@/lib/money";
+import { centsToInput, formatCents } from "@/lib/money";
+import { currentProposals } from "@/lib/proposals";
+import { describe } from "@/lib/jane-agent/sources/setup";
+import type { BudgetProposal } from "@/planning/proposals";
 import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
 import { deleteBudget } from "./actions";
@@ -24,9 +27,18 @@ const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   ANNUALLY: "Once a year",
 };
 
-async function Budgets() {
+async function Budgets({ searchParams }: { searchParams: PageProps<"/budgets">["searchParams"] }) {
   await connection();
   const user = await requireUser();
+  // A set-up card's "Open the form" (src/lib/jane-agent/sources/setup.ts setupHref): its budget,
+  // drafted, with the card's words above the form.
+  const { draft } = await searchParams;
+  const proposal =
+    typeof draft === "string"
+      ? (await currentProposals(user.id)).find(
+          (p): p is BudgetProposal => p.kind === "budget" && p.category === draft,
+        )
+      : undefined;
   const db = await scopedDb();
   const now = new Date();
   const asOf = await todayOf(user.id, { now });
@@ -127,16 +139,29 @@ async function Budgets() {
           The averages in brackets are your own spending over the last{" "}
           {completeMonthsWords(summary.months)}, as a starting point; pick whatever suits you.
         </p>
-        <BudgetForm categories={BUDGET_CATEGORIES} suggestions={summary.suggestions} />
+        {proposal && (
+          <p data-card-working="" className="text-sm text-zinc-600 dark:text-zinc-400">
+            {describe(proposal)}
+          </p>
+        )}
+        <BudgetForm
+          categories={BUDGET_CATEGORIES}
+          suggestions={summary.suggestions}
+          draft={
+            proposal
+              ? { category: proposal.category, amount: centsToInput(proposal.amountCents) }
+              : null
+          }
+        />
       </section>
     </>
   );
 }
 
-export default function BudgetsPage() {
+export default function BudgetsPage({ searchParams }: PageProps<"/budgets">) {
   return (
     <PageShell>
-      <Budgets />
+      <Budgets searchParams={searchParams} />
     </PageShell>
   );
 }
