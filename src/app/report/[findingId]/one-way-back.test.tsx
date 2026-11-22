@@ -59,6 +59,8 @@ vi.mock("@/lib/jane-agent/messages", () => ({
   messageAboutFinding: async () => "msg123",
 }));
 vi.mock("@/components/view-tracker", () => ({ ViewTracker: () => null }));
+// A card-from-cash card offered beside a card-interest finding: none here.
+vi.mock("@/lib/offered-card", () => ({ offeredCard: async () => null }));
 vi.mock("./decision-buttons", () => ({ DecisionButtons: () => null }));
 vi.mock("./diy-kit", () => ({ DiyKit: () => null }));
 vi.mock("./best-option", () => ({ BestOption: () => null }));

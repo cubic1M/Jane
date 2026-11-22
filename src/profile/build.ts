@@ -140,6 +140,10 @@ export type ProfileInput = {
     type: string;
     annualSavingsCents: number | null;
     confidence: "high" | "medium" | "low";
+    // A bill finding's: a medical bill checked against a plan (once, not a yearly rate), or the
+    // phone or internet bill above its typical price.
+    dispute?: boolean;
+    bill?: { merchant: string; monthlyCents: number; typicalHighCents: number };
   }[];
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];

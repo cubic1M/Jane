@@ -9,6 +9,8 @@ import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
 import { balanceLine, otherMoneyLine, unevenPayLine } from "./balance-line";
 import { BillsOnward } from "./onward";
+import { OfferedCard } from "@/components/offered-card";
+import { offeredCard } from "@/lib/offered-card";
 import { PageShell } from "@/components/page-shell";
 
 const dayLabel = (iso: string) =>
@@ -26,6 +28,7 @@ async function Bills() {
   const bills = comingUpBills(input, FORECAST_DAYS);
   const forecasts = forecastAccounts(input, FORECAST_DAYS);
   const byDate = Map.groupBy(bills, (b) => b.date);
+  const ask = await offeredCard(user.id, "cost:bill_negotiation");
 
   return (
     <>
@@ -73,6 +76,10 @@ async function Bills() {
           </section>
         );
       })}
+
+      {/* "Ask for a lower bill rate" opens here: its figure and how it's worked out, while it's
+          offered (debug 2, 11-22: the demo's "save $1,080/yr" opened a page with neither). */}
+      <OfferedCard card={ask} />
 
       {bills.length === 0 ? (
         <EmptyState

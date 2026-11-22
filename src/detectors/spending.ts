@@ -205,9 +205,19 @@ const billNegotiation: Detector = {
       .map((s) => ({ s, yearly: last(s) * 12 }));
     if (bills.length === 0) return null;
     const yearly = bills.reduce((n, b) => n + b.yearly, 0);
-    // The report's figure when it has one: the bill above its typical price (gate B: $576 on the
-    // report against this detector's share of the whole bill, $343).
-    const worth = reportsWorth(data, "bill_negotiation") ?? Math.round(yearly * S.negotiationShare);
+    // The report's figure when it has one: each phone or internet bill above its typical price
+    // (gate B: $576 on the report against this detector's share of the whole bill, $343). Not a
+    // medical bill checked against a plan, a bill_negotiation finding too (debug 2, 11-22: the demo
+    // person's "save $1,240" counted an imaging center's $160 beside Comcast's and Verizon's $540).
+    const asks = (data.findings ?? []).flatMap((f) =>
+      f.type === "bill_negotiation" && f.bill && f.annualSavingsCents !== null
+        ? [{ ...f.bill, yearlyCents: f.annualSavingsCents }]
+        : [],
+    );
+    const worth =
+      asks.length > 0
+        ? asks.reduce((n, a) => n + a.yearlyCents, 0)
+        : Math.round(yearly * S.negotiationShare);
     return suggestion("cost", "bill_negotiation", {
       // Worth asking, never "too high": the checkup may call the same bill a typical price
       // (manager decision 10-30).
@@ -225,8 +235,12 @@ const billNegotiation: Detector = {
         "bill payments",
       ),
       urgency: "later",
-      why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. Even at a typical price it's still worth asking: people who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
-      action: { label: "See your bills", href: "/bills" },
+      // How the figure is worked out, shown on the page the card opens too (/bills).
+      why:
+        asks.length > 0
+          ? `${asks.map((a) => `${nice(a.merchant)} is ${formatCents(a.monthlyCents)} a month, ${formatCents(a.monthlyCents - a.typicalHighCents)} above the typical top of ${formatCents(a.typicalHighCents)}`).join("; ")}. Brought down to the typical price, that's ${formatCents(worth)} a year.`
+          : `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. Even at a typical price it's still worth asking: people who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
+      action: { label: "See your bills", href: "/bills#card" },
       watch: {
         kind: "bill_drops",
         payees: bills.map((b) => ({
