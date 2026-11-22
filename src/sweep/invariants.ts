@@ -656,7 +656,8 @@ export function listDoubles(flat: Flat): string[] {
 // overlapping subscription", which drops Spotify, beside "Review your Spotify subscription". A card
 // Jane posted about a merchant is never beside another, a pick or a post, that asks the same
 // matter about that merchant (src/lib/jane-agent/same-matter.ts). Read as drawn (./snapshot.ts):
-// one card a headline, so a post repeated word for word shows once.
+// one card a headline, so a post repeated word for word shows once; and one card a family of keys,
+// so a post with new figures isn't another card (debug 3, 11-22: nine cash plans).
 export function dockDoubles(flat: Flat): string[] {
   const cards: { at: string; about: string; headline: string; merchants: string[] }[] = [];
   for (let i = 0; typeof flat[`dock.${i}.headline`] === "string"; i += 1) {
@@ -674,7 +675,7 @@ export function dockDoubles(flat: Flat): string[] {
   }
   const matter = (about: string) => matterOf(about.split(":")[1] ?? about);
   const posted = (about: string) => about.startsWith("finding:");
-  return cards.flatMap((card, j) =>
+  const sameMatter = cards.flatMap((card, j) =>
     cards.slice(0, j).flatMap((other) => {
       if (!posted(card.about) && !posted(other.about)) return [];
       if (matter(card.about) !== matter(other.about)) return [];
@@ -686,6 +687,23 @@ export function dockDoubles(flat: Flat): string[] {
         : [];
     }),
   );
+  // One family of keys, two cards: one thing said twice with different figures (./snapshot.ts
+  // keyFamily).
+  const families: { at: string; family: string; headline: string }[] = [];
+  for (let i = 0; typeof flat[`dock.${i}.headline`] === "string"; i += 1) {
+    const family = flat[`dock.${i}.family`];
+    if (typeof family === "string")
+      families.push({ at: `dock.${i}`, family, headline: flat[`dock.${i}.headline`] as string });
+  }
+  const sameKey = families.flatMap((card, j) => {
+    const other = families.slice(0, j).find((o) => o.family === card.family);
+    return other
+      ? [
+          `${card.at}: "${card.headline.slice(0, 80)}" is ${other.at} "${other.headline.slice(0, 80)}" again (${card.family})`,
+        ]
+      : [];
+  });
+  return [...sameMatter, ...sameKey];
 }
 
 // Class 4 for a fund's yearly cost (debug 3, 11-20): a ratio shown beside a fund's name or ticker

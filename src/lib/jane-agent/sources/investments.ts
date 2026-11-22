@@ -85,8 +85,7 @@ import { validTimezone } from "@/lib/digest/week";
 import { valuesPlanLine, valuesButton, VALUES_LINK } from "../investments/values-copy";
 import { attentionLine, FILE_LINK } from "../investments/family-file-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
-import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
-import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
+import { cashCard, cashCardKey, cashToBringUp } from "../investments/cash-copy";
 import {
   CRYPTO_LINK,
   feeFlag,
@@ -728,14 +727,11 @@ function steadyCards({ inv, snapshot }: In): Candidate | null {
 // Step 162: cash earning what it should. Each move is a tap; with no move Jane can do,
 // it says what the person could do (open a high-yield savings account).
 function cashCards({ inv }: In): Candidate | null {
-  const cash = inv.cash.plan;
-  if (!inv.advice || !cash || !(cash.gainCents >= CASH_MIN_GAIN_CENTS)) return null;
+  const cash = cashToBringUp({ advice: inv.advice, plan: inv.cash.plan });
+  if (!cash) return null;
   return {
-    kind: cash.moves.length > 0 ? "decision" : "heads_up",
-    body: `${cashLine(cash)}${cash.moves.length > 0 ? " Each move is a tap; nothing moves until you say so." : ""}`,
-    refs: { advice: true, ...(cash.moves.length > 0 ? { cashPlan: cash.key } : {}) },
-    actions: [...moveButtons(cash), CASH_LINK, snoozeButton()],
-    dedupeKey: `cash:${cash.key}`,
+    ...cashCard(cash),
+    dedupeKey: `cash:${cashCardKey(cash)}`,
     priority: MESSAGE_PRIORITY.cash,
   };
 }

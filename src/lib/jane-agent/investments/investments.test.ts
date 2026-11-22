@@ -1946,11 +1946,17 @@ describe("cashReply and the cash message", () => {
     const [message] = gatherCash(CASH_PLAN);
     expect(message).toMatchObject({
       kind: "decision",
-      dedupeKey: "cash:cash-key",
+      // What it asks, not its figures (debug 3, 11-22): moved cash is the same card.
+      dedupeKey: "cash:checking_to_savings@chk+sweep_to_money_market@brk",
       refs: { advice: true, cashPlan: "cash-key" },
       priority: MESSAGE_PRIORITY.cash,
     });
     expect(message.body).toMatch(/nothing moves until you say so\.$/);
+    const moved = { ...CASH_PLAN, key: "moved-key", gainCents: CASH_PLAN.gainCents + 1_000 };
+    expect(gatherCash(moved)[0]).toMatchObject({
+      dedupeKey: message.dedupeKey,
+      refs: { cashPlan: "moved-key" },
+    });
     expect(gatherCash({ ...CASH_PLAN, moves: [] })[0]).toMatchObject({
       kind: "heads_up",
       refs: { advice: true },

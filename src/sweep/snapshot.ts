@@ -115,15 +115,22 @@ export async function snapshotAt(
   );
   // The dock as it's drawn (/api/chat/cards: src/lib/jane-agent/popup-stack.ts), each card with
   // what it's about: a day's suggestion by its key and the payees it watches, a finding Jane posted
-  // by its type and merchant. Class 7 holds it to one card a matter (./invariants.ts dockDoubles).
+  // by its type and merchant, and the family of its key. Class 7 holds it to one card a matter
+  // (./invariants.ts dockDoubles).
   const drawn = await loadPopupStack(userId, { client, now });
   const refsOf = new Map(
     (
       await scopedFor(userId, client).janeMessages.findMany({
         where: { id: { in: drawn.map((c) => c.id) } },
-        select: { id: true, refs: true },
+        select: { id: true, refs: true, dedupeKey: true },
       })
-    ).map((m) => [m.id, (m.refs ?? {}) as { findingId?: unknown; suggestion?: unknown }]),
+    ).map((m) => [
+      m.id,
+      {
+        ...((m.refs ?? {}) as { findingId?: unknown; suggestion?: unknown }),
+        family: keyFamily(m.dedupeKey),
+      },
+    ]),
   );
   const idOf = (id: string, field: "findingId" | "suggestion") => {
     const value = refsOf.get(id)?.[field];
@@ -147,6 +154,7 @@ export async function snapshotAt(
     return {
       headline: card.body.split("\n")[0],
       about: suggestion ? suggestion.key : finding ? `finding:${finding.type}` : null,
+      family: refsOf.get(card.id)?.family ?? null,
       merchants: suggestion
         ? merchantKeys((payees ?? []).map((p) => p.description))
         : merchantKeys([(finding?.evidence as { merchant?: unknown } | null)?.merchant]),
@@ -321,3 +329,14 @@ const loanKind = (kind: string) =>
       : /mortgage|home/i.test(kind)
         ? "mortgage"
         : "other";
+
+// A posted card's key with its figures left out: a segment that's a hash (12 or more hex digits) or
+// a number. Two dock cards in one family say one thing with different figures (debug 3, 11-22: a
+// retiree's nine "Your cash is …" cards, keyed by a hash of each day's amounts). Null for a key
+// with no such segment.
+export function keyFamily(dedupeKey: string | null): string | null {
+  if (!dedupeKey) return null;
+  const parts = dedupeKey.split(":");
+  const figure = (p: string) => /^[0-9a-f]{12,}$/.test(p) || /^\d+$/.test(p);
+  return parts.some(figure) ? parts.map((p) => (figure(p) ? "#" : p)).join(":") : null;
+}
