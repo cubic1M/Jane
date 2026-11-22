@@ -154,11 +154,13 @@ export const DATED: readonly Reason[] = [
   // "you pay $17.99") wait for newer ones, and Money's and the chat's net worth say when it's
   // from (gate C, debug 3, 11-19: the frozen demo data's 46th day). Every card that stops on
   // statementsTooOld is here (./reasons-statements-too-old.test.ts): the low-cost internet card
-  // went on the renter's 46th day, 2028-02-29, and read as a leap-day bug (gate C, 11-20).
+  // went on the renter's 46th day, 2028-02-29, and read as a leap-day bug (gate C, 11-20). So is
+  // every snapshot field read from one of their figures: the pages the cheaper-plan and cushion
+  // cards open (cardPages, #2223) went the same day on every person (debug 3, 11-22).
   {
     name: "statements too old to say what's now",
     paths:
-      /^(suggestions\.(safe_to_spend:emergency_fund|investing:idle_cash|subscriptions:cheaper_tier|cost:low_cost_internet)\.|chat\.what's my net worth\.body$|trees\.money\.summaries\.have:net-worth$)/,
+      /^(suggestions\.(safe_to_spend:emergency_fund|investing:idle_cash|subscriptions:cheaper_tier|cost:low_cost_internet)\.|cardPages\.(plansYearlyCents|cushionShortCents)$|chat\.what's my net worth\.body$|trees\.money\.summaries\.have:net-worth$)/,
     on: daysAfter("lastLine", STALE_UPLOAD_DAYS + 1),
   },
   // The return's due date counted down: "due April 15, 2027, 37 days from now". The card is the
