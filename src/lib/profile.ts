@@ -209,7 +209,7 @@ async function loadProfileInputFrom(
     // What the report shows, so a suggestion on the same topic says the same figure (gate B).
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: { type: true, annualSavingsCents: true, confidence: true },
+      select: { type: true, annualSavingsCents: true, confidence: true, evidence: true },
     }),
   ]);
   // Books QA: an account linked twice (through two logins) counts once.
@@ -321,7 +321,7 @@ async function loadProfileInputFrom(
     creditScore: report?.score ?? null,
     valuesExcludes: values?.excludes ?? [],
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
-    findings: found,
+    findings: found.map(({ evidence, ...f }) => ({ ...f, ...billEvidence(f.type, evidence) })),
     told,
     unreadPolicyDocuments: unread,
     rentReportingOn: reporting !== null,
@@ -597,4 +597,23 @@ export async function clearCorrection(
 export function sayFact(key: FactKey, value: string | number | boolean | null): string {
   if (value === null) return "not known yet";
   return say(key, value);
+}
+
+// What a bill finding's card says beside its figure: the bill, its month and the typical top, or
+// that it's a medical bill checked against a plan, once and not a yearly rate.
+function billEvidence(type: string, evidence: unknown) {
+  if (type !== "bill_negotiation" || !evidence || typeof evidence !== "object") return {};
+  const e = evidence as Record<string, unknown>;
+  if (e.dispute === true) return { dispute: true };
+  return typeof e.merchant === "string" &&
+    typeof e.monthlyCents === "number" &&
+    typeof e.typicalHighCents === "number"
+    ? {
+        bill: {
+          merchant: e.merchant,
+          monthlyCents: e.monthlyCents,
+          typicalHighCents: e.typicalHighCents,
+        },
+      }
+    : {};
 }

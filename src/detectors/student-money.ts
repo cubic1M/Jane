@@ -334,17 +334,20 @@ export function cashClearsCard(data: Data): {
     .filter((l) => ids.has(l.accountId) && typeof l.aprBps === "number" && l.aprBps > 0)
     .map((l) => l.aprBps!);
   const aprBps = aprs.length > 0 ? Math.max(...aprs) : null;
-  // A year of interest on what cash could clear: at the card's rate when the bank says it, else
-  // the charges seen, at a year's pace, for the share cleared.
-  // The report's yearly figure when it has one, so the dock and the report say one (gate B;
-  // debugger 11-18: "stops about $396.87 a year" beside the report's "$339.24 a year").
+  // A year of interest on what cash could clear, for the share cleared: the report's yearly figure
+  // when it has one, so the card and the page it opens say one (gate B; debugger 11-18: "stops
+  // about $396.87 a year" beside the report's "$339.24 a year"; debug 2, 11-22: "save $554" at the
+  // card's rate opened a report that counted $386.95 from the charges, with no lending partner);
+  // else at the card's rate when the bank says it, else the charges seen, at a year's pace.
   const first = charges.reduce((m, t) => (t.date < m ? t.date : m), data.today);
   const spanDays = Math.max(30, daysBetween(first, data.today) + 15);
+  const reported = reportsWorth(data, "card_interest");
   const seenYear =
-    reportsWorth(data, "card_interest") ??
-    Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays);
+    reported ?? Math.round((charges.reduce((s, t) => s + t.amountCents, 0) * 365) / spanDays);
   const interest =
-    aprBps !== null ? Math.round((clear * aprBps) / 10_000) : Math.round((seenYear * clear) / owed);
+    reported === null && aprBps !== null
+      ? Math.round((clear * aprBps) / 10_000)
+      : Math.round((seenYear * clear) / owed);
   return {
     owedCents: owed,
     clearCents: clear,
