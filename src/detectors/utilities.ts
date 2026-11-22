@@ -224,7 +224,7 @@ const lowCostInternet: Detector = {
         { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
       ]),
       urgency: "later",
-      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${plan.isp} decides who qualifies, and its terms are its own.`,
+      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. On it you'd pay about ${formatCents(off)} a month less, ${formatCents(off * 12)} a year. ${plan.isp} decides who qualifies, and its terms are its own.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
     });

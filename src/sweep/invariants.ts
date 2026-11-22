@@ -803,10 +803,9 @@ const near = (figure: number, shown: readonly { value: number; off: number }[]) 
   shown.some((f) => Math.abs(f.value - figure) <= f.off);
 // Cards found holding a figure their page doesn't show, listed for the manager (debug 2, 11-22),
 // each out of this list once its page says it.
-const PAGE_GAPS: Record<string, string> = {
-  "taxes:charity_receipts": "Taxes' giving item lists the gifts, not the tax the receipts save",
-  "taxes:childcare_tax_break": "Taxes' family item has no figure of the credit",
-};
+// None left (debug 3, 11-22: Giving and Family say the charity receipts' and the childcare FSA's
+// cards, figure and working, while they're offered).
+const PAGE_GAPS: Record<string, string> = {};
 
 export function cardOpensItsFigure(flat: Flat): string[] {
   return [...suggestionPages(flat), ...policyPages(flat)];

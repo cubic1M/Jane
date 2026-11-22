@@ -134,7 +134,12 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
   const newIncome = view.newIncome.map((i) => INCOME_KINDS[i.kind].label.toLowerCase());
   const hasSideIncome = !!sideIncome.rental || sideIncome.platforms.length > 0;
 
+  // The cards that open Giving and Family: their figure and working on the item, while the page
+  // lists them (debug 2's class 11, 11-22: "Get receipts for your larger gifts" said the tax at
+  // risk, and the item listed only the gifts; the childcare FSA card's $484 was on no item).
+  const working = (topic: string) => suggestions.find((s) => s.topic === topic)?.why ?? null;
   const area = taxesTree({
+    cards: { giving: working("charity_receipts"), family: working("childcare_tax_break") },
     asOf: today,
     year: estimate.year,
     moves: plan.moves,

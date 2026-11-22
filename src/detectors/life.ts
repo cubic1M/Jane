@@ -150,7 +150,7 @@ const payStopped: Detector = {
       urgency: "now",
       // A month's shortfall against a year's savings tip: as a year, so it comes first.
       rankCents: less * 12,
-      why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}, and about ${formatCents(now)} a month is coming in now. Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
+      why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}, and about ${formatCents(now)} a month is coming in now: about ${formatCents(less)} less than the ${formatCents(before)} a month before. Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
       action: { label: "See what's coming up", href: "/bills" },
     });
   },

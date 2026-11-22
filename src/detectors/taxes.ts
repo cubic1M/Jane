@@ -291,7 +291,7 @@ const childcareTaxBreak: Detector = {
         },
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(spent)} for childcare in ${plural(profile.months, "month")}. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
+      why: `You paid ${formatCents(spent)} for childcare in ${plural(profile.months, "month")}. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}: ${formatCents(saves)} more than the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
       action: { label: "See family tax choices", href: "/taxes?focus=life:family" },
     });
   },
