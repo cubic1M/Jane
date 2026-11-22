@@ -25,6 +25,8 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { findingFingerprint } from "./fingerprint";
 import { firstUnsent, tightPlanBody } from "./tight-money-replies";
+import { cashCard, cashToBringUp } from "./investments/cash-copy";
+import { loadCash } from "@/lib/investments/cash";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { findingSure } from "@/lib/report-state";
 
@@ -42,6 +44,8 @@ import { findingSure } from "@/lib/report-state";
 //   and fingerprint follow, or its Yes would say "This one changed since I posted it";
 // - a change Jane noticed ("By now you'd usually have spent about $37.08") is said as Jane
 //   sees it today, and put away once it no longer shows (src/lib/changes.ts);
+// - the cash plan is said with today's figures, one card at a time (debug 3, 11-22), and put away
+//   once there's no plan worth bringing up;
 // - the week's plan is said as the plan is now (debugger 11-13: a new student's card said "22
 //   things, worth up to $3,560.81 a year" from the first scan's early run, while Home and /plan
 //   said 23 and $3,720.81 once the slower work had added an item), and put away once it's empty.
@@ -89,6 +93,8 @@ type Facts = {
   suggestionTopics: Set<string> | null;
   // The tight month's plan as it is today, when a card here is one (./sources/tight-money.ts).
   tight: TightMoney | null;
+  // The cash plan worth bringing up today (or none), when a card here is one.
+  cash: { plan: ReturnType<typeof cashToBringUp> } | null;
   // The plan as /plan has it now, for the week's plan card; null when no card here is one.
   plan: { now: Snapshot["plan"]; concierge: boolean } | null;
 };
@@ -196,9 +202,11 @@ async function factsFor(
   );
   const withPlan = messages.some((m) => m.refs.weekStart !== undefined);
   const withTight = messages.some((m) => m.refs.tightItem !== undefined);
+  const withCash = messages.some(openCash);
   if (
     !withPlan &&
     !withTight &&
+    !withCash &&
     !withDeadlines &&
     !withChanges &&
     !withGaps &&
@@ -209,7 +217,7 @@ async function factsFor(
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals, insurance, findings, plan, offered, tight] =
+  const [coming, changes, suggestions, proposals, insurance, findings, plan, offered, tight, cash] =
     await Promise.all([
       withDeadlines ? comingUp(userId, client, now) : null,
       withChanges ? loadChanges(userId, { client, now }) : null,
@@ -256,6 +264,9 @@ async function factsFor(
         ? offeredTopics(userId, { client, now })
         : null,
       withTight ? loadTightMoney(userId, { client, now }) : null,
+      withCash
+        ? loadCash(userId, { client, now }).then((view) => ({ plan: cashToBringUp(view) }))
+        : null,
     ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
@@ -297,6 +308,7 @@ async function factsFor(
     suggestionTopics: offered,
     plan,
     tight,
+    cash,
   };
 }
 
@@ -346,6 +358,9 @@ export async function offeredTopics(
 export const coveredGoal = (key: string, topics: ReadonlySet<string> | null) =>
   key.startsWith("goal:") && !!topics?.has(key.slice(5));
 
+// A cash card still asking (one answered keeps what was chosen).
+const openCash = (m: ChatMessage) => m.refs.cashPlan !== undefined && m.status === "open";
+
 // The card as it should show now, or null when it no longer holds.
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey, insuranceGap } =
@@ -353,6 +368,14 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   if (m.refs.weekStart !== undefined && facts.plan) {
     const { now, concierge } = facts.plan;
     return now.items === 0 ? null : { ...m, body: planWords(now, concierge) };
+  }
+  // The cash plan is said with today's figures (debug 3, 11-22: a retiree's dock held nine cash
+  // cards, one posted most days, each with that day's figures), its buttons and key too, so a move
+  // tapped is the one shown.
+  if (openCash(m) && facts.cash) {
+    if (!facts.cash.plan) return null;
+    const card = cashCard(facts.cash.plan);
+    return { ...m, ...card, refs: { ...m.refs, ...card.refs } };
   }
   // The tight month's plan is said from today's forecast (debug 3, 11-21: a linked month's dock said
   // "forecast to be down to $56.46 on Dec 12" until Dec 20). It goes once there's no shortfall, its
@@ -513,19 +536,40 @@ export async function stillTrue(
   if (!facts) return [...messages];
   const kept: ChatMessage[] = [];
   const gone: ChatMessage[] = [];
+  // One cash card at a time: the newest says it; older ones, from before its key left out the
+  // figures, are put away.
+  const newestCash = messages
+    .filter(openCash)
+    .reduce<ChatMessage | null>(
+      (best, m) => (!best || m.createdAt.getTime() > best.createdAt.getTime() ? m : best),
+      null,
+    );
   for (const m of messages) {
-    const shown = asNow(m, facts);
+    const shown = openCash(m) && m !== newestCash ? null : asNow(m, facts);
     if (shown) kept.push(shown);
     else gone.push(m);
   }
   if (gone.length > 0) await putAway(userId, gone, client, now);
-  // What the Yes reads is the stored message, so a re-said finding card is stored as shown.
-  const before = new Map(messages.map((m) => [m.id, m.refs.fingerprint]));
+  // What the Yes reads is the stored message, so a re-said finding card is stored as shown, and
+  // a cash card with its buttons (a move checks the plan's key: src/lib/investments/cash.ts).
+  const before = new Map(messages.map((m) => [m.id, m]));
   for (const m of kept) {
-    if (m.refs.findingId && m.refs.fingerprint !== before.get(m.id)) {
+    const was = before.get(m.id);
+    if (m.refs.findingId && m.refs.fingerprint !== was?.refs.fingerprint) {
       await scopedFor(userId, client).janeMessages.updateMany({
         where: { id: m.id, status: "open" },
         data: { body: m.body, refs: m.refs as Prisma.InputJsonObject },
+      });
+    }
+    if (openCash(m) && (m.body !== was?.body || m.refs.cashPlan !== was?.refs.cashPlan)) {
+      await scopedFor(userId, client).janeMessages.updateMany({
+        where: { id: m.id, status: "open" },
+        data: {
+          kind: m.kind,
+          body: m.body,
+          refs: m.refs as Prisma.InputJsonObject,
+          actions: m.actions as Prisma.InputJsonArray,
+        },
       });
     }
   }
