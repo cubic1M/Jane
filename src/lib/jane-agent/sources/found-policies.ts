@@ -1,7 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { POLICY_KINDS } from "@/config/insurance";
-import { formatCents } from "@/lib/money";
+import { premiumWords } from "@/lib/insurance/premium-words";
 import { type Candidate, openLink } from "../types";
 import { type MessageSource } from "./source";
 import { dayLabel } from "@/lib/day-label";
@@ -19,10 +18,8 @@ export const foundPoliciesSource: MessageSource = {
     (snapshot.insurance?.policies ?? [])
       .filter((p) => p.status === "found" && p.source === "payments")
       .map((p): Candidate => {
-        const price =
-          p.premiumCents !== null && p.premiumFrequency
-            ? `, ${formatCents(p.premiumCents)} ${PREMIUM_FREQUENCIES[p.premiumFrequency].label}`
-            : "";
+        const premium = premiumWords(p);
+        const price = premium ? `, ${premium}` : "";
         const renews = p.nextRenewal
           ? ` It looks like it renews around ${dayLabel(p.nextRenewal)} (an estimate from when the payments started).`
           : "";
@@ -33,7 +30,8 @@ export const foundPoliciesSource: MessageSource = {
           actions: [
             { id: "policy.confirm", label: "Confirm", kind: "primary" },
             { id: "policy.not_insurance", label: "Not insurance", kind: "secondary" },
-            openLink("See insurance", "/insurance"),
+            // Its own item on Insurance, which says the premium as this does, with its year.
+            openLink("See insurance", `/insurance?focus=policies:${p.id}`),
           ],
           dedupeKey: p.id,
           priority: MESSAGE_PRIORITY.found_policy,
