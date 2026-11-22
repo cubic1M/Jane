@@ -80,7 +80,7 @@ async function dueBills(
   const payments = buildStreams(input).filter(
     (s) => s.active && s.accountId && checking.has(s.accountId),
   );
-  return liabilities.flatMap((l): DueBill[] => {
+  const bills = liabilities.flatMap((l): DueBill[] => {
     const account = input.accounts.find((a) => a.id === l.accountId);
     if (!account || !l.nextPaymentDueDate) return [];
     const dueOn = day(l.nextPaymentDueDate);
@@ -105,6 +105,10 @@ async function dueBills(
       },
     ];
   });
+  // Soonest due first, then by name: the cards Jane posts in one batch keep this order, and the
+  // database's own order differs from one copy of a person to another (debug 3, 11-22: one person
+  // made twice had its loan and card swapped in the dock, src/sweep/same-twice.integration.test.ts).
+  return bills.sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.name.localeCompare(b.name));
 }
 
 // Checking's forecast, less the transfers already pending out of it.

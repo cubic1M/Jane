@@ -24,6 +24,16 @@ import {
   type MessageRefs,
 } from "./types";
 
+// Newest first, and among cards posted at one moment, the most important, then by key: what the
+// data decides, never the random id (debug 3, 11-22: one person made twice had two due-date cards
+// swapped in the dock, src/sweep/same-twice.integration.test.ts).
+const NEWEST_FIRST: Prisma.JaneMessageOrderByWithRelationInput[] = [
+  { createdAt: "desc" },
+  { priority: "desc" },
+  { dedupeKey: "asc" },
+  { id: "desc" },
+];
+
 // Reading and writing Jane's chat messages (spec step 81), always for one person.
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -56,7 +66,7 @@ export async function chatFeed(
       ...sinceSignIn(since),
     },
     select: MESSAGE_SELECT,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy: NEWEST_FIRST,
     take: take + 1,
   });
   return {
@@ -402,7 +412,7 @@ export async function stackedSuggestions(
       refs: { path: ["suggestion"], string_contains: ":" },
       createdAt: { gte: new Date(now.getTime() - 36 * 60 * 60 * 1000), lte: now },
     },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy: NEWEST_FIRST,
     select: MESSAGE_SELECT,
     take: SUGGESTIONS_PER_DAY * 2,
   });
@@ -457,7 +467,7 @@ export async function openPopupMessages(
         ...(MORNING_BRIEF ? [] : [{ snoozedUntil: BUNDLED_UNTIL }]),
       ],
     },
-    orderBy: [{ createdAt: "desc" }, { dedupeKey: "asc" }, { id: "desc" }],
+    orderBy: NEWEST_FIRST,
     select: MESSAGE_SELECT,
   });
   // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
@@ -486,14 +496,13 @@ export async function openPopupMessages(
         kind: { in: ["decision", "heads_up", "brief", "done"] },
         answeredAt: { gte: since },
       },
-      orderBy: [{ createdAt: "desc" }, { dedupeKey: "asc" }, { id: "desc" }],
+      orderBy: NEWEST_FIRST,
       select: MESSAGE_SELECT,
     })
   )
     .map(toChatMessage)
     .filter((m) => m.refs.chosen && !m.refs.chosen.settled && !m.refs.chosen.final);
-  // Posted together, they keep the order of their keys, which the data decides, not of their ids
-  // (src/sweep/same-twice.integration.test.ts: one person made twice shows the same dock).
+  // Posted at one moment, they keep NEWEST_FIRST's order (a stable sort).
   return [...chosen, ...rows.filter((r) => !answers.has(r.id)).map(toChatMessage)].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
