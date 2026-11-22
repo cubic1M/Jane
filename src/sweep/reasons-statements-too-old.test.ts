@@ -39,6 +39,49 @@ describe("every card that waits for newer statements", () => {
   });
 });
 
+// Debug 3, 11-22 (#2223's cardPages, gate C's frozen sweep): a snapshot field read from a function
+// that stops on statementsTooOld (the pages the cheaper-plan and cushion cards open) went on every
+// person's 46th day with no reason. Each such field the snapshot reads is named in the reason too.
+describe("every snapshot field read from a figure that waits for newer statements", () => {
+  it("is named in the sweep's reason for that day", () => {
+    // The exported functions in src/detectors that stop on statementsTooOld.
+    const stops = readdirSync("src/detectors")
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+      .flatMap((f) => {
+        const text = readFileSync(`src/detectors/${f}`, "utf8");
+        // Each top-level declaration, to the next one.
+        return text.split(/\n(?=export |function |const |type )/).flatMap((chunk) => {
+          const name = /^export function (\w+)\(/.exec(chunk)?.[1];
+          return name && name !== "statementsTooOld" && /statementsTooOld\(/.test(chunk)
+            ? [name]
+            : [];
+        });
+      });
+    expect(stops).toEqual(expect.arrayContaining(["cheaperPlansOf", "cushionOf"]));
+    // In the snapshot: the variables they fill, then the fields that read those variables, each
+    // under the object it sits in.
+    const lines = readFileSync("src/sweep/snapshot.ts", "utf8").split("\n");
+    const filled = lines.flatMap((l) => {
+      const m = /const (\w+) = (\w+)\(/.exec(l);
+      return m && stops.includes(m[2]!) ? [m[1]!] : [];
+    });
+    expect(filled.length).toBeGreaterThanOrEqual(2);
+    const fields: string[] = [];
+    let parent = "";
+    for (const l of lines) {
+      const open = /^ {4}(\w+): \{$/.exec(l);
+      if (open) parent = open[1]!;
+      const field = /^ {6}(\w+): (.*)$/.exec(l);
+      if (parent && field && filled.some((v) => new RegExp(`(?<![.\\w])${v}\\b`).test(field[2]!)))
+        fields.push(`${parent}.${field[1]}`);
+    }
+    expect(fields).toEqual(
+      expect.arrayContaining(["cardPages.plansYearlyCents", "cardPages.cushionShortCents"]),
+    );
+    expect(fields.filter((f) => !reason.paths.test(f))).toEqual([]);
+  });
+});
+
 // Every date moved by the same number of days, so the data ends on `newest`.
 const endingOn = (data: ProfileInput, newest: string): ProfileInput => {
   const last = data.transactions.reduce((m, t) => (t.date > m ? t.date : m), "0000-00-00");
