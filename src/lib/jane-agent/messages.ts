@@ -457,7 +457,7 @@ export async function openPopupMessages(
         ...(MORNING_BRIEF ? [] : [{ snoozedUntil: BUNDLED_UNTIL }]),
       ],
     },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { dedupeKey: "asc" }, { id: "desc" }],
     select: MESSAGE_SELECT,
   });
   // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
@@ -486,14 +486,16 @@ export async function openPopupMessages(
         kind: { in: ["decision", "heads_up", "brief", "done"] },
         answeredAt: { gte: since },
       },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ createdAt: "desc" }, { dedupeKey: "asc" }, { id: "desc" }],
       select: MESSAGE_SELECT,
     })
   )
     .map(toChatMessage)
     .filter((m) => m.refs.chosen && !m.refs.chosen.settled && !m.refs.chosen.final);
+  // Posted together, they keep the order of their keys, which the data decides, not of their ids
+  // (src/sweep/same-twice.integration.test.ts: one person made twice shows the same dock).
   return [...chosen, ...rows.filter((r) => !answers.has(r.id)).map(toChatMessage)].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1),
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
 }
 
