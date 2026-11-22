@@ -11,6 +11,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteRule } from "./actions";
 import { CategoryForm } from "./category-form";
+import { FeeList } from "./fee-list";
+import { loadFeeList } from "@/lib/bank-fees";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 
@@ -23,7 +25,18 @@ async function Transactions({
 }) {
   const user = await requireUser();
   const db = await scopedDb();
-  const { q, day, from, to, category } = await searchParams;
+  const { q, day, from, to, category, fees } = await searchParams;
+  // The bank-fees card's "See the fees" (src/detectors/bank-fees-of.ts): the fees it counts.
+  if (fees === "1") {
+    const list = await loadFeeList(user.id);
+    return (
+      <>
+        <AppHeader user={user} />
+        <h1 className="text-3xl font-semibold tracking-tight">Transactions</h1>
+        <FeeList fees={list.fees} accounts={list.accounts} />
+      </>
+    );
+  }
   const search = typeof q === "string" ? q.trim() : "";
   // One category, from the insights page's rows: a Plaid primary, or "none" for uncategorized.
   const primary =

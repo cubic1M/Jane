@@ -3,6 +3,8 @@ import { PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
 import { FUND_NAMES } from "@/config/funds";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { landing } from "@/lib/area-pages/landing";
+import { FEE_LIST_PATH } from "@/detectors/bank-fees-of";
+import { formatCents } from "@/lib/money";
 import type { Flat } from "./diff";
 
 // The walkers' bug classes as rules over what a person sees (debug 3, 11-19; the classes and the
@@ -765,4 +767,30 @@ export function unscheduledMonth(flat: Flat): string[] {
   const month = flat["profile.facts.monthly_income.value"];
   if (typeof home !== "number" || typeof month !== "number" || home === month) return [];
   return [`home's uneven pay ${home} a month, the profile's month ${month}`];
+}
+
+// Class 11 (debug 2, sweep 16; the manager, 11-22): a card that says a count and a total opens a page
+// that shows that many rows adding up to that total. The bank-fees card's "See the fees" opened Where
+// your money goes, which lists categories, not the 7 fees ($139.00) it counted. The snapshot's
+// feeList is what the fee list page shows (src/app/transactions/fee-list.tsx): its fee rows and
+// their sum, fees given back included.
+export function cardOpensItsFigure(flat: Flat): string[] {
+  return Object.entries(flat).flatMap(([path, href]) => {
+    const id = /^suggestions\.(.+)\.action\.href$/.exec(path)?.[1];
+    const said = id
+      ? /You paid (\$[\d,]+\.\d{2}) in (\d+) bank fees?\b/.exec(
+          String(flat[`suggestions.${id}.short`] ?? ""),
+        )
+      : null;
+    if (!said) return [];
+    if (href !== FEE_LIST_PATH)
+      return [`${path}: "${String(href)}" doesn't list the fees the card counts`];
+    const rows = flat["feeList.rows"];
+    const sum = flat["feeList.sumCents"];
+    return rows === Number(said[2]) && typeof sum === "number" && formatCents(sum) === said[1]
+      ? []
+      : [
+          `${path}: the card says ${said[2]} fees, ${said[1]}; the page lists ${String(rows)}, ${typeof sum === "number" ? formatCents(sum) : "nothing"}`,
+        ];
+  });
 }

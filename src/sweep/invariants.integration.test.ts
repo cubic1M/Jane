@@ -34,6 +34,7 @@ import {
   walkedUnlabelled,
   sameFigures,
   premiumsOnFile,
+  cardOpensItsFigure,
   unscheduledMonth,
 } from "./invariants";
 import { CASH_FLOW_MIN_HISTORY_DAYS } from "@/config/areas";
@@ -211,6 +212,7 @@ describe.runIf(url)("what every sweep person sees keeps the walkers' rules", () 
 
   it("has a policy row for every insurer paid as a bill", () => {
     expect(everyone(premiumsOnFile)).toEqual([]);
+    expect(everyone(cardOpensItsFigure)).toEqual([]);
   });
 
   it("raises one card for one holding", () => {

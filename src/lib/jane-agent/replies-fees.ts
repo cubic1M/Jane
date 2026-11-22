@@ -2,7 +2,7 @@ import { addDays } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { merchantOf } from "@/detection/streams";
-import { bankFeesYear, isBankFee } from "@/planning/bank-fees";
+import { bankFeesYear, feeKindOf, isBankFee } from "@/planning/bank-fees";
 import type { Reply } from "./replies";
 import { openLink } from "./types";
 
@@ -21,24 +21,12 @@ export type FeeLine = {
   accountId: string;
 };
 
-// What kind of fee a line is, in words.
-const FEE_KINDS: Record<string, string> = {
-  BANK_FEES_OVERDRAFT_FEES: "an overdraft fee",
-  BANK_FEES_INSUFFICIENT_FUNDS: "an insufficient funds fee",
-  BANK_FEES_LATE_FEES: "a late fee",
-  BANK_FEES_ATM_FEES: "an ATM fee",
-  BANK_FEES_FOREIGN_TRANSACTION_FEES: "a foreign transaction fee",
-  BANK_FEES_CASH_ADVANCE: "a cash advance fee",
-};
-const MONTHLY = /\b(?:monthly|maintenance|service charge|service fee|account fee)\b/i;
 // The item an overdraft or a returned payment was for, as banks write it: "FOR A $16.40 ITEM".
 const ITEM = /\bfor an? \$([\d,]+\.\d{2}) item\b/i;
 // Asked without a day, a charge is looked for this far back.
 const LOOK_BACK_DAYS = 120;
 
-const feeKind = (t: FeeLine) =>
-  FEE_KINDS[t.pfcDetailed ?? ""] ??
-  (MONTHLY.test(t.description) ? "a monthly maintenance fee" : "a bank fee");
+const feeKind = (t: FeeLine) => feeKindOf({ description: t.description, pfc: t.pfcDetailed });
 
 const isFee = (t: FeeLine, onCash: (accountId: string) => boolean) =>
   t.amountCents > 0 &&
