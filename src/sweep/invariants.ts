@@ -821,10 +821,22 @@ export function cardOpensItsFigure(flat: Flat): string[] {
         return [`${path}: "${href}" doesn't list the fees the card counts`];
       const rows = flat["feeList.rows"];
       const sum = flat["feeList.sumCents"];
-      return rows === Number(said[2]) && typeof sum === "number" && formatCents(sum) === said[1]
+      if (!(rows === Number(said[2]) && typeof sum === "number" && formatCents(sum) === said[1]))
+        return [
+          `${path}: the card says ${said[2]} fees, ${said[1]}; the page lists ${String(rows)}, ${typeof sum === "number" ? formatCents(sum) : "nothing"}`,
+        ];
+      // And its headline, a year of them: what was paid, or the year the page says beside it.
+      const [year] = figuresIn(String(flat[`suggestions.${id}.headline`] ?? ""));
+      const yearShown = flat["feeList.yearShownCents"];
+      const onPage = [sum, ...(typeof yearShown === "number" ? [yearShown] : [])];
+      return !year ||
+        near(
+          year.value,
+          onPage.map((c) => ({ value: c / 100, off: 1 })),
+        )
         ? []
         : [
-            `${path}: the card says ${said[2]} fees, ${said[1]}; the page lists ${String(rows)}, ${typeof sum === "number" ? formatCents(sum) : "nothing"}`,
+            `${path}: the card's headline says $${year.value}; the page says ${onPage.map((c) => formatCents(c)).join(" and ")}`,
           ];
     }
     const [said1] = figuresIn(String(flat[`suggestions.${id}.headline`] ?? ""));

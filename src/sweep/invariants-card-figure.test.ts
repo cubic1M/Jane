@@ -91,4 +91,19 @@ describe("class 11: a card's count and total are the page it opens", () => {
     expect(setAside("$14k")).toEqual([]);
     expect(setAside("$12k")).toHaveLength(1);
   });
+
+  it("holds the fees card's headline to the year the page says beside what was paid", () => {
+    // A year of checking and a card file from Sep: $68.00 paid, its headline the paced year.
+    const paced = {
+      "suggestions.cost:bank_fees.action.href": FEE_LIST_PATH,
+      "suggestions.cost:bank_fees.short": "You paid $68.00 in 3 bank fees in a year.",
+      "suggestions.cost:bank_fees.headline": "Stop paying bank fees, save $358/yr",
+      "feeList.rows": 3,
+      "feeList.sumCents": 6_800,
+    };
+    expect(cardOpensItsFigure({ ...paced, "feeList.yearShownCents": 35_800 })).toEqual([]);
+    expect(cardOpensItsFigure({ ...paced, "feeList.yearShownCents": null })).toEqual([
+      "suggestions.cost:bank_fees.action.href: the card's headline says $358; the page says $68.00",
+    ]);
+  });
 });

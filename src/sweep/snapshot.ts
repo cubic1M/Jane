@@ -208,6 +208,8 @@ export async function snapshotAt(
     feeList: {
       rows: feeList?.lines.filter((l) => l.amountCents > 0).length ?? 0,
       sumCents: feeList?.lines.reduce((s, l) => s + l.amountCents, 0) ?? 0,
+      // The year the page says beside it when that isn't what was paid (the card's headline).
+      yearShownCents: feeList && feeList.yearCents !== feeList.seenCents ? feeList.yearCents : null,
     },
     onFile,
     asOf,
