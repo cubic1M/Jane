@@ -432,9 +432,11 @@ export async function stackedSuggestions(
 }
 
 // Jane's own open messages that wait on the person (something to decide, a heads-up with a
-// button), for the pop-ups (src/lib/jane-agent/popups.ts): newest first, at most POPUP_LIMIT,
-// from the last POPUP_DAYS. The day's suggestions are stackedSuggestions' (the caller leaves
-// them out: a JSON path filter here would drop every message without the field).
+// button), for the pop-ups (src/lib/jane-agent/popups.ts): newest first, all of the last
+// POPUP_DAYS, cut to POPUP_LIMIT only once the dock has chosen what shows (./popup-stack.ts). A cut
+// here let a message that never shows hold a place: settled at 7pm, an old card came back (gate C,
+// 11-21). The day's suggestions are stackedSuggestions' (the caller leaves them out: a JSON path
+// filter here would drop every message without the field).
 export const POPUP_LIMIT = 12;
 const POPUP_DAYS = 14;
 
@@ -457,7 +459,6 @@ export async function openPopupMessages(
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: MESSAGE_SELECT,
-    take: POPUP_LIMIT * 3,
   });
   // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
   // the conversation: Jane's first message after each thing they typed, within the window.
@@ -487,7 +488,6 @@ export async function openPopupMessages(
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: MESSAGE_SELECT,
-      take: POPUP_LIMIT,
     })
   )
     .map(toChatMessage)
