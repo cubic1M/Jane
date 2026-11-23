@@ -9,7 +9,7 @@ import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-his
 import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
-import type { Reply } from "../replies";
+import { SPENDING_NOT_FOUND, type Reply } from "../replies";
 import { AFFORD_USUAL_MONTHS, CHAT_BLOCK_ROWS } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { loadInsightTransactions } from "@/insights/load";
@@ -41,7 +41,11 @@ import {
 } from "../replies";
 import { changesReply } from "../replies-changes";
 import { paycheckReply } from "../replies-paycheck";
-import { fromOldStatementsReply, seenOnceSubscriptions } from "../replies-old-bills";
+import {
+  fromOldStatementsReply,
+  lastChargeReply,
+  seenOnceSubscriptions,
+} from "../replies-old-bills";
 import {
   chargeStoryReply,
   moneyFromPeopleReply,
@@ -125,7 +129,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         const old = fromOldStatementsReply(intent.target, lines, ended);
         if (old) return old;
       }
-      return intent.when ? notRegularYet(intent.target) : await spendingOn(intent.target);
+      if (intent.when) return notRegularYet(intent.target);
+      // Nothing there this month: its last charge, from all the data.
+      const spent = await spendingOn(intent.target);
+      if (!spent.body.includes(SPENDING_NOT_FOUND)) return spent;
+      const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+      return lastChargeReply(intent.target, lines) ?? spent;
     }
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([
@@ -211,7 +220,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       // The lines the pages read (./replies-money-moves.ts).
       const lines = (await loadDetectionInput(userId, { client, now })).transactions;
       if (intent.kind === "charge_story") return chargeStoryReply(intent.target, lines);
-      if (intent.kind === "money_from_people") return moneyFromPeopleReply(lines);
+      if (intent.kind === "money_from_people") return moneyFromPeopleReply(lines, intent.who);
       if (intent.kind === "sent_by_app") return sentByAppReply(intent.app, lines);
       return savingsTransfersReply(lines);
     }

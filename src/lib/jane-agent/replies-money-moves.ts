@@ -116,12 +116,52 @@ export function priceChangeReply(target: string, lines: readonly MoveLine[]): Re
 
 // "How much does my mom send me?": money people sent by an app, by app. The bank's lines don't say
 // who someone is to the person, so it can't say whose is their mom's.
-export function moneyFromPeopleReply(lines: readonly MoveLine[]): Reply {
+// The words a bank's line may use for the person asked about ("MOM VENMO CASHOUT").
+const SAID_AS: Record<string, readonly string[]> = {
+  mom: ["mom", "mum", "mother", "mama"],
+  mum: ["mom", "mum", "mother", "mama"],
+  mother: ["mom", "mum", "mother", "mama"],
+  dad: ["dad", "father", "papa"],
+  father: ["dad", "father", "papa"],
+  parent: ["mom", "mum", "mother", "dad", "father", "parent", "parents"],
+  parents: ["mom", "mum", "mother", "dad", "father", "parent", "parents"],
+};
+
+// "How much does my mom send me?": what came in by a payment app, and, when the bank's lines name
+// the person asked about (upload S1's "Deposit from MOM VENMO CASHOUT"), what came from those lines.
+// `who` is the person as typed, null for everyone.
+export function moneyFromPeopleReply(lines: readonly MoveLine[], who: string | null): Reply {
   const received = lines
     .filter((t) => t.amountCents < 0 && PERSON_APPS.test(t.description))
     .sort(oldestFirst);
   if (received.length === 0)
     return notFound("money sent to you by Venmo, Zelle, Cash App or PayPal");
+  const asked = who === null ? [] : (SAID_AS[who] ?? [who]);
+  const theirs = received.filter((t) => asked.some((w) => words(t.description).includes(` ${w} `)));
+  if (who !== null && theirs.length > 0) {
+    return {
+      body: `The lines that say ${who.toUpperCase()} came to ${byApps(theirs)}.${
+        theirs.length < received.length
+          ? ` Other people sent you ${formatCents(received.filter((t) => !theirs.includes(t)).reduce((s, t) => s - t.amountCents, 0))} more.`
+          : ""
+      }`,
+      actions: [openLink("See your transactions", "/transactions")],
+      refs: {},
+    };
+  }
+  return {
+    body: `People sent you ${byApps(received)}.${
+      who === null
+        ? ""
+        : ` The bank's lines don't name who sent it, so I can't tell which is from your ${who}.`
+    }`,
+    actions: [openLink("See your transactions", "/transactions")],
+    refs: {},
+  };
+}
+
+// "$200.00 by Venmo on Aug 20, Sep 20 and Oct 20 ($600.00 in all)", each app in turn.
+function byApps(received: readonly MoveLine[]): string {
   const byApp = new Map<string, MoveLine[]>();
   for (const t of received) {
     const app = appName(PERSON_APPS.exec(t.description)![1]!);
@@ -135,11 +175,7 @@ export function moneyFromPeopleReply(lines: readonly MoveLine[]): Reply {
       ? `${amount}by ${app} on ${list(sent.map((t) => dayLabel(t.date)))} (${formatCents(total)} in all)`
       : `${formatCents(total)} by ${app} in ${sent.length} payments since ${dayLabel(sent[0]!.date)}`;
   });
-  return {
-    body: `People sent you ${parts.join("; ")}. The bank's lines don't say who's who to you, so I can't tell which is from your mom.`,
-    actions: [openLink("See your transactions", "/transactions")],
-    refs: {},
-  };
+  return parts.join("; ");
 }
 
 // "How much do I send on Venmo?": what went out by that app.
