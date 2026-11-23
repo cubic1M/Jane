@@ -16,8 +16,14 @@ const policyWords = (p: PolicyLike | undefined) =>
 
 const perYear = (cents: number) => `about ${formatCents(cents)} a year`;
 
-// Pure: one saving as a line, with its yearly figure and what changes.
-export function savingLine(s: Saving, policy: PolicyLike | undefined): string {
+// Pure: one saving as a line, with its yearly figure and what changes. A bundle, which moves
+// a policy to another carrier, is demo advice (spec step 98): null outside advice mode, so its
+// words can't reach a real account whatever saving rows arrive (manager 11-23).
+export function savingLine(
+  s: Saving,
+  policy: PolicyLike | undefined,
+  advice: boolean,
+): string | null {
   const p = policyWords(policy);
   switch (s.kind) {
     case "pay_in_full":
@@ -29,7 +35,8 @@ export function savingLine(s: Saving, policy: PolicyLike | undefined): string {
     case "telematics":
       return `Join ${policy?.carrier ?? "your carrier"}'s safe-driver program on your car policy: ${perYear(s.yearlySavingCents)} less`;
     case "bundle":
-      return `Put your car and your ${s.detail.withCarrier ?? "home"} policy with ${s.detail.withCarrier ?? "one carrier"}: ${perYear(s.yearlySavingCents)} less between them`;
+      if (!advice) return null;
+      return `Your car and ${s.detail.withCarrier ?? "home"} policies together with ${s.detail.withCarrier ?? "one carrier"}: ${perYear(s.yearlySavingCents)} less between them`;
     case "higher_deductible":
       return `Raise the deductible on your ${p} from ${formatCents(s.detail.fromDeductibleCents ?? 0)} to ${formatCents(s.detail.toDeductibleCents ?? 0)}: ${perYear(s.yearlySavingCents)} less`;
   }
@@ -39,12 +46,17 @@ export const sameCover = (savings: Saving[]) => savings.filter((s) => !lowersCov
 export const lowering = (savings: Saving[]) => savings.filter((s) => lowersCover(s.kind));
 
 // Pure: the savings that leave the cover as it is, in one message.
-export function sameCoverBody(savings: Saving[], policies: PolicyLike[]): string {
+export function sameCoverBody(given: Saving[], policies: PolicyLike[], advice: boolean): string {
   const byId = new Map(policies.map((p) => [p.id, p]));
+  const lines = given.flatMap((s) => {
+    const line = savingLine(s, byId.get(s.policyId), advice);
+    return line ? [{ s, line }] : [];
+  });
+  const savings = lines.map((l) => l.s);
   const total = savings.reduce((sum, s) => sum + s.yearlySavingCents, 0);
   return [
     `${savings.length === 1 ? "There's a way" : `There are ${savings.length} ways`} to pay less for the cover you already have.`,
-    ...savings.map((s) => `- ${savingLine(s, byId.get(s.policyId))}`),
+    ...lines.map((l) => `- ${l.line}`),
     // Percentage discounts stack on a shrinking price, so together they come to a little
     // less than each added up: "up to".
     savings.length === 1

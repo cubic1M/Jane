@@ -19,7 +19,7 @@ export function saveMoreReply(monthlyCents: number, goals: GoalView[]): Reply {
   if (open) {
     const months = Math.ceil(open.left / monthlyCents);
     lines.push(
-      `Put towards your ${open.name} goal, which still needs ${formatCents(open.left)}, that alone would cover it in about ${months} ${months === 1 ? "month" : "months"}.`,
+      `Toward your ${open.name} goal, which still needs ${formatCents(open.left)}, that alone would cover it in about ${months} ${months === 1 ? "month" : "months"}.`,
     );
   }
   return {

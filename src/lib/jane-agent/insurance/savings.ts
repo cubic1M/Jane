@@ -48,7 +48,7 @@ export async function savingsAnswer(
         }`
       : "";
     return {
-      body: sameCoverBody(same, policies) + extra,
+      body: sameCoverBody(same, policies, true) + extra,
       actions: sameCoverActions(same),
       refs: { savingGroup: "same", advice: true as const },
     };

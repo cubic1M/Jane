@@ -1,4 +1,5 @@
 import { dataEndedOn } from "@/lib/data-ended";
+import { adviceMode } from "@/lib/advice-mode";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { loadDetectionInput } from "@/detection/input";
@@ -82,6 +83,8 @@ export type Snapshot = {
   // Read-only mode (src/lib/concierge-mode.ts): false for a real account, where Jane shows how
   // instead of offering to do it. Missing means the full flow (sample people, fixtures).
   concierge?: boolean;
+  // Demo advice mode (src/lib/advice-mode.ts). Missing means a real account's view.
+  advice?: boolean;
   // The day the loaders worked from (UTC), YYYY-MM-DD.
   asOf: string;
   // The Monday of the person's week, for the weekly plan.
@@ -300,7 +303,7 @@ async function loadSnapshotWork(
   if (!home) return null;
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
-  const [user, plan, ruleApprovals, alerts, said, preferences, concierge, sureFacts] =
+  const [user, plan, ruleApprovals, alerts, said, preferences, concierge, sureFacts, advice] =
     await Promise.all([
       scopedFor(userId, client).me.findUnique({
         where: { id: userId },
@@ -314,6 +317,7 @@ async function loadSnapshotWork(
       listPreferences(userId, { client }),
       conciergeMode(userId, { client }),
       findingSureFacts(db, now, { client }),
+      adviceMode(userId, { client }),
     ]);
   const findings = await db.findings.findMany({
     where: { id: { in: plan.map((i) => i.card.findingId) } },
@@ -398,6 +402,7 @@ async function loadSnapshotWork(
   return {
     timezone: user?.timezone ?? null,
     concierge,
+    advice,
     // The person's own day (src/lib/today.ts).
     asOf: localDate(now, user?.timezone),
     weekStart: weekStart(now, user?.timezone).toISOString().slice(0, 10),

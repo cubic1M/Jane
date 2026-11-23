@@ -170,6 +170,7 @@ describe("in the chat", () => {
           }),
         ],
         policies,
+        true,
       ).split("\n"),
     ).toEqual([
       "There are 2 ways to pay less for the cover you already have.",
@@ -177,7 +178,7 @@ describe("in the chat", () => {
       "- Pay your GEICO car policy once a year instead of in installments, $1,570.80 up front: about $133.20 a year less",
       "Together that's up to about $184.32 a year (they overlap a little), and your cover stays exactly as it is.",
     ]);
-    expect(savingLine(saving({ kind: "paperless" }), policies[0])).toBe(
+    expect(savingLine(saving({ kind: "paperless" }), policies[0], true)).toBe(
       "Switch your GEICO car policy to paperless: about $51.12 a year less",
     );
   });

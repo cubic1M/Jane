@@ -181,7 +181,7 @@ describe.runIf(url)("insurance found from payments", { timeout: 120_000 }, () =>
       now: NOW,
     });
     expect(message.refs.note).toBe(
-      "Confirmed. Your Lemonade renters insurance is on your profile. Add its deductible and limits on Insurance so I can check the cover.",
+      "Confirmed. Your Lemonade renters insurance is on your profile. With its deductible and limits on Insurance, I can check the cover.",
     );
     expect(
       (await loadInsurance(userId, { client, now: NOW })).gaps.map((g) => g.key),

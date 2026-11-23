@@ -61,7 +61,7 @@ function comparisonLines(c: RefinanceComparison): string[] {
 export function refinanceReply(target: string | null, refi: Refinance, book: DebtBook): Reply {
   if (!refi.available) {
     return {
-      body: "Refinance offers come from a lending partner, and there isn't one for your accounts yet. Once there is, I'll check rates every month and tell you when a switch would save money.",
+      body: "Offers to refinance come from a lending partner, and there isn't one for your accounts yet. Once there is, I'll check rates every month and tell you when a switch would save money.",
       actions: [],
       refs: {},
     };
@@ -133,7 +133,7 @@ export function loanStatusReply(apps: readonly LoanApplicationView[]): Reply {
   const shown = apps.filter((a) => a.status !== "withdrawn");
   if (shown.length === 0) {
     return {
-      body: "You don't have a loan application. When I find a refinance offer worth switching to, Apply prepares one for you to review.",
+      body: "You don't have a loan application. If a refinance offer beats your rate, Apply can prepare one for you to review.",
       actions: [SEE_OFFERS],
       refs: {},
     };

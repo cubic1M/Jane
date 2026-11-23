@@ -104,7 +104,10 @@ export async function loadInsuranceArea(
       renewsOn: nextRenewal(p, asOf),
     })),
     gaps,
-    savings: savings.map((s) => ({ ...s, line: savingLine(s, policyById(s.policyId)) })),
+    savings: savings.flatMap((s) => {
+      const line = savingLine(s, policyById(s.policyId), advice);
+      return line ? [{ ...s, line }] : [];
+    }),
     renewals: renewals.map((n) => ({
       ...n,
       carrier: policyById(n.policyId)?.carrier ?? "Your insurer",

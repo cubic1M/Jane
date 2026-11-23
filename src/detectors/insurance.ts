@@ -119,7 +119,7 @@ const autoInsurance: Detector = {
       ]),
       urgency: "now",
       why: `I see car costs but no car-insurance charge in ${plural(profile.months, "month")}. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
-      action: { label: "Add or compare car cover", href: "/insurance" },
+      action: { label: "See your cover", href: "/insurance" },
     });
   },
 };

@@ -21,6 +21,22 @@ export type Gate =
 
 export type Flagged = { file: string; line: number; text: string; gate: Gate | null };
 
+// What the test reads as telling the person to act: tellsThemToAct, and any sentence that starts
+// with one of the moves the real-account rule names (CLAUDE.md: switch, cancel, move, file, elect)
+// or refinance, roll over, sell, buy, transfer, or open an account (manager 11-23: the scan didn't
+// flag "Cancel your Netflix plan").
+const MOVES =
+  /^(?:switch|cancel|move|file|elect|refinance|roll over|rollover|sell|buy|transfer|open (?:a|an) (?:\w+ ){0,3}(?:account|ira|401\(?k\)?|card|loan|hsa|529))\b/i;
+export function directs(text: string): boolean {
+  return (
+    tellsThemToAct(text) ||
+    text
+      .split(/(?<=[.!?:;])\s+|\n+|\s+[-–—]\s+/)
+      .map((s) => s.replace(/^[-•✓\s]+/, "").trim())
+      .some((s) => MOVES.test(s))
+  );
+}
+
 const NOT_REPLIES =
   /(?:\.test\.ts$|__fixtures__|\/checks\/|claude\.ts$|tools\.ts$|tool-select\.ts$|act-gating\.ts$)/;
 const ADVICE = new Set<string>(ADVICE_TOPICS as readonly string[]);
@@ -39,15 +55,21 @@ const textOf = (node: ts.Node): string | null =>
 
 // The name a node reaches the rest of the code by: the const it's assigned to (a local one too: its
 // uses decide), or its function's.
-// scope: the function a local const lives in, whose own uses are the only ones; null for a name the
-// module declares, used anywhere.
+// scope: where its uses can be: the function a local const lives in, the file for a name the module
+// keeps to itself, null for an exported name, used anywhere.
+const exported = (n: ts.Node) =>
+  ts.canHaveModifiers(n) &&
+  (ts.getModifiers(n) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
 function owner(node: ts.Node): { name: string; scope: ts.Node | null } | null {
   for (let p: ts.Node | undefined = node.parent; p; p = p.parent) {
-    if (ts.isFunctionDeclaration(p) && p.name) return { name: p.name.text, scope: null };
+    if (ts.isFunctionDeclaration(p) && p.name)
+      return { name: p.name.text, scope: exported(p) ? null : p.getSourceFile() };
     if (ts.isVariableDeclaration(p) && ts.isIdentifier(p.name)) {
       let scope: ts.Node | undefined = p.parent;
       while (scope && !ts.isFunctionLike(scope) && !ts.isSourceFile(scope)) scope = scope.parent;
-      return { name: p.name.text, scope: scope && ts.isFunctionLike(scope) ? scope : null };
+      if (scope && ts.isFunctionLike(scope)) return { name: p.name.text, scope };
+      const statement = p.parent.parent;
+      return { name: p.name.text, scope: exported(statement) ? null : p.getSourceFile() };
     }
   }
   return null;
@@ -206,7 +228,7 @@ export function flaggedStrings(): Flagged[] {
     const { src } = byFile.get(file)!;
     const visit = (node: ts.Node) => {
       const text = textOf(node);
-      if (text && /^[A-Z][a-z]/.test(text) && /\s/.test(text) && tellsThemToAct(text)) {
+      if (text && /^[A-Z][a-z]/.test(text) && /\s/.test(text) && directs(text)) {
         out.push({
           file,
           line: src.getLineAndCharacterOfPosition(node.getStart()).line + 1,

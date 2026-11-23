@@ -39,7 +39,7 @@ describe("saving more a month", () => {
   it("gives the year, and how soon it covers the biggest goal", () => {
     const reply = saveMoreReply(20_000, [goal(100_000)]);
     expect(reply.body).toBe(
-      "Saving $200.00 more a month is $2,400.00 a year.\nPut towards your Emergency fund goal, which still needs $1,000.00, that alone would cover it in about 5 months.",
+      "Saving $200.00 more a month is $2,400.00 a year.\nToward your Emergency fund goal, which still needs $1,000.00, that alone would cover it in about 5 months.",
     );
     expect(reply.actions[0]).toMatchObject({ href: "/goals" });
   });

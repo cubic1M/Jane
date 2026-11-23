@@ -389,7 +389,7 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
       ? [
           {
             kind: "decision" as const,
-            body: sameCoverBody(same, insurance.policies),
+            body: sameCoverBody(same, insurance.policies, insurance.advice),
             refs: { savingGroup: "same", advice: true as const },
             actions: sameCoverActions(same),
             dedupeKey: `savings:same:${same

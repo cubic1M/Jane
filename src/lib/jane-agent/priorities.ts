@@ -75,13 +75,14 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
       ref: shop.id,
     });
   }
-  for (const c of snapshot.refinance?.comparisons ?? []) {
+  // Which offer to take is demo advice (spec step 98): none on a real account.
+  for (const c of snapshot.advice ? (snapshot.refinance?.comparisons ?? []) : []) {
     if (!c.pick || c.pick.savingCents <= 0) continue;
     const years = Math.max(1, c.termMonths / 12);
     items.push({
       key: `refinance:${c.debtKey}`,
       kind: "offer",
-      title: `Refinance ${c.debtName}`,
+      title: `A refinance offer for ${c.debtName}`,
       valueCents: Math.round(c.pick.savingCents / years),
       minutes: MINUTES.application,
       confidence: "medium",
