@@ -335,7 +335,7 @@ function coverChangeMessages(insurance: InsuranceSnapshot): Candidate[] {
 
 // Spec step 155: the renewal call Jane offers to make (or made within the person's autopilot
 // limits) and its result; a claim's draft to file on a tap; the carrier's news on a claim.
-function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
+function doneByJaneMessages(insurance: InsuranceSnapshot, concierge: boolean): Candidate[] {
   const policyOf = (id: string | null) => insurance.policies.find((p) => p.id === id);
   const negotiations = (insurance.negotiations ?? []).map((n): Candidate =>
     n.status === "asked"
@@ -364,7 +364,7 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
       insurance.advice,
     ),
     refs: { claimId: c.id },
-    actions: draftActions(c),
+    actions: draftActions(c, concierge),
     dedupeKey: `claim-draft:${c.id}:${c.amountCents}`,
     priority: MESSAGE_PRIORITY.claim_draft,
   }));
@@ -464,7 +464,7 @@ export const insuranceSource: MessageSource = {
       ...readingMessages(insurance),
       ...lifeMessages(insurance, snapshot.asOf),
       ...coverChangeMessages(insurance),
-      ...doneByJaneMessages(insurance),
+      ...doneByJaneMessages(insurance, snapshot.concierge !== false),
       ...savingMessages(insurance),
       ...riskMessages(insurance),
       ...fsaMessages(insurance),

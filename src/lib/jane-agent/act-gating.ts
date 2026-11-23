@@ -12,8 +12,9 @@ export type Gate =
   | "advice_topic"
   // In a card's title, headline, short or why: forRealAccount drops the card for a real account.
   | "real_account_filter"
-  // On the advice side of a check on advice mode, or after a "not in advice mode" return or throw.
-  | "advice_branch"
+  // On the on side of a check on a mode (demo advice, concierge, a money partner), or after an
+  // "it's off" return or throw.
+  | "mode_branch"
   // In a reply labelled demo advice (refs.advice), which only advice mode shows.
   | "refs_advice"
   // In a helper whose every use is gated one of these ways.
@@ -41,8 +42,15 @@ const NOT_REPLIES =
   /(?:\.test\.ts$|__fixtures__|\/checks\/|claude\.ts$|tools\.ts$|tool-select\.ts$|act-gating\.ts$)/;
 const ADVICE = new Set<string>(ADVICE_TOPICS as readonly string[]);
 const CARD_TEXT = new Set(["title", "headline", "short", "why"]);
-const ON_ADVICE = /\b(?:advice|adviceMode|\w+\.advice|isAdvice)\b/;
-const NOT_ADVICE = /!\s*\(?\s*(?:await\s+)?(?:advice\b|adviceMode\(|\w+\.advice\b|isAdvice\b)/;
+// The modes a reply is checked against before it says what Jane does for the person: demo advice
+// (adviceMode), the concierge (conciergeMode: Jane does it for them) and a money-movement partner
+// (moneyPartnerFor: "movesMoney"). NOT_MODE is a check that it's off: "!advice", "x.concierge ===
+// false".
+const MODE = String.raw`(?:advice|adviceMode|isAdvice|concierge|conciergeMode|movesMoney)`;
+const ON_ADVICE = new RegExp(String.raw`\b${MODE}\b|\b\w+\.${MODE}\b`);
+const NOT_ADVICE = new RegExp(
+  String.raw`!\s*\(?\s*(?:await\s+)?(?:\w+\.)?${MODE}\b|\b${MODE}(?:\([^)]*\))?\s*===\s*false`,
+);
 
 type Src = { file: string; src: ts.SourceFile };
 
@@ -130,8 +138,8 @@ function directGate(node: ts.Node, src: ts.SourceFile): Gate | null {
       const cond = (ts.isConditionalExpression(p) ? p.condition : p.expression).getText(src);
       const yes = ts.isConditionalExpression(p) ? p.whenTrue : p.thenStatement;
       const no = ts.isConditionalExpression(p) ? p.whenFalse : p.elseStatement;
-      if (child === yes && ON_ADVICE.test(cond) && !NOT_ADVICE.test(cond)) return "advice_branch";
-      if (child === no && NOT_ADVICE.test(cond)) return "advice_branch";
+      if (child === yes && ON_ADVICE.test(cond) && !NOT_ADVICE.test(cond)) return "mode_branch";
+      if (child === no && NOT_ADVICE.test(cond)) return "mode_branch";
     }
     if (
       ts.isBinaryExpression(p) &&
@@ -142,7 +150,7 @@ function directGate(node: ts.Node, src: ts.SourceFile): Gate | null {
         ON_ADVICE.test(p.left.getText(src)) &&
         !NOT_ADVICE.test(p.left.getText(src))
       )
-        return "advice_branch";
+        return "mode_branch";
     }
     if (ts.isBlock(p) || ts.isCaseClause(p)) {
       const statements = ts.isBlock(p) ? p.statements : p.statements;
@@ -156,7 +164,7 @@ function directGate(node: ts.Node, src: ts.SourceFile): Gate | null {
             isGuardCall(s, src),
         )
       )
-        return "advice_branch";
+        return "mode_branch";
     }
     if (ts.isObjectLiteralExpression(p) && /\brefs:\s*\{[^}]*\badvice:\s*true/.test(p.getText(src)))
       return "refs_advice";

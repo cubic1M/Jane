@@ -8,7 +8,7 @@ import { openLink } from "./types";
 // lead to (src/lib/changes.ts). `yes` names the button that says yes, when "Look into it"
 // would undersell it.
 export const CHANGE_ASK: Partial<
-  Record<FindingType, { offer: string; diy: string; did: string; yes?: string; diyYes?: string }>
+  Record<FindingType, { offer: string; diy: string; did: string; diyYes?: string }>
 > = {
   price_increase: {
     offer: "Want me to ask them for your old price?",
@@ -36,7 +36,6 @@ export const CHANGE_ASK: Partial<
     diy: "Did you mean to sign up? If not, I can show you how to cancel it.",
     diyYes: "Show me how to cancel",
     did: "I'm cancelling it.",
-    yes: "Cancel it",
   },
 };
 
@@ -70,3 +69,8 @@ export function changesReply(changes: ChangeView[]): Reply {
     refs: {},
   };
 }
+
+// The concierge's own tap on a new subscription: Jane cancels it. Only when Jane does it for the
+// person (src/lib/concierge-mode.ts); a real account gets diyYes, the steps.
+export const conciergeYes = (type: FindingType, concierge: boolean): string | null =>
+  concierge && type === "subscription_review" ? "Cancel it" : null;

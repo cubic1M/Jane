@@ -1,3 +1,4 @@
+import { adviceMode } from "@/lib/advice-mode";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -37,7 +38,11 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
   await connection();
   const { error } = await searchParams;
   const now = new Date();
-  const [sized, timezone] = await Promise.all([sizeLife(user.id, { now }), timezoneOf(user.id)]);
+  const [sized, timezone, advice] = await Promise.all([
+    sizeLife(user.id, { now }),
+    timezoneOf(user.id),
+    adviceMode(user.id),
+  ]);
   const application =
     sized.kind === "sized" || sized.kind === "in_progress" ? sized.application : null;
 
@@ -189,7 +194,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
           <h2 id="decision" className="text-xl font-semibold">
             The carrier&apos;s answer
           </h2>
-          {decisionStep(application, timezone)
+          {decisionStep(application, timezone, advice)
             .body.split("\n")
             .map((line) => (
               <p key={line}>{line}</p>

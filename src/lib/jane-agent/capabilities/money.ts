@@ -367,7 +367,13 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "paycheck": {
       const plan = await latestPaycheckPlan(userId, { client, now });
-      if (plan) return paycheckReply(plan);
+      if (plan)
+        return paycheckReply(
+          plan,
+          true,
+          null,
+          (await moneyPartnerFor(userId, { client })) !== null,
+        );
       const next = (await loadRecurring(userId, { client, now })).nextIncome;
       return paycheckReply(
         null,

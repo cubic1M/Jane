@@ -179,7 +179,7 @@ describe("in the chat", () => {
       "Together that's up to about $184.32 a year (they overlap a little), and your cover stays exactly as it is.",
     ]);
     expect(savingLine(saving({ kind: "paperless" }), policies[0], true)).toBe(
-      "Switch your GEICO car policy to paperless: about $51.12 a year less",
+      "Paperless billing on your GEICO car policy: about $51.12 a year less",
     );
   });
 

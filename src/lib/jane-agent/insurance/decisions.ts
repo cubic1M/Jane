@@ -265,6 +265,13 @@ function carShop(ins: InsuranceSnapshot) {
     : null;
 }
 
+// Jane switching the policy for the person is demo advice (spec step 98): the tap only in advice
+// mode, the quote to look at otherwise.
+const switchButton = (ins: InsuranceSnapshot, carrier: string): MessageAction =>
+  ins.advice
+    ? { id: "insurance.shop_yes", label: "Switch for me", kind: "primary" }
+    : openLink(`See ${carrier}'s quote`, "/insurance");
+
 function switchOut(ins: InsuranceSnapshot): Out {
   const car = active(ins, "auto");
   if (!car) {
@@ -280,7 +287,7 @@ function switchOut(ins: InsuranceSnapshot): Out {
     return {
       advice: `Yes, it looks worth it.`,
       facts: `${shop.pick.carrier.name} is ${money(shop.savingCents!)} a year cheaper than your ${car.carrier} policy for the same cover, at ${money(shop.pick.annualPremiumCents)} a year. I only cancel ${car.carrier} after the first payment goes through.`,
-      actions: [{ id: "insurance.shop_yes", label: "Switch for me", kind: "primary" }, SEE],
+      actions: [switchButton(ins, shop.pick.carrier.name), SEE],
       refs: { insuranceShopId: shop.id },
     };
   }
@@ -461,7 +468,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       return shop?.pick
         ? {
             facts: `Switching costs nothing: ${shop.pick.carrier.name} would be ${money(shop.pick.annualPremiumCents)} a year, with the same cover. I cancel ${active(ins, "auto")?.carrier ?? "your old policy"} only after the first payment goes through.`,
-            actions: [{ id: "insurance.shop_yes", label: "Switch for me", kind: "primary" }, SEE],
+            actions: [switchButton(ins, shop.pick.carrier.name), SEE],
             refs: { insuranceShopId: shop.id },
           }
         : {
@@ -480,7 +487,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         ? {
             advice: "A bit, yes.",
             facts: `You pay ${money(carYearly)} a year and the same cover is ${money(less)} less with ${shop!.pick!.carrier.name}.`,
-            actions: [{ id: "insurance.shop_yes", label: "Switch for me", kind: "primary" }, SEE],
+            actions: [switchButton(ins, shop!.pick!.carrier.name), SEE],
             refs: { insuranceShopId: shop!.id },
           }
         : {

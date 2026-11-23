@@ -17,7 +17,7 @@ const policyWords = (p: PolicyLike | undefined) =>
 const perYear = (cents: number) => `about ${formatCents(cents)} a year`;
 
 // Pure: one saving as a line, with its yearly figure and what changes. A bundle, which moves
-// a policy to another carrier, is demo advice (spec step 98): null outside advice mode, so its
+// a policy to another carrier, and paperless billing are demo advice (spec step 98): null outside advice mode, so its
 // words can't reach a real account whatever saving rows arrive (manager 11-23).
 export function savingLine(
   s: Saving,
@@ -31,7 +31,8 @@ export function savingLine(
     case "autopay":
       return `Turn on autopay for your ${p}: ${perYear(s.yearlySavingCents)} less`;
     case "paperless":
-      return `Switch your ${p} to paperless: ${perYear(s.yearlySavingCents)} less`;
+      if (!advice) return null;
+      return `Paperless billing on your ${p}: ${perYear(s.yearlySavingCents)} less`;
     case "telematics":
       return `Join ${policy?.carrier ?? "your carrier"}'s safe-driver program on your car policy: ${perYear(s.yearlySavingCents)} less`;
     case "bundle":

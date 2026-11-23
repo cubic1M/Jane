@@ -177,6 +177,9 @@ function tapOn(
 type SwitchData = {
   findings: SnapshotFinding[];
   options: { value: string; label: string; name: string }[];
+  // Read-only mode (src/lib/concierge-mode.ts): false for a real account, where Jane cancels
+  // nothing for the person.
+  concierge: boolean;
 };
 
 const switchFlow: FlowDef<SwitchData> = {
@@ -201,7 +204,7 @@ const switchFlow: FlowDef<SwitchData> = {
           }))
         : [];
     }
-    return { findings, options };
+    return { findings, options, concierge: snapshot?.concierge !== false };
   },
   none: (data) =>
     data.findings.length === 0 ? "I haven't compared any providers for you yet." : null,
@@ -222,10 +225,18 @@ const switchFlow: FlowDef<SwitchData> = {
     },
     {
       key: "confirm",
-      ask: (answers, data) => ({
-        question: `Switch to ${data.options.find((o) => o.value === answers.option)?.name ?? "that"}? I'll send you the sign-up step, and cancel the old one only once the new one shows up.`,
-        options: [{ label: "Yes, switch", value: "yes" }],
-      }),
+      ask: (answers, data) => {
+        const name = data.options.find((o) => o.value === answers.option)?.name ?? "that";
+        return data.concierge
+          ? {
+              question: `Switch to ${name}? I'll send you the sign-up step, and cancel the old one only once the new one shows up.`,
+              options: [{ label: "Yes, switch", value: "yes" }],
+            }
+          : {
+              question: `Want to see ${name}'s sign-up step? Your current one stays as it is until you change it.`,
+              options: [{ label: "Yes, show me", value: "yes" }],
+            };
+      },
     },
   ],
   async finish(answers, data, context) {

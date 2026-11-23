@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { canFile } from "@/lib/insurance/claim-filing";
 import { listClaims } from "@/lib/insurance/claims";
 import { listNegotiations, negotiationsDue } from "@/lib/insurance/negotiate";
@@ -56,7 +57,11 @@ export async function fileClaimAnswer(
   const open = (await listClaims(userId, { client })).filter((c) => c.status === "open");
   const draft = open.find((c) => c.filing === "draft");
   if (draft)
-    return { body: draftBody(draft), actions: draftActions(draft), refs: { claimId: draft.id } };
+    return {
+      body: draftBody(draft),
+      actions: draftActions(draft, await conciergeMode(userId, { client })),
+      refs: { claimId: draft.id },
+    };
   for (const claim of open) {
     if (await canFile(userId, claim, { client })) {
       return {

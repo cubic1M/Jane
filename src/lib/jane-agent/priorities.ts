@@ -60,13 +60,14 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
     });
   }
   const insurance = snapshot.insurance;
-  for (const shop of insurance?.shops ?? []) {
+  // Which quote to take is demo advice (spec step 98): none on a real account.
+  for (const shop of snapshot.advice ? (insurance?.shops ?? []) : []) {
     if (!shop.pick || shop.savingCents === null || shop.savingCents <= 0) continue;
     const policy = insurance?.policies.find((p) => p.id === shop.policyId);
     items.push({
       key: `shop:${shop.id}`,
       kind: "offer",
-      title: `Switch ${policy ? `your ${policy.carrier} policy` : "your policy"} to ${shop.pick.carrier.name}`,
+      title: `${shop.pick.carrier.name}'s quote for ${policy ? `your ${policy.carrier} policy` : "your policy"}`,
       valueCents: shop.savingCents,
       minutes: MINUTES.tap,
       dueOn: policy?.nextRenewal ?? null,

@@ -3,7 +3,7 @@ import { BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/config/budgets";
 import type { ChangeView } from "@/lib/changes";
 import type { Snapshot } from "../snapshot";
 import { type Candidate, type MessageAction, openLink } from "../types";
-import { CHANGE_ASK } from "../replies-changes";
+import { CHANGE_ASK, conciergeYes } from "../replies-changes";
 import type { MessageSource } from "./source";
 
 // Jane notices changes (spec step 97): a heads-up for each change it spotted, with "Look
@@ -54,9 +54,10 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
       actions: [
         snapshot.concierge === false && ask.diyYes
           ? { ...lookInto, label: ask.diyYes }
-          : ask.yes
-            ? { ...lookInto, label: ask.yes }
-            : lookInto,
+          : (() => {
+              const yes = conciergeYes(planned.type, snapshot.concierge !== false);
+              return yes ? { ...lookInto, label: yes } : lookInto;
+            })(),
         expected,
         openLink("Open", `/report/${planned.findingId}`),
       ],

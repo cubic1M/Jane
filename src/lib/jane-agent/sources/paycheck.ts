@@ -9,7 +9,7 @@ export const paycheckSource: MessageSource = {
   gather(snapshot) {
     const plan = snapshot.paycheck;
     if (!plan || plan.moves.length === 0 || plan.status === "skipped") return [];
-    const reply = paycheckReply(plan);
+    const reply = paycheckReply(plan, true, null, snapshot.movesMoney === true);
     return [
       {
         kind: plan.moves.some((m) => m.status === "asked") ? "decision" : "done",

@@ -13,25 +13,9 @@ import { directs, flaggedStrings, type Gate } from "./act-gating";
 // or a gate, is taken off it here too: the test fails while it's still listed.
 const ALLOWED: readonly [string, string, string][] = [
   ["src/lib/jane-agent/tax-states-message.ts", "Do you live in ", "a question about a fact"],
+  ["src/lib/jane-agent/decision.ts", "Buy what?", "a question back about what the person asked"],
 ];
-const AWAITING: readonly [string, string][] = [
-  // Flagged once the reader took the rule's own verbs too (manager 11-23).
-  ["src/detectors/taxes.ts", "Move my tax deadlines"],
-  ["src/lib/jane-agent/disaster-message.ts", "Move my tax deadlines"],
-  ["src/lib/jane-agent/actions/tax-refund.ts", "Done: "],
-  ["src/lib/jane-agent/decision.ts", "Buy what?"],
-  ["src/lib/jane-agent/flows/index.ts", "Switch to "],
-  ["src/lib/jane-agent/insurance/card-cover.ts", "Cancel "],
-  ["src/lib/jane-agent/insurance/decisions.ts", "Switch for me"],
-  ["src/lib/jane-agent/insurance/done-by-jane-words.ts", "File it"],
-  ["src/lib/jane-agent/insurance/life-words.ts", "Buy it"],
-  ["src/lib/jane-agent/insurance/saving-words.ts", "Switch your "],
-  ["src/lib/jane-agent/multi.ts", "Move "],
-  ["src/lib/jane-agent/priorities.ts", "Switch "],
-  ["src/lib/jane-agent/replies-changes.ts", "Cancel it"],
-  ["src/lib/jane-agent/replies-paycheck.ts", "Move them"],
-  ["src/lib/jane-agent/sources/findings.ts", "Switch to "],
-];
+const AWAITING: readonly [string, string][] = [];
 
 describe("strings that tell the person to act", () => {
   const flagged = flaggedStrings();
@@ -70,8 +54,7 @@ describe("strings that tell the person to act", () => {
       const key = f.gate ?? "awaiting";
       counts[key] = (counts[key] ?? 0) + 1;
     }
-    // decisions.ts and disaster-message.ts each say theirs more than once.
-    expect(counts.awaiting).toBe(AWAITING.length + ALLOWED.length + 3);
+    expect(counts.awaiting).toBe(AWAITING.length + ALLOWED.length);
     expect((counts.advice_topic ?? 0) + (counts.real_account_filter ?? 0)).toBeGreaterThan(0);
   });
 });

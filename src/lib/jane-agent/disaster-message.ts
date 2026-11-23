@@ -37,7 +37,7 @@ export function reliefMessage(v: DisasterView, r: ReliefView): MessageParts {
     const n = r.moves.length;
     if (n > 0) {
       lead += ` ${n === 1 ? "1 tax deadline" : `${n} tax deadlines`} on your list fall in that window.`;
-      actions.push({ id: "tax.disaster_move", label: "Move my tax deadlines", kind: "primary" });
+      actions.push({ id: "tax.disaster_move", label: "Update my deadline list", kind: "primary" });
     }
   }
   if (r.loss.repairsCents > 0 && !r.recorded)
@@ -87,7 +87,7 @@ export function disasterReply(v: DisasterView): MessageParts {
   const first = v.relief[0];
   const actions: MessageAction[] = [];
   if (!first.applied && first.moves.length > 0)
-    actions.push({ id: "tax.disaster_move", label: "Move my tax deadlines", kind: "primary" });
+    actions.push({ id: "tax.disaster_move", label: "Update my deadline list", kind: "primary" });
   actions.push(openLink("See my deadlines", DISASTER_HREF));
   return {
     body: `Here is the disaster relief for ${v.county} County.\n${lines.map((l) => `• ${l}`).join("\n")}`,

@@ -185,7 +185,7 @@ describe("findings worth deciding", () => {
     expect(message.refs.pickOptionId).toBe("opt_pine");
     expect(message.actions.map((a) => a.label)).toEqual([
       "Yes",
-      "Switch to Pine Mobile",
+      "See Pine Mobile",
       "No",
       "Why?",
       "Show options",

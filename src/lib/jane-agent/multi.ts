@@ -96,7 +96,7 @@ async function transferStep(
     : { id: null, name: savings!.name, accountId: savings!.id, label: savings!.name };
   return {
     kind: "transfer",
-    label: `Move ${formatCents(amountCents)} from ${from.name} to ${to.label}${why}`,
+    label: `${formatCents(amountCents)} from ${from.name} to ${to.label}${why}`,
     goalId: to.id,
     goalName: to.name,
     fromAccountId: from.id,
