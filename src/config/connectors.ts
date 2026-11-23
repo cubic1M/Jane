@@ -135,6 +135,10 @@ export const CONNECTOR_HOLD_MINUTES = {
 // A plan the person hasn't answered within this long expires: the yes is for what they saw then.
 export const CONNECTOR_PLAN_HOURS = 72;
 
+// An action still `running` this long after it started (a crash mid-act) is listed for the team on
+// /admin/connectors, to check with the partner and mark (src/lib/connectors/stuck.ts).
+export const CONNECTOR_STUCK_MINUTES = 30;
+
 // --- Webhooks (src/lib/connectors/webhooks.ts) ---------------------------------------------------
 
 // A signed delivery older or newer than this is refused, as Stripe's and Svix's defaults do.

@@ -117,6 +117,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   ),
   "src/app/actions/agent-actions.ts": "signed-in",
   "src/app/admin/actions/[actionId]/actions.ts": "admin",
+  "src/app/admin/connectors/actions.ts": "admin",
   "src/app/admin/invites/actions.ts": "admin",
   "src/app/admin/jobs/actions.ts": "admin",
   "src/app/admin/keys/actions.ts": "admin",
