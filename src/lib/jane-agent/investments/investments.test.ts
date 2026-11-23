@@ -83,6 +83,7 @@ import {
   wholeLifeCompare,
 } from "@/planning/costly-products";
 import { productLine } from "./costly-copy";
+import { locationAskKey } from "./location-copy";
 import { honestPeriod } from "@/planning/honest";
 import { compare as compareShort, ladder as shortLadder } from "@/planning/short-term";
 import { PREDICTION_WORDS } from "@/config/steady-hand";
@@ -2806,7 +2807,8 @@ describe("locationReply and the location message", () => {
         .filter((c) => c.dedupeKey.startsWith("location:"));
     expect(gather(LOC_PLAN)[0]).toMatchObject({
       kind: "decision",
-      dedupeKey: `location:${LOC_PLAN.key}`,
+      // What it asks, not its amounts (debug 3, 11-23).
+      dedupeKey: `location:${locationAskKey(LOC_PLAN)}`,
     });
     expect(gather(LOC_PLAN, false)).toEqual([]);
     expect(gather(null)).toEqual([]);

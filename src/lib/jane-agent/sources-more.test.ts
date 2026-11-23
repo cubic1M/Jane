@@ -144,7 +144,7 @@ describe("set-up suggestions", () => {
     const [message] = bySource(snapshot({ setupProposals: [budget] }), "setup");
     expect(message).toMatchObject({
       kind: "decision",
-      dedupeKey: "setup:budget:Food and drink:42000",
+      dedupeKey: "setup:budget:Food and drink",
       refs: { proposalKey: "budget:Food and drink" },
       priority: MESSAGE_PRIORITY.setup,
       body: "I could set a $420.00 monthly budget for Food and drink. That's your own average over the last 3 complete months, rounded up: math from your data, not advice. Want me to set it up?",
@@ -181,12 +181,24 @@ describe("set-up suggestions", () => {
     expect(out.filter((m) => m.source === "setup")).toHaveLength(CHAT_SOURCE_LIMITS.setup);
   });
 
-  it("never offers the same suggestion twice; a new amount is a new suggestion", () => {
-    const seen = { recent: [], seenKeys: ["setup:budget:Food and drink:42000"] };
+  // A new amount isn't a new suggestion (debug 3, 11-23): the open card says it as it is now
+  // (../still-true.ts); another budget or goal is.
+  it("never offers the same suggestion twice, whatever its amount", () => {
+    const seen = { recent: [], seenKeys: ["setup:budget:Food and drink"] };
     expect(posted(snapshot({ setupProposals: [budget] }), seen)).toEqual([]);
     expect(
-      keys(posted(snapshot({ setupProposals: [{ ...budget, amountCents: 45_000 }] }), seen)),
-    ).toEqual(["setup:budget:Food and drink:45000"]);
+      posted(snapshot({ setupProposals: [{ ...budget, amountCents: 45_000 }] }), seen),
+    ).toEqual([]);
+    expect(
+      keys(
+        posted(
+          snapshot({
+            setupProposals: [{ ...budget, key: "budget:Entertainment", category: "Entertainment" }],
+          }),
+          seen,
+        ),
+      ),
+    ).toEqual(["setup:budget:Entertainment"]);
   });
 });
 

@@ -55,7 +55,7 @@ import {
 } from "../investments/costly-copy";
 import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
 import { MIN_SAVING_CENTS } from "@/config/location";
-import { freeButton, LOCATION_LINK, locationLine } from "../investments/location-copy";
+import { locationAskKey, locationCard } from "../investments/location-copy";
 import { MENU_MIN_SAVING_CENTS } from "@/config/plan-menu";
 import {
   changeButton,
@@ -460,13 +460,9 @@ function locationCards({ inv }: In): Candidate | null {
   if (!inv.advice || !loc || !(loc.savedCents >= MIN_SAVING_CENTS) || loc.swaps.length === 0) {
     return null;
   }
-  const button = freeButton(loc);
   return {
-    kind: button ? "decision" : "heads_up",
-    body: locationLine(loc),
-    refs: { advice: true, ...(button ? { locationKey: loc.key } : {}) },
-    actions: [...(button ? [button] : []), LOCATION_LINK, snoozeButton()],
-    dedupeKey: `location:${loc.key}`,
+    ...locationCard(loc),
+    dedupeKey: `location:${locationAskKey(loc)}`,
     priority: MESSAGE_PRIORITY.location,
   };
 }

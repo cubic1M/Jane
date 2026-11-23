@@ -2,6 +2,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { BNPL_PAGE, payoffButton } from "../bnpl-replies";
+import type { Bnpl } from "@/lib/bnpl";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
@@ -27,17 +28,33 @@ export const bnplSource: MessageSource = {
         priority: MESSAGE_PRIORITY.bnpl_due,
       });
     }
-    const free = data.plans.find((p) => p.freePayoff && p.canCoverPayoff && !p.payoffScheduled);
+    const free = bnplPayoffCard(data);
     if (free) {
       out.push({
-        kind: "decision",
-        body: `You can pay off the ${free.name} now for ${formatCents(free.balanceCents!)}, and it costs nothing extra: Pay in 4 plans charge no interest or fee for paying early. That clears its remaining installments and leaves checking above its cushion.`,
-        refs: { advice: true, bnplPlan: { key: free.key } },
-        actions: [payoffButton(free.name), BNPL_PAGE, snoozeButton()],
-        dedupeKey: `bnpl_payoff:${free.key}:${free.balanceCents}`,
+        ...free.card,
+        dedupeKey: `bnpl_payoff:${free.key}`,
         priority: MESSAGE_PRIORITY.bnpl_payoff,
       });
     }
     return out;
   },
 };
+
+// The Pay in 4 plan free to pay off now, its card said with the balance as it is: posted under the
+// plan (not its balance, debug 3, 11-23: a new card after each installment), said again by
+// stillTrue (../plan-cards.ts). Asked again only when another plan becomes free to pay off.
+export function bnplPayoffCard(
+  data: Bnpl,
+): { key: string; card: Pick<Candidate, "kind" | "body" | "refs" | "actions"> } | null {
+  const free = data.plans.find((p) => p.freePayoff && p.canCoverPayoff && !p.payoffScheduled);
+  if (!free) return null;
+  return {
+    key: free.key,
+    card: {
+      kind: "decision",
+      body: `You can pay off the ${free.name} now for ${formatCents(free.balanceCents!)}, and it costs nothing extra: Pay in 4 plans charge no interest or fee for paying early. That clears its remaining installments and leaves checking above its cushion.`,
+      refs: { advice: true, bnplPlan: { key: free.key } },
+      actions: [payoffButton(free.name), BNPL_PAGE, snoozeButton()],
+    },
+  };
+}

@@ -1,6 +1,7 @@
 import type { LocationPlan } from "@/planning/location";
 import { formatCents } from "@/lib/money";
-import { type MessageAction, openLink } from "../types";
+import { snoozeButton } from "../sources/source";
+import { type Candidate, type MessageAction, openLink } from "../types";
 
 // The right investment in the right account in the chat (spec step 231): shared words.
 
@@ -35,3 +36,22 @@ export const freeButton = (p: LocationPlan): MessageAction | null =>
         kind: "primary",
       }
     : null;
+
+// Jane's card for the swaps that save tax (spec step 231), said with the plan's figures as they
+// are: posted under locationAskKey, said again by stillTrue as amounts move (../plan-cards.ts).
+export const locationCard = (
+  p: LocationPlan,
+): Pick<Candidate, "kind" | "body" | "refs" | "actions"> => {
+  const button = freeButton(p);
+  return {
+    kind: button ? "decision" : "heads_up",
+    body: locationLine(p),
+    refs: { advice: true, locationKey: p.key },
+    actions: [...(button ? [button] : []), LOCATION_LINK, snoozeButton()],
+  };
+};
+
+// What the card asks, not its figures: which kind of investment moves between which accounts.
+// Asked again only when a swap comes or goes or moves between other accounts or kinds.
+export const locationAskKey = (p: LocationPlan) =>
+  p.swaps.map((s) => `${s.a.accountId}:${s.a.sell}>${s.b.accountId}:${s.b.sell}`).join(",");
