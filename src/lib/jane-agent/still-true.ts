@@ -540,17 +540,20 @@ export async function stillTrue(
   if (!facts) return [...messages];
   const kept: ChatMessage[] = [];
   const gone: ChatMessage[] = [];
-  // One card a plan: the newest says it; older ones, from before its key left out the figures,
-  // are put away.
-  const newest = new Map<PlanRef, ChatMessage>();
+  // One card a plan, and one a set-up proposal: the newest says it; older ones, from before their
+  // keys left out the figures (debug 3, 11-23), are put away.
+  const oneOf = (m: ChatMessage) =>
+    planRefOf(m) ??
+    (m.status === "open" && m.refs.proposalKey ? `proposal:${m.refs.proposalKey}` : null);
+  const newest = new Map<string, ChatMessage>();
   for (const m of messages) {
-    const ref = planRefOf(m);
-    const best = ref && newest.get(ref);
-    if (ref && (!best || m.createdAt.getTime() > best.createdAt.getTime())) newest.set(ref, m);
+    const one = oneOf(m);
+    const best = one && newest.get(one);
+    if (one && (!best || m.createdAt.getTime() > best.createdAt.getTime())) newest.set(one, m);
   }
   for (const m of messages) {
-    const ref = planRefOf(m);
-    const shown = ref && newest.get(ref) !== m ? null : asNow(m, facts);
+    const one = oneOf(m);
+    const shown = one && newest.get(one) !== m ? null : asNow(m, facts);
     if (shown) kept.push(shown);
     else gone.push(m);
   }

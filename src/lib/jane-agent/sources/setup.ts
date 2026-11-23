@@ -9,7 +9,8 @@ import { monthLabel } from "@/lib/day-label";
 // Set-up suggestions (spec step 83): each budget and goal Jane proposes on the plan
 // (src/lib/proposals.ts), including the "Yearly bills" goal, as a message with "Set it up"
 // and "No", plus "Use all N suggestions" when there's more than one. The numbers are the
-// person's own, said as math, never advice. Each once (a new amount is a new suggestion).
+// person's own, said as math, never advice. Each once a budget or goal: a new amount is said on
+// the open card (../still-true.ts), not posted again.
 
 const monthYear = (iso: string) => monthLabel(iso, { long: true });
 
@@ -36,9 +37,6 @@ export const setupHref = (p: BudgetProposal | GoalProposal) =>
     ? `/budgets?draft=${encodeURIComponent(p.category)}`
     : `/goals?draft=${p.key.replace(/^goal:/, "")}`;
 
-const amountOf = (p: BudgetProposal | GoalProposal) =>
-  p.kind === "budget" ? p.amountCents : p.targetCents;
-
 export const setupSource: MessageSource = {
   key: "setup",
   gather(snapshot) {
@@ -61,7 +59,9 @@ export const setupSource: MessageSource = {
         body: setupBody(proposal),
         refs: { proposalKey: proposal.key },
         actions,
-        dedupeKey: `${proposal.key}:${amountOf(proposal)}`,
+        // What it asks, the budget or goal, not its amount (debug 3, 11-23): stillTrue says the
+        // open card with the proposal's amount as it is now (../still-true.ts).
+        dedupeKey: proposal.key,
         priority: MESSAGE_PRIORITY.setup,
       };
     });
