@@ -124,7 +124,8 @@ function first(f: DecisionFacts): { say: string; link: MessageAction } | null {
       };
     }
     return {
-      say: `I'd pay the cards down first: every dollar on them saves you their ${rate(f.topRateBps as number)} a year, which no investment reliably beats.`,
+      // Their rate, not a promise: what a dollar on them costs (manager 11-23: no "saves you").
+      say: `I'd pay the cards down first: every dollar on them costs their ${rate(f.topRateBps as number)} a year, which no investment reliably beats.`,
       link: openLink("See my card payoff options", "/debt"),
     };
   }

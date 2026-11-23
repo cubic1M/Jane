@@ -523,8 +523,10 @@ export function dayAsked(text: string, asOf: string): string | null {
 // "what happened with the Amazon charge?", "when did Netflix go up?", "how much does my mom send me?",
 // "how much do I send on Venmo?", "how much do I put into savings each month?" (desktop sweeps 7 to 9,
 // phone passes 5 to 7), and "should I switch Netflix plans?".
+// And "when did ChatGPT charge me?", "when was I last charged by Hulu?": its latest charge, with the
+// day (11-23: unanswered).
 const CHARGE_STORY =
-  /\bwhat (?:happened|is going on|'s going on) (?:with|to) (?:the|my|that|this) (.+?) (?:charge|payment|purchase)\b|\bwhat (?:was|is) (?:the|that|this) (.+?) charge\b/;
+  /\bwhat (?:happened|is going on|'s going on) (?:with|to) (?:the|my|that|this) (.+?) (?:charge|payment|purchase)\b|\bwhat (?:was|is) (?:the|that|this) (.+?) charge\b|^when (?:did|does) (?:my )?(.+?) (?:last )?charge (?:me|us)\b|^when was i (?:last )?charged (?:by|for) (.+?)$/;
 // Money people send: "how much does my mom send me?", "how much money do I get from my mom?",
 // "what does my dad send me?", "how much comes in from Venmo?" (desktop sweeps 11 to 18, upload S1:
 // only the first wording reached the money that came in by Venmo).
@@ -593,6 +595,8 @@ const COST = [
   /^what (?:does|do|is|are) (.+?) cost(?: me| us)?(?: (?:a|per|each|every) (month|year))?$/,
   /^what(?:'s| is) (?:the )?(?:cost|price) (?:of|for) (.+?)(?: (?:a|per|each|every) (month|year))?$/,
   /^what do i pay (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
+  // "How much do I send Sam Lee?": what goes to them, as "how much do I pay Sam Lee" (11-23).
+  /^how much (?:do|did) i (?:send|give) (?!(?:on|by|through|with|via|over|using|to) )(.+?)(?: (?:a|per|each|every) (month|year))?$/,
   // "When is rent due?": what it costs and when it's next charged (debugger 11-17: no answer).
   /^when(?: is|'s) (?:my |the )?(?:next )?(?!(?:bills?|payments?)\b)(.+?) due()$/,
   // "When is my next rent payment?" asks the same (debugger 11-18: no answer).
@@ -714,7 +718,7 @@ export function parseIntent(
   if (BOOKS.test(text)) return { kind: "books" };
   const story = CHARGE_STORY.exec(text);
   if (story) {
-    const target = cleanTarget((story[1] ?? story[2])!);
+    const target = cleanTarget((story[1] ?? story[2] ?? story[3] ?? story[4])!);
     // "What was the $14 Nelnet charge?": a charge of that amount (upload S3: "a charge at $14
     // nelnet" was looked for by name).
     const dollars = /^\$([\d,]+(?:\.\d{2})?)\b/.exec(target)?.[1];

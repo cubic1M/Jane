@@ -126,8 +126,8 @@ describe.runIf(url)("the backup chat's recorded misses", { timeout: 900_000 }, (
     }
   });
 
-  it("still not: why overdraft fees are charged goes to whether checking will go below zero", async () => {
+  it("why overdraft fees are charged is the fee's own answer now (backup-still-nots)", async () => {
     const id = await cell("upload-s6-desktop");
-    expect((await ask(id, "Why am I paying overdraft fees?")).intent).toBe("debt_decision");
+    expect((await ask(id, "Why am I paying overdraft fees?")).intent).toBe("fee_why");
   });
 });

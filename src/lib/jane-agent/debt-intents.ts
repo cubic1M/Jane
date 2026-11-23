@@ -189,7 +189,8 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
   ],
   [
     "overdraft",
-    /\b(?:will (?:i|we)|am (?:i|we)|going to|gonna)\b.*\b(?:overdraw\w*|overdraft\w*|go negative|run out of money|go below zero|bounce)\b|\bwill (?:my )?(?:checking|account|balance)\b.*\b(?:negative|below zero|overdraw\w*|run out)\b/,
+    // Not "why am I paying overdraft fees?", which asks about the fees (fee_why).
+    /\b(?:will (?:i|we)|am (?:i|we)(?! (?:paying|being charged|getting charged|charged)\b)|going to|gonna)\b.*\b(?:overdraw\w*|overdraft\w*|go negative|run out of money|go below zero|bounce)\b|\bwill (?:my )?(?:checking|account|balance)\b.*\b(?:negative|below zero|overdraw\w*|run out)\b/,
   ],
   [
     "bnpl",
