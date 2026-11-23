@@ -167,8 +167,8 @@ describe.runIf(url)("the backup chat's five misses", { timeout: 600_000 }, () =>
     }
     // One charged this month still answers with this month.
     expect((await ask(id, "How much is Starbucks?")).body).toContain("November 2026 so far");
-    // Still not: asked when, not how much.
-    expect((await ask(id, "When did ChatGPT charge me?")).source).toBe("fallback");
+    // Asked when, not how much: its latest charge with the day (backup-still-nots, 11-23).
+    expect((await ask(id, "When did ChatGPT charge me?")).source).toBe("rules");
   });
 
   it("5. upload S1: what mom sends, from the lines that name her", async () => {
