@@ -1,7 +1,8 @@
 import { COMPANY_DROP, EMPLOYER_STOCK_LIMIT } from "@/config/company-stock";
 import type { CompanyStockView } from "@/lib/investments/company-stock";
 import { formatCents } from "@/lib/money";
-import { type MessageAction, openLink } from "../types";
+import { snoozeButton } from "../sources/source";
+import { type Candidate, type MessageAction, openLink } from "../types";
 import { SIMULATED_WORDS } from "./rebalance-copy";
 import { formatPercent as pct } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
@@ -44,3 +45,20 @@ export const sellButton = (view: View): MessageAction => ({
 });
 
 export const SELL_WORDS = `Tap and I'll sell this part and buy broad index funds with it, ${SIMULATED_WORDS}.`;
+
+// Jane's card to sell the part that's due (spec step 160), with the plan's figures as they are:
+// the source posts it under the plan's askKey, and stillTrue says it again as prices move
+// (debug 3, 11-23: keyed by the day's plan, the equity person had one a day).
+export function companySellCard(
+  view: View,
+  today: string,
+): Pick<Candidate, "kind" | "body" | "refs" | "actions"> | null {
+  const plan = planLine(view, today);
+  if (!plan || !view.plan || !sellDue(view, today)) return null;
+  return {
+    kind: "decision",
+    body: `${concentrationLine(view)} ${plan} ${SELL_WORDS}`,
+    refs: { advice: true, companyPlan: view.plan.key },
+    actions: [sellButton(view), COMPANY_LINK, snoozeButton()],
+  };
+}
