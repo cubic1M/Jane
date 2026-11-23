@@ -204,7 +204,7 @@ export function refundsReply(ctx: FeeContext, reversalDays: number): Reply {
       body:
         fees.length === 0
           ? "I don't see any bank fees, or any given back, in your accounts."
-          : `I don't see a fee given back in your accounts. They show ${formatCents(charged)} in ${fees.length === 1 ? "one fee" : `${fees.length} fees`} charged, the latest on ${dayLabel(fees.at(-1)!.date)}.`,
+          : `I don't see a fee given back in your accounts. They show ${formatCents(charged)} in ${fees.length === 1 ? "one fee" : `${fees.length} fees`} charged, the latest on ${dayLabel(fees[fees.length - 1]!.date)}.`,
       actions: seeFees,
       refs: {},
     };
