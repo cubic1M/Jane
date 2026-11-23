@@ -17,14 +17,7 @@ import {
 } from "../investments/auto-copy";
 import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
-import {
-  COMPANY_LINK,
-  concentrationLine,
-  planLine,
-  sellButton,
-  sellDue,
-  SELL_WORDS,
-} from "../investments/company-copy";
+import { COMPANY_LINK, companySellCard, concentrationLine } from "../investments/company-copy";
 import { type Candidate, openLink } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
@@ -82,7 +75,7 @@ import {
 } from "../investments/sudden-copy";
 import { momentLabel } from "@/lib/day-label";
 import { validTimezone } from "@/lib/digest/week";
-import { valuesPlanLine, valuesButton, VALUES_LINK } from "../investments/values-copy";
+import { valuesAskKey, valuesCard } from "../investments/values-copy";
 import { attentionLine, FILE_LINK } from "../investments/family-file-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { cashCard, cashCardKey, cashToBringUp } from "../investments/cash-copy";
@@ -406,16 +399,14 @@ function beneficiaryCards({ inv }: In): Candidate | null {
 
 // Step 236: a values list that the funds held don't match yet, one tap to switch.
 function valuesCards({ inv }: In): Candidate | null {
-  const plan = inv.values.plan;
-  if (!inv.advice || !plan || plan.switches.length === 0) return null;
-  return {
-    kind: "decision",
-    body: valuesPlanLine({ ...inv.values, advice: true, source: "" }),
-    refs: { advice: true, valuesKey: plan.key },
-    actions: [valuesButton(), VALUES_LINK, snoozeButton()],
-    dedupeKey: `values:${plan.key}`,
-    priority: MESSAGE_PRIORITY.values,
-  };
+  const card = inv.advice ? valuesCard(inv.values) : null;
+  return card && inv.values.plan
+    ? {
+        ...card,
+        dedupeKey: `values:${valuesAskKey(inv.values.plan)}`,
+        priority: MESSAGE_PRIORITY.values,
+      }
+    : null;
 }
 
 // Step 234: money needed within three years, compared after tax; a ladder when bills win
@@ -780,15 +771,11 @@ function cryptoCards({ inv }: In): Candidate[] {
 function companyStockCards({ inv, snapshot }: In): Candidate | null {
   const company = inv.companyStock;
   if (!inv.advice || !company.concentration.overLimit) return null;
-  const today = snapshot.asOf.slice(0, 10);
-  const plan = planLine(company, today);
-  if (plan && company.plan && sellDue(company, today)) {
+  const sell = companySellCard(company, snapshot.asOf.slice(0, 10));
+  if (sell && company.plan) {
     return {
-      kind: "decision",
-      body: `${concentrationLine(company)} ${plan} ${SELL_WORDS}`,
-      refs: { advice: true, companyPlan: company.plan.key },
-      actions: [sellButton(company), COMPANY_LINK, snoozeButton()],
-      dedupeKey: `company:sell:${company.plan.key}`,
+      ...sell,
+      dedupeKey: `company:sell:${company.plan.askKey}`,
       priority: MESSAGE_PRIORITY.company_stock,
     };
   }

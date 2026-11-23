@@ -69,7 +69,15 @@ export type CompanyStockView = {
   }[];
   concentration: Concentration;
   plan:
-    | (DiversifyPlan & { key: string; accountId: string; accountName: string; nextDue: string })
+    | (DiversifyPlan & {
+        key: string;
+        // What the card asks, not its figures: this holding's next part, the first or the one
+        // after the last sale (DIVERSIFY_MONTHS_APART later). A new card only for a new part.
+        askKey: string;
+        accountId: string;
+        accountName: string;
+        nextDue: string;
+      })
     | null;
   rates: { longTerm: number; shortTerm: number; fromEstimate: boolean };
   demo: boolean;
@@ -183,6 +191,7 @@ export async function loadCompanyStock(
         .update(JSON.stringify([source.accountId, source.ticker, source.quantity, start]))
         .digest("hex")
         .slice(0, 24),
+      askKey: `${source.accountId}:${source.ticker}:${lastSale ? iso(lastSale.placedAt) : "first"}`,
       accountId: source.accountId,
       accountName: source.accountName,
       nextDue: start,

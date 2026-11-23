@@ -1660,6 +1660,7 @@ const COMPANY = {
   plan: {
     ...COMPANY_PLAN,
     key: "plan-key",
+    askKey: "a:ACME:first",
     accountId: "a",
     accountName: "Demo Stock Plan",
     nextDue: ASOF,
@@ -1738,7 +1739,7 @@ describe("companyStockReply and the company stock message", () => {
         .filter((c) => c.dedupeKey.startsWith("company:"));
     const due = gatherCompany(COMPANY);
     expect(due.map((m) => [m.kind, m.dedupeKey, m.refs])).toEqual([
-      ["decision", "company:sell:plan-key", { advice: true, companyPlan: "plan-key" }],
+      ["decision", "company:sell:a:ACME:first", { advice: true, companyPlan: "plan-key" }],
     ]);
     expect(due[0].actions.map((a) => a.id)).toEqual(["company.sell", "open", "snooze"]);
     expect(due[0].priority).toBe(MESSAGE_PRIORITY.company_stock);
