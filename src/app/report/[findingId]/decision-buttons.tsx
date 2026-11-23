@@ -18,7 +18,7 @@ const GREYED_BUTTON =
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "error"; message: string };
 
 // What the server said about an answer: its decision (for Revert), or why not.
-type Answer = { decisionId: string; diy?: boolean } | { error: string };
+type Answer = { decisionId: string; diy?: boolean; connectorActionId?: string } | { error: string };
 
 export function DecisionButtons({
   findingId,
@@ -79,11 +79,16 @@ export function DecisionButtons({
         decisionId?: string;
         error?: string;
         diy?: boolean;
+        connectorActionId?: string | null;
       };
       if (!response.ok || !body.decisionId) {
         return { error: body.error ?? "Something went wrong. Try again." };
       }
-      return { decisionId: body.decisionId, diy: body.diy };
+      return {
+        decisionId: body.decisionId,
+        diy: body.diy,
+        ...(body.connectorActionId ? { connectorActionId: body.connectorActionId } : {}),
+      };
     } catch {
       return { error: "We couldn't reach the server. Try again." };
     }
@@ -116,6 +121,9 @@ export function DecisionButtons({
       } else if (answer.diy) {
         // The card page shows the kit once the answer is saved.
         router.refresh();
+      } else if (answer.connectorActionId) {
+        // A connector planned it: its exact steps wait for the person's own yes.
+        router.push("/settings/connections#actions");
       }
     });
   }
