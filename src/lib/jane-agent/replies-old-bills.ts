@@ -32,16 +32,21 @@ const words = (text: string) =>
 
 // "How much is my internet bill?" on statements that end `statementsEnd`: what they show, said as
 // of then. Null when they show nothing by that name or kind.
+// The charges by that name (or of that bill's kind), oldest first.
+function chargesFor(target: string, lines: readonly BillLine[]): BillLine[] {
+  const kind = BILL_KINDS[target.toLowerCase().replace(/ bill$/, "")];
+  return lines
+    .filter((t) => t.amountCents > 0)
+    .filter((t) => (kind ? t.pfcDetailed === kind : words(nameOf(t) ?? "").includes(words(target))))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function fromOldStatementsReply(
   target: string,
   lines: readonly BillLine[],
   statementsEnd: string,
 ): Reply | null {
-  const kind = BILL_KINDS[target.toLowerCase().replace(/ bill$/, "")];
-  const charges = lines
-    .filter((t) => t.amountCents > 0)
-    .filter((t) => (kind ? t.pfcDetailed === kind : words(nameOf(t) ?? "").includes(words(target))))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const charges = chargesFor(target, lines);
   const last = charges.at(-1);
   if (!last) return null;
   const name = nameOf(last) ?? target;
@@ -52,6 +57,27 @@ export function fromOldStatementsReply(
       monthly ? " a month" : ""
     } (last on ${dayLabel(last.date)}). Whether it's the same now I can't tell from them.`,
     actions: [openLink("Upload newer statements", "/import")],
+    refs: {},
+  };
+}
+
+// "How much is ChatGPT?" with nothing there this month: its last charge, from all the data, and
+// how many there were (desktop sweeps 11 to 18, upload S5: one $20.00 ChatGPT charge on Oct 22, and
+// the answer looked only at November). Not a regular charge yet when it's been seen once. Null when
+// nothing goes by that name.
+export function lastChargeReply(target: string, lines: readonly BillLine[]): Reply | null {
+  const charges = chargesFor(target, lines);
+  const last = charges.at(-1);
+  if (!last) return null;
+  const name = nameOf(last) ?? target;
+  const same = charges.filter((t) => nameOf(t) === nameOf(last));
+  const seen =
+    same.length === 1
+      ? "That's the one charge I see, so it isn't a regular one yet."
+      : `I see ${same.length} charges from it, the first on ${dayLabel(same[0]!.date)}.`;
+  return {
+    body: `${name} was ${formatCents(last.amountCents)}, last on ${dayLabel(last.date)}. ${seen}`,
+    actions: [openLink("See transactions", "/transactions")],
     refs: {},
   };
 }

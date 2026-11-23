@@ -232,7 +232,10 @@ export async function answerInvestments(
     case "goals":
       return goalBucketsReply(await loadGoalBuckets(userId, { client, now }));
     case "returns":
-      return returnsReply(await loadReturns(userId, { client, now }));
+      return returnsReply(
+        await loadReturns(userId, { client, now }),
+        await loadInvestments(userId, { client, now }),
+      );
     case "autopilot":
       // Only demo advice may hear what Jane would change or trade; a real account hears what it does.
       if (!(await adviceMode(userId, { client }))) {

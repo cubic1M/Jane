@@ -78,7 +78,8 @@ export type Intent =
   // The next paycheck.
   | { kind: "payday" }
   | { kind: "charge_story"; target: string }
-  | { kind: "money_from_people" }
+  // who: the person asked about ("mom"), as typed; null for everyone ("from Venmo").
+  | { kind: "money_from_people"; who: string | null }
   | { kind: "sent_by_app"; app: string }
   | { kind: "savings_moves" }
   | { kind: "plan_switch"; target: string }
@@ -470,8 +471,11 @@ const CHARGED =
 const FEES_PAID =
   /\bwhat (?:bank )?fees (?:have|did) (?:i|we) (?:paid|pay|been charged)\b|\bhow much (?:have|did) (?:i|we) (?:paid|pay|spent|spend|been charged) (?:in|on|for) (?:bank |late |overdraft |account )?fees\b|\bhow many (?:bank |late |overdraft )?fees (?:have|did)\b/;
 const INVESTING_FEES = /\b(?:401\(?k\)?|ira|funds?|invest\w*|brokerage|portfolio)\b/;
+// A fee and getting out of it, however it's put: "can I get my fee waived?", "can my bank fee be
+// waived?", "can I avoid the Bank of America fee?" (desktop sweeps 11 to 18, upload S7: only the
+// first form reached the waiver card's rule).
 const FEE_WAIVER =
-  /\b(?:can|could|how (?:do|can|could)) (?:i|we) (?:get|have) (?:my|the|a|this|that|these|those) (?:\w+ ){0,2}fees? (?:waived|refunded|reversed|removed|taken off)\b|\bwaive (?:my|the|this|that) (?:\w+ ){0,2}fees?\b/;
+  /\bfees?\b[^.?!]*\b(?:waiv(?:e|ed|ing)|refund(?:ed)?|revers(?:e|ed)|removed|taken off)\b|\b(?:waive|avoid|get rid of|stop paying|not pay|get out of paying|get out of) (?:my |the |this |that |a |these |those )?(?:\w+ ){0,3}fees?\b/;
 const MONTH_WORDS = [
   "jan",
   "feb",
@@ -513,8 +517,20 @@ export function dayAsked(text: string, asOf: string): string | null {
 // phone passes 5 to 7), and "should I switch Netflix plans?".
 const CHARGE_STORY =
   /\bwhat (?:happened|is going on|'s going on) (?:with|to) (?:the|my|that|this) (.+?) (?:charge|payment|purchase)\b|\bwhat (?:was|is) (?:the|that|this) (.+?) charge\b/;
-const FROM_PEOPLE =
-  /\bhow much (?:money )?(?:does|do|did) (?:my )?(?:mom|mum|dad|mother|father|parents?|family|grandma|grandpa|sister|brother|\w+) (?:send|give|venmo|zelle|pay) (?:me|us)\b/;
+// Money people send: "how much does my mom send me?", "how much money do I get from my mom?",
+// "what does my dad send me?", "how much comes in from Venmo?" (desktop sweeps 11 to 18, upload S1:
+// only the first wording reached the money that came in by Venmo).
+const FAMILY =
+  "mom|mum|mother|dad|father|parents?|family|grandma|grandpa|grandparents|sister|brother|aunt|uncle|partner|boyfriend|girlfriend|wife|husband|roommate";
+const FROM_PEOPLE = new RegExp(
+  [
+    "\\bhow much (?:money )?(?:does|do|did|has|have) (?:my )?(\\w+) (?:send|sent|give|given|gave|venmo|zelle|pay|paid) (?:me|us)\\b",
+    `\\b(?:how much|what) (?:money )?(?:do|did|have) (?:i|we) (?:get|got|gotten|receive|received) from (?:my )?(${FAMILY})\\b`,
+    "\\bwhat (?:does|did) (?:my )?(\\w+) (?:send|give) (?:me|us)\\b",
+    "\\bhow much (?:money )?(?:comes|came|do i get|did i get) (?:in )?(?:from|by|through|on) (venmo|zelle|cash ?app|paypal)\\b",
+  ].join("|"),
+);
+const PEOPLE_APPS = /^(?:venmo|zelle|cash ?app|paypal)$/;
 const SENT_BY_APP =
   /\bhow much (?:money )?(?:do|did|have) (?:i|we) (?:send|sent|pay|paid|spend|spent) (?:on|by|through|with|via|over|using) (venmo|zelle|cash ?app|paypal)\b/;
 const TO_SAVINGS =
@@ -690,7 +706,11 @@ export function parseIntent(
   if (BOOKS.test(text)) return { kind: "books" };
   const story = CHARGE_STORY.exec(text);
   if (story) return { kind: "charge_story", target: cleanTarget((story[1] ?? story[2])!) };
-  if (FROM_PEOPLE.test(text)) return { kind: "money_from_people" };
+  const fromPeople = FROM_PEOPLE.exec(text);
+  if (fromPeople) {
+    const who = (fromPeople[1] ?? fromPeople[2] ?? fromPeople[3] ?? fromPeople[4])!;
+    return { kind: "money_from_people", who: PEOPLE_APPS.test(who) ? null : who };
+  }
   const byApp = SENT_BY_APP.exec(text);
   if (byApp) return { kind: "sent_by_app", app: byApp[1]! };
   if (TO_SAVINGS.test(text)) return { kind: "savings_moves" };
@@ -712,7 +732,7 @@ export function parseIntent(
   }
   if (FEES_PAID.test(text) && !INVESTING_FEES.test(text))
     return { kind: "fees_paid", late: /\blate fees?\b/.test(text) };
-  if (FEE_WAIVER.test(text)) return { kind: "fee_waiver" };
+  if (FEE_WAIVER.test(text) && !INVESTING_FEES.test(text)) return { kind: "fee_waiver" };
   if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {

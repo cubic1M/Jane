@@ -1,0 +1,9 @@
+{
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "kind": "checking",
+      "files": ["bofa-checking.csv"]
+    }
+  ]
+}

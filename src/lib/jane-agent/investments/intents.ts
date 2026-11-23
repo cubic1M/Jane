@@ -133,9 +133,11 @@ const OVERVIEW =
 const AUTOPILOT =
   /\bwhat do you do (?:with|about|for) my (?:investments|portfolio|money in the market)\b|\b(?:investments?|investing|portfolio) on autopilot\b|\bautopilot (?:for|on) (?:my )?(?:investments|investing|portfolio)\b|\bwhat (?:will|would|do) you (?:do|change) (?:in|with) my (?:investments|portfolio) (?:by yourself|on your own)\b/;
 
-// Spec step 156: how they've done, in numbers.
+// Spec step 156: how they've done, in numbers. And what was gained, however it's asked: "how much
+// have I gained?", "what's my gain on Fidelity?", "am I up or down?" (desktop sweeps 11 to 18,
+// upload S4: only "returns" and "made on my investments" reached the answer).
 const RETURNS =
-  /\b(?:my |the )?(?:investment |portfolio |401\(?k\)? )?(?:returns?|performance)\b(?! policy)|\bhow much (?:have|did) my (?:investments|portfolio|401\(?k\)?) (?:make|made|earn|earned|grow|grown|gain|gained)\b|\bhow much (?:have|did) i (?:make|made|earn|earned) (?:on|from) my (?:investments|portfolio)\b/;
+  /\b(?:my |the )?(?:investment |portfolio |401\(?k\)? )?(?:returns?|performance)\b(?! policy)|\bhow much (?:have|did) my (?:investments|portfolio|401\(?k\)?) (?:make|made|earn|earned|grow|grown|gain|gained)\b|\bhow much (?:have|did) i (?:make|made|earn|earned) (?:on|from) my (?:investments|portfolio)\b|\bhow much (?:have|did) i (?:gain|gained|lose|lost)\b(?![^.?!]*\btax)|\b(?:my|the) (?:total )?(?:gains?|losses?)\b(?![^.?!]*\btax)|\bam i (?:up|down)\b/;
 
 // Spec step 157: each goal's money, invested for when it's needed.
 const GOALS_INVESTED =
@@ -318,7 +320,12 @@ export function parseInvestmentIntent(text: string): InvestmentIntent | null {
     };
   }
   if (GOALS_INVESTED.test(text)) return { kind: "investments", topic: "goals", account: null };
-  if (RETURNS.test(text) && /\b(?:invest|portfolio|401|return|performance)/.test(text)) {
+  if (
+    RETURNS.test(text) &&
+    /\b(?:invest|portfolio|401|return|performance|gain|los[st]|up or down|brokerage|fidelity|vanguard|schwab|robinhood)/.test(
+      text,
+    )
+  ) {
     return { kind: "investments", topic: "returns", account: null };
   }
   if (AUTOPILOT.test(text)) return { kind: "investments", topic: "autopilot", account: null };

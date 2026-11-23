@@ -637,7 +637,33 @@ function returnsLine(returns: Returns): string | null {
   return `${p.label}, what you own returned ${formatReturn(p.timeWeighted)}${money}${mix}${paid}.`;
 }
 
-export function returnsReply(returns: Returns): Reply {
+// What the holdings gained on what was paid for them, as the brokerage's download or the bank
+// reports their cost basis: the answer to "how much have I gained?" before there are two days of
+// balances to work out returns from (desktop sweeps 11 to 18, upload S4: a Fidelity positions file
+// with each fund's cost basis, answered with the holdings or "check back tomorrow"). Null when no
+// holding has a cost basis.
+function gainLine(data: Investments): string | null {
+  const known = data.accounts.flatMap((a) =>
+    a.holdings.filter((h) => h.gainCents !== null).map((h) => ({ h, a })),
+  );
+  if (known.length === 0) return null;
+  const gain = known.reduce((s, { h }) => s + h.gainCents!, 0);
+  const value = known.reduce((s, { h }) => s + h.valueCents, 0);
+  const each = [...known]
+    .sort((x, y) => Math.abs(y.h.gainCents!) - Math.abs(x.h.gainCents!))
+    .slice(0, 3)
+    // By the fund's name: a ticker beside "up" reads to the guardrails as a pick.
+    .map(
+      ({ h }) =>
+        `${h.name} ${h.gainCents! < 0 ? "down" : "up"} ${formatCents(Math.abs(h.gainCents!))}`,
+    );
+  const where = [...new Set(known.map(({ a }) => fromWhere(a.institution)))].join(" and ");
+  return `What you own is ${gain < 0 ? "down" : "up"} ${formatCents(Math.abs(gain))} on what it cost: ${formatCents(value)} now against ${formatCents(value - gain)} paid, by the cost basis from ${where} (${listOf(each)}).`;
+}
+
+export function returnsReply(returns: Returns, holdings: Investments | null = null): Reply {
+  const gained = returns.periods.length === 0 && holdings ? gainLine(holdings) : null;
+  if (gained) return { body: gained, actions: [SEE], refs: {} };
   if (returns.periods.length === 0) {
     return {
       body: "I can't work out returns yet: I need at least two days of balances. I take a snapshot every day, so check back tomorrow.",

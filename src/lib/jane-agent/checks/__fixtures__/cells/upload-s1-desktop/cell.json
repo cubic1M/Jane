@@ -1,0 +1,9 @@
+{
+  "accounts": [
+    {
+      "name": "Capital One 360 checking",
+      "kind": "checking",
+      "files": ["capital-one-360.csv"]
+    }
+  ]
+}

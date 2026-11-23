@@ -30,7 +30,7 @@ const line = (
 describe("what these questions are read as", () => {
   it.each([
     ["What happened with the Amazon charge?", { kind: "charge_story", target: "amazon" }],
-    ["How much does my mom send me?", { kind: "money_from_people" }],
+    ["How much does my mom send me?", { kind: "money_from_people", who: "mom" }],
     ["How much do I send on Venmo?", { kind: "sent_by_app", app: "venmo" }],
     ["How much do I put into savings each month?", { kind: "savings_moves" }],
     ["Should I switch Netflix plans?", { kind: "plan_switch", target: "netflix" }],
@@ -85,8 +85,8 @@ describe("money moved by app and to savings", () => {
     const venmo = ["2026-08-20", "2026-09-20", "2026-10-20"].map((d) =>
       line(d, -20_000, "VENMO CASHOUT", "TRANSFER_IN_TRANSFER_IN_FROM_APPS"),
     );
-    expect(moneyFromPeopleReply(venmo).body).toBe(
-      "People sent you $200.00 by Venmo on Aug 20, Sep 20 and Oct 20 ($600.00 in all). The bank's lines don't say who's who to you, so I can't tell which is from your mom.",
+    expect(moneyFromPeopleReply(venmo, "mom").body).toBe(
+      "People sent you $200.00 by Venmo on Aug 20, Sep 20 and Oct 20 ($600.00 in all). The bank's lines don't name who sent it, so I can't tell which is from your mom.",
     );
   });
 

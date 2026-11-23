@@ -392,6 +392,27 @@ function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   };
 }
 
+// A loan the bank reports with no payment of its own (Plaid's Liabilities covers no car loans):
+// its payment and next date from the payments from checking, when they show the one loan of its
+// kind and the bank reports one too (Plaid + loans, desktop sweeps 7 to 18: "when is my car payment
+// due?" had no date beside Toyota Financial's $345.12 on the 9th).
+function withPaidTerms(debts: Debt[], paid: readonly PaidLoan[], asOf: string): Debt[] {
+  return debts.map((d) => {
+    if (!d.key.startsWith("account:") || d.paymentCents !== null || d.nextDue !== null) return d;
+    const same = paid.filter((p) => p.kind === d.kind);
+    const accounts = debts.filter((x) => x.key.startsWith("account:") && x.kind === d.kind);
+    if (same.length !== 1 || accounts.length !== 1) return d;
+    const p = same[0]!;
+    return {
+      ...d,
+      paymentCents: p.paymentCents,
+      paymentFrom: "payments",
+      nextDue: p.nextDate,
+      dueSoon: dueSoonOf(p.nextDate, asOf),
+    };
+  });
+}
+
 // A loan seen in payments counts only while no loan account of its kind is on file: once the
 // bank reports the loan, the account is the debt.
 function paidOffFile(paid: readonly PaidLoan[], accounts: readonly DebtAccountInput[]) {
@@ -419,7 +440,11 @@ export function debtBook(
   const typedBy = new Map(input.typed.map((t) => [t.debtKey, t]));
   const accounts = input.accounts.filter((a) => a.type === "credit" || a.type === "loan");
   const debts = [
-    ...accounts.map((a) => accountDebt(a, typedBy.get(`account:${a.id}`), asOf)),
+    ...withPaidTerms(
+      accounts.map((a) => accountDebt(a, typedBy.get(`account:${a.id}`), asOf)),
+      input.paid ?? [],
+      asOf,
+    ),
     ...input.plans.map((p) => planDebt(p, typedBy.get(`bnpl:${p.key}`), asOf)),
     ...(input.newLoans ?? []).map((l) => newLoanDebt(l, asOf)),
     ...paidOffFile(input.paid ?? [], accounts).map((p) =>
