@@ -137,6 +137,10 @@ export type AuditEvent =
   | "connector_action_executed"
   | "connector_action_failed"
   | "connector_action_updated"
+  // The team settled an action stuck in `running`, after checking with the partner
+  // (src/lib/connectors/stuck.ts); and looked at the list.
+  | "connector_action_marked"
+  | "admin_viewed_stuck_actions"
   // Card-chat mismatch: rows worked out from data that is gone (src/lib/evidence/orphans.ts).
   | "derived_removed"
   | "user_data_deleted"

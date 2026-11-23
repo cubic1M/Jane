@@ -2,6 +2,10 @@ import { Suspense } from "react";
 import { LoadingBar } from "@/components/loading-bar";
 import { logAudit } from "@/lib/audit";
 import { connectorStatus, type ConnectorStatus } from "@/lib/connectors/status";
+import { stuckActions, type StuckAction } from "@/lib/connectors/stuck";
+import { CONNECTOR_STUCK_MINUTES } from "@/config/connectors";
+import { formatCents } from "@/lib/money";
+import { markStuckAction } from "./actions";
 import { momentLabel } from "@/lib/day-label";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
@@ -52,10 +56,48 @@ function Row(s: ConnectorStatus) {
   };
 }
 
+function StuckRow(a: StuckAction) {
+  const mark = (outcome: "succeeded" | "failed", label: string) => (
+    <form action={markStuckAction}>
+      <input type="hidden" name="actionId" value={a.id} />
+      <input type="hidden" name="outcome" value={outcome} />
+      <button type="submit" className="underline">
+        {label}
+      </button>
+    </form>
+  );
+  return {
+    key: a.id,
+    cells: [
+      <span key="a" className="flex flex-col">
+        <span>{a.kind}</span>
+        <span className={MUTED}>
+          {a.id}
+          {a.simulated ? " (simulated)" : ""}
+        </span>
+      </span>,
+      a.connectorId,
+      a.userId,
+      formatCents(a.amountCents),
+      a.externalRef ?? "none",
+      when(a.since),
+      <span key="m" className="flex gap-3">
+        {mark("succeeded", "Mark done")}
+        {mark("failed", "Mark failed")}
+      </span>,
+    ],
+  };
+}
+
 async function Connectors() {
   const admin = await requireAdmin();
-  const rows = await connectorStatus();
+  const [rows, stuck] = await Promise.all([connectorStatus(), stuckActions()]);
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_connectors", null, {});
+  if (stuck.length > 0) {
+    await logAudit({ type: "admin", id: admin.id }, "admin_viewed_stuck_actions", null, {
+      count: stuck.length,
+    });
+  }
   return (
     <>
       <AdminNav email={admin.email} />
@@ -78,6 +120,29 @@ async function Connectors() {
         ]}
         rows={rows.map(Row)}
       />
+      <h2 className="text-xl font-semibold">Stuck in running</h2>
+      <p className={MUTED}>
+        Actions still running {CONNECTOR_STUCK_MINUTES} minutes after they started: the run stopped
+        before the partner answered. Check at the partner first, then mark what you found. Marking
+        moves no money and asks the partner nothing; it goes on the audit log.
+      </p>
+      {stuck.length === 0 ? (
+        <p className={MUTED}>None.</p>
+      ) : (
+        <AdminTable
+          data-stuck-actions=""
+          head={[
+            "Action",
+            "Connector",
+            "Person",
+            "Amount",
+            "Partner's ref",
+            "Running since",
+            "Mark",
+          ]}
+          rows={stuck.map(StuckRow)}
+        />
+      )}
     </>
   );
 }

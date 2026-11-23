@@ -82,6 +82,7 @@ describe("the mapping covers every audit event", () => {
         "agent_handed_off",
         "agent_call_started",
         "refund_seen",
+        "connector_action_marked",
       ].sort(),
     );
   });

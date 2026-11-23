@@ -129,6 +129,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   },
   admin_viewed_costs: notOnePerson,
   admin_viewed_connectors: notOnePerson,
+  admin_viewed_stuck_actions: notOnePerson,
   admin_viewed_activity: {
     shown: true,
     whose: "person",
@@ -165,6 +166,12 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   connector_action_declined: own,
   connector_action_cancelled: own,
   connector_action_refused: automatic,
+  // The team settled one of their actions stuck in running (metadata user_id names whose).
+  connector_action_marked: onAction((m) =>
+    m.outcome === "succeeded"
+      ? "Marked a stuck step done, after checking with the company"
+      : "Marked a stuck step failed, after checking with the company",
+  ),
   connector_action_executed: automatic,
   connector_action_failed: automatic,
   connector_action_updated: automatic,
