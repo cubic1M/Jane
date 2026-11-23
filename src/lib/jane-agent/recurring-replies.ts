@@ -88,13 +88,24 @@ export function costReply(
   const every = EVERY[charge.frequency];
   const each = `${formatCents(charge.lastAmountCents)} ${every}`;
   const year = formatCents(charge.annualCostCents);
+  const next = charge.nextDate ? ` The next charge is ${dateAndDays(charge.nextDate, asOf)}.` : "";
+  // A bill that moves with use, as its range and usual amount, not the last one as the monthly
+  // (upload S1: "Xcel Energy is $57.49 a month" over bills of $46.60, $38.72 and $57.49).
+  if (charge.varies) {
+    const v = charge.varies;
+    return withFinding(
+      `${charge.merchant} varies: ${formatCents(v.lowCents)} to ${formatCents(v.highCents)}, about ${formatCents(v.usualCents)} ${every}. The last was ${formatCents(charge.lastAmountCents)}.${next}`,
+      charge,
+      snapshot,
+      { kind: "cost", target: charge.merchant },
+    );
+  }
   const first =
     charge.frequency === "ANNUALLY"
       ? `${charge.merchant} is ${each}.`
       : intent.year
         ? `${charge.merchant} costs you ${year} a year (${each}).`
         : `${charge.merchant} is ${each}, ${year} a year.`;
-  const next = charge.nextDate ? ` The next charge is ${dateAndDays(charge.nextDate, asOf)}.` : "";
   return withFinding(`${first}${next}`, charge, snapshot, {
     kind: "cost",
     target: charge.merchant,

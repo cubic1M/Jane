@@ -57,7 +57,15 @@ import { incomeReply } from "../replies-income";
 import { loadProfileInput } from "@/lib/profile";
 import { buildProfile, rateMonthsOf } from "@/profile/build";
 import { incomeYearOf, yearIncomeOf } from "@/detectors/helpers";
-import { chargeReply, feesPaidReply, waiverReply, type FeeContext } from "../replies-fees";
+import { FEE_REVERSAL_DAYS } from "@/config/detection";
+import {
+  chargeReply,
+  feesPaidReply,
+  latestFeeCents,
+  refundsReply,
+  waiverReply,
+  type FeeContext,
+} from "../replies-fees";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
@@ -183,7 +191,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "charge_amount":
     case "fees_paid":
-    case "fee_waiver": {
+    case "fee_waiver":
+    case "fee_refunds":
+    case "fee_why": {
       // The lines and accounts the pages read, and the dock's waiver card when Jane raised one.
       const input = await loadDetectionInput(userId, { client, now });
       const { detectFor } = await import("@/lib/suggestions");
@@ -207,11 +217,31 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       };
       if (intent.kind === "charge_amount") return chargeReply(intent.amountCents, intent.day, ctx);
       if (intent.kind === "fee_waiver") return waiverReply(ctx);
+      if (intent.kind === "fee_refunds") return refundsReply(ctx, FEE_REVERSAL_DAYS);
+      if (intent.kind === "fee_why") {
+        // The fee named, or the latest the bank charged: explained as a charge of that amount is.
+        const charged = intent.amountCents ?? latestFeeCents(ctx, intent.named);
+        if (charged !== null) return chargeReply(charged, null, ctx);
+      }
       const months = Math.max(
         1,
         Math.min(12, Math.round(historyDaysOf({ transactions: input.transactions }) / 30.44)),
       );
-      return feesPaidReply(intent.late, months, ctx);
+      return feesPaidReply(intent.kind === "fees_paid" && intent.late, months, ctx);
+    }
+    case "price_change": {
+      const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+      const story = priceChangeReply(intent.target, lines);
+      if (!story.body.startsWith("I don't see")) return story;
+      const [recurring, snapshot] = await Promise.all([
+        loadRecurring(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
+      ]);
+      // Else as any question about it: its card, or a category's spending ("did my phone bill go
+      // up?").
+      const known = aboutReply({ kind: "about", target: intent.target }, recurring, snapshot, asOf);
+      if (known) return known;
+      return matchCategory(intent.target, CATEGORY_LIST) ? spendingOn(intent.target) : story;
     }
     case "charge_story":
     case "money_from_people":

@@ -90,6 +90,12 @@ export type Intent =
   | { kind: "charge_amount"; amountCents: number; day: string | null }
   | { kind: "fees_paid"; late: boolean }
   | { kind: "fee_waiver" }
+  // "Did my fee get refunded?": whether a fee was given back, from the lines.
+  | { kind: "fee_refunds" }
+  // "Why am I paying fees at Bank of America?": the fee explained, the amount when it's named.
+  | { kind: "fee_why"; amountCents: number | null; named: string | null }
+  // "When did Netflix go up?": its price change, from its charges.
+  | { kind: "price_change"; target: string }
   // Spec step 94: how the savings goals are doing.
   | { kind: "goals" }
   // Spec step 95: a guided flow to start, or the one left open to pick up again.
@@ -474,6 +480,8 @@ const INVESTING_FEES = /\b(?:401\(?k\)?|ira|funds?|invest\w*|brokerage|portfolio
 // A fee and getting out of it, however it's put: "can I get my fee waived?", "can my bank fee be
 // waived?", "can I avoid the Bank of America fee?" (desktop sweeps 11 to 18, upload S7: only the
 // first form reached the waiver card's rule).
+const FEE_FACT =
+  /^(?:did|was|were|has|have|had|which|what|any)\b(?=[^.?!]*\bfees?\b)(?=[^.?!]*\b(?:refunded|reversed|removed|waived|taken off|given back|credited|refunds?|reversals?)\b)/;
 const FEE_WAIVER =
   /\bfees?\b[^.?!]*\b(?:waiv(?:e|ed|ing)|refund(?:ed)?|revers(?:e|ed)|removed|taken off)\b|\b(?:waive|avoid|get rid of|stop paying|not pay|get out of paying|get out of) (?:my |the |this |that |a |these |those )?(?:\w+ ){0,3}fees?\b/;
 const MONTH_WORDS = [
@@ -705,7 +713,20 @@ export function parseIntent(
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
   const story = CHARGE_STORY.exec(text);
-  if (story) return { kind: "charge_story", target: cleanTarget((story[1] ?? story[2])!) };
+  if (story) {
+    const target = cleanTarget((story[1] ?? story[2])!);
+    // "What was the $14 Nelnet charge?": a charge of that amount (upload S3: "a charge at $14
+    // nelnet" was looked for by name).
+    const dollars = /^\$([\d,]+(?:\.\d{2})?)\b/.exec(target)?.[1];
+    if (dollars) {
+      return {
+        kind: "charge_amount",
+        amountCents: Math.round(Number(dollars.replace(/,/g, "")) * 100),
+        day: dayAsked(text, asOf),
+      };
+    }
+    return { kind: "charge_story", target };
+  }
   const fromPeople = FROM_PEOPLE.exec(text);
   if (fromPeople) {
     const who = (fromPeople[1] ?? fromPeople[2] ?? fromPeople[3] ?? fromPeople[4])!;
@@ -732,6 +753,9 @@ export function parseIntent(
   }
   if (FEES_PAID.test(text) && !INVESTING_FEES.test(text))
     return { kind: "fees_paid", late: /\blate fees?\b/.test(text) };
+  // Whether it happened, not how to make it happen: "did my fee get refunded?", "which fees were
+  // removed?" (manager 11-23). Before the waiver, which takes "can", "could" and "how".
+  if (FEE_FACT.test(text) && !INVESTING_FEES.test(text)) return { kind: "fee_refunds" };
   if (FEE_WAIVER.test(text) && !INVESTING_FEES.test(text)) return { kind: "fee_waiver" };
   if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
@@ -947,12 +971,28 @@ export function parseIntent(
   if (SPARE_CASH.test(text)) return { kind: "about", target: "cash" };
   // "Why is there a $6.95 fee?": about their fees, which the bank fee finding answers (debugger
   // 11-17: no answer, three walks running).
-  if (WHY_FEE.test(text)) return { kind: "about", target: "fees" };
+  // Explained as a charge of its amount is (the fee, how often, what waives it), not the fee card's
+  // summary with its yearly figure (desktop sweeps 7 to 18: "why am I paying fees at Bank of
+  // America?" got "$36.00 in fees … Could save about $144.00 a year").
+  if (WHY_FEE.test(text)) {
+    const dollars = /\$([\d,]+(?:\.\d{2})?)/.exec(text)?.[1];
+    return {
+      kind: "fee_why",
+      amountCents: dollars ? Math.round(Number(dollars.replace(/,/g, "")) * 100) : null,
+      // The kind of fee named ("why did I get an overdraft fee?"): the latest of that kind.
+      named:
+        /\b(overdraft|insufficient funds|nsf|late|atm|foreign|maintenance|monthly)\b/.exec(
+          text,
+        )?.[1] ?? null,
+    };
+  }
   // Debugger 11-19: "I can't answer that one yet" beside "Hulu went up from $9.99 to $11.99".
+  // From its charges first, which say when (Plaid S6: "when did Netflix go up?" got the card's
+  // summary, without Sep 3).
   const wentUp = WENT_UP.exec(text);
   if (wentUp) {
     const target = cleanTarget(wentUp[1]!);
-    if (target) return { kind: "about", target };
+    if (target) return { kind: "price_change", target };
   }
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };

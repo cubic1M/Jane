@@ -1,0 +1,16 @@
+{
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "kind": "checking",
+      "balance": "1,412.22",
+      "files": ["wells-fargo-checking.csv"]
+    },
+    {
+      "name": "Capital One card",
+      "kind": "credit_card",
+      "balance": "1,850.40",
+      "files": ["capital-one-card.csv"]
+    }
+  ]
+}
