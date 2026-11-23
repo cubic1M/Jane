@@ -43,7 +43,7 @@ describe("what these questions are read as", () => {
 
   it("leaves a price going up and the escrow to their own answers", () => {
     expect(parseIntent("When did Netflix go up?", AS_OF)).toEqual({
-      kind: "about",
+      kind: "price_change",
       target: "netflix",
     });
     expect(parseIntent("did my escrow go up", AS_OF)).toEqual({ kind: "mortgage" });

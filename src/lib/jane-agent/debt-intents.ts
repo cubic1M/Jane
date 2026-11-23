@@ -284,8 +284,10 @@ const SIMULATE =
   /\bwhat (?:would|will|happens to) (?:my |our )?(?:credit )?score\b|\b(?:score|credit) simulator\b|\bsimulate (?:my )?(?:credit|score)\b|\bhow (?:much|many points) (?:would|will|could) (?:my )?(?:credit )?score\b|\bwhat if (?:i|we)\b.*\bscore\b/;
 const DEBT_AUTOPILOT =
   /\bwhat (?:do|will|can) you do (?:about|with|for) (?:my )?(?:debts?|loans|cards)\b|\b(?:debt|loan) autopilot\b|\bautopilot (?:for|on) (?:my )?(?:debts?|loans)\b/;
+// And what's due on them each month (Plaid + loans, desktop sweeps 5 to 9: "how much is due on my
+// loans each month?" was read as a merchant called "due on my loans").
 const DEBT_DUE =
-  /\bwhen (?:are|is) (?:my )?(?:debt|loan|card|credit card)s? (?:payments? )?due\b|\b(?:debt|loan|card) payments? (?:due|coming up)\b|\bnext (?:debt|loan|card) payment\b|\bmove (?:my )?(?:due date|payment date)\b/;
+  /\bhow much (?:is|are) (?:due|owed|paid) (?:on|for|toward) (?:my |our |the )?(?:loans?|debts?|cards?)\b|\bwhat (?:do|does) (?:i|we) (?:pay|owe) (?:on|for|toward) (?:my |our |the )?(?:loans|debts) (?:each|a|per|every) month\b|\bwhat(?:'s| is| are) (?:my )?(?:monthly )?(?:loan|debt) payments?\b|\bwhen (?:are|is) (?:my )?(?:debt|loan|card|credit card)s? (?:payments? )?due\b|\b(?:debt|loan|card) payments? (?:due|coming up)\b|\bnext (?:debt|loan|card) payment\b|\bmove (?:my )?(?:due date|payment date)\b/;
 const LOAN_STATUS =
   /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
 // "Apply for the refinance": the pick and its Apply button.

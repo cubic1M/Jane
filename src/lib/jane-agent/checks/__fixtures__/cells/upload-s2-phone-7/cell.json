@@ -1,0 +1,15 @@
+{
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "kind": "checking",
+      "files": ["bofa-checking.csv"]
+    },
+    {
+      "name": "Chase Freedom card",
+      "kind": "credit_card",
+      "balance": "1,240.00",
+      "files": ["chase-card.csv"]
+    }
+  ]
+}

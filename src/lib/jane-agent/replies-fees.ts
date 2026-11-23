@@ -176,3 +176,71 @@ export function waiverReply(ctx: FeeContext): Reply {
     refs: {},
   };
 }
+
+// Money given back for a fee, as banks write it ("OVERDRAFT FEE REVERSAL", "FEE REFUND", "MAINT
+// FEE CREDIT"), or any money in that the bank files as a fee.
+const GIVEN_BACK = /\b(?:revers\w*|refund\w*|credit\w*|waived|rebate)\b/i;
+const FEE_WORD = /\b(?:fees?|charges?)\b/i;
+
+// "Did my fee get refunded?", "which fees were removed?": a question of fact, answered from the
+// lines (manager 11-23: the waiver route had taken them, and gave its rule). Each fee given back,
+// when, how much, and the fee it was for when one of that amount was charged on the same account in
+// the FEE_REVERSAL_DAYS before; or that none was, with what was charged.
+export function refundsReply(ctx: FeeContext, reversalDays: number): Reply {
+  const cash = (id: string) => ctx.accounts.get(id)?.cash ?? false;
+  const fees = ctx.lines.filter((t) => isFee(t, cash));
+  const back = ctx.lines
+    .filter(
+      (t) =>
+        t.amountCents < 0 &&
+        ((t.pfcDetailed ?? "").startsWith("BANK_FEES") ||
+          (FEE_WORD.test(t.description) && GIVEN_BACK.test(t.description))),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const seeFees = [openLink("See the fees", "/insights")];
+  if (back.length === 0) {
+    const charged = fees.reduce((s, t) => s + t.amountCents, 0);
+    return {
+      body:
+        fees.length === 0
+          ? "I don't see any bank fees, or any given back, in your accounts."
+          : `I don't see a fee given back in your accounts. They show ${formatCents(charged)} in ${fees.length === 1 ? "one fee" : `${fees.length} fees`} charged, the latest on ${dayLabel(fees[fees.length - 1]!.date)}.`,
+      actions: seeFees,
+      refs: {},
+    };
+  }
+  const used = new Set<FeeLine>();
+  const lines = back.slice(-4).map((r) => {
+    const fee = fees.find(
+      (f) =>
+        !used.has(f) &&
+        f.accountId === r.accountId &&
+        f.amountCents === -r.amountCents &&
+        f.date <= r.date &&
+        f.date >= addDays(r.date, -reversalDays),
+    );
+    if (fee) used.add(fee);
+    const account = ctx.accounts.get(r.accountId)?.name ?? "your account";
+    return `${formatCents(-r.amountCents)} back on ${dayLabel(r.date)} on ${account}${
+      fee ? `, for ${feeKind(fee)} of that amount on ${dayLabel(fee.date)}` : ""
+    }`;
+  });
+  return {
+    body: `${back.length === 1 ? "One fee was given back" : `${back.length} fees were given back`}: ${lines.join("; ")}.`,
+    actions: seeFees,
+    refs: {},
+  };
+}
+
+// The amount of the latest fee the bank charged, null with none: what "why am I paying fees?" is
+// about when it names no amount.
+// `named`, the kind of fee asked about ("overdraft"), picks the latest of that kind when there is one.
+export function latestFeeCents(ctx: FeeContext, named: string | null = null): number | null {
+  const cash = (id: string) => ctx.accounts.get(id)?.cash ?? false;
+  const fees = ctx.lines.filter((t) => isFee(t, cash)).sort((a, b) => a.date.localeCompare(b.date));
+  const word = named === "nsf" ? "insufficient" : named;
+  const ofKind = word
+    ? fees.filter((t) => `${feeKind(t)} ${t.description}`.toLowerCase().includes(word))
+    : [];
+  return (ofKind.at(-1) ?? fees.at(-1))?.amountCents ?? null;
+}

@@ -35,8 +35,9 @@ describe("asking about a charge or a fee", () => {
 
   it("leaves why fees are charged at a bank to its own answer", () => {
     expect(parseIntent("Why am I paying fees at Bank of America?", AS_OF)).toEqual({
-      kind: "about",
-      target: "fees",
+      kind: "fee_why",
+      amountCents: null,
+      named: null,
     });
   });
 
