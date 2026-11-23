@@ -2,6 +2,7 @@ import { addDays } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { merchantOf } from "@/detection/streams";
+import { FEE_LIST_PATH } from "@/detectors/bank-fees-of";
 import { bankFeesYear, feeKindOf, isBankFee } from "@/planning/bank-fees";
 import type { Reply } from "./replies";
 import { openLink } from "./types";
@@ -9,7 +10,8 @@ import { openLink } from "./types";
 // The backup chat's fee answers (the walkers' "why did I get charged $34?", "what fees have I
 // paid?", "can I get my bank fee waived?", unanswered on every pass from the fifth): a charge found
 // by its amount, the fees paid as the pages count them (src/planning/bank-fees.ts), and the waiver
-// as the dock's card says it. Pure.
+// as the dock's card says it. Each opens the fee list (FEE_LIST_PATH), as the card does since #2222:
+// Insights and Spending list categories, not the fees an answer names. Pure.
 
 export type FeeLine = {
   date: string;
@@ -123,7 +125,7 @@ export function feesPaidReply(late: boolean, months: number, ctx: FeeContext): R
       : months === 1
         ? "1 month of data"
         : `${months} months of data`;
-  const actions = [openLink("See your spending", "/spending")];
+  const actions = [openLink("See the fees", FEE_LIST_PATH)];
   const year = bankFeesYear(inWindow, months);
   if (!year || fees.length === 0) {
     return {
@@ -165,14 +167,14 @@ export function waiverReply(ctx: FeeContext): Reply {
   if (!monthly) {
     return {
       body: "I don't see a monthly bank fee to waive. For a one-off fee, like an overdraft, banks often refund a first one if you ask.",
-      actions: [openLink("See your transactions", "/transactions")],
+      actions: [openLink("See the fees", FEE_LIST_PATH)],
       refs: {},
     };
   }
   const account = ctx.accounts.get(monthly.accountId)?.name ?? "your account";
   return {
     body: `${account} charged a ${formatCents(monthly.amountCents)} monthly fee on ${dayLabel(monthly.date)}. Banks usually waive it with a set direct deposit or balance, but I don't know your account's rules, so ask your bank which applies to yours.`,
-    actions: [openLink("See your transactions", "/transactions")],
+    actions: [openLink("See the fees", FEE_LIST_PATH)],
     refs: {},
   };
 }
@@ -197,7 +199,7 @@ export function refundsReply(ctx: FeeContext, reversalDays: number): Reply {
           (FEE_WORD.test(t.description) && GIVEN_BACK.test(t.description))),
     )
     .sort((a, b) => a.date.localeCompare(b.date));
-  const seeFees = [openLink("See the fees", "/insights")];
+  const seeFees = [openLink("See the fees", FEE_LIST_PATH)];
   if (back.length === 0) {
     const charged = fees.reduce((s, t) => s + t.amountCents, 0);
     return {
