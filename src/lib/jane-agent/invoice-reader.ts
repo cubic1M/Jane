@@ -51,9 +51,13 @@ const wordsOf = (description: string) =>
 //    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
 //    whole forms: "Total Protection" and "Total Wine" are things sold.
 const SUBTOTAL = /\bsub ?total\b/;
-const SUMS = /\b(?:total|amount|balance|sum|price)\b/;
-const BEFORE_TAX =
-  /\b(?:(?:excl|excluding|before|without|ex)\b(?:\s+[a-z]+){0,5}?\s+(?:tax|taxes|vat|gst)|pre ?(?:tax|vat|gst)|net\s+(?:total|amount|price)|(?:total|amount|price)\s+net)\b/;
+// One list of the words of a sum, so "net" beside any of them is read the same either way round.
+const SUM_WORD = "(?:total|amount|balance|sum|price)";
+const SUMS = new RegExp(`\\b${SUM_WORD}\\b`);
+const BEFORE_TAX = new RegExp(
+  `\\b(?:(?:excl|excluding|before|without|ex)\\b(?:\\s+[a-z]+){0,5}?\\s+(?:tax|taxes|vat|gst)` +
+    `|pre ?(?:tax|vat|gst)|net\\s+${SUM_WORD}|${SUM_WORD}\\s+net)\\b`,
+);
 // Among the totals charged, these labels say the most: the amount to pay, over a plain "Total".
 const STRONG_TOTAL =
   /^(?:grand|final)\s+total\b|^(?:total\s+)?(?:amount|balance)\s+due\b|\btotal\s+(?:due|charged|payable)\b/;
