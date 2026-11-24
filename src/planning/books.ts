@@ -89,11 +89,17 @@ export function reconcile(accountType: string, snaps: Snap[], txns: Tx[]): Misma
 }
 
 // Accounts that look like the same one linked twice: the same last digits, type and subtype
-// at different bank links.
+// at different bank links. A linked account is the one kept over an uploaded statement of it,
+// whichever came first: the link updates each day, the statement stopped on its last day. Kept by
+// age instead, an upload made before linking won, and net worth was the statement's old balance,
+// with the live one left out (the founder's Home, 11-23: "not my current net worth").
 export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Acct }[] {
   const out: { keep: Acct; duplicate: Acct }[] = [];
   const seen = new Map<string, Acct>();
-  for (const a of [...accounts].sort((x, y) => x.id.localeCompare(y.id))) {
+  const uploaded = (a: Acct) => (a.itemId === null ? 1 : 0);
+  for (const a of [...accounts].sort(
+    (x, y) => uploaded(x) - uploaded(y) || x.id.localeCompare(y.id),
+  )) {
     if (!a.mask) continue;
     const key = `${a.mask}|${a.type}|${a.subtype ?? ""}`;
     const first = seen.get(key);

@@ -6,6 +6,7 @@ import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import {
   duplicateAccounts,
+  copiesToLeaveOut,
   importsEnded,
   linkProblems,
   matchTransfers,
@@ -136,6 +137,31 @@ async function mergeDuplicate(
   return true;
 }
 
+// The lines of an uploaded copy dated before its linked account's first line: what leaving the
+// copy out stops counting (the link's own history starts when it was linked).
+async function olderThanTheLink(
+  db: ReturnType<typeof scopedFor>,
+  linkId: string,
+  uploadId: string,
+) {
+  const first = await db.transactions.findFirst({
+    where: { accountId: linkId },
+    orderBy: { date: "asc" },
+    select: { date: true },
+  });
+  if (!first) return null;
+  const older = await db.transactions.findMany({
+    where: { accountId: uploadId, date: { lt: first.date } },
+    orderBy: { date: "asc" },
+    select: { date: true },
+  });
+  const [oldest] = older;
+  const newest = older.at(-1);
+  return oldest && newest
+    ? { count: older.length, from: iso(oldest.date), to: iso(newest.date) }
+    : null;
+}
+
 export async function runBooksCheck(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -171,16 +197,24 @@ export async function runBooksCheck(
   let accounts = loadedAccounts;
   const found: Found[] = [];
   for (const { keep, duplicate } of duplicateAccounts(accounts)) {
-    if (await mergeDuplicate(userId, keep.id, duplicate.id, { client, now })) {
+    // A statement uploaded of an account since linked is never merged away: merging deletes the
+    // copy with its balances, and before the link was kept over the upload it deleted the link,
+    // which the next sync made again. It's left out of the figures (src/lib/account-copies.ts).
+    const upload = duplicate.itemId === null;
+    if (!upload && (await mergeDuplicate(userId, keep.id, duplicate.id, { client, now }))) {
       merged += 1;
       accounts = accounts.filter((a) => a.id !== duplicate.id);
     } else {
+      // What leaving the statement out loses: its lines from before the link's first one.
+      const lost = upload ? await olderThanTheLink(db, keep.id, duplicate.id) : null;
       found.push({
         kind: "duplicate",
         key: `dup:${duplicate.id}`,
         accountId: duplicate.id,
         detail: { keep: keep.id },
-        words: `${duplicate.name} (ending ${duplicate.mask}) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.`,
+        words: upload
+          ? `${duplicate.name} (ending ${duplicate.mask}) is a statement you uploaded of ${keep.name}, which you've since linked. I count the linked one, which updates each day, and leave the statement out.${lost ? ` Its ${lost.count} ${lost.count === 1 ? "line" : "lines"} from ${dayLabel(lost.from, { year: true })} to ${dayLabel(lost.to, { year: true })}, before the link's first day, aren't counted anywhere.` : ""}`
+          : `${duplicate.name} (ending ${duplicate.mask}) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.`,
       });
     }
   }
@@ -252,7 +286,9 @@ export async function runBooksCheck(
     });
   }
   // An imported account's data ends where its file did: said plainly, with a fresh import.
-  const imported = accounts.filter((a) => a.source === "csv");
+  // Not a copy left out of the figures (a statement kept beside its link): it can't be an old import.
+  const copies = copiesToLeaveOut(accounts);
+  const imported = accounts.filter((a) => a.source === "csv" && !copies.has(a.id));
   const newest =
     imported.length === 0
       ? []
@@ -292,7 +328,12 @@ export async function runBooksCheck(
       words: `${a.name}'s file ends on ${a.lastDate ? dayLabel(a.lastDate, { year: true }) : "an earlier day"}. Import a newer one and I'll pick up from there.`,
     });
   }
-  const unmatched = unmatchedToSay(matchTransfers(txns.map(asTx)).unmatchedOut, accounts).slice(-3);
+  // A copy left out of the figures is left out of transfer matching too: its spare lines would
+  // otherwise make a transfer with no other side.
+  const unmatched = unmatchedToSay(
+    matchTransfers(txns.filter((t) => !copies.has(t.accountId)).map(asTx)).unmatchedOut,
+    accounts,
+  ).slice(-3);
   for (const t of unmatched) {
     found.push({
       kind: "transfer",
