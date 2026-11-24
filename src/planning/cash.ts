@@ -135,16 +135,24 @@ export function cashPlan(input: {
       gainCents: yearly(cents, savings.rateBps - from.rateBps),
     });
   }
-  for (const sweep of input.places.filter((p) => p.kind === "sweep")) {
-    if (sweep.balanceCents < CASH_MIN_MOVE_CENTS) continue;
+  // Only cash the buckets leave for the money market moves there. The buffer and the emergency
+  // fund are funded first (from checking and savings, then from sweep cash), so what sweep cash
+  // can move is the smaller of its balance and `rest`, the largest balance first.
+  let room = rest;
+  for (const sweep of input.places
+    .filter((p) => p.kind === "sweep")
+    .sort((a, b) => b.balanceCents - a.balanceCents)) {
+    const cents = Math.min(Math.max(0, sweep.balanceCents), room);
+    if (cents < CASH_MIN_MOVE_CENTS) continue;
+    room -= cents;
     moves.push({
       key: "sweep_to_money_market",
       fromId: sweep.id,
       fromName: sweep.name,
       toId: sweep.id,
       toName: longer.name,
-      cents: sweep.balanceCents,
-      gainCents: yearly(sweep.balanceCents, longer.rateBps - sweep.rateBps),
+      cents,
+      gainCents: yearly(cents, longer.rateBps - sweep.rateBps),
     });
   }
   const third = Math.floor(rest / 3);

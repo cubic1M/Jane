@@ -192,12 +192,16 @@ export function provenSame(
     if (twin) used.add(twin.id);
     else unmatched.push(d);
   }
+  // Nothing matched (the two sides' dates never overlap): nothing is proven.
+  if (used.size === 0) return { ok: false, unmatched, extra };
   // Every transaction the kept account has in the duplicate's own dates must be on the
   // duplicate too, or the two don't describe the same account.
   const dFirst = duplicate.reduce((m, t) => (t.date < m ? t.date : m), duplicate[0].date);
   const dLast = duplicate.reduce((m, t) => (t.date > m ? t.date : m), duplicate[0].date);
+  // One to one: a kept transaction the duplicate's twin wasn't used for is missing from it, even
+  // when an identical one was matched.
   const missingOnDuplicate = keep.filter(
-    (k) => k.date >= dFirst && k.date <= dLast && !duplicate.some((d) => same(k, d)),
+    (k) => k.date >= dFirst && k.date <= dLast && !used.has(k.id),
   );
   return { ok: unmatched.length === 0 && missingOnDuplicate.length === 0, unmatched, extra };
 }

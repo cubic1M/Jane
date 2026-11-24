@@ -728,6 +728,10 @@ function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
   );
   if (accounts.length === 0) return null;
   const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
+  // An inherited Roth's qualified withdrawals aren't income: only the rest is spread and taxed.
+  const taxableBalance = accounts
+    .filter((a) => !/roth/i.test(a.subtype ?? ""))
+    .reduce((s, a) => s + a.balanceCents, 0);
   const year = Number(profile.today.slice(0, 4));
   const knownYear = typeof died.value === "number" ? died.value : null;
   const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
@@ -735,7 +739,7 @@ function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
   const status = statusOf(profile.facts.household.value);
   const base = soleInput(0, profile.facts.household.value, year);
   const spread = spreadIra({
-    balanceCents: balance,
+    balanceCents: taxableBalance,
     yearsLeft,
     base: {
       ...base,

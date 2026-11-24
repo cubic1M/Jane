@@ -44,7 +44,12 @@ export function parseAffordQuery(params: Params, asOf: string): AffordQuery {
   if (cents > MAX_AFFORD_CENTS) return fail(AFFORD_COPY.errors.tooBig);
 
   if (form.kind === "purchase") {
-    const valid = DATE.test(form.date) && !Number.isNaN(Date.parse(form.date));
+    // A date that exists: February 31 rolls over to March 3, so the round trip must match.
+    const parsed = Date.parse(form.date);
+    const valid =
+      DATE.test(form.date) &&
+      !Number.isNaN(parsed) &&
+      new Date(parsed).toISOString().slice(0, 10) === form.date;
     if (!valid || form.date < asOf || form.date > until) return fail(AFFORD_COPY.errors.date);
     return { form, change: { kind: "purchase", amountCents: cents, date: form.date }, error: null };
   }

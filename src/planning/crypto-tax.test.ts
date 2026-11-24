@@ -119,8 +119,10 @@ describe("crypto lots and sales", () => {
     expect(unrealised(20_000_000, left, "2026-10-18")).toEqual({
       basisCents: 12_000_000,
       gainCents: 8_000_000,
-      shortTermCents: 4_000_000,
-      longTermCents: 4_000_000,
+      // Each lot's own gain: $100,000 of value a coin. The 2024 coin cost $40,000 (+$60,000), the
+      // 2026 coin $80,000 (+$20,000). Not the total gain split by coins ($40,000 each).
+      shortTermCents: 2_000_000,
+      longTermCents: 6_000_000,
     });
   });
 });

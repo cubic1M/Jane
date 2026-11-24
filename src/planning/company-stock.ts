@@ -7,7 +7,7 @@ import {
 } from "@/config/company-stock";
 import { LONG_TERM_DAYS } from "@/config/tax-rates";
 import type { Lot } from "./investment-taxes";
-import { DAY_MS } from "@/lib/dates";
+import { DAY_MS, addMonths } from "@/lib/dates";
 
 // Company stock (spec step 160, demo advice). Pure. How much of what the person has
 // invested is in their employer's stock (and how much more is coming as unvested shares),
@@ -67,11 +67,6 @@ export type DiversifyPlan = {
   dropAfterCents: number;
 };
 
-const addMonths = (day: string, months: number) => {
-  const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
-};
 const isLong = (bought: string | null, sold: string) =>
   bought === null || (Date.parse(sold) - Date.parse(bought)) / DAY_MS > LONG_TERM_DAYS;
 

@@ -74,7 +74,9 @@ export function fixItems(item: ReportItem, name: string): FixItem[] {
       `Item: ${mark(item)}.`,
       item.kind === "error"
         ? `Why it's wrong: ${item.detail}`
-        : item.medical && (item.amountCents ?? 0) < MEDICAL_COLLECTION_FLOOR_CENTS
+        : item.medical &&
+            item.amountCents !== null &&
+            item.amountCents < MEDICAL_COLLECTION_FLOOR_CENTS
           ? `This is a medical collection under ${formatCents(MEDICAL_COLLECTION_FLOOR_CENTS)}, which you don't report.`
           : item.medical
             ? "I am asking that it be investigated, and removed if it cannot be verified."

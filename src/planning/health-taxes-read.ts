@@ -1,6 +1,11 @@
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
-import { HEALTH_PREMIUM, HSA_DEPOSIT, MARKETPLACE_PAYEE } from "@/config/health-taxes";
+import {
+  HEALTH_PREMIUM,
+  HSA_DEPOSIT,
+  MARKETPLACE_PAYEE,
+  NOT_HEALTH_MARKETPLACE,
+} from "@/config/health-taxes";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
 import {
   ADDITIONAL_STANDARD_65,
@@ -115,7 +120,10 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
 
   // The Marketplace credit.
   const premiums = data.transactions.filter(
-    (t) => inYear(t) && MARKETPLACE_PAYEE.test(t.description),
+    (t) =>
+      inYear(t) &&
+      MARKETPLACE_PAYEE.test(t.description) &&
+      !NOT_HEALTH_MARKETPLACE.test(t.description),
   );
   const toldNumber = (v: unknown) => (typeof v === "number" ? v : null);
   const toldAdvance = toldNumber(f.marketplace_aptc_monthly.value);

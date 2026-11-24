@@ -5,17 +5,12 @@ import {
   NEW_PLAN_INSTALLMENTS,
 } from "@/config/bnpl";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
-import { addDays } from "@/lib/dates";
+import { addDays, addMonths } from "@/lib/dates";
 import { dayNumber } from "@/detection/units";
 
 // Buy now, pay later under control (spec step 176). Pure: each plan's next installments
 // from its own schedule, which of them the forecast already counts, and what a new plan
 // would do to the checking forecast.
-
-const addMonths = (day: string, months: number) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
-};
 
 export type PlanSchedule = {
   key: string;
@@ -42,7 +37,12 @@ export function installments(plans: readonly PlanSchedule[], asOf: string, until
     for (let i = 0; i < Math.min(left, 12); i += 1) {
       const date = p.every === "two_weeks" ? addDays(p.nextDue, 14 * i) : addMonths(p.nextDue, i);
       if (date > until) break;
-      if (date >= asOf) out.push({ date, planKey: p.key, name: p.name, cents: p.paymentCents });
+      // The last payment of a plan with a known balance is what's left of it.
+      const cents =
+        p.balanceCents !== null && i === left - 1
+          ? p.balanceCents - p.paymentCents * i
+          : p.paymentCents;
+      if (date >= asOf) out.push({ date, planKey: p.key, name: p.name, cents });
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.planKey.localeCompare(b.planKey));
@@ -99,9 +99,13 @@ export function newPlanStrain(
   const without = lowest([...days]);
   const withIt = lowest(withPlan);
   const short = Math.max(0, LOW_BALANCE_CUSHION_CENTS - withIt.balanceCents);
+  // Strained when the plan takes any day under the cushion lower than it was: a day that goes from
+  // above the cushion to under it counts, though the lowest day of all doesn't change.
+  const strained = withPlan.some(
+    (d, i) => d.balanceCents < LOW_BALANCE_CUSHION_CENTS && d.balanceCents < days[i]!.balanceCents,
+  );
   return {
-    strained:
-      withIt.balanceCents < LOW_BALANCE_CUSHION_CENTS && withIt.balanceCents < without.balanceCents,
+    strained,
     lowestWithout: without,
     lowestWith: withIt,
     shortCents: short,

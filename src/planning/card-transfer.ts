@@ -70,6 +70,21 @@ function clear(
   return null;
 }
 
+// The level payment that clears `cents` in `months` at an APR (no interest: an even split).
+function levelPayment(cents: number, aprBps: number, months: number): number {
+  const r = aprBps / 10_000 / 12;
+  if (r === 0) return Math.ceil(cents / months);
+  let pay = Math.ceil((cents * r) / (1 - (1 + r) ** -months));
+  // `clear` rounds each month's interest to whole cents, which can leave a cent after the last
+  // month: step up until it clears within the term under that same rounding.
+  for (let i = 0; i < 100; i += 1) {
+    const cleared = clear(cents, pay, () => aprBps);
+    if (cleared && cleared.months <= months) break;
+    pay += 1;
+  }
+  return pay;
+}
+
 // The transfer fee on this balance: the percent, never under the minimum.
 export function transferFeeCents(balanceCents: number, offer: CardOffer): number | null {
   if (offer.transferFeeBps === null) return null;
@@ -110,12 +125,12 @@ export function scoreCardTransfer({
     return {
       show: false,
       reason: "too_slow",
-      paymentCents: Math.ceil((balanceCents + feeCents) / promoMonths),
+      paymentCents: levelPayment(balanceCents + feeCents, introAprBps, promoMonths),
     };
   }
   if (savingCents < BT_MIN_SAVING_CENTS) return { show: false, reason: "saves_too_little" };
   const promoEndsOn = addMonths(asOf, promoMonths);
-  const terms = `${formatRate(introAprBps)} intro APR on transfers for ${promoMonths} months, to ${shortMonth(promoEndsOn)}; then ${formatRate(goToAprBps)}${offer.variable ? " variable" : ""} APR; a ${formatCents(feeCents)} transfer fee${offer.annualFeeCents ? ` and a ${formatCents(offer.annualFeeCents)} annual fee` : ", no annual fee"}.`;
+  const terms = `${formatRate(introAprBps)} intro APR on transfers for ${promoMonths} months, to ${shortMonth(promoEndsOn)}; then ${formatRate(goToAprBps)}${offer.variable ? " variable" : ""} APR; a ${formatCents(feeCents)} transfer fee${offer.annualFeeCents === null ? ", annual fee not stated" : offer.annualFeeCents > 0 ? ` and a ${formatCents(offer.annualFeeCents)} annual fee` : ", no annual fee"}.`;
   return {
     show: true,
     offer,
@@ -130,6 +145,9 @@ export function scoreCardTransfer({
     lines: [
       `${offer.cardName}: ${terms}`,
       `Paying ${formatCents(payCents)} a month, it's gone in ${move.months} months and costs ${formatCents(moveCostCents)} with the fees, against ${formatCents(stay.interestCents)} in interest at your ${formatRate(aprBps)} APR: about ${formatCents(savingCents)} less.`,
+      ...(offer.annualFeeCents === null
+        ? ["The offer doesn't state an annual fee, so none is counted in that."]
+        : []),
       HARD_PULL_TEXT,
     ],
   };

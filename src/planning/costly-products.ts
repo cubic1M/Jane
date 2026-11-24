@@ -16,10 +16,10 @@ export const yearlyCost = (valueCents: number, bps: number) =>
 
 // The contract year a product is in on `today` (the first year is 1).
 export function contractYear(purchasedOn: string, today: string): number {
-  const years =
-    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${purchasedOn}T00:00:00Z`)) /
-    (365.25 * 86_400_000);
-  return Math.max(1, Math.floor(years) + 1);
+  // Calendar anniversaries: 365 days after a January 1 purchase is the anniversary, not year 1.
+  const anniversaryNotYet = today.slice(5) < purchasedOn.slice(5) ? 1 : 0;
+  const years = Number(today.slice(0, 4)) - Number(purchasedOn.slice(0, 4)) - anniversaryNotYet;
+  return Math.max(1, years + 1);
 }
 
 // The surrender charge percent in a contract year (zero past the schedule).

@@ -20,8 +20,17 @@ const addDays = (day: string, days: number) => iso(dayNumber(day) + days);
 
 // The next statement after `asOf`, a month at a time from the last one.
 export function nextStatementClose(lastIssue: string, asOf: string): string {
-  let next = lastIssue;
-  for (let i = 1; next <= asOf && i < 24; i += 1) next = addMonths(lastIssue, i);
+  // Start at the month of asOf (a statement years old still lands after it), then step on.
+  const gap =
+    (Number(asOf.slice(0, 4)) - Number(lastIssue.slice(0, 4))) * 12 +
+    Number(asOf.slice(5, 7)) -
+    Number(lastIssue.slice(5, 7));
+  let i = Math.max(1, gap);
+  let next = addMonths(lastIssue, i);
+  while (next <= asOf) {
+    i += 1;
+    next = addMonths(lastIssue, i);
+  }
   return next;
 }
 

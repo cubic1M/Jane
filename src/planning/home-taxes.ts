@@ -182,15 +182,20 @@ export function homeTaxes(h: HomeInput): HomeTaxes {
 
   // Energy credits: 30% of work placed in service by the end date (capped for
   // improvements); none after.
+  // The improvement cap is the year's, not each purchase's: what an earlier purchase used is gone.
+  const capLeft = new Map<string, number>();
   const energy: Figure[] = h.energy.map((e) => {
     const inTime = e.date <= ENERGY_CREDITS_END.home;
+    const year = e.date.slice(0, 4);
+    const room = capLeft.get(year) ?? ENERGY_CREDITS_2025.improvementCap;
     const credit = inTime
       ? Math.round(
           e.uncapped
             ? e.cents * ENERGY_CREDITS_2025.rate
-            : Math.min(e.cents * ENERGY_CREDITS_2025.rate, ENERGY_CREDITS_2025.improvementCap),
+            : Math.min(e.cents * ENERGY_CREDITS_2025.rate, room),
         )
       : 0;
+    if (inTime && !e.uncapped) capLeft.set(year, room - credit);
     return {
       label: `Energy credit: ${e.payee}`,
       cents: credit,
