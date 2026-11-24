@@ -788,11 +788,16 @@ function debtFacts(b: Builder, { monthlyIncome }: { monthlyIncome: number }) {
       .filter((l) => typeof l.minimumCents === "number")
       .map((l) => [l.accountId, l.minimumCents as number]),
   );
-  const cardPayments = knownCards.reduce(
-    (s, a) =>
-      s + (minimumOf.get(a.id) ?? Math.round(Math.max(0, a.balanceCents) * FIT_CARD_PAYMENT_SHARE)),
-    0,
-  );
+  // A reported minimum counts even when the balance isn't known; the estimate needs a balance.
+  const cardPayments = accounts
+    .filter((a) => cardIds.has(a.id))
+    .reduce((s, a) => {
+      const minimum = minimumOf.get(a.id);
+      if (minimum !== undefined) return s + minimum;
+      return a.balanceKnown === false
+        ? s
+        : s + Math.round(Math.max(0, a.balanceCents) * FIT_CARD_PAYMENT_SHARE);
+    }, 0);
   const payday = count(
     (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
   );

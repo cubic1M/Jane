@@ -202,3 +202,33 @@ describe("what the profile reads from payments (CodeRabbit sweep 1)", () => {
     expect(fact.value).toBe(false);
   });
 });
+
+describe("review comments on #2248 (CodeRabbit sweep 1)", () => {
+  it("counts a card's reported minimum even when its balance is unknown", () => {
+    const unknownBalance = { ...CARD, balanceCents: 0, balanceKnown: false };
+    // $900 a month reported against $2,000 of pay and no cash: over the 40% line.
+    const trouble = buildProfile(
+      input({ accounts: [CHECKING, unknownBalance], liabilities: [liability(90_000)] }),
+    );
+    expect(trouble.facts.debt_trouble.value).toBe(true);
+    // No minimum and no balance: nothing to count.
+    const none = buildProfile(
+      input({ accounts: [CHECKING, unknownBalance], liabilities: [liability(null)] }),
+    );
+    expect(none.facts.debt_trouble.value).toBe(false);
+  });
+
+  it("lets a signal that does not hold leave its payments to the next one", () => {
+    // Three BUY BUY BABY across two months: baby goods (3 in 2 months) holds, kids' stores (4 in 3)
+    // does not, and the stores' match must not take the payments first.
+    const rows = ["2026-04-03", "2026-04-20", "2026-05-10"].map((date) => ({
+      date,
+      amountCents: 4_000,
+      description: "BUY BUY BABY",
+      pfc: null,
+      accountId: "chk",
+    }));
+    const facts = buildProfile(input({ transactions: [...paychecks(200_000), ...rows] })).facts;
+    expect(facts.has_children.value).toBe(true);
+  });
+});

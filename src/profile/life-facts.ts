@@ -79,13 +79,15 @@ const list = (parts: string[]) =>
 
 // --- Children -----------------------------------------------------------------------------
 export function kidsReading(txs: readonly LifeTx[]): Reading {
-  // A payment counts for one kind of signal, the first in the config's order that reads it: a
+  // A payment counts for one kind of signal, the first in the config's order that holds: a
   // "KIDS SCHOOL LUNCH" is a school payment, not also a kids' store's.
   let unclaimed = txs;
   const fired = (Object.keys(KIDS_SIGNALS) as (keyof typeof KIDS_SIGNALS)[])
     .map((key) => {
       const hits = hitsOf(unclaimed, KIDS_SIGNALS[key]);
-      unclaimed = unclaimed.filter((t) => !hits.txs.includes(t));
+      // Only a signal that holds claims its payments: the rest stay for the signals after it.
+      if (meets(hits, KIDS_SIGNALS[key]))
+        unclaimed = unclaimed.filter((t) => !hits.txs.includes(t));
       return { key, hits };
     })
     .filter(({ key, hits }) => meets(hits, KIDS_SIGNALS[key]));
