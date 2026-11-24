@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { CHAT } from "./chat-page";
 
 // Spec step 138: a visitor tries Jane with sample data, without signing up, and lands in
 // Jane's chat as their own sample person. Needs the scratch database (see e2e/db.ts).
@@ -40,12 +39,12 @@ test("'Try it with sample data' opens Jane's chat with a sample person @critical
       );
     }
   }
-  // Its chat by itself for the checks below.
-  await page.goto(CHAT);
+  // Home, where Jane's cards wait (never in the chat, founder 11-24).
+  await page.goto("/home");
   // Jane's first card shows on the open page by itself (no reload here) within 25 seconds of
   // the click: it was in the database long before it showed, once. (The morning greeting is
   // off for now, MORNING_BRIEF; whatever it brings first counts.)
-  await expect(page.locator('[data-card-state="showing"]').first()).toBeVisible({
+  await expect(page.locator('[data-card-state="showing"]:visible').first()).toBeVisible({
     timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
   });
 
@@ -78,8 +77,8 @@ test("five tries in a row each reach the chat in 8 seconds and a card in 25", as
     const clicked = Date.now();
     await page.getByRole("button", { name: "Try it with sample data" }).click();
     await expect(page, `try ${i} reaches Home`).toHaveURL(/\/home$/, { timeout: 8000 });
-    await page.goto(CHAT);
-    await expect(page.locator('[data-card-state="showing"]').first()).toBeVisible({
+    // Jane's cards show on Home itself (never in the chat, founder 11-24).
+    await expect(page.locator('[data-card-state="showing"]:visible').first()).toBeVisible({
       timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
     });
     await context.close();

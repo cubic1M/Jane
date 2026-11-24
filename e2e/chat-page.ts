@@ -36,8 +36,7 @@ export async function answerTo(page: Page, ...words: string[]): Promise<Locator>
 // you". Opens Home and its dock, unfolded.
 export async function homeDock(page: Page, isMobile: boolean | undefined): Promise<Locator> {
   await page.goto("/home");
-  const where = isMobile ? page : page.getByRole("complementary", { name: "Chat with Jane" });
-  const dock = where.getByRole("region", { name: "Suggestions for you" });
+  const dock = page.getByRole("region", { name: "Suggestions for you" });
   if (isMobile) await dock.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
   return dock;
 }
