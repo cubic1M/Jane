@@ -5,7 +5,13 @@ import {
   NET_WORTH_MONTHS,
 } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { netWorth, netWorthLine, type NetWorth, type Unbalanced } from "@/insights/net-worth";
+import {
+  netWorth,
+  netWorthCovers,
+  netWorthLine,
+  type NetWorth,
+  type Unbalanced,
+} from "@/insights/net-worth";
 import { lenderName } from "@/insights/paid-loans";
 import { monthsEnding } from "@/insights/spending";
 import { withoutCopies } from "@/lib/account-copies";
@@ -106,6 +112,19 @@ export async function loadNetWorthHistory(
     worth,
     months: netWorthLine(accounts, snapshots, owned, asOf, months, worth.netCents),
   };
+}
+
+// What net worth covers, in words, from the same accounts it counts (each once, with what the person
+// owns and their crypto): said under the figure on Home.
+export async function loadNetWorthCovers(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  const { accounts, owned, crypto } = await loadNetWorthInputs(userId, { client });
+  return netWorthCovers(
+    accounts.map((a) => ({ type: a.type, balanceCents: a.currentBalanceCents })),
+    { owned: owned.length, crypto: crypto > 0 },
+  );
 }
 
 // The accounts net worth can't count yet for want of a balance (src/insights/net-worth.ts

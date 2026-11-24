@@ -43,6 +43,7 @@ import { LoadingBar } from "@/components/loading-bar";
 import { loansNotCounted, NO_BANK_SEEN, notCounting } from "@/insights/net-worth";
 import {
   accountsWithoutBalance,
+  loadNetWorthCovers,
   loansSeenWithoutBalance,
   onlyDebtsSeen,
 } from "@/lib/net-worth-history";
@@ -138,11 +139,12 @@ async function AreasTree({
 // The net worth chart: every day since the first day with Jane, ending at the hub's own figure,
 // and what moved it, from its first day.
 async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents: number }) {
-  const [line, missing, loans, onlyDebts] = await Promise.all([
+  const [line, missing, loans, onlyDebts, covers] = await Promise.all([
     netWorthHistory(userId, todayCents),
     accountsWithoutBalance(userId),
     loansSeenWithoutBalance(userId),
     onlyDebtsSeen(userId),
+    loadNetWorthCovers(userId),
   ]);
   const events = line[0] ? await netWorthEvents(userId, line[0].date, todayCents) : [];
   // Never a number that silently leaves a debt out (an uploaded card with no balance yet).
@@ -151,6 +153,7 @@ async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents
       points={line}
       events={events}
       notCounting={notCounting(missing)?.sentence}
+      covers={covers}
       loansLeft={
         [onlyDebts ? NO_BANK_SEEN : null, loansNotCounted(loans)].filter(Boolean).join(" ") || null
       }
