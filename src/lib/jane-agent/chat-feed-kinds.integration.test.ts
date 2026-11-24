@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { CHAT_PAGE_SIZE } from "@/config/agent-chat";
-import { chatFeed, visibleCount } from "./messages";
+import { chatFeed, pinnedMessages, visibleCount } from "./messages";
 import { CHAT_KINDS } from "./popups";
 
 // The chat holds only what was typed and Jane's answers (CHAT_KINDS, founder 11-24). Applied after
@@ -60,6 +60,17 @@ describe.runIf(url)("the chat's page of messages", () => {
     expect(feed.messages).toHaveLength(CHAT_PAGE_SIZE);
     expect(feed.messages.some((m) => m.kind === "user" || m.kind === "reply")).toBe(false);
     expect(feed.hasEarlier).toBe(true);
+  });
+
+  // The pinned list links each pin to its message in the chat: a card pinned back when cards were in
+  // the chat has no message there now (CodeRabbit's command-line review of #2243).
+  it("lists a pinned answer, and not a pinned card the chat no longer holds", async () => {
+    await client.janeMessage.updateMany({
+      where: { userId, body: { in: ["Netflix is $15.49 a month.", "Card 3"] } },
+      data: { refs: { pinned: true } },
+    });
+    const pinned = await pinnedMessages(userId, { client });
+    expect(pinned.map((m) => m.body)).toEqual(["Netflix is $15.49 a month."]);
   });
 
   it("is counted by the pulse with every kind, cards included", async () => {

@@ -44,9 +44,10 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   await expect(async () => {
     // The dock is on Home (never in the chat); on a phone it waits folded.
     await page.goto("/home");
+    // The dock has drawn once one of its states is there: folded on a phone, a card otherwise.
+    await expect(overlay.locator("[data-card-state]").first()).toBeVisible({ timeout: 5_000 });
     const folded = overlay.locator('[data-card-state="folded"]');
-    if (await folded.isVisible({ timeout: 5_000 }).catch(() => false)) await folded.click();
-    await expect(overlay).toBeVisible({ timeout: 5_000 });
+    if (await folded.isVisible()) await folded.click();
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     for (let i = 0; i < 16; i += 1) {
       if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;

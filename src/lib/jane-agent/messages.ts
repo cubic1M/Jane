@@ -10,6 +10,7 @@ import type {
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { CHAT_KINDS } from "./popups";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
 import { closeAnsweredElsewhere } from "./settled";
@@ -414,8 +415,13 @@ export async function pinnedMessages(
   { client = defaultClient, since }: { client?: PrismaClient; since?: Date } = {},
 ): Promise<ChatMessage[]> {
   const rows = await scopedFor(userId, client).janeMessages.findMany({
-    // Only those the chat shows, so each pin's link lands on its message.
-    where: { refs: { path: ["pinned"], equals: true }, ...sinceSignIn(since) },
+    // Only those the chat shows (what was typed and Jane's answers, CHAT_KINDS), so each pin's link
+    // lands on its message: a card pinned before they left the chat has no message to land on.
+    where: {
+      refs: { path: ["pinned"], equals: true },
+      kind: { in: [...CHAT_KINDS] },
+      ...sinceSignIn(since),
+    },
     orderBy: { createdAt: "desc" },
     select: MESSAGE_SELECT,
     take: CHAT_PAGE_SIZE,

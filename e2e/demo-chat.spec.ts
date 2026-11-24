@@ -59,6 +59,10 @@ test("after an upload the side chat catches up, and the chip keeps out of the wa
   });
   // And the chat beside them holds none of them: its own list has no card, and no line about
   // there being nothing new (demo-video re-take; founder 11-24: suggestions only in the dock).
+  // Once the chat has drawn (its message box is there), or "none" would be true of an empty frame.
+  await expect(chat.getByRole("textbox", { name: "Message Jane" })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(chat.getByRole("region", { name: "Suggestions for you" })).toHaveCount(0);
   await expect(chat.getByRole("listitem")).toHaveCount(0);
 
