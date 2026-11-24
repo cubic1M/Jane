@@ -78,6 +78,7 @@ async function loadDebtsFrom(
       db.transactions.findMany({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           OR: words.flatMap((w) => [
             { merchantName: { contains: w, mode: "insensitive" as const } },
@@ -115,6 +116,7 @@ async function loadDebtsFrom(
           amountCents: true,
           monthlyCents: true,
           fundedAt: true,
+          status: true,
         },
       }),
       // Spec step 113: balances moved to a 0% card, until that card is linked.
@@ -136,6 +138,7 @@ async function loadDebtsFrom(
       db.transactions.findMany({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           pfcDetailed: { in: Object.keys(PAID_LOAN_CATEGORIES) },
         },
@@ -153,6 +156,7 @@ async function loadDebtsFrom(
       db.transactions.count({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
           account: { type: "depository" },
@@ -189,10 +193,12 @@ async function loadDebtsFrom(
         asOf,
       ),
       newLoans: [
-        ...newLoans.map(({ id, fundedAt, ...l }) => ({
+        ...newLoans.map(({ id, fundedAt, status, ...l }) => ({
           ...l,
           applicationId: id,
           fundedOn: isoDay(fundedAt!),
+          // Paid off early: nothing owed and nothing due, whatever the schedule said.
+          paidOff: status === "paid_off",
         })),
         ...transfers.map((t) => ({
           applicationId: t.id,

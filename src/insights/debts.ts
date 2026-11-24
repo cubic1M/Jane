@@ -337,6 +337,8 @@ export type NewLoanInput = {
   fundedOn: string;
   // Spec step 113: a 0% card a balance was moved to, under its own key and name.
   transfer?: { cardName: string; promoEndsOn: string };
+  // Paid off ahead of its schedule.
+  paidOff?: boolean;
 };
 
 const PRODUCT_KIND: Record<string, DebtKind> = {
@@ -361,7 +363,8 @@ function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   for (let i = 0; i < paid && balance > 0; i += 1) {
     balance = Math.max(0, balance + monthlyInterest(balance, loan.aprBps) - loan.monthlyCents);
   }
-  const nextDue = addMonths(loan.fundedOn, paid + 1);
+  if (loan.paidOff) balance = 0;
+  const nextDue = loan.paidOff ? null : addMonths(loan.fundedOn, paid + 1);
   return {
     key: loan.transfer ? `transfer:${loan.applicationId}` : `loan:${loan.applicationId}`,
     accountId: null,
