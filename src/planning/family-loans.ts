@@ -155,7 +155,7 @@ export function loanBalance(
 ): { balanceCents: number; repaid: { date: string; cents: number }[] } {
   const repaid: { date: string; cents: number }[] = [];
   for (const t of transfers) {
-    if (t.date <= loan.openedOn) continue;
+    if (t.date < loan.openedOn) continue;
     const parsed = parseTransfer(t);
     if (!parsed || nameKey(parsed.counterparty) !== loan.counterpartyKey) continue;
     // Lent: money in from them pays it back. Borrowed: money out to them does.

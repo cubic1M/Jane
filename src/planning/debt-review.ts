@@ -36,6 +36,7 @@ export function reviewReason(input: ReviewInput): ReviewReason | null {
   if (
     input.lastPayCents !== null &&
     input.payCents !== null &&
+    input.payCents > input.lastPayCents &&
     input.payCents >= input.lastPayCents * (1 + REVIEW_RAISE_SHARE)
   ) {
     return "raise";

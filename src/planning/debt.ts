@@ -64,7 +64,12 @@ export function payoffOrder(cards: DebtCard[], strategy: Strategy): DebtCard[] {
 
 export function payoffPlan(cards: DebtCard[], budgetCents: number, strategy: Strategy): PayoffPlan {
   const owing = cards.filter((c) => c.balanceCents > 0);
-  const minimums = owing.reduce((sum, c) => sum + c.minimumCents, 0);
+  // A minimum is never more than the card can take: its balance and this month's interest.
+  const minimums = owing.reduce(
+    (sum, c) =>
+      sum + Math.min(c.minimumCents, c.balanceCents + monthlyInterest(c.balanceCents, c.aprBps)),
+    0,
+  );
   if (budgetCents < minimums || budgetCents <= 0) {
     return { ok: false, strategy, reason: "budget_below_minimums" };
   }

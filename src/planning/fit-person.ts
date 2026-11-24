@@ -43,7 +43,9 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
     incomeCents: personalPay(profile).monthlyCents,
     // A loan co-signed for someone counts in full, as lenders count it (spec step 249).
     debtPaymentsCents:
-      Math.round(paid / MONTHS) + cardMinimums + (input.familyCredit?.cosignedPaymentCents ?? 0),
+      Math.round(paid / Math.max(1, Math.min(MONTHS, profile.months))) +
+      cardMinimums +
+      (input.familyCredit?.cosignedPaymentCents ?? 0),
     cashCents: liquidCents(input),
     spendCents: monthlySpendCents(input, profile.months),
     cushionCents: cashCushionCents({
