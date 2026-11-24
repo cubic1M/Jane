@@ -64,6 +64,9 @@ export const RECENT_MONTHS = 3;
 export const PTC_MIN_REPAY_CENTS = $(300);
 
 // Payments that look like Marketplace premiums.
+// A "MARKETPLACE" in a charge that is a shop, not health coverage (Facebook Marketplace).
+export const NOT_HEALTH_MARKETPLACE =
+  /FACEBOOK|FB\.COM|AMAZON|ETSY|EBAY|OFFERUP|MERCARI|POSHMARK|CRAIGSLIST|WALMART|ZILLOW|CAR ?GURUS|AUTOTRADER/i;
 export const MARKETPLACE_PAYEE =
   /HEALTHCARE\.GOV|MARKETPLACE|COVERED CALIFORNIA|COVERED CA\b|CONNECT FOR HEALTH|HEALTHSHERPA/i;
 
