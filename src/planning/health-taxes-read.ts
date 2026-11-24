@@ -121,7 +121,9 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   // The Marketplace credit.
   const premiums = data.transactions.filter(
     (t) =>
-      inYear(t) && MARKETPLACE_PAYEE.test(t.description) && !NOT_HEALTH_MARKETPLACE.test(t.description),
+      inYear(t) &&
+      MARKETPLACE_PAYEE.test(t.description) &&
+      !NOT_HEALTH_MARKETPLACE.test(t.description),
   );
   const toldNumber = (v: unknown) => (typeof v === "number" ? v : null);
   const toldAdvance = toldNumber(f.marketplace_aptc_monthly.value);
