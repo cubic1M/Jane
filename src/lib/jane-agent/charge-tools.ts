@@ -152,9 +152,8 @@ export async function runChargeTool(
           lineThatIsTheUsual: reading.usualLine ? line(reading.usualLine) : null,
           extra: reading.extraCents === null ? null : money(reading.extraCents),
           linesThatMakeUpTheExtra: reading.explaining.map(line),
-          // The usual line was found but the other lines don't add up to the extra: no line is named.
-          otherLinesAddUpTo:
-            reading.otherLinesCents === null ? null : money(reading.otherLinesCents),
+          // False: the lines read don't add up to the total, so no line is named as the reason.
+          linesAddUpToTheTotal: reading.against.linesAddUp,
         }
       : null,
   });

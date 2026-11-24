@@ -174,22 +174,24 @@ describe("set against the charge", () => {
     );
   });
 
-  it("won't name lines that don't add up to the extra", () => {
-    // The lines come to $80, not the $100 total: the $60 line isn't the $80 extra.
+  it("won't name lines that don't add up to the total", () => {
+    // The lines come to $80, not the $100 total: a line missed, so none says why it was $100.
     const body = words("Pro plan  $20.00\nBandwidth  $60.00\nTotal  $100.00");
-    expect(body).toContain("The Pro plan ($20.00) line matches what you usually pay.");
-    expect(body).toContain("The other lines come to $60.00, not the extra $80.00");
-    expect(body).toContain("won't say which one explains the charge");
+    expect(body).toContain("Its total is $100.00, but the lines I could read come to $80.00");
+    expect(body).toContain("The lines I read don't add up to that total");
+    expect(body).toContain("I won't say which line explains the charge");
     expect(body).not.toContain("accounts for");
     expect(body).not.toContain("make up the extra");
+    expect(body).not.toContain("matches what you usually pay");
   });
 
-  it("won't name lines that don't add up to the extra, in the tool's reading either", () => {
+  it("won't name lines that don't add up to the total, in the tool's reading either", () => {
     const invoice = readInvoice("Pro plan  $20.00\nBandwidth  $60.00\nTotal  $100.00")!;
     const reading = readAgainst(invoice, explanation);
+    expect(reading.against).toMatchObject({ totalMatches: true, linesAddUp: false });
     expect(reading.explaining).toEqual([]);
-    expect(reading.usualLine).toEqual({ description: "Pro plan", cents: 2_000 });
-    expect(reading.otherLinesCents).toBe(6_000);
+    expect(reading.usualLine).toBeNull();
+    expect(reading.extraCents).toBeNull();
   });
 
   it("won't name a line when the total isn't the charge", () => {

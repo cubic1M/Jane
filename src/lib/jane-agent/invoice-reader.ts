@@ -28,7 +28,7 @@ export type Invoice = {
 // for a credit. Not a unit price ("$0.15/GB", "$0.15 per GB"), and never part of a longer number
 // ("$0.015/GB" isn't "$0.01").
 const AMOUNT =
-  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/g;
+  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(?!\s*\)?\s*(?:\/|per\b))(\s*\))?/gi;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
@@ -41,20 +41,36 @@ const wordsOf = (description: string) =>
 
 // The lines that sum up the others, read from their whole words, in any position and case:
 //  - a subtotal ("Subtotal", "Items sub-total", "Pre-tax subtotal");
-//  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"):
+//  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"; "before"
+//    alone isn't it: "Balance due before Dec 1" is the total charged):
 //    a sum of the lines, never the one charged;
-//  - the total charged: "Total", "Grand total", "Order total", "Total due", "Total (USD)",
-//    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
-//    whole forms: "Total Protection" and "Total Wine" are things sold.
+//  - the invoice's total, which the lines add up to: "Total", "Grand total", "Order total",
+//    "Total due", "Total (USD)", "Total incl. tax", "Total due before Dec 1". Only these whole
+//    forms: "Total Protection" and "Total Wine" are things sold. A strong label ("Grand total",
+//    "Total due", "Total charged") beats a plain "Total"; the last of the same strength wins;
+//  - what has been paid of it: "Amount due", "Balance due on Dec 1", "Amount paid", "Total paid",
+//    "Paid". These are the total only when the invoice states none of its own: on a part-paid
+//    invoice the lines add up to the total, not to the amount left, and a payment is not the invoice.
 const SUBTOTAL = /\bsub ?total\b/;
-const SUMS = /\b(?:total|amount|balance|sum)\b/;
-const BEFORE_TAX = /\b(?:excl|excluding|before|pre ?tax|without|net|ex (?:tax|vat|gst))\b/;
+// One list of the words of a sum, so "net" beside any of them is read the same either way round.
+const SUM_WORD = "(?:total|amount|balance|sum|price)";
+const SUMS = new RegExp(`\\b${SUM_WORD}\\b`);
+// The words between "before" and the tax can be any, but not "incl.": "before Friday incl. tax" is a
+// due date, with tax in the amount.
+const BEFORE_TAX = new RegExp(
+  `\\b(?:(?:excl|excluding|before|without|ex)\\b(?:\\s+(?!incl(?:uding)?\\b)[a-z]+){0,5}?\\s+(?:tax|taxes|vat|gst)` +
+    `|pre ?(?:tax|vat|gst)|net\\s+${SUM_WORD}|${SUM_WORD}\\s+net)\\b`,
+);
+// A label that says more than a plain "Total": the whole invoice's amount to pay.
+const STRONG_TOTAL = /^(?:grand|final)\s+total\b|\btotal\s+(?:due|charged|payable)\b/;
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
-const TOTAL_CHARGED = new RegExp(
-  `^(?:(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|paid|payable|charged|owed|amount|price|${CURRENCY}))*` +
-    `|(?:total\\s+)?(?:amount|balance)\\s+(?:due|paid|payable|owed)(?:\\s+${CURRENCY})?` +
-    `|paid)` +
-    `(?:\\s+incl(?:uding)?\\s+(?:tax|vat|gst))?(?:\\s+(?:on|by|for|before|until)\\s+.+)?$`,
+const WHEN = "(?:\\s+(?:on|by|for|before|until)\\s+.+)?$";
+const INVOICE_TOTAL = new RegExp(
+  `^(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|payable|charged|owed|amount|price|${CURRENCY}))*` +
+    `(?:\\s+incl(?:uding)?\\s+(?:tax|vat|gst))?${WHEN}`,
+);
+const PAYMENT_STATE = new RegExp(
+  `^(?:(?:total\\s+)?(?:amount|balance)\\s+(?:due|paid|payable|owed)(?:\\s+${CURRENCY})?|total\\s+paid|paid)${WHEN}`,
 );
 // A line that takes money off ("Discount", "Promo code", "Credit applied"; not "Credit card fee").
 const TAKES_OFF =
@@ -81,7 +97,8 @@ function descriptionOf(beforePrice: string): string {
 
 export function readInvoice(text: string): Invoice | null {
   const lines: InvoiceLine[] = [];
-  let totalCents: number | null = null;
+  const totals: { cents: number; strong: boolean }[] = [];
+  const payments: { cents: number }[] = [];
   for (const raw of text.split(/\r?\n/).slice(0, INVOICE_MAX_LINES)) {
     const found = [...raw.matchAll(AMOUNT)];
     const last = found[found.length - 1];
@@ -95,15 +112,38 @@ export function readInvoice(text: string): Invoice | null {
     const cents = (credit ? -1 : 1) * toCents(last[3]!);
     const words = wordsOf(description);
     if (SUBTOTAL.test(words) || (SUMS.test(words) && BEFORE_TAX.test(words))) continue;
-    if (TOTAL_CHARGED.test(words)) {
-      totalCents ??= Math.abs(cents);
+    if (INVOICE_TOTAL.test(words)) {
+      totals.push({ cents: Math.abs(cents), strong: STRONG_TOTAL.test(words) });
+      continue;
+    }
+    if (PAYMENT_STATE.test(words)) {
+      payments.push({ cents: Math.abs(cents) });
       continue;
     }
     lines.push({ description, cents });
   }
   if (lines.length === 0) return null;
+  const totalCents = chosenTotal(totals, payments);
   const signed = signedToTotal(lines, totalCents);
   return { lines: signed, totalCents, linesCents: sumOf(signed) };
+}
+
+// The invoice's total: the strong label over a plain "Total", and the last of the same strength,
+// since an invoice ends with what is to be paid; a total of nothing only when no other is stated.
+// With none stated, what is left to pay, else what was paid ("Amount due $0.00" on a paid invoice
+// doesn't say what it came to).
+function chosenTotal(
+  totals: { cents: number; strong: boolean }[],
+  payments: { cents: number }[],
+): number | null {
+  const last = <T extends { cents: number }>(items: T[]) =>
+    items.length > 0 ? items[items.length - 1]!.cents : null;
+  const owing = totals.filter((t) => t.cents > 0);
+  const pool = owing.length > 0 ? owing : totals;
+  const strong = pool.filter((t) => t.strong);
+  const stated = last(strong.length > 0 ? strong : pool);
+  if (stated !== null) return stated;
+  return last(payments.filter((t) => t.cents > 0)) ?? last(payments);
 }
 
 const sumOf = (lines: InvoiceLine[]) => lines.reduce((total, l) => total + l.cents, 0);
@@ -121,14 +161,14 @@ function signedToTotal(lines: InvoiceLine[], totalCents: number | null): Invoice
 export type InvoiceReading = {
   invoice: Invoice;
   // The charge it was set against, if any, and whether the invoice's total is that charge's amount.
-  against: { chargeCents: number; totalMatches: boolean } | null;
-  // When the total is the charge and it was more than usual: the line that is the usual, and the
-  // lines the extra is made of (a single line that is the whole extra, or all the others).
+  // linesAddUp: the lines read come to that total, the evidence that they describe the charge.
+  against: { chargeCents: number; totalMatches: boolean; linesAddUp: boolean } | null;
+  // When the total is the charge, the lines add up to it and it was more than usual: the line that
+  // is the usual, and the lines the extra is made of (a single line that is the whole extra, or
+  // all the others).
   usualLine: InvoiceLine | null;
   explaining: InvoiceLine[];
   extraCents: number | null;
-  // With the usual line found but the other lines not adding up to the extra: what they do come to.
-  otherLinesCents: number | null;
 };
 
 export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null): InvoiceReading {
@@ -138,15 +178,23 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
     usualLine: null,
     explaining: [],
     extraCents: null,
-    otherLinesCents: null,
   };
   if (!charge) return plain;
   const against = {
     chargeCents: charge.charge.cents,
     totalMatches: invoice.totalCents === charge.charge.cents,
+    // A total that isn't what the lines come to (a part payment, an amount left, a line missed) says
+    // nothing of what the lines are for.
+    linesAddUp: invoice.linesCents === invoice.totalCents,
   };
   const extra = charge.differenceCents;
-  if (!against.totalMatches || !charge.usual || extra === null || extra <= 0) {
+  if (
+    !against.totalMatches ||
+    !against.linesAddUp ||
+    !charge.usual ||
+    extra === null ||
+    extra <= 0
+  ) {
     return { ...plain, against };
   }
   const positive = invoice.lines.filter((l) => l.cents > 0);
@@ -158,13 +206,9 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   const whole = positive.find((l) => l !== usualLine && l.cents === extra);
   if (whole) return { ...plain, against, usualLine, explaining: [whole], extraCents: extra };
   if (usualLine) {
-    // The other lines are the explanation only when they add up to the extra: a missed line, or a
-    // total that isn't the lines, and they'd name the wrong ones.
+    // The lines add up to the total, so what is left after the usual line is the extra.
     const rest = invoice.lines.filter((l) => l !== usualLine);
-    const restCents = rest.reduce((sum, l) => sum + l.cents, 0);
-    return restCents === extra
-      ? { ...plain, against, usualLine, explaining: rest, extraCents: extra }
-      : { ...plain, against, usualLine, extraCents: extra, otherLinesCents: restCents };
+    return { ...plain, against, usualLine, explaining: rest, extraCents: extra };
   }
   return { ...plain, against, extraCents: extra };
 }
@@ -194,6 +238,12 @@ export function readingWords(r: InvoiceReading): string[] {
     );
     return out;
   }
+  if (!r.against.linesAddUp) {
+    out.push(
+      "The lines I read don't add up to that total, so I won't say which line explains the charge.",
+    );
+    return out;
+  }
   if (r.extraCents === null) return out;
   const extra = money(r.extraCents);
   if (r.usualLine) out.push(`The ${priced(r.usualLine)} line matches what you usually pay.`);
@@ -202,10 +252,6 @@ export function readingWords(r: InvoiceReading): string[] {
   } else if (r.explaining.length > 1) {
     out.push(
       `The other lines (${r.explaining.map(priced).join("; ")}) make up the extra ${extra}.`,
-    );
-  } else if (r.otherLinesCents !== null) {
-    out.push(
-      `The other lines come to ${money(r.otherLinesCents)}, not the extra ${extra}, so I may have missed a line and won't say which one explains the charge.`,
     );
   } else {
     out.push(
