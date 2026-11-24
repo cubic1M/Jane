@@ -171,7 +171,11 @@ export async function runBooksCheck(
   let accounts = loadedAccounts;
   const found: Found[] = [];
   for (const { keep, duplicate } of duplicateAccounts(accounts)) {
-    if (await mergeDuplicate(userId, keep.id, duplicate.id, { client, now })) {
+    // A statement uploaded of an account since linked is never merged away: merging deletes the
+    // copy with its balances, and before the link was kept over the upload it deleted the link,
+    // which the next sync made again. It's left out of the figures (src/lib/account-copies.ts).
+    const upload = duplicate.itemId === null;
+    if (!upload && (await mergeDuplicate(userId, keep.id, duplicate.id, { client, now }))) {
       merged += 1;
       accounts = accounts.filter((a) => a.id !== duplicate.id);
     } else {
@@ -180,7 +184,9 @@ export async function runBooksCheck(
         key: `dup:${duplicate.id}`,
         accountId: duplicate.id,
         detail: { keep: keep.id },
-        words: `${duplicate.name} (ending ${duplicate.mask}) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.`,
+        words: upload
+          ? `${duplicate.name} (ending ${duplicate.mask}) is a statement you uploaded of ${keep.name}, which you've since linked. I count the linked one, which updates each day, and leave the statement out.`
+          : `${duplicate.name} (ending ${duplicate.mask}) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.`,
       });
     }
   }
