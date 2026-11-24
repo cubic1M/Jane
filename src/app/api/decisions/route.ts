@@ -45,8 +45,14 @@ export async function POST(request: Request) {
     });
     after(() => runAgentNow([result.agentJobId]));
     return NextResponse.json(
-      // diy: a real account's yes, recorded as theirs to do (read-only mode).
-      { decisionId: result.decisionId, actionId: result.actionId, diy: result.diy ?? false },
+      // diy: a real account's yes, recorded as theirs to do (read-only mode). connectorActionId: a
+      // connector planned it, and its steps wait for the person's yes on Connections.
+      {
+        decisionId: result.decisionId,
+        actionId: result.actionId,
+        diy: result.diy ?? false,
+        ...(result.connectorActionId ? { connectorActionId: result.connectorActionId } : {}),
+      },
       { status: 201 },
     );
   } catch (error) {

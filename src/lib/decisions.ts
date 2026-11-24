@@ -17,6 +17,7 @@ import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { recordFindingDone, retireAnsweredTopics } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { conciergeMode } from "@/lib/concierge-mode";
+import { planForCard } from "@/lib/connectors/for-card";
 import { hasKit } from "@/lib/diy";
 import { learnFromAnswer } from "@/lib/memory/learn";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
@@ -66,6 +67,9 @@ export type DecisionResult = {
   diy?: boolean;
   // When the action agent took the action: its first job, for the caller to run now.
   agentJobId?: string;
+  // When a connector does it: the plan awaiting the person's yes on its exact steps
+  // (src/lib/connectors/for-card.ts), with no action for the team or the agent.
+  connectorActionId?: string;
 };
 
 export type Answer = {
@@ -189,6 +193,16 @@ export async function recordDecision(
     if (switched) options = { ...options, ...switched };
   }
   const source = answer.source ?? "card";
+  // A connector that may do it plans it, through the one planner and its gate; the person then says
+  // yes to exactly those steps. Nothing goes to the team or the agent for it.
+  const plan =
+    choice === "yes"
+      ? await planForCard(
+          userId,
+          { ...card, evidence: finding.evidence },
+          { client, ...(now ? { now } : {}) },
+        )
+      : null;
 
   const result: DecisionResult = await db.transaction(async (tx) => {
     // Claims the finding, so two clicks can't both record an answer.
@@ -218,7 +232,7 @@ export async function recordDecision(
       select: { id: true },
     });
     const action =
-      choice === "yes"
+      choice === "yes" && !plan
         ? await tx.actions.create({
             data: { userId, decisionId: decision.id, type: card.actionType },
             select: { id: true },
@@ -228,6 +242,7 @@ export async function recordDecision(
       decisionId: decision.id,
       actionId: action?.id ?? null,
       ...(choice !== answer.choice ? { diy: true } : {}),
+      ...(plan ? { connectorActionId: plan.id } : {}),
     };
   });
 
@@ -242,6 +257,7 @@ export async function recordDecision(
       changed_options: options !== null,
       decision_id: result.decisionId,
       action_id: result.actionId,
+      ...(result.connectorActionId ? { connector_action_id: result.connectorActionId } : {}),
     },
   );
   // The person's own answer (not a standing rule's or autopilot's) is evidence of what they act

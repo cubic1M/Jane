@@ -48,7 +48,14 @@ async function decide(
   context: ActionContext,
   choice: Extract<DecisionChoice, "yes" | "no">,
   switchTo?: string,
-): Promise<ActionOutcome & { decisionId?: string; actionType?: ActionType; diy?: boolean }> {
+): Promise<
+  ActionOutcome & {
+    decisionId?: string;
+    actionType?: ActionType;
+    diy?: boolean;
+    connectorActionId?: string;
+  }
+> {
   const { userId, message, client } = context;
   const { findingId, fingerprint } = message.refs;
   if (!findingId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
@@ -87,6 +94,7 @@ async function decide(
       actionType: ACTION_FOR_FINDING[finding.type],
       agentJobIds: [result.agentJobId],
       diy: result.diy,
+      connectorActionId: result.connectorActionId,
     };
   } catch (error) {
     if (!(error instanceof DecisionError)) throw error;
@@ -131,6 +139,15 @@ export const findingYes: ActionHandler = {
     const outcome = await decide(context, "yes");
     if (outcome.decisionId && outcome.actionType && outcome.diy) {
       return diyOutcome(context, outcome);
+    }
+    // A connector planned it (src/lib/connectors/for-card.ts): nothing happens until the person
+    // says yes to its exact steps.
+    if (outcome.decisionId && outcome.connectorActionId) {
+      return {
+        answeredWith: outcome.answeredWith,
+        note: "The steps are ready. Check them and say yes on Connections: nothing is sent before that.",
+        actions: [openLink("Check the steps", "/settings/connections#actions")],
+      };
     }
     return outcome.decisionId && outcome.actionType
       ? { ...outcome, note: nextStep(outcome.actionType) }
