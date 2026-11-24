@@ -11,6 +11,7 @@ const actsFor = vi.hoisted(() => new Set<string>());
 vi.mock("@/lib/concierge-mode", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/concierge-mode")>();
   return {
+    ...real,
     conciergeMode: async (...args: Parameters<typeof real.conciergeMode>) =>
       actsFor.has(args[0]) || real.conciergeMode(...args),
   };
