@@ -112,6 +112,7 @@ async function SettingsContent({
       where: { id: user.id },
       select: {
         digestEnabled: true,
+        dailyReportEnabled: true,
         timezone: true,
         alertPrefs: true,
         state: true,
@@ -382,6 +383,7 @@ async function SettingsContent({
       {trialNote}
       <EmailForm
         digestEnabled={prefs.digestEnabled}
+        dailyReportEnabled={prefs.dailyReportEnabled}
         timezone={prefs.timezone ?? DEFAULT_TIMEZONE}
         timezones={TIMEZONES}
       />

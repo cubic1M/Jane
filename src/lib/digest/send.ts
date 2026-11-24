@@ -5,11 +5,9 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { DIGEST_CHANGE_KINDS } from "@/config/digest";
-import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { moneyFoundParts } from "@/detection/engine";
 import { loadDetectionInput } from "@/detection/input";
 import { alertPrefs } from "@/lib/alerts";
-import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -35,10 +33,11 @@ import { createPlanLink } from "@/lib/plan-links";
 import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
-import { whyNoDigest, type NoDigestReason } from "./recipients";
+import { loadRecipients } from "./load-recipients";
+import type { NoDigestReason } from "./recipients";
 import { unsubscribeToken } from "./unsubscribe";
 import { weekStart } from "./week";
-import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import type { OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Cron: the digest goes out across people";
@@ -302,45 +301,7 @@ export async function runDigests({
   send = sendEmail,
   userIds,
 }: Options & OnlyPeople = {}): Promise<DigestRun> {
-  // Active people: digest on, not deleted, at least one account, never a trial person. Then
-  // whyNoDigest leaves out anyone whose only bank is the demo bank.
-  const candidates = await systemDb(WHY, client).user.findMany({
-    where: {
-      digestEnabled: true,
-      deletedAt: null,
-      accounts: { some: {} },
-      NOT: { id: { startsWith: TRIAL_ID_PREFIX } },
-      ...peopleIn(userIds),
-    },
-    select: {
-      id: true,
-      email: true,
-      timezone: true,
-      createdAt: true,
-      digestEnabled: true,
-      deletedAt: true,
-      plaidItems: { select: { plaidItemId: true } },
-      _count: { select: { accounts: true } },
-    },
-    orderBy: { id: "asc" },
-  });
-  const csvAccounts = await systemDb(WHY, client).account.groupBy({
-    by: ["userId"],
-    where: { source: { in: [...NOT_FROM_A_BANK] }, userId: { in: candidates.map((c) => c.id) } },
-    _count: { _all: true },
-  });
-  const csvCount = new Map(csvAccounts.map((a) => [a.userId, a._count._all]));
-  const excluded: DigestRun["excluded"] = {};
-  const users = candidates.filter((c) => {
-    const reason = whyNoDigest({
-      ...c,
-      plaidItemIds: c.plaidItems.map((i) => i.plaidItemId),
-      csvAccounts: csvCount.get(c.id) ?? 0,
-      accounts: c._count.accounts,
-    });
-    if (reason) excluded[reason] = (excluded[reason] ?? 0) + 1;
-    return reason === null;
-  });
+  const { users, excluded } = await loadRecipients(client, "digestEnabled", userIds);
   const run: DigestRun = {
     users: users.length,
     sent: 0,

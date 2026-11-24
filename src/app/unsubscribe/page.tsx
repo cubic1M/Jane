@@ -13,6 +13,7 @@ const SETTING = {
   alerts: "/settings#alerts",
   chat: "/settings#jane-messages",
   digest: "/settings#email",
+  daily: "/settings#email",
 };
 
 async function Content({
@@ -24,6 +25,8 @@ async function Content({
   const alerts = what === "alerts";
   // Jane's emails of chat messages (spec step 85).
   const chat = what === "chat";
+  // The daily report (src/lib/daily-report/).
+  const daily = what === "daily";
   if (done === "1") {
     return (
       <>
@@ -33,7 +36,9 @@ async function Content({
             ? "Jane won't email you its messages anymore. They're always in your chat."
             : alerts
               ? "We won't email you alerts anymore. They still show on your alerts page."
-              : "We won't send you the weekly email or the monthly money report anymore."}{" "}
+              : daily
+                ? "We won't send you the daily report anymore. The weekly email is a separate setting."
+                : "We won't send you the weekly email or the monthly money report anymore."}{" "}
           You can turn it back on in{" "}
           <Link href="/settings" className="font-medium text-emerald-700 hover:underline">
             settings
@@ -50,7 +55,7 @@ async function Content({
         <p className="text-zinc-600 dark:text-zinc-400">
           It may have been cut short, or be from an old email. You can turn these emails off in{" "}
           <Link
-            href={SETTING[chat ? "chat" : alerts ? "alerts" : "digest"]}
+            href={SETTING[chat ? "chat" : alerts ? "alerts" : daily ? "daily" : "digest"]}
             className="font-medium underline hover:no-underline"
           >
             settings
@@ -67,11 +72,13 @@ async function Content({
           ? "Stop Jane's emails?"
           : alerts
             ? "Stop alert emails?"
-            : "Stop the weekly email and the monthly report?"}
+            : daily
+              ? "Stop the daily report?"
+              : "Stop the weekly email and the monthly report?"}
       </h1>
       <form
         method="post"
-        action={`/api/unsubscribe?${new URLSearchParams({ token, from: "page", ...(alerts ? { what: "alerts" } : chat ? { what: "chat" } : {}) })}`}
+        action={`/api/unsubscribe?${new URLSearchParams({ token, from: "page", ...(alerts ? { what: "alerts" } : chat ? { what: "chat" } : daily ? { what: "daily" } : {}) })}`}
       >
         <SubmitButton className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800">
           Unsubscribe

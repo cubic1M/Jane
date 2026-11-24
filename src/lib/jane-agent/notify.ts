@@ -173,7 +173,13 @@ export async function deliverChatNotifications(
   // Users have their own helpers, so a read of these columns by id.
   const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
-    select: { email: true, timezone: true, deletedAt: true, chatNotifyPrefs: true },
+    select: {
+      email: true,
+      timezone: true,
+      deletedAt: true,
+      chatNotifyPrefs: true,
+      dailyReportEnabled: true,
+    },
   });
   if (!user || user.deletedAt) return none;
   const prefs = chatNotifyPrefs(user.chatNotifyPrefs);
@@ -290,6 +296,9 @@ export async function deliverChatNotifications(
   for (const m of due) {
     if (batch.length >= CHAT_EMAIL_MAX_MESSAGES) break;
     if (pushedIds.has(m.id) || m.createdAt.getTime() > unreadSince) continue;
+    // One email a day of this kind: with the daily report on, the morning brief isn't also emailed
+    // (it stays in the app, and the report says what it would: bills due and new suggestions).
+    if (user.dailyReportEnabled && m.kind === "brief") continue;
     if (onlyUrgent && !pressing(m)) continue;
     // Spec step 147: what isn't urgent goes only the way they answer, when Jane knows it.
     if (pushWorks && !wants(m, "email")) continue;

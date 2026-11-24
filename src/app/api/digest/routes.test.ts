@@ -27,6 +27,10 @@ vi.mock("@/lib/db-scoped", () => ({
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/digest/send", () => ({ runDigests: vi.fn() }));
+vi.mock("@/lib/news/store", () => ({ runNews: vi.fn(async () => ({})) }));
+vi.mock("@/lib/daily-report/send", () => ({
+  runDailyReports: vi.fn(async () => ({ users: 0, sent: 0, previews: [] })),
+}));
 vi.mock("@/lib/health", () => ({
   recordRun: vi.fn((_name: string, run: () => Promise<unknown>) => run()),
   reportMissedJobs: vi.fn(async () => []),
