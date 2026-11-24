@@ -74,7 +74,15 @@ function clear(
 function levelPayment(cents: number, aprBps: number, months: number): number {
   const r = aprBps / 10_000 / 12;
   if (r === 0) return Math.ceil(cents / months);
-  return Math.ceil((cents * r) / (1 - (1 + r) ** -months));
+  let pay = Math.ceil((cents * r) / (1 - (1 + r) ** -months));
+  // `clear` rounds each month's interest to whole cents, which can leave a cent after the last
+  // month: step up until it clears within the term under that same rounding.
+  for (let i = 0; i < 100; i += 1) {
+    const cleared = clear(cents, pay, () => aprBps);
+    if (cleared && cleared.months <= months) break;
+    pay += 1;
+  }
+  return pay;
 }
 
 // The transfer fee on this balance: the percent, never under the minimum.

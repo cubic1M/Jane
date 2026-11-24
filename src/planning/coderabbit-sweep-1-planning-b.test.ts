@@ -127,6 +127,25 @@ describe("card transfer", () => {
     expect(result.paymentCents).toBeGreaterThan(10_000);
     expect(result.paymentCents).toBe(10_662);
   });
+  it("sizes a too-slow payment that clears within the term under the monthly rounding", () => {
+    const offer = {
+      ...parseCardOffer(BT_CARD),
+      transferFeeBps: 0,
+      transferFeeMinCents: 0,
+      introTransferMonths: 6,
+      introTransferAprBps: 599,
+    };
+    const result = scoreCardTransfer({
+      balanceCents: 10_142,
+      aprBps: 2_499,
+      payCents: 600,
+      offer,
+      asOf: "2026-11-06",
+    });
+    if (result.show || result.reason !== "too_slow") throw new Error("expected too_slow");
+    // 1,720 leaves 1 cent after month 6 under whole-cent interest; 1,721 clears.
+    expect(result.paymentCents).toBe(1_721);
+  });
 });
 
 describe("balance transfer: when the 0% ends", () => {
