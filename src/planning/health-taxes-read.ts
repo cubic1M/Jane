@@ -133,8 +133,13 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   );
   const advance =
     toldAdvance !== null ? toldAdvance * 12 : creditAt(pace.enrollmentCents, size, bench);
+  // Without the person's own advance, it's worked out from the income in the year's first months:
+  // history that starts after January has no such months (they would read as no income, and the
+  // full benchmark premium as the advance), so with neither, there is no figure to check.
+  const dataStart = data.transactions.reduce((a, t) => (t.date < a ? t.date : a), "9999-12-31");
+  const enrollmentSeen = toldAdvance !== null || dataStart <= `${year}-01-31`;
   const check =
-    premiums.length >= T.marketplacePaymentsMin && advance > 0
+    premiums.length >= T.marketplacePaymentsMin && advance > 0 && enrollmentSeen
       ? ptcCheck({
           year,
           incomeCents: pace.projectedCents,

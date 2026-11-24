@@ -170,7 +170,13 @@ describe("closing a card and paying one off", () => {
     expect(d.sentences[1]).toBe(
       "Paying all your cards off would take your use from 89% to 0% of $7,000.00.",
     );
-    expect(d.advice).toBe(false);
+    // The "keep it open" pick is demo advice, and says so.
+    expect(d.sentences[2]).toMatch(/keep it open/);
+    expect(d.advice).toBe(true);
+    // Without demo advice there is no pick, and the decision isn't flagged as advice.
+    const plain = payoffHurts(noAdvice);
+    expect(plain.sentences.join(" ")).not.toMatch(/keep it open/);
+    expect(plain.advice).toBe(false);
   });
 });
 

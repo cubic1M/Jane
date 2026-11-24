@@ -342,10 +342,13 @@ export function payoffHurts(i: DecisionInput): Decision {
       limit > 0
         ? `Paying all your cards off would take your use from ${Math.round((owed / limit) * 100)}% to 0% of ${formatCents(limit)}.`
         : "Only closing the card afterward can cost points, because that lowers your limit.",
-      ...(limit > 0 ? ["Only closing a card afterward can cost points, so keep it open."] : []),
+      // A pick ("keep it open") is demo advice only.
+      ...(limit > 0 && i.advice
+        ? ["Only closing a card afterward can cost points, so keep it open."]
+        : []),
     ].slice(0, 3),
     href: "/loans/credit",
-    advice: false,
+    advice: limit > 0 && i.advice,
   };
 }
 
