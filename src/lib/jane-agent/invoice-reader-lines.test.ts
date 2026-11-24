@@ -318,6 +318,22 @@ describe("which total is the one charged, whatever the order the invoice ends in
     );
   });
 
+  // CodeRabbit's two other ways a $50 payment could be taken for the invoice: a "Total due" of $50
+  // beside a $100 Total, and no Total at all with only "Amount due $50". The lines come to $100.
+  it.each([
+    ["a Total and a Total due of 50 dollars", "Total  $100.00\nTotal due  $50.00"],
+    ["only an Amount due of 50 dollars", "Amount due  $50.00"],
+    ["a Total and an Amount due of 50 dollars", "Total  $100.00\nAmount due  $50.00"],
+  ])(
+    "names no line when the invoice shows %s and the charge was the 50 dollars paid",
+    (_name, ending) => {
+      const invoice = readInvoice(`Plan  $20.00\nUsage  $30.00\nSupport  $50.00\n${ending}`)!;
+      const reading = readAgainst(invoice, explanationFor([20, 20, 20, 50], 50));
+      expect(reading.explaining).toEqual([]);
+      expect(readingWords(reading).join("\n")).not.toMatch(/accounts for|make up the extra/);
+    },
+  );
+
   it("still sets the lines against a charge that is the invoice's total", () => {
     const invoice = readInvoice(
       "Plan  $20.00\nUsage  $80.00\nTotal  $100.00\nAmount paid  $100.00\nAmount due  $0.00",

@@ -161,14 +161,14 @@ function signedToTotal(lines: InvoiceLine[], totalCents: number | null): Invoice
 export type InvoiceReading = {
   invoice: Invoice;
   // The charge it was set against, if any, and whether the invoice's total is that charge's amount.
-  against: { chargeCents: number; totalMatches: boolean } | null;
-  // When the total is the charge and it was more than usual: the line that is the usual, and the
-  // lines the extra is made of (a single line that is the whole extra, or all the others).
+  // linesAddUp: the lines read come to that total, the evidence that they describe the charge.
+  against: { chargeCents: number; totalMatches: boolean; linesAddUp: boolean } | null;
+  // When the total is the charge, the lines add up to it and it was more than usual: the line that
+  // is the usual, and the lines the extra is made of (a single line that is the whole extra, or
+  // all the others).
   usualLine: InvoiceLine | null;
   explaining: InvoiceLine[];
   extraCents: number | null;
-  // With the usual line found but the other lines not adding up to the extra: what they do come to.
-  otherLinesCents: number | null;
 };
 
 export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null): InvoiceReading {
@@ -178,15 +178,23 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
     usualLine: null,
     explaining: [],
     extraCents: null,
-    otherLinesCents: null,
   };
   if (!charge) return plain;
   const against = {
     chargeCents: charge.charge.cents,
     totalMatches: invoice.totalCents === charge.charge.cents,
+    // A total that isn't what the lines come to (a part payment, an amount left, a line missed) says
+    // nothing of what the lines are for.
+    linesAddUp: invoice.linesCents === invoice.totalCents,
   };
   const extra = charge.differenceCents;
-  if (!against.totalMatches || !charge.usual || extra === null || extra <= 0) {
+  if (
+    !against.totalMatches ||
+    !against.linesAddUp ||
+    !charge.usual ||
+    extra === null ||
+    extra <= 0
+  ) {
     return { ...plain, against };
   }
   const positive = invoice.lines.filter((l) => l.cents > 0);
@@ -198,13 +206,9 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   const whole = positive.find((l) => l !== usualLine && l.cents === extra);
   if (whole) return { ...plain, against, usualLine, explaining: [whole], extraCents: extra };
   if (usualLine) {
-    // The other lines are the explanation only when they add up to the extra: a missed line, or a
-    // total that isn't the lines, and they'd name the wrong ones.
+    // The lines add up to the total, so what is left after the usual line is the extra.
     const rest = invoice.lines.filter((l) => l !== usualLine);
-    const restCents = rest.reduce((sum, l) => sum + l.cents, 0);
-    return restCents === extra
-      ? { ...plain, against, usualLine, explaining: rest, extraCents: extra }
-      : { ...plain, against, usualLine, extraCents: extra, otherLinesCents: restCents };
+    return { ...plain, against, usualLine, explaining: rest, extraCents: extra };
   }
   return { ...plain, against, extraCents: extra };
 }
@@ -234,6 +238,12 @@ export function readingWords(r: InvoiceReading): string[] {
     );
     return out;
   }
+  if (!r.against.linesAddUp) {
+    out.push(
+      "The lines I read don't add up to that total, so I won't say which line explains the charge.",
+    );
+    return out;
+  }
   if (r.extraCents === null) return out;
   const extra = money(r.extraCents);
   if (r.usualLine) out.push(`The ${priced(r.usualLine)} line matches what you usually pay.`);
@@ -242,10 +252,6 @@ export function readingWords(r: InvoiceReading): string[] {
   } else if (r.explaining.length > 1) {
     out.push(
       `The other lines (${r.explaining.map(priced).join("; ")}) make up the extra ${extra}.`,
-    );
-  } else if (r.otherLinesCents !== null) {
-    out.push(
-      `The other lines come to ${money(r.otherLinesCents)}, not the extra ${extra}, so I may have missed a line and won't say which one explains the charge.`,
     );
   } else {
     out.push(
