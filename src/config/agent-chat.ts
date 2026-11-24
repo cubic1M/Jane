@@ -487,6 +487,16 @@ export const CHAT_MONTHLY_CAP_CENTS_DEFAULT = 800;
 export const PERSON_APPS = /\b(venmo|zelle|cash ?app|paypal)\b/i;
 // A charge this many times the merchant's usual (its median before) is said as far above usual.
 export const CHARGE_FAR_ABOVE_SHARE = 2;
+// "Why did I pay $100 to Vercel?" (src/lib/jane-agent/charge-explain.ts): charges about a month
+// apart (between these many days) are said "a month"; how many earlier charges "usual" looks at
+// when the one before isn't a steady run; and, asked why a merchant was "so high" with no amount,
+// how many of its latest charges to look for the high one in.
+export const EXPLAIN_MONTHLY_GAP_DAYS = [25, 35] as const;
+export const EXPLAIN_USUAL_WINDOW = 6;
+export const EXPLAIN_HIGH_LOOKBACK = 3;
+// An invoice pasted on /invoice (src/lib/jane-agent/invoice-reader.ts): the most text and lines read.
+export const INVOICE_MAX_CHARS = 8_000;
+export const INVOICE_MAX_LINES = 80;
 
 // A bill asked by its kind ("how much is my internet bill?"), as the bank files it: what the backup
 // chat looks for in statements that ended long ago (src/lib/jane-agent/replies-old-bills.ts).

@@ -25,6 +25,10 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  explain_charge:
+    "explains one merchant's charge from the person's own charges when they ask why they paid it; the price-rise and bill-change detectors raise a change unasked, and this suggests nothing",
+  read_invoice:
+    "reads an invoice the person pasted, when they ask, and lists its lines; it suggests nothing and keeps nothing",
   trading_agent:
     "reports the 24-hour agent the person started on the paper account and the replay of its strategies; the agent itself trades only on simulated money",
   what_jane_did: "reports what Jane already did, when asked; nothing to suggest",

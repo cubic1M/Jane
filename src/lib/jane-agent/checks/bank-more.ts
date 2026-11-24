@@ -9,6 +9,9 @@ export type Row = readonly [sector: string, page: string, tool: string, text: st
 
 const rows: Row[] = [
   // The QA report's unanswered questions.
+  // A charge explained, from its history (founder 11-24).
+  ["bills", "/invoice", "explain_charge", "why did my netflix go up"],
+  ["bills", "/invoice", "explain_charge", "what is this netflix charge"],
   ["networth", "/net-worth", "net_worth", "what's my net worth"],
   ["bills", "/bills", "balance_forecast", "why is my checking going negative"],
   ["hsa", "/investments/hsa", "hsa", "what about my HSA"],

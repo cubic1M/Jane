@@ -13,6 +13,8 @@ import { openLink } from "./types";
 // Pure.
 
 export type BillLine = {
+  // The transaction's id, when the lines come from the person's own (the invoice page's link).
+  id?: string;
   date: string;
   // Money out is positive, as the detection input has it.
   amountCents: number;
@@ -33,7 +35,7 @@ const words = (text: string) =>
 // "How much is my internet bill?" on statements that end `statementsEnd`: what they show, said as
 // of then. Null when they show nothing by that name or kind.
 // The charges by that name (or of that bill's kind), oldest first.
-function chargesFor(target: string, lines: readonly BillLine[]): BillLine[] {
+export function chargesFor(target: string, lines: readonly BillLine[]): BillLine[] {
   const kind = BILL_KINDS[target.toLowerCase().replace(/ bill$/, "")];
   return lines
     .filter((t) => t.amountCents > 0)

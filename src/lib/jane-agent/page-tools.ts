@@ -19,6 +19,8 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   documents: ["tax_forms", "insurance_documents"],
   // Spec step 239: how a figure was worked out.
   figures: ["explain_figure"],
+  // A charge explained, and the invoice read for it (founder 11-24).
+  invoice: ["explain_charge", "read_invoice"],
   gift: ["family_investing"],
   goals: ["goals", "goal_buckets", "college_plan", "goal_tradeoffs"],
   home: ["safe_to_spend", "whole_picture", "priorities", "health_score"],
