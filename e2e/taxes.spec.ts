@@ -18,7 +18,11 @@ test.afterEach(async () => {
 });
 
 async function axe(page: Page) {
-  await page.waitForLoadState("networkidle");
+  // Every call comes after an assertion on what it scans, so the network going quiet is only a
+  // settling time (a colour mid-fade reads wrong), never the thing checked, and it is bounded: after
+  // a save the browser can sit on loads it started ahead of time and never go idle (HTTP/1.1, this
+  // server; debug 3, 11-24: the tax plan test, about 1 run in 4 until the 180 s limit).
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
   const results = await new AxeBuilder({ page })
     // The side chat is the chat page itself, checked on its own (/chat).
     .exclude('iframe[title="Chat with Jane"]')
