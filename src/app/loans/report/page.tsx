@@ -91,8 +91,10 @@ async function ReportContent({ searchParams }: Pick<PageProps<"/loans/report">, 
                         </p>
                         {l.sent ? (
                           <p className="mt-1">
-                            Sent {dayLabel(l.sent.sentOn)}; answer due by{" "}
-                            {dayLabel(l.sent.deadlineOn, { year: true })}
+                            Sent {dayLabel(l.sent.sentOn)}
+                            {l.sent.deadlineOn
+                              ? `; answer due by ${dayLabel(l.sent.deadlineOn, { year: true })}`
+                              : ""}
                             {l.sent.outcome ? `. ${l.sent.outcome}` : ""}
                           </p>
                         ) : (

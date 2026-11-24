@@ -114,7 +114,8 @@ export function lastsToAge(input: PaycheckInput, r: number): number {
   const taxShare = input.taxRate * (preTaxShare + taxableShare * TAXABLE_GAINS_SHARE);
   const years = Math.max(0, input.retireAge - input.age);
   let balance = futureValue(total, input.yearlySavingCents, years, r);
-  for (let age = input.retireAge; age < PLAN_TO_AGE; age += 1) {
+  // From the later of the two ages: someone already past their retirement age draws from today.
+  for (let age = Math.max(input.age, input.retireAge); age < PLAN_TO_AGE; age += 1) {
     const ss = age >= input.ssStartAge ? input.ssMonthlyCents * 12 : 0;
     const need = Math.max(0, input.spendMonthlyCents * 12 - ss);
     // Gross up for tax on what comes out.

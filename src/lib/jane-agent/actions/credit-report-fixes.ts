@@ -16,7 +16,10 @@ export const creditFixSend: ActionHandler = {
       const sent = await sendReportLetter(userId, target.id, { client, now });
       return {
         answeredWith: action.label,
-        note: `Sent. ${sent.letter === "validation" ? "The collector" : "The bureaus"} must answer by ${dayLabel(sent.deadlineOn, { year: true })}; it's on your deadlines, and I'll tell you what they say.`,
+        note:
+          sent.deadlineOn === null
+            ? "Sent. I'll tell you what the collector says."
+            : `Sent. The bureaus must answer by ${dayLabel(sent.deadlineOn, { year: true })}; it's on your deadlines, and I'll tell you what they say.`,
       };
     } catch (error) {
       throw error instanceof CreditFixError ? new ChatActionError("failed", error.message) : error;

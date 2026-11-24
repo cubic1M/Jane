@@ -114,8 +114,5 @@ export const monthsBetween = (from: string, to: string) => {
   );
 };
 
-export const addMonths = (day: string, months: number) => {
-  const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
-};
+// January 31 plus a month is February 28: the shared helper clamps to the month's last day.
+export { addMonths } from "@/lib/dates";

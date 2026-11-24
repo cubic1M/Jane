@@ -42,7 +42,9 @@ describe("the letters for a collection", () => {
     expect(validation.body).toContain("$742.00");
     expect(validation.body).toContain("CareFirst Medical Group");
     expect(validation.body.endsWith("Sincerely,\nSam Rivera")).toBe(true);
-    expect(validation.answerByIfSentOn("2026-10-19")).toBe("2026-11-18");
+    // The 30 days are the person's, to ask: the law gives the collector no day to answer by.
+    expect(validation.answerByIfSentOn("2026-10-19")).toBeNull();
+    expect(validation.body).toContain("send me your response in writing");
   });
 
   it("writes a bureau dispute citing the Fair Credit Reporting Act and its 30 days", () => {

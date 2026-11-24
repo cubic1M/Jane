@@ -42,6 +42,13 @@ export function billPayReply(item: BillPayItem, asOf: string, payday: string | n
       refs: { billKey: item.planKey },
     };
   }
+  if (item.status === "late") {
+    return {
+      body: `${due} A payment I schedule goes out tomorrow, after it's due, so I haven't scheduled one, and it may be paid late.`,
+      actions: [],
+      refs: { billKey: item.planKey },
+    };
+  }
   const short = `${due} Paying even the ${formatCents(bill.minimumCents)} minimum would take checking below ${formatCents(PAYCHECK_CUSHION_CENTS)} before your next paycheck, so I haven't scheduled it.`;
   return {
     body: item.moveTo
@@ -77,6 +84,8 @@ export function billsReply(view: BillPayView | null, asOf: string): Reply {
         return `${name}: ${formatCents(item.amountCents)} scheduled for ${dayLabel(item.runOn)}.`;
       case "ask":
         return `${name}: not set to be paid yet; I can pay ${formatCents(item.amountCents)} on ${dayLabel(item.runOn)}.`;
+      case "late":
+        return `${name}: due today, so a payment I schedule would go out after it's due and may be late.`;
       default:
         return `${name}: checking would run short${item.moveTo ? `, so moving the due date to ${dayLabel(item.moveTo)} would help` : ""}.`;
     }

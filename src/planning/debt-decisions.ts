@@ -240,7 +240,17 @@ export function savingsOrDebt(i: DecisionInput): Decision {
   const card = worst(i.cards);
   if (!card) return noRate(i, "savings_or_debt");
   const extra = Math.min(spare(i), total(i.cards));
-  const yearly = Math.round((extra * (card.aprBps ?? 0)) / 10_000);
+  // Highest rate first, each card taking no more than it owes: $10,000 on a $1,000 card at 25%
+  // and a $9,000 one at 5% saves $700 a year, not 25% of $10,000.
+  let left = extra;
+  let yearly = 0;
+  for (const c of [...rated(i.cards)].sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0))) {
+    const put = Math.min(left, c.balanceCents);
+    yearly += Math.round((put * (c.aprBps ?? 0)) / 10_000);
+    left -= put;
+  }
+  // What went to cards whose rate isn't known isn't priced: said, not counted as the whole.
+  const unpriced = left;
   const first = `You have ${formatCents(i.liquidCents)} in cash and ${formatCents(total(i.cards))} on cards, the worst at ${pct(card.aprBps!)}.`;
   if (extra <= 0) {
     return {
@@ -257,7 +267,11 @@ export function savingsOrDebt(i: DecisionInput): Decision {
     id: "savings_or_debt",
     sentences: [
       first,
-      `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`,
+      unpriced > 0
+        ? `Putting ${formatCents(extra - unpriced)} on your cards, ${card.name} first, saves about ${formatCents(yearly)} a year in interest at the rates I know; the other ${formatCents(unpriced)} is on cards whose rate I don't have.`
+        : extra > card.balanceCents
+          ? `Putting ${formatCents(extra)} on your cards, ${card.name} first, saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`
+          : `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`,
       ...(i.advice ? ["Savings earn less than the card costs, so I'd do it."] : []),
     ],
     href: "/loans/interest",
@@ -332,10 +346,13 @@ export function payoffHurts(i: DecisionInput): Decision {
       limit > 0
         ? `Paying all your cards off would take your use from ${Math.round((owed / limit) * 100)}% to 0% of ${formatCents(limit)}.`
         : "Only closing the card afterward can cost points, because that lowers your limit.",
-      ...(limit > 0 ? ["Only closing a card afterward can cost points, so keep it open."] : []),
+      // A pick ("keep it open") is demo advice only.
+      ...(limit > 0 && i.advice
+        ? ["Only closing a card afterward can cost points, so keep it open."]
+        : []),
     ].slice(0, 3),
     href: "/loans/credit",
-    advice: false,
+    advice: limit > 0 && i.advice,
   };
 }
 
@@ -484,11 +501,15 @@ export function overdraft(i: DecisionInput): Decision {
       advice: false,
     };
   }
-  const gap = -f.firstNegative.balanceCents;
+  // The first dip may not be the deepest: what covers the month is the lowest balance's shortfall.
+  const dip = -f.firstNegative.balanceCents;
+  const gap = Math.max(dip, -f.lowest.balanceCents);
   return {
     id: "overdraft",
     sentences: [
-      `Yes: your checking is forecast to go ${formatCents(gap)} below zero on ${f.firstNegative.date}.`,
+      gap > dip
+        ? `Yes: your checking is forecast to go ${formatCents(dip)} below zero on ${f.firstNegative.date}, and as far as ${formatCents(gap)} below zero by ${f.lowest.date}.`
+        : `Yes: your checking is forecast to go ${formatCents(gap)} below zero on ${f.firstNegative.date}.`,
       f.savingsCents >= gap
         ? `Your savings could cover the ${formatCents(gap)}.`
         : `Your savings of ${formatCents(f.savingsCents)} wouldn't fully cover it.`,
@@ -554,8 +575,9 @@ export function saveEachMonth(i: DecisionInput): Decision {
         : `A common target is ${Math.round(SAVE_SHARE * 100)}%, ${formatCents(target)} a month, and you already beat it.`,
       ...(i.advice
         ? [
-            card && (card.aprBps ?? 0) > 1_000
-              ? `With ${card.name} at ${pct(card.aprBps!)}, put the first ${formatCents(Math.min(Math.max(saving, target), card.balanceCents))} toward it each month before saving elsewhere.`
+            // No more than what is kept now: the target is a gap to close, not money they have.
+            card && (card.aprBps ?? 0) > 1_000 && saving > 0
+              ? `With ${card.name} at ${pct(card.aprBps!)}, put the first ${formatCents(Math.min(saving, card.balanceCents))} toward it each month before saving elsewhere.`
               : `Build cash for about three months of spending first, then retirement.`,
           ]
         : []),

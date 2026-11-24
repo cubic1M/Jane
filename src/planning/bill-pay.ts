@@ -23,7 +23,10 @@ export type ForecastDay = { date: string; balanceCents: number };
 export type BillPlan =
   | { status: "autopay"; bill: DueBill }
   | { status: "pay"; bill: DueBill; amountCents: number; runOn: string; full: boolean }
-  | { status: "short"; bill: DueBill };
+  | { status: "short"; bill: DueBill }
+  // Due today (or past): the earliest payment goes out tomorrow, after the due date. Said as that,
+  // never as a date after the due date.
+  | { status: "late"; bill: DueBill };
 
 // The lowest checking balance from `from` on, after taking `cents` out on that day.
 function lowestAfter(series: ForecastDay[], from: string, cents: number): number {
@@ -47,6 +50,7 @@ export function billPlan(bill: DueBill, series: ForecastDay[], today: string): B
     return { status: "autopay", bill };
   }
   const runOn = payDate(bill.dueOn, today);
+  if (runOn > bill.dueOn) return { status: "late", bill };
   const fits = (cents: number) =>
     cents > 0 && lowestAfter(series, runOn, cents) >= BILL_PAY_MIN_LEFT_CENTS;
   const full =

@@ -133,11 +133,16 @@ export function realised(
   sales: ReturnType<typeof lotsFor>["sales"],
   allBuys: InvTransaction[],
 ): Realised[] {
-  // Average cost per share, from the institution's basis for what's held.
-  const perShare =
-    holding.costBasisCents !== null && holding.quantity > 0
-      ? holding.costBasisCents / holding.quantity
-      : 0;
+  // Average cost per share, from the institution's basis for what's held. With no basis reported
+  // the cost of a sale isn't known, and a sale at zero cost would read as all gain: it's left out.
+  if (holding.costBasisCents === null) return [];
+  const perShare = holding.quantity > 0 ? holding.costBasisCents / holding.quantity : 0;
+  // Each replacement purchase covers the shares it bought once, across this holding's loss sales.
+  // Earliest purchase first, whatever order the rows came in (Publication 550's matching order).
+  const bought = allBuys
+    .filter((t) => t.type === "buy" && t.securityId === holding.securityId && t.quantity > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const left = new Map(bought.map((t) => [t, t.quantity]));
   return sales.map((s) => {
     const cost = Math.round(perShare * s.quantity);
     const gain = s.amountCents - cost;
@@ -145,13 +150,19 @@ export function realised(
       .filter((l) => isLong(l.date, s.date))
       .reduce((sum, l) => sum + l.quantity, 0);
     const longTerm = Math.round((gain * longQty) / s.quantity);
-    const replacements =
-      gain < 0
-        ? washReplacements(
-            { securityId: holding.securityId, date: s.date, accountId: holding.accountId },
-            allBuys,
-          )
-        : [];
+    const replacements: Realised["washReplacements"] = [];
+    if (gain < 0) {
+      let need = s.quantity;
+      for (const t of bought) {
+        if (need <= 0) break;
+        if (Math.abs(daysBetween(s.date, t.date)) > WASH_SALE_DAYS) continue;
+        const take = Math.min(left.get(t) ?? 0, need);
+        if (take <= 0) continue;
+        left.set(t, (left.get(t) ?? 0) - take);
+        need -= take;
+        replacements.push({ date: t.date, quantity: take, accountId: t.accountId });
+      }
+    }
     const replaced = replacements.reduce((sum, r) => sum + r.quantity, 0);
     const disallowed = gain < 0 ? Math.round(-gain * Math.min(1, replaced / s.quantity)) : 0;
     // The disallowed part of a loss comes off its short- and long-term parts alike.

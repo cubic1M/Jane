@@ -13,6 +13,9 @@ type LongViewDebt = {
   paymentCents: number | null;
   // A card's payment comes out of the month's margin; others are in spending already.
   fromMargin: boolean;
+  // More than its payment, each month while it lasts (a "what if"): not in spending, so for a
+  // debt that isn't a card it comes out of cash, and only `paymentCents` is freed once it's paid.
+  extraCents?: number;
 };
 
 export type LongViewInput = {
@@ -79,6 +82,8 @@ function run(input: LongViewInput, rates: Rates, investedRate: number, extraInve
     let cardPayments = 0;
     let paidOff = 0;
     let paidOffOutsideMargin = 0;
+    let extraOutsideMargin = 0;
+    let unusedOutsideMargin = 0;
     for (const d of debts) {
       if (d.balance <= 0) {
         paidOff += d.paymentCents ?? 0;
@@ -86,9 +91,16 @@ function run(input: LongViewInput, rates: Rates, investedRate: number, extraInve
         continue;
       }
       const interest = d.balance * (d.aprBps / BPS / MONTHS);
-      const pay = Math.min(d.balance + interest, d.paymentCents ?? 0);
-      d.balance = Math.max(0, d.balance + interest - pay);
-      if (d.fromMargin) cardPayments += pay;
+      const due = d.balance + interest;
+      const basePaid = Math.min(due, d.paymentCents ?? 0);
+      const extraPaid = Math.min(due - basePaid, d.extraCents ?? 0);
+      d.balance = Math.max(0, due - basePaid - extraPaid);
+      // The extra payment comes out of cash for any debt, whatever the margin can fund.
+      extraOutsideMargin += extraPaid;
+      if (d.fromMargin) cardPayments += basePaid;
+      // A non-card debt's regular payment is in spending: in its last month, what it doesn't use
+      // stays in cash.
+      else unusedOutsideMargin += (d.paymentCents ?? 0) - basePaid;
     }
     const saved = Math.max(0, input.marginCents - cardPayments + paidOffOutsideMargin);
     const toInvest = Math.min(
@@ -97,7 +109,8 @@ function run(input: LongViewInput, rates: Rates, investedRate: number, extraInve
     );
     // An extra amount the person chose to invest is moved from cash whatever the margin.
     invested += toInvest + extraInvest;
-    cash += saved - toInvest - extraInvest;
+    // The extra payment on a non-card debt is money out of cash, whatever the margin is.
+    cash += saved - toInvest - extraInvest - extraOutsideMargin + unusedOutsideMargin;
     if (month % MONTHS === 0 && horizons.includes(month / MONTHS)) {
       out.set(month / MONTHS, {
         cash,
@@ -149,9 +162,7 @@ export function levers(input: LongViewInput, rates: Rates, monthlyCents: number)
   if (target) {
     const faster = {
       ...input,
-      debts: input.debts.map((d) =>
-        d === target ? { ...d, paymentCents: (d.paymentCents ?? 0) + monthlyCents } : d,
-      ),
+      debts: input.debts.map((d) => (d === target ? { ...d, extraCents: monthlyCents } : d)),
     };
     out.push({
       key: `debt:${target.name}`,

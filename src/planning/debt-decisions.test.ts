@@ -140,7 +140,9 @@ describe("savings or debt", () => {
       "You have $9,000.00 in cash and $6,210.00 on cards, the worst at 31.99%.",
     );
     expect(d.sentences[1]).toBe(
-      "Putting $6,000.00 on Store Card saves about $1,919.40 a year in interest and still keeps your $3,000.00 emergency cushion.",
+      // $1,490 on Store Card at 31.99% ($476.65) and the other $4,510 on Card A at 29.99% ($1,352.55):
+      // not $6,000 at 31.99% on a card that owes $1,490.
+      "Putting $6,000.00 on your cards, Store Card first, saves about $1,829.20 a year in interest and still keeps your $3,000.00 emergency cushion.",
     );
   });
   it("has nothing spare when cash is under a month of spending", () => {
@@ -168,7 +170,13 @@ describe("closing a card and paying one off", () => {
     expect(d.sentences[1]).toBe(
       "Paying all your cards off would take your use from 89% to 0% of $7,000.00.",
     );
-    expect(d.advice).toBe(false);
+    // The "keep it open" pick is demo advice, and says so.
+    expect(d.sentences[2]).toMatch(/keep it open/);
+    expect(d.advice).toBe(true);
+    // Without demo advice there is no pick, and the decision isn't flagged as advice.
+    const plain = payoffHurts(noAdvice);
+    expect(plain.sentences.join(" ")).not.toMatch(/keep it open/);
+    expect(plain.advice).toBe(false);
   });
 });
 
@@ -275,7 +283,8 @@ describe("how much to save each month", () => {
     expect(d.sentences).toEqual([
       "You keep about $400.00 a month now, 8% of the $5,000.00 you take home.",
       "A common target is 20%, $1,000.00 a month, which is $600.00 more than you save now.",
-      "With Store Card at 31.99%, put the first $1,000.00 toward it each month before saving elsewhere.",
+      // What they keep now ($400.00), not the 20% target they don't have.
+      "With Store Card at 31.99%, put the first $400.00 toward it each month before saving elsewhere.",
     ]);
   });
   it("says they already beat it, stops at the math without demo advice, and wants income first", () => {

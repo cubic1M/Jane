@@ -46,7 +46,8 @@ export type BillPayItem =
       runOn: string;
       full: boolean;
     }
-  | { status: "short"; bill: DueBill; planKey: string; moveTo: string | null };
+  | { status: "short"; bill: DueBill; planKey: string; moveTo: string | null }
+  | { status: "late"; bill: DueBill; planKey: string };
 
 export type BillPayView = {
   checkingAccountId: string | null;
@@ -176,6 +177,7 @@ export async function loadBillPay(
     if (!accountId) return { status: "short", bill, planKey, moveTo: null };
     const plan: BillPlan = billPlan(bill, series, input.asOf);
     if (plan.status === "autopay") return { status: "autopay", bill, planKey };
+    if (plan.status === "late") return { status: "late", bill, planKey };
     if (plan.status === "pay") {
       return {
         status: "ask",
@@ -210,6 +212,11 @@ export async function payBill(
   const item = view.items.find((i) => i.planKey === planKey);
   if (!item || item.status === "scheduled" || item.status === "autopay") {
     throw new BillPayError("That bill is already set to be paid.");
+  }
+  if (item.status === "late") {
+    throw new BillPayError(
+      "That bill is due today, and a payment scheduled now would go out after its due date.",
+    );
   }
   if (item.status === "short" || !view.checkingAccountId) {
     throw new BillPayError("Checking can't take that payment right now without running short.");

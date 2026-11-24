@@ -117,7 +117,9 @@ export function safeToSpend(
       : [];
   const payDue = paydays.filter((p) => p.date === input.asOf).flatMap(intoChecking);
   const payDueCents = payDue.reduce((sum, p) => sum + p.cents, 0);
-  const payday = paydays.find((p) => p.date > input.asOf)?.date ?? null;
+  // The next payday into an account counted here: another account's earlier one isn't this one's.
+  const payday =
+    paydays.find((p) => p.date > input.asOf && checkingIds.has(p.accountId))?.date ?? null;
   // Without one, pay that comes every week or two is still likely before a month's bills are due
   // (debugger 11-03: "Short $1,303" for a driver DoorDash pays each week).
   const until = payday ?? nextUnevenPayBy(input, [...checkingIds]);

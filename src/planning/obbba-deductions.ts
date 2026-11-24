@@ -25,8 +25,12 @@ export function obbbaDeduction(
   const max = joint(input.status) ? rule.max.marriedJoint : rule.max.normal;
   const from = joint(input.status) ? rule.phaseOutFrom.marriedJoint : rule.phaseOutFrom.normal;
   const steps = Math.floor(Math.max(0, input.magiCents - from) / O.step);
-  const cap = Math.max(0, max - steps * rule.cutPerStep);
-  const cents = Math.min(Math.max(0, input.claimedCents), cap);
+  // The smaller of the claim and the most, then the cut for income over the line (Schedule 1-A):
+  // $1,000 of tips at $160,000 loses $1,000, not a cut off the $25,000 maximum it never reached.
+  const cents = Math.max(
+    0,
+    Math.min(Math.max(0, input.claimedCents), max) - steps * rule.cutPerStep,
+  );
   return {
     cents,
     rule: rule.rule,

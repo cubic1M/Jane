@@ -22,7 +22,9 @@ export type FixItem = {
   label: string;
   body: string;
   // When the rule gives the answer by if sent today, and for validation the last day to ask.
-  answerByIfSentOn: (sentOn: string) => string;
+  // When an answer is due if sent on this day; null where the law gives no deadline for it (a debt
+  // collector's reply to a validation request has none: the 30 days are the person's, to ask).
+  answerByIfSentOn: (sentOn: string) => string | null;
   windowEndsOn: string | null;
 };
 
@@ -44,13 +46,13 @@ export function fixItems(item: ReportItem, name: string): FixItem[] {
       item,
       label: `Ask ${item.creditor} to validate the debt`,
       windowEndsOn,
-      answerByIfSentOn: (sentOn) => addDays(sentOn, VALIDATION_WINDOW_DAYS),
+      answerByIfSentOn: () => null,
       body: [
         `To ${item.creditor}:`,
         "",
         `I received your first notice about this account on ${dayLabel(item.firstSeenOn, { year: true })}: ${mark(item)}.`,
         CREDIT_RULES.validation.text,
-        `The ${VALIDATION_WINDOW_DAYS} days to ask end on ${dayLabel(windowEndsOn, { year: true })}. Please also confirm in writing that you will not report this to the credit bureaus while it is disputed.`,
+        `The ${VALIDATION_WINDOW_DAYS} days to ask end on ${dayLabel(windowEndsOn, { year: true })}. Please send me your response in writing, and also confirm in writing that you will not report this to the credit bureaus while it is disputed.`,
         "",
         `Sincerely,\n${who}`,
       ].join("\n"),

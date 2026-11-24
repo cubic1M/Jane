@@ -99,7 +99,8 @@ export function dependantsFromHousehold(
   };
 }
 
-const payerOf = (t: ProfileTransaction) => (t.merchantName ?? t.description).trim();
+// A blank merchant name is no name: the description says who it was.
+const payerOf = (t: ProfileTransaction) => (t.merchantName?.trim() || t.description).trim();
 
 // The income Jane can see: money in under each kind's categories (wages only once paid
 // at least TAX_PROFILE_MIN_PAYCHECKS times), and taxable investment accounts.
