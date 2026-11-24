@@ -100,7 +100,7 @@ describe.runIf(url)("explaining a charge", { timeout: 900_000 }, () => {
   });
 
   it("answers a variable bill against the middle of what came before", async () => {
-    const { body } = await ask("why was my Xcel bill so high");
+    const { body } = await ask("why was my Xcel Energy bill so high");
     expect(body).toContain("You paid Xcel Energy $57.49 on Nov 10.");
     expect(body).toMatch(/more than usual; it is the first time it has been this high/);
   });
@@ -114,7 +114,7 @@ describe.runIf(url)("explaining a charge", { timeout: 900_000 }, () => {
   it("says plainly when there is no charge by that name or amount", async () => {
     expect((await ask("why did I pay $300 to Netflix")).body).toMatch(/\$300\.00 charge/);
     expect((await ask("why was Netflix so high")).body).toContain(
-      "I don't see a charge from Netflix",
+      "I don't see a charge at netflix",
     );
   });
 
