@@ -5,7 +5,7 @@ import type { BnplPlan } from "./bnpl";
 import type { PaidLoan } from "./paid-loans";
 import { monthlyInterest } from "@/planning/debt";
 import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
-import { DAY_MS } from "@/lib/dates";
+import { DAY_MS, addMonths } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
@@ -346,19 +346,17 @@ const PRODUCT_KIND: Record<string, DebtKind> = {
   personal: "loan",
 };
 
-const addMonths = (day: string, months: number) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
-};
-
 function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   const [fy, fm] = loan.fundedOn.split("-").map(Number);
   const [ay, am] = asOf.split("-").map(Number);
   // A transfer's balance isn't guessed from payments Jane can't see: it's what was moved,
   // until the new card is linked.
+  // Payments made are the completed monthly anniversaries: funded October 20, on November 15 none
+  // is made yet (a month change is not a payment), on November 20 one is.
+  const early = Number(asOf.slice(8, 10)) < Number(loan.fundedOn.slice(8, 10)) ? 1 : 0;
   const paid = loan.transfer
     ? 0
-    : Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm)));
+    : Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm) - early));
   let balance = loan.amountCents;
   for (let i = 0; i < paid && balance > 0; i += 1) {
     balance = Math.max(0, balance + monthlyInterest(balance, loan.aprBps) - loan.monthlyCents);

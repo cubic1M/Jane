@@ -25,7 +25,8 @@ export type ComingUpRow = {
 export const sameThing = (bill: ComingUpBill, deadline: Deadline) =>
   bill.date === deadline.date &&
   (deadline.title.toLowerCase().startsWith(bill.merchant.toLowerCase()) ||
-    deadline.amountCents === bill.amountCents);
+    // A return window's amount is the purchase price, never owed: it isn't a bill by amount alone.
+    (deadline.kind !== "return" && deadline.amountCents === bill.amountCents));
 
 // A bill that is also a deadline on the same day (a yearly renewal, a card payment) shows
 // once, as the deadline, which says what it is ("Netflix renews"). Deadlines already past
