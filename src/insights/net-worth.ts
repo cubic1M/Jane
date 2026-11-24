@@ -81,6 +81,48 @@ export function netWorth(
   };
 }
 
+// What the figure covers, said under it (the founder's Home, 11-23: "not my current net worth", with
+// nothing on the page saying which accounts it held): the accounts counted, by kind, and whether
+// any investment or retirement account is in it. A brokerage that isn't linked, or that Jane can't
+// read, isn't in net worth, and the figure never said so. Null when nothing is counted.
+export function netWorthCovers(
+  accounts: readonly Pick<NetWorthAccount, "type" | "balanceCents">[],
+  { owned = 0, crypto = false }: { owned?: number; crypto?: boolean } = {},
+): string | null {
+  const counted = accounts.filter((a) => a.balanceCents !== null);
+  const n = (type: (t: string) => boolean) => counted.filter((a) => type(a.type)).length;
+  const plural = (count: number, one: string, many: string) =>
+    `${count} ${count === 1 ? one : many}`;
+  const invested = n((t) => t === "investment");
+  const parts = [
+    n((t) => t === "depository") > 0 &&
+      plural(
+        n((t) => t === "depository"),
+        "bank account",
+        "bank accounts",
+      ),
+    n((t) => t === "credit") > 0 &&
+      plural(
+        n((t) => t === "credit"),
+        "card",
+        "cards",
+      ),
+    n((t) => t === "loan") > 0 &&
+      plural(
+        n((t) => t === "loan"),
+        "loan",
+        "loans",
+      ),
+    invested > 0 && plural(invested, "investment account", "investment accounts"),
+    owned > 0 && plural(owned, "thing you own", "things you own"),
+    crypto && "your crypto",
+  ].filter((p): p is string => typeof p === "string");
+  if (parts.length === 0) return null;
+  const list =
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+  return `Counts ${list}.${invested > 0 ? "" : " No investment or retirement account is in it."}`;
+}
+
 // Said beside the figure when only a card or loan is on file (debugger 11-04: "You have $0.00",
 // paying a card $2,900 a month from an account Jane has never seen).
 export const NO_BANK_SEEN =

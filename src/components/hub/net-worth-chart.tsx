@@ -154,6 +154,7 @@ export function NetWorthChart({
   events = [],
   notCounting,
   loansLeft,
+  covers,
 }: {
   points: SeriesPoint[];
   // The days money moved because of something (src/lib/hub/net-worth-events.ts).
@@ -161,6 +162,8 @@ export function NetWorthChart({
   // What the figure leaves out for want of a balance, said under it (src/insights/net-worth.ts).
   notCounting?: string;
   loansLeft?: string | null;
+  // What the figure covers (netWorthCovers), said under it.
+  covers?: string | null;
 }) {
   // Hidden until asked: the figure, and what would give it away (the scale, the dollars moved, the
   // figure on a day). The line's shape and the percent stay: they don't say how much.
@@ -472,6 +475,11 @@ export function NetWorthChart({
           onToggle={() => setFigureShown((s) => !s)}
         />
       </div>
+      {covers && (
+        <p data-net-worth-covers="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          {covers}
+        </p>
+      )}
       {notCounting && (
         <p data-net-worth-not-counting="" className="text-sm text-zinc-600 dark:text-zinc-400">
           {notCounting}{" "}
