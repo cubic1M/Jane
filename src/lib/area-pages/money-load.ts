@@ -269,7 +269,7 @@ export async function loadMoneyArea(
       ownedCents: worth.ownedCents,
       owned: owned.length,
       missing: worth.unbalanced,
-      maybeSame: await loadMaybeSame(userId, { client }),
+      maybeSame: (await loadMaybeSame(userId, { client }))?.words ?? null,
       assetPrompt: prompt ? (prompt.kind === "vehicle" ? "vehicle" : "home") : null,
       // Of the goals not reached yet, on the way and in time with the others counted, as on Home and
       // the Plans tree (goalsOnTrack, gate B).

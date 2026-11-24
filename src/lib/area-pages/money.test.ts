@@ -186,6 +186,26 @@ describe("moneyTree", () => {
     expect(allItems(FULL).find((i) => i.id === "have:net-worth")?.label).toBe("Net worth");
   });
 
+  it("keeps the may-be-the-same warning when a balance is missing too, in two sentences", () => {
+    const tree = moneyTree({
+      ...FULL,
+      have: {
+        ...FULL.have,
+        missing: [{ name: "Chase card", card: true }],
+        maybeSame:
+          "Chase checking (uploaded) and TOTAL CHECKING (linked) may be the same account; net worth counts both. If they are the same, remove one.",
+      },
+    });
+    const summary = tree.summaries["have:net-worth"]!;
+    expect(summary).toContain(
+      "Chase checking (uploaded) and TOTAL CHECKING (linked) may be the same account; net worth counts both.",
+    );
+    expect(sentences(summary)).toBeLessThanOrEqual(SUMMARY_MAX_SENTENCES);
+    expect(
+      tree.tree.branches.flatMap((b) => b.items).find((i) => i.id === "have:net-worth")?.label,
+    ).toBe("Net worth, not counting card balance");
+  });
+
   it("keeps every label and summary within the copy budget", () => {
     const area = moneyTree(FULL);
     for (const b of area.tree.branches) expect(words(b.label)).toBeLessThanOrEqual(LABEL_MAX_WORDS);

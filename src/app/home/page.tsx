@@ -156,7 +156,8 @@ async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents
       events={events}
       notCounting={notCounting(missing)?.sentence}
       covers={covers}
-      maybeSame={maybeSame}
+      maybeSame={maybeSame?.words}
+      maybeSameHref={maybeSame?.href}
       loansLeft={
         [onlyDebts ? NO_BANK_SEEN : null, loansNotCounted(loans)].filter(Boolean).join(" ") || null
       }

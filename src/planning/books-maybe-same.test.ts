@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { maybeSameWords } from "@/insights/net-worth";
+import { maybeSameHref, maybeSameWords } from "@/insights/net-worth";
 import { maybeSameAccounts, type Acct } from "./books";
 
 // The founder's Home read about twice the truth (11-23). An account counted once is the copy rule's
 // (same last four, type and subtype at two links); these are the ways one account still got in
 // twice, each said, never merged, and the ones that are really two accounts, which must not be.
 
-const bank = (a: Acct) => ({ i1: "Chase", i2: "Chase", i3: "Wells Fargo" })[a.itemId ?? ""] ?? null;
+const banks: Record<string, string | undefined> = { i1: "Chase", i2: "Chase", i3: "Wells Fargo" };
+const bank = (a: Acct) => banks[a.itemId ?? ""] ?? null;
 const acct = (
   id: string,
   itemId: string | null,
@@ -69,6 +70,27 @@ describe("accounts that may be one account counted twice", () => {
     expect(names([acct("a", "i1", "Checking", null), acct("b", "i1", "Checking 2", null)])).toEqual(
       [],
     );
+  });
+
+  it("does not flag a checking and a savings account at one bank with the same last four", () => {
+    expect(
+      names([
+        acct("a", "i1", "Checking", "1234"),
+        acct("b", "i2", "Savings", "1234", { subtype: "savings" }),
+      ]),
+    ).toEqual([]);
+    expect(
+      names([
+        acct("a", "i1", "Checking", "1234"),
+        acct("b", "i2", "Money market", "1234", { subtype: "money market" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("says where one is removed: an upload on the import page, links in Settings", () => {
+    const up = { a: { name: "A", itemId: null }, b: { name: "B", itemId: "i1" } };
+    const links = { a: { name: "A", itemId: "i1" }, b: { name: "B", itemId: "i2" } };
+    expect([maybeSameHref([up]), maybeSameHref([links])]).toEqual(["/import", "/settings#banks"]);
   });
 
   it("says each pair by name, both counted, and how to remove one", () => {

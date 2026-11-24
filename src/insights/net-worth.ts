@@ -133,6 +133,9 @@ export type MaybeSame = {
 const how = (x: { itemId: string | null }) => (x.itemId === null ? "uploaded" : "linked");
 export const maybeSamePair = ({ a, b }: MaybeSame) =>
   `${a.name} (${how(a)}) and ${b.name} (${how(b)}) may be the same account; net worth counts both. If they are the same, remove one.`;
+// Where one of them is removed: an uploaded account on the import page, links in Settings.
+export const maybeSameHref = (pairs: readonly MaybeSame[]) =>
+  pairs.some(({ a, b }) => a.itemId === null || b.itemId === null) ? "/import" : "/settings#banks";
 export function maybeSameWords(pairs: readonly MaybeSame[]): string | null {
   if (pairs.length === 0) return null;
   if (pairs.length <= 2) return pairs.map(maybeSamePair).join(" ");

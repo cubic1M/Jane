@@ -83,7 +83,9 @@ describe.runIf(url)(
     it("counts both, as today, and says so under net worth and on the books notice", async () => {
       const { worth } = await loadNetWorthInputs(userId!, { client });
       expect(worth.netCents).toBe(8_000_000 * 2 + 100_000);
-      const words = await loadMaybeSame(userId!, { client });
+      const said = await loadMaybeSame(userId!, { client });
+      const words = said?.words;
+      expect(said?.href).toBe("/import");
       expect(words).toBe(
         "Wells Fargo checking (uploaded) and Everyday Checking (linked) may be the same account; net worth counts both. If they are the same, remove one.",
       );

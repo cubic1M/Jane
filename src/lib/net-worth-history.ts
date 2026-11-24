@@ -6,6 +6,7 @@ import {
 } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
+  maybeSameHref,
   maybeSameWords,
   netWorth,
   netWorthCovers,
@@ -129,19 +130,22 @@ export async function loadNetWorthCovers(
 }
 
 // Accounts that may be one account counted twice, in words (src/insights/net-worth.ts), from the
-// accounts net worth counts; null when there are none. Said under the figure on Home and Money.
+// accounts net worth counts, and where one is removed; null when there are none. Said under the
+// figure on Home and Money.
 export async function loadMaybeSame(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
-): Promise<string | null> {
+): Promise<{ words: string; href: string } | null> {
   const [{ accounts }, items] = await Promise.all([
     loadNetWorthInputs(userId, { client }),
     scopedFor(userId, client).plaidItems.findMany({ select: { id: true, institutionName: true } }),
   ]);
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-  return maybeSameWords(
-    maybeSameAccounts(accounts, (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null)),
+  const pairs = maybeSameAccounts(accounts, (a) =>
+    a.itemId ? (bank.get(a.itemId) ?? null) : null,
   );
+  const words = maybeSameWords(pairs);
+  return words ? { words, href: maybeSameHref(pairs) } : null;
 }
 
 // The accounts net worth can't count yet for want of a balance (src/insights/net-worth.ts

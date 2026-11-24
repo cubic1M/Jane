@@ -197,7 +197,9 @@ export type MoneyTreeInput = {
     debt: { accounts: number; others?: number; owedCents: number; known?: number };
     // Accounts net worth leaves out for having no balance (an uploaded card, say).
     missing?: Unbalanced[];
-    // Accounts that may be one account counted twice, in words (maybeSameWords).
+    // Accounts that may be one account counted twice, in words (maybeSameWords). Its first sentence
+    // comes before what a missing balance adds: the summary keeps two sentences, and the label
+    // already says a balance is missing.
     maybeSame?: string | null;
   };
   rules: number;
@@ -504,7 +506,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         summary:
           h.netKnown === false
             ? "Your files don't include a balance yet. Add one on the import page."
-            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${left ? ` ${left.sentence}` : ""}${h.maybeSame ? ` ${h.maybeSame}` : ""}${input.statementsEnd ? ` That's from your statements, which end on ${dayLabel(input.statementsEnd)}.` : ""}`,
+            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${h.maybeSame ? ` ${firstSentences(h.maybeSame, 1)}` : ""}${left ? ` ${left.sentence}` : ""}${input.statementsEnd ? ` That's from your statements, which end on ${dayLabel(input.statementsEnd)}.` : ""}`,
       }),
     );
   }

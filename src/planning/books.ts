@@ -128,13 +128,28 @@ export function maybeSameAccounts(
     const [m, n] = [plain(a.name), plain(b.name)];
     return m.length >= 4 && n.length >= 4 && (m.includes(n) || n.includes(m));
   };
+  // Plaid names one kind of account in more than one way ("checking", "cash management"); a
+  // checking and a savings account at one bank are two accounts, whatever their last fours.
+  const family = (subtype: string | null) =>
+    subtype === "cash management" || subtype === "prepaid"
+      ? "checking"
+      : subtype === "money market"
+        ? "savings"
+        : subtype;
+  const kindsAgree = (a: Acct, b: Acct) =>
+    !a.subtype || !b.subtype || family(a.subtype) === family(b.subtype);
   const out: { a: Acct; b: Acct }[] = [];
   const list = [...accounts].sort((x, y) => x.id.localeCompare(y.id));
   list.forEach((a, i) => {
     for (const b of list.slice(i + 1)) {
       if (a.type !== b.type || (a.itemId !== null && a.itemId === b.itemId)) continue;
       const masked = a.mask && b.mask;
-      if (masked ? a.mask !== b.mask || a.subtype === b.subtype : a.subtype !== b.subtype) continue;
+      if (
+        masked
+          ? a.mask !== b.mask || a.subtype === b.subtype || !kindsAgree(a, b)
+          : a.subtype !== b.subtype
+      )
+        continue;
       if (sameBank(a, b)) out.push({ a, b });
     }
   });
