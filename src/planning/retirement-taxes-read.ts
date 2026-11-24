@@ -70,7 +70,11 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   const ssRows = recent.filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description));
   // Social Security is filed as a pension too (INCOME_RETIREMENT_PENSION): never counted twice.
   const pensionRows = recent.filter(
-    (t) => t.pfc === "INCOME_RETIREMENT_PENSION" && !SOCIAL_SECURITY_PAYEE.test(t.description),
+    (t) =>
+      t.pfc === "INCOME_RETIREMENT_PENSION" &&
+      !SOCIAL_SECURITY_PAYEE.test(t.description) &&
+      // An IRA draw filed as a pension is the draw below, not a pension as well.
+      !IRA_DISTRIBUTION.test(t.description),
   );
   const iraRows = recent.filter((t) => IRA_DISTRIBUTION.test(t.description));
   // A year of each, from less than a year of statements (night QA 10-30: three months of a

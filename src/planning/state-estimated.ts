@@ -30,7 +30,8 @@ export function stateEstimated(state: string, yearCents: number, taxYear: number
   where.shares.forEach((percent, i) => {
     if (percent === 0) return;
     const last = where.shares.slice(i + 1).every((p) => p === 0);
-    const cents = last ? left : Math.round((yearCents * percent) / 100);
+    // No payment is more than what's left (a year of 2 cents is not four payments of 1 cent).
+    const cents = last ? left : Math.min(left, Math.round((yearCents * percent) / 100));
     left -= cents;
     payments.push({ due: due[i]!, cents, percent });
   });
