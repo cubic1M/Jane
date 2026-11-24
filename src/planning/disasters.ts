@@ -69,11 +69,18 @@ export function reliefFor(
 // A deadline owned by a state: titled "State income tax return" or with a state's name
 // ("California estimated tax payment"), and not as the IRS's or federal.
 const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
-// The longest names first, so "West Virginia" is never read as "Virginia".
-const BY_NAME_LENGTH = [...US_STATES].sort((a, b) => b.name.length - a.name.length);
+// The state a title names first ("Texas estimated tax payment (Washington County)" is Texas's);
+// where two names start at the same place the longer wins ("West Virginia", not "Virginia").
 const stateIn = (title: string) => {
   const lower = title.toLowerCase();
-  return BY_NAME_LENGTH.find((s) => lower.includes(s.name.toLowerCase())) ?? null;
+  let best: { state: (typeof US_STATES)[number]; at: number } | null = null;
+  for (const s of US_STATES) {
+    const at = lower.indexOf(s.name.toLowerCase());
+    if (at < 0) continue;
+    if (!best || at < best.at || (at === best.at && s.name.length > best.state.name.length))
+      best = { state: s, at };
+  }
+  return best?.state ?? null;
 };
 const SAYS_STATE = /\bstate\b/i;
 

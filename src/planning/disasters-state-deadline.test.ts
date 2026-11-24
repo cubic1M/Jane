@@ -37,3 +37,18 @@ describe("West Virginia is not Virginia", () => {
     expect(deadlineMoves({ ...harris, state: "VA", stateFollows: true }, va)).toHaveLength(1);
   });
 });
+
+describe("a county name in the title", () => {
+  it("doesn't change the state that owns the deadline", () => {
+    const t = [
+      {
+        id: "k",
+        title: "Texas estimated tax payment (Washington County)",
+        dueOn: due,
+        done: false,
+      },
+    ];
+    expect(deadlineMoves({ ...harris, state: "TX", stateFollows: true }, t)).toHaveLength(1);
+    expect(deadlineMoves({ ...harris, state: "WA", stateFollows: true }, t)).toHaveLength(0);
+  });
+});
