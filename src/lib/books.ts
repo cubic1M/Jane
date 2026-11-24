@@ -286,7 +286,9 @@ export async function runBooksCheck(
     });
   }
   // An imported account's data ends where its file did: said plainly, with a fresh import.
-  const imported = accounts.filter((a) => a.source === "csv");
+  // Not a copy left out of the figures (a statement kept beside its link): it can't be an old import.
+  const copies = copiesToLeaveOut(accounts);
+  const imported = accounts.filter((a) => a.source === "csv" && !copies.has(a.id));
   const newest =
     imported.length === 0
       ? []
@@ -328,7 +330,6 @@ export async function runBooksCheck(
   }
   // A copy left out of the figures is left out of transfer matching too: its spare lines would
   // otherwise make a transfer with no other side.
-  const copies = copiesToLeaveOut(accounts);
   const unmatched = unmatchedToSay(
     matchTransfers(txns.filter((t) => !copies.has(t.accountId)).map(asTx)).unmatchedOut,
     accounts,

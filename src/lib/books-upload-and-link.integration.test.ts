@@ -150,9 +150,12 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
   });
   afterAll(async () => {
     // userId is unset when the setup failed: an undefined id would match every person.
-    if (userId) await client.user.deleteMany({ where: { id: userId } });
-    await client.$disconnect();
-    vi.unstubAllEnvs();
+    try {
+      if (userId) await client.user.deleteMany({ where: { id: userId } });
+    } finally {
+      await client.$disconnect();
+      vi.unstubAllEnvs();
+    }
   });
 
   it("counts the linked balance, keeps both copies, and says the statement is left out", async () => {
@@ -170,6 +173,10 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
     );
     // The statement's copy of the transfer isn't matched again: the one transfer has its deposit.
     expect(books.open.map((i) => i.kind)).not.toContain("transfer");
+    // The statement kept beside its link is not also "an old import": its file ended months ago.
+    expect(books.open.filter((i) => i.accountId === uploadId).map((i) => i.kind)).toEqual([
+      "duplicate",
+    ]);
     const { worth } = await loadNetWorthInputs(userId, { client });
     expect(worth.netCents).toBe(485_000 + 200_000);
   });
