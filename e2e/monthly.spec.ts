@@ -11,7 +11,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-// The monthly check-in is part of the month's one report (docs/feature-audit.md, cluster 2):
+// The monthly check-in is part of the one report for the month (docs/feature-audit.md, cluster 2):
 // an old check-in link lands on the same month's report, which has the check-in's figures.
 test("an old check-in link opens the month's report", async ({ context, page, baseURL }) => {
   // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).

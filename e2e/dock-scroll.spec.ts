@@ -63,7 +63,7 @@ test("the wheel scrolls a long card in the dock to its end, and nothing behind i
       .catch(() => 0);
   const before = { page: await page.evaluate(() => window.scrollY), chat: await chatTop() };
 
-  // Over the headline, not the details: the card still scrolls, all the way to its last line,
+  // Over the headline, not the details: the card still scrolls down to its last line,
   // with its buttons in sight the whole way.
   const headline = card.locator("h3").first();
   const box = (await headline.boundingBox())!;
