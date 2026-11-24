@@ -13,7 +13,7 @@ test.afterEach(async () => {
 
 // The monthly check-in is part of the one report for the month (docs/feature-audit.md, cluster 2):
 // an old check-in link lands on the same month's report, which has the check-in's figures.
-test("an old check-in link opens the month's report", async ({ context, page, baseURL }) => {
+test("an old check-in link opens the report for the month", async ({ context, page, baseURL }) => {
   // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
   test.skip(isHiddenPage("/check-in"), "hidden in the read-only beta");
   const user = await signedInUser("user");
