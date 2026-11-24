@@ -86,47 +86,61 @@ export function yearInterest(
   today: string,
   seen: PaymentsSeen | null = null,
 ): YearInterest | null {
+  // Each loan is paced by its own last payment or read day, and a loan with nothing usable of its
+  // own (no figure yet, or too early) is its balance times its rate; the year is those added up.
   // A reading dated after today (a clock set back) counts as read today.
-  const read = loans.flatMap((l) => {
-    if ((l.ytdInterestPaidCents ?? 0) <= 0 || !l.readOn) return [];
+  const parts = loans.map((l) => {
+    if ((l.ytdInterestPaidCents ?? 0) <= 0 || !l.readOn) return null;
     const readOn = l.readOn > today ? today : l.readOn;
-    if (Number(readOn.slice(0, 4)) !== year) return [];
+    if (Number(readOn.slice(0, 4)) !== year) return null;
+    const reported = l.ytdInterestPaidCents!;
     const paid =
       l.lastPaymentDate && l.lastPaymentDate <= readOn && l.lastPaymentDate.startsWith(`${year}-`)
         ? l.lastPaymentDate
         : null;
-    return [{ cents: l.ytdInterestPaidCents!, readOn, paid }];
-  });
-  const reportedCents = read.reduce((t, r) => t + r.cents, 0);
-  const lastPayment = read.reduce((a, r) => (r.paid && r.paid > a ? r.paid : a), "");
-  if (lastPayment) {
-    const { soFar, inYear } = paymentsOf(lastPayment, seen);
-    if (soFar >= LENDER_INTEREST_MIN_PAYMENTS)
+    if (paid) {
+      const { soFar, inYear } = paymentsOf(paid, seen);
+      if (soFar < LENDER_INTEREST_MIN_PAYMENTS) return null;
       return {
-        from: "lender",
-        cents: Math.round((reportedCents * inYear) / soFar),
-        reportedCents,
-        payments: soFar,
-        asOf: lastPayment,
-      };
-  } else {
-    const readOn = read.reduce((a, r) => (r.readOn > a ? r.readOn : a), "");
-    if (readOn && daysInto(readOn) >= LENDER_INTEREST_MIN_DAYS) {
-      const share = yearElapsed(year, readOn);
-      return {
-        from: "lender",
-        cents: share > 0 && share < 1 ? Math.round(reportedCents / share) : reportedCents,
-        reportedCents,
-        payments: null,
-        asOf: readOn,
+        cents: Math.round((reported * inYear) / soFar),
+        reported,
+        payments: soFar as number | null,
+        asOf: paid,
       };
     }
-  }
-  const rated = loans.flatMap((l) =>
+    if (daysInto(readOn) < LENDER_INTEREST_MIN_DAYS) return null;
+    const share = yearElapsed(year, readOn);
+    return {
+      cents: share > 0 && share < 1 ? Math.round(reported / share) : reported,
+      reported,
+      payments: null as number | null,
+      asOf: readOn,
+    };
+  });
+  const rateOf = (l: LenderLoan) =>
     l.aprBps !== null && l.balanceCents !== null
-      ? [{ balance: Math.abs(l.balanceCents), aprBps: l.aprBps }]
-      : [],
-  );
+      ? { balance: Math.abs(l.balanceCents), aprBps: l.aprBps }
+      : null;
+  const used = parts.flatMap((p) => (p ? [p] : []));
+  if (used.length > 0) {
+    const others = loans.flatMap((l, i) => {
+      const r = parts[i] ? null : rateOf(l);
+      return r ? [(r.balance * r.aprBps) / 10_000] : [];
+    });
+    // The latest payment or reading names the date, and its payment count.
+    const latest = used.reduce((a, p) => (p.asOf > a.asOf ? p : a));
+    return {
+      from: "lender",
+      cents: Math.round(used.reduce((t, p) => t + p.cents, 0) + others.reduce((t, c) => t + c, 0)),
+      reportedCents: used.reduce((t, p) => t + p.reported, 0),
+      payments: latest.payments,
+      asOf: latest.asOf,
+    };
+  }
+  const rated = loans.flatMap((l) => {
+    const r = rateOf(l);
+    return r ? [r] : [];
+  });
   if (rated.length === 0) return null;
   const cents = Math.round(rated.reduce((t, l) => t + (l.balance * l.aprBps) / 10_000, 0));
   return {
