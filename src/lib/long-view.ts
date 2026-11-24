@@ -72,6 +72,11 @@ export function cleanOverrides(raw: { low?: unknown; high?: unknown; extra?: unk
   };
 }
 
+// Income less spending, never negative; null when either is unknown (not $0).
+export function monthlyMargin(income: number | null, spending: number | null): number | null {
+  return income === null || spending === null ? null : Math.max(0, income - spending);
+}
+
 export async function loadLongView(
   userId: string,
   overrides: Overrides = {},
@@ -114,7 +119,9 @@ export async function loadLongView(
     .filter((a) => a.type === "depository")
     .reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
 
-  const margin = Math.max(0, (health.monthlyIncomeCents ?? 0) - (health.monthlySpendingCents ?? 0));
+  // A margin needs both: an income with no spending on file isn't a month of saving it all.
+  const marginKnown = health.monthlyIncomeCents !== null && health.monthlySpendingCents !== null;
+  const margin = monthlyMargin(health.monthlyIncomeCents, health.monthlySpendingCents) ?? 0;
   const autoMonthly = (auto?.amountCents ?? 0) * 2;
   const investMonthly =
     autoMonthly > 0 ? autoMonthly : Math.round(margin * DEFAULT_INVEST_SHARE_OF_MARGIN);
@@ -185,7 +192,9 @@ export async function loadLongView(
     },
     {
       label: "Saved each month",
-      value: `${formatWholeDollars(margin)} a month (income less spending); ${formatWholeDollars(investMonthly)} of it invested`,
+      value: marginKnown
+        ? `${formatWholeDollars(margin)} a month (income less spending); ${formatWholeDollars(investMonthly)} of it invested`
+        : `Not counted: I can't see both your income and your spending${investMonthly > 0 ? `; only the ${formatWholeDollars(investMonthly)} a month you set to invest` : ""}`,
       source: "Your last three full months",
     },
   ];

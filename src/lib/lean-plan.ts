@@ -173,7 +173,8 @@ export async function loadLeanPlan(
       monthlyCents: Math.round(s.lastAmountCents * (MONTHLY[s.frequency ?? ""] ?? 1)),
     }));
   const plan = leanPlan({
-    cashCents: health.cashCents ?? 0,
+    // Unknown cash isn't $0: no runway is worked out from it.
+    cashCents: health.cashCents,
     monthlySpendingCents: health.monthlySpendingCents ?? 0,
     forecastBillsCents: forecastBills,
     waitable,

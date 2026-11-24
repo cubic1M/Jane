@@ -8,7 +8,8 @@ import { formatCents } from "@/lib/money";
 // loan and card, and the unemployment guide for the person's state.
 
 export type LeanInput = {
-  cashCents: number;
+  // Null when no balance is known (not $0).
+  cashCents: number | null;
   // The person's average monthly spending.
   monthlySpendingCents: number;
   // Bills the forecast expects over the next 30 days.
@@ -39,7 +40,9 @@ export function leanPlan(input: LeanInput): LeanPlan {
     .slice(0, LEAN_MAX_WAITABLE);
   const waitableCents = waitable.reduce((s, w) => s + w.monthlyCents, 0);
   const runway = (out: number) =>
-    out <= 0 ? null : Math.max(0, Math.round((input.cashCents / out) * 10) / 10);
+    out <= 0 || input.cashCents === null
+      ? null
+      : Math.max(0, Math.round((input.cashCents / out) * 10) / 10);
   return {
     outflowCents: outflow,
     runwayMonths: runway(outflow),
