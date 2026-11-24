@@ -50,7 +50,8 @@ bank is the demo bank, never someone who hasn't opted in.
 | Posted since your last report | Lines a linked bank sent after the last report went (`transactions.created_at` after it, no later than this run) with a date before yesterday, within 7 days. A bank often posts a day or two late. |
 | "Well above a usual day" | The middle of the days with spending in the last 8 weeks; needs 14 such days, 2.5 times and $30 above. |
 | New from Jane | `suggestions` first seen since the last report (all open ones, the first time), as the chat picks them: `forRealAccount` drops advice topics and cards that tell a person what to do with money. Each shows its "% sure". |
-| What changed | Alerts since the last report that weren't already emailed (urgent ones go at once, `src/lib/alerts.ts`), and the changes of `DIGEST_CHANGE_KINDS` (`loadChanges`) that no earlier report listed, each with its "% sure". A change is chosen by its key, remembered on the report that listed it (`daily_reports.change_keys`, for 30 days), not by its event date: one Jane noticed after the last report, because the bank posted its charge late, is dated earlier and is still new. |
+| What changed | Alerts since the last report that weren't already emailed (urgent ones go at once, `src/lib/alerts.ts`), and the changes of `DIGEST_CHANGE_KINDS` (`loadChanges`) that no earlier report listed, each with its "% sure". A change is chosen by its key, remembered on the report that listed it (`daily_reports.change_keys`, for 30 days), not by its event date: one Jane noticed after the last report, because the bank posted its charge late, is dated earlier and is still new. Only the changes the report really lists are remembered: one cut by the list's limit (5 items, alerts first) or left out by the guardrails is still new for the next report. |
+| Waiting for you | How many things wait for an answer in the chat: the Yes items bundled behind the day's open morning briefs (`refs.items`) whose own message is still open, with a link to `/chat`. It stands in for the brief's email (see below). |
 | Coming up | `loadComingUp` / `comingUp`: bills, expected pay and deadlines in the next 5 days. |
 | Where your data ends | `statementsReach` (src/lib/data-reach.ts) and the last bank sync, when the data stops before yesterday. Yesterday is never reported as $0 then. |
 
@@ -73,8 +74,13 @@ through `src/lib/alerts.ts` as before, and once emailed the report doesn't repea
 
 ## One email a day of this kind
 
-When the daily report is on, the chat's morning brief is not also emailed (`notify.ts`; the brief
-stays in the app, and the report carries what it would say: bills due and new suggestions). Push
+While the daily report is reaching someone (it is on, and one went out in the last two days), the
+chat's morning brief is not also emailed (`notify.ts`; the brief stays in the app). The report
+carries what the brief would say: bills due, new suggestions and, because a decision is answered in
+the chat and the report holds only text and a link, how many decisions wait there ("N things are
+waiting for your answer in your chat", linked to `/chat`). So an email-only person is still told
+about a decision waiting. Someone the report hasn't reached (the first day, or outside the 7am to 8pm
+window like Hawaii at the 15:00 UTC run) still gets the brief by email, so they are never silent. Push
 notifications are unchanged.
 
 What a person with a real account and every email on can get, and the most:

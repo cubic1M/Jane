@@ -230,3 +230,60 @@ describe("buildDailyReport", () => {
     ]);
   });
 });
+
+describe("what changed: which changes the report says it listed", () => {
+  const alert = (i: number) => ({ title: `Alert number ${i}`, percent: 80 });
+  const change = (i: number, title = `Bill ${i} went up from $10.00 to $12.00.`) => ({
+    title,
+    percent: 70,
+    changeKey: `bill:${i}`,
+  });
+  const keysOf = (report: ReturnType<typeof buildDailyReport>) =>
+    report.sections.flatMap((s) => s.items).flatMap((i) => (i.key ? [i.key] : []));
+
+  it("carries the key of only the changes that make the list, never one cut by the limit", () => {
+    // Five alerts fill the list: the changes behind them are not in the report, so not listed as such.
+    const full = buildDailyReport(
+      input({ headsUp: [...[1, 2, 3, 4, 5].map(alert), change(1), change(2)] }),
+    );
+    expect(texts(full, "What changed")).toHaveLength(5);
+    expect(keysOf(full)).toEqual([]);
+
+    // Three alerts leave room for two: the third change is cut, and is not remembered.
+    const room = buildDailyReport(
+      input({ headsUp: [...[1, 2, 3].map(alert), change(1), change(2), change(3)] }),
+    );
+    expect(texts(room, "What changed")).toHaveLength(5);
+    expect(keysOf(room)).toEqual(["bill:1", "bill:2"]);
+  });
+
+  it("doesn't remember a change the guardrails left out, and it doesn't use up a place", () => {
+    const report = buildDailyReport(
+      input({
+        headsUp: [
+          ...[1, 2, 3, 4].map(alert),
+          change(1, "Cancel Netflix because it went up."),
+          change(2),
+        ],
+      }),
+    );
+    expect(texts(report, "What changed")).toHaveLength(5);
+    expect(keysOf(report)).toEqual(["bill:2"]);
+  });
+
+  it("says how many decisions wait for an answer in the chat, with a link, and nothing when none", () => {
+    expect(texts(buildDailyReport(input({ waiting: 3 })), "Waiting for you")).toEqual([
+      "3 things are waiting for your answer in your chat.",
+    ]);
+    const one = buildDailyReport(input({ waiting: 1 }));
+    expect(texts(one, "Waiting for you")).toEqual([
+      "1 thing is waiting for your answer in your chat.",
+    ]);
+    expect(one.sections.find((s) => s.heading === "Waiting for you")?.items[0].path).toBe("/chat");
+    // It is news, so the day isn't called quiet.
+    expect(one.busy).toBe(true);
+    expect(buildDailyReport(input({ waiting: 0 })).sections.map((s) => s.heading)).not.toContain(
+      "Waiting for you",
+    );
+  });
+});

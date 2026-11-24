@@ -7,6 +7,7 @@ import {
   DAILY_REPORT_MAX_HEADS_UP,
   DAILY_REPORT_MONTHS,
 } from "@/config/daily-report";
+import { CHAT_NOTIFY_MAX_AGE_HOURS } from "@/config/chat-notify";
 import { DIGEST_CHANGE_KINDS } from "@/config/digest";
 import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import { addDays } from "@/detection/units";
@@ -20,13 +21,14 @@ import { loadChanges } from "@/lib/changes";
 import { loadComingUp } from "@/lib/coming-up";
 import { statementsReach } from "@/lib/data-reach";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { loadRecipients } from "@/lib/digest/load-recipients";
 import type { NoDigestReason } from "@/lib/digest/recipients";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { validTimezone } from "@/lib/digest/week";
 import { sendEmail } from "@/lib/email";
+import { parseRefs } from "@/lib/jane-agent/types";
 import { log } from "@/lib/log";
 import type { OnlyPeople } from "@/lib/only-people";
 import { forRealAccount } from "@/lib/suggestions";
@@ -37,7 +39,8 @@ import { renderDailyReport } from "./render";
 import { postedSince, spendingDay } from "./spending-day";
 import { inReportWindow } from "./window";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 // Runs with the daily cron (/api/cron/digest). One report per person per local day, to people who
 // turned it on in /settings (off for everyone until then): never to trial people or demo-bank-only
@@ -90,6 +93,26 @@ async function recorded(what: string, userId: string, write: () => Promise<unkno
   }
 }
 
+// How many things wait for the person's answer in the chat: the Yes items bundled behind the day's
+// open morning briefs (refs.items, src/lib/jane-agent/agenda.ts), those still open. The brief's email
+// no longer goes once the daily report does (src/lib/jane-agent/notify.ts), and the report can't hold
+// the answers (it has text and a link), so it says how many wait and where.
+async function waitingForAnswer(db: ScopedDb, now: Date): Promise<number> {
+  const briefs = await db.janeMessages.findMany({
+    where: {
+      kind: "brief",
+      status: "open",
+      createdAt: { gt: new Date(now.getTime() - CHAT_NOTIFY_MAX_AGE_HOURS * HOUR_MS), lte: now },
+    },
+    select: { refs: true },
+  });
+  const keys = [
+    ...new Set(briefs.flatMap((b) => (parseRefs(b.refs).items ?? []).map((i) => i.dedupeKey))),
+  ];
+  if (keys.length === 0) return 0;
+  return db.janeMessages.count({ where: { dedupeKey: { in: keys }, status: "open" } });
+}
+
 // The facts for one person's report, read by the functions the pages use (docs/daily-report.md).
 // `lastSentAt` is the run clock of the last report: what arrived after it, and no later than `now`,
 // is this report's, so a suggestion, an alert or a posted line is in one report and not two.
@@ -98,7 +121,7 @@ async function reportInputFor(
   timezone: string | null,
   lastSentAt: Date | null,
   { client, now }: { client: PrismaClient; now: Date },
-): Promise<{ input: DailyReportInput; changeKeys: string[] }> {
+): Promise<{ input: DailyReportInput }> {
   const db = scopedFor(userId, client);
   const coming = await loadComingUp(userId, { client, now, days: DAILY_REPORT_AHEAD_DAYS });
   const today = coming.asOf;
@@ -200,8 +223,6 @@ async function reportInputFor(
   const mayShow = suggestions.filter(forRealAccount);
 
   return {
-    // What this report lists of the changes, remembered on its row so no later report lists it again.
-    changeKeys: changes.map((c) => c.key),
     input: {
       today,
       spending: spendingDay(transactions, yesterday),
@@ -219,8 +240,13 @@ async function reportInputFor(
       suggestionsTotal: mayShow.length,
       headsUp: [
         ...alerts.map((a) => ({ title: a.title, percent: a.confidencePercent })),
-        ...changes.map((c) => ({ title: c.title, percent: c.confidencePercent })),
+        ...changes.map((c) => ({
+          title: c.title,
+          percent: c.confidencePercent,
+          changeKey: c.key,
+        })),
       ],
+      waiting: await waitingForAnswer(db, now),
       ahead: [...rows, ...pay]
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, DAILY_REPORT_AHEAD_LIMIT),
@@ -303,7 +329,9 @@ export async function runDailyReports({
       try {
         const built = await reportInputFor(user.id, user.timezone, lastSentAt, { client, now });
         report = buildDailyReport(built.input);
-        changeKeys = built.changeKeys;
+        // Only the changes the report really lists are remembered as listed: one cut by the limit, or
+        // left out by the guardrails, is still new for the next report.
+        changeKeys = report.sections.flatMap((s) => s.items).flatMap((i) => (i.key ? [i.key] : []));
         await send({
           to: user.email,
           ...renderDailyReport(report, links),

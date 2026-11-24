@@ -38,13 +38,18 @@ export type DailyReportInput = {
   // Open suggestions first seen since the last report, the best first, and how many there were.
   suggestions: DailySuggestion[];
   suggestionsTotal: number;
-  // Alerts raised and changes noticed since the last report, with how sure Jane is.
-  headsUp: { title: string; percent: number | null }[];
+  // Alerts raised and changes noticed since the last report, with how sure Jane is. A change has the
+  // key it is remembered by (src/insights/changes.ts).
+  headsUp: { title: string; percent: number | null; changeKey?: string }[];
+  // How many things wait for the person's answer in the chat (the morning brief's decisions, which the
+  // brief's email no longer carries once the daily report is on).
+  waiting?: number;
   // Bills, expected pay and deadlines in the next few days, soonest first.
   ahead: { label: string; date: string; amountCents: number | null; daysLeft: number }[];
 };
 
-export type ReportItem = { text: string; path?: string };
+// `key` is the change an item says, so the report that lists it can remember it (changes.ts).
+export type ReportItem = { text: string; path?: string; key?: string };
 export type ReportSection = { heading: string; items: ReportItem[] };
 export type DailyReport = {
   subject: string;
@@ -178,13 +183,29 @@ function suggestionsSection(input: DailyReportInput): ReportSection | null {
   return { heading: "New from Jane", items };
 }
 
+// Checked first, then the first few kept (alerts come before changes in the input), so a sentence
+// left out doesn't use up a place. A change that makes the list carries its key out in the item: only
+// the changes the person actually gets are remembered as listed, so one cut by the limit or left out
+// by the guardrails shows up in a later report.
 function headsUpSection(input: DailyReportInput): ReportSection | null {
-  const items: ReportItem[] = input.headsUp.slice(0, DAILY_REPORT_MAX_HEADS_UP).flatMap((h) => {
+  const passing: ReportItem[] = input.headsUp.flatMap((h) => {
     const text = `${noStop(h.title)}${sure(h.percent)}`;
     const ok = checked(text, ownFigures(text, []));
-    return ok === null ? [] : [{ text: ok, path: "/jane" }];
+    return ok === null
+      ? []
+      : [{ text: ok, path: "/jane", ...(h.changeKey ? { key: h.changeKey } : {}) }];
   });
-  return { heading: "What changed", items };
+  return { heading: "What changed", items: passing.slice(0, DAILY_REPORT_MAX_HEADS_UP) };
+}
+
+// What the chat's morning brief would have said about decisions: how many things wait for an answer
+// in the chat. The report carries the count and one link; the answers are given in the chat.
+function waitingSection(input: DailyReportInput): ReportSection | null {
+  const n = input.waiting ?? 0;
+  if (n <= 0) return null;
+  const text = `${plural(n, "thing is", "things are")} waiting for your answer in your chat.`;
+  const ok = checked(text, []);
+  return ok === null ? null : { heading: "Waiting for you", items: [{ text: ok, path: "/chat" }] };
 }
 
 function aheadSection(input: DailyReportInput): ReportSection | null {
@@ -199,6 +220,7 @@ function aheadSection(input: DailyReportInput): ReportSection | null {
 
 export function buildDailyReport(input: DailyReportInput): DailyReport {
   const news = [
+    waitingSection(input),
     postedSection(input),
     suggestionsSection(input),
     headsUpSection(input),

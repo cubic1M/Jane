@@ -433,6 +433,52 @@ describe.runIf(url)("runDailyReports against a real database", () => {
     expect(send.mock.calls[0][0].text).not.toContain("Streamly went up");
   });
 
+  // The list is short: with five alerts the changes behind them are cut. A report remembers as listed
+  // only the changes it really says, so the cut one is in the next report, not lost.
+  it("doesn't remember a change the list cut, so the next report says it", async () => {
+    const { bank, line } = await bankPerson("cut");
+    const only = { userIds: [bank.id] };
+    const music = { pfcPrimary: "ENTERTAINMENT", pfcDetailed: "ENTERTAINMENT_MUSIC_AND_AUDIO" };
+    for (const month of ["06", "07", "08", "09", "10", "11"]) {
+      const cents = month === "11" ? 1_499 : 999;
+      await line("Streamly", `2026-${month}-20`, cents, `2026-${month}-20T20:00:00Z`, music);
+    }
+    // Five alerts raised since the last report fill the "What changed" list.
+    for (let i = 1; i <= 5; i += 1) {
+      await client.alert.create({
+        data: {
+          userId: bank.id,
+          type: "large_charge",
+          key: `cut-${i}-${suffix}`,
+          title: `Alert number ${i}`,
+          body: "b",
+          confidencePercent: 80,
+          createdAt: new Date(MORNING.getTime() - i * HOUR),
+        },
+      });
+    }
+
+    await run(MORNING, only);
+    const first = send.mock.calls[0][0].text as string;
+    expect(first).toContain("Alert number 1 (80% sure)");
+    expect(first).not.toContain("Streamly went up");
+    expect(await client.dailyReport.findMany({ where: { userId: bank.id } })).toMatchObject([
+      { changeKeys: [] },
+    ]);
+
+    // The alerts are the first report's now; the change, never said, is the second's.
+    send.mockReset();
+    await run(new Date(MORNING.getTime() + 24 * HOUR), only);
+    const second = send.mock.calls[0][0].text as string;
+    expect(second).not.toContain("Alert number");
+    expect(second).toMatch(/Streamly went up from \$9\.99 to \$14\.99 \(\d+% sure\)/);
+
+    // And then it is not said again.
+    send.mockReset();
+    await run(new Date(MORNING.getTime() + 48 * HOUR), only);
+    expect(send.mock.calls[0][0].text).not.toContain("Streamly went up");
+  });
+
   // The bank posts a charge a day or two after its date. A line that arrives after one report with
   // an earlier date is listed in the next, once: never in the report it arrived before, never in two.
   it("lists a line the bank posts late in the next report only, and never in two", async () => {
