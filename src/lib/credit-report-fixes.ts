@@ -33,7 +33,8 @@ type SentLetter = {
   itemName: string;
   status: string;
   sentOn: string;
-  deadlineOn: string;
+  // The bureaus' answer date; null for a validation letter (no deadline is set for a collector).
+  deadlineOn: string | null;
   resolvedOn: string | null;
   removed: boolean;
   outcome: string | null;
@@ -44,7 +45,8 @@ type ReportFix = {
   // Gone from the report because a dispute removed or corrected it.
   fixed: boolean;
   letters: (Omit<FixItem, "answerByIfSentOn"> & {
-    answerByIfSentToday: string;
+    // Null for a validation letter: the law gives the collector no day to answer by.
+    answerByIfSentToday: string | null;
     sent: SentLetter | null;
   })[];
 };
@@ -72,7 +74,8 @@ const view = (r: {
   itemName: r.itemName,
   status: r.status,
   sentOn: isoDay(r.sentAt),
-  deadlineOn: isoDay(r.deadlineOn),
+  // A validation letter's stored date is the day it was sent, a placeholder: no deadline exists.
+  deadlineOn: r.kind === "validation" ? null : isoDay(r.deadlineOn),
   resolvedOn: r.resolvedAt ? isoDay(r.resolvedAt) : null,
   removed: r.removed,
   outcome: r.outcome,
@@ -118,7 +121,7 @@ export async function sendReportLetter(
   userId: string,
   letterId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ letter: FixItem["kind"]; item: ReportItem; deadlineOn: string }> {
+): Promise<{ letter: FixItem["kind"]; item: ReportItem; deadlineOn: string | null }> {
   const data = await loadReportFixes(userId, { client, now });
   if (!data.available)
     throw new CreditFixError("Fixing your credit report isn't available for your accounts yet.");
@@ -132,25 +135,28 @@ export async function sendReportLetter(
     );
   }
   const deadlineOn = found.answerByIfSentToday;
-  const title = `${found.kind === "validation" ? "Collector's validation due" : "Bureaus' answer due"}: ${found.item.creditor}`;
-  await addDeadline(
-    userId,
-    {
-      title,
-      dueOn: deadlineOn,
-      kind: "other",
-      note:
-        found.kind === "validation"
-          ? "Under the Fair Debt Collection Practices Act, collection must stop until they verify the debt."
-          : "Under the Fair Credit Reporting Act, the bureaus must investigate within 30 days.",
-    },
-    { client, now },
-  );
-  const deadline = await scopedFor(userId, client).deadlines.findFirst({
-    where: { title, dueOn: new Date(`${deadlineOn}T00:00:00Z`) },
-    select: { id: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const title = `Bureaus' answer due: ${found.item.creditor}`;
+  // Only the bureaus' answer has a date the law gives; nothing goes on the deadlines list for a
+  // collector's reply.
+  let deadlineId: string | null = null;
+  if (deadlineOn !== null) {
+    await addDeadline(
+      userId,
+      {
+        title,
+        dueOn: deadlineOn,
+        kind: "other",
+        note: "Under the Fair Credit Reporting Act, the bureaus must investigate within 30 days.",
+      },
+      { client, now },
+    );
+    const deadline = await scopedFor(userId, client).deadlines.findFirst({
+      where: { title, dueOn: new Date(`${deadlineOn}T00:00:00Z`) },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+    deadlineId = deadline?.id ?? null;
+  }
   const row = await scopedFor(userId, client).creditDisputes.create({
     data: {
       userId,
@@ -164,8 +170,9 @@ export async function sendReportLetter(
       status: "sent",
       partner: CREDIT_FIX_PARTNER,
       sentAt: now,
-      deadlineOn: new Date(`${deadlineOn}T00:00:00Z`),
-      deadlineId: deadline?.id ?? null,
+      // The column can't be empty: a validation letter stores the day it was sent, read as no date.
+      deadlineOn: new Date(`${deadlineOn ?? isoDay(now)}T00:00:00Z`),
+      deadlineId,
     },
     select: { id: true },
   });

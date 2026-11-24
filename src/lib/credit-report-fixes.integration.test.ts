@@ -81,7 +81,8 @@ describe.runIf(url)(
       expect(validation.body).toContain("Fair Debt Collection Practices Act");
       expect(validation.body).toContain("$742.00");
       expect(validation.body.endsWith("Sincerely,\nSam Rivera")).toBe(true);
-      expect(validation.answerByIfSentToday).toBe("2026-11-17");
+      // No answer date for a collector: the 30 days are the person's, to ask.
+      expect(validation.answerByIfSentToday).toBeNull();
       const dispute = data.fixes.find((f) => f.item.kind === "error")!.letters[0];
       expect(dispute.body).toContain("Fair Credit Reporting Act");
       expect(dispute.answerByIfSentToday).toBe("2026-11-17");
@@ -103,7 +104,7 @@ describe.runIf(url)(
       expect(await client.creditDispute.count({ where: { userId: id } })).toBe(0);
     });
 
-    it("sends a letter on a tap, once, audited, with the answer date on the deadlines list", async () => {
+    it("sends a letter on a tap, once, audited, with no collector deadline on the deadlines list", async () => {
       const id = await demoPerson("fix-send");
       const { reply } = await sendToJane(id, "there's a collection on my credit report", {
         client,
@@ -112,9 +113,7 @@ describe.runIf(url)(
       expect(reply.body).toMatch(/^I found 2 things on your credit report that may need fixing\./);
       expect(parseActions(reply.actions)[0].id).toBe("creditfix.send");
       const tapped = await takeChatAction(id, reply.id, "creditfix.send", { client, now: later() });
-      expect(tapped.message.refs.note).toMatch(
-        /^Sent\. The collector must answer by Nov 1\d, 2026; it's on your deadlines/,
-      );
+      expect(tapped.message.refs.note).toBe("Sent. I'll tell you what the collector says.");
       const rows = await client.creditDispute.findMany({ where: { userId: id } });
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
@@ -123,11 +122,9 @@ describe.runIf(url)(
         status: "sent",
         partner: "demo",
       });
-      const deadline = await client.deadline.findFirstOrThrow({ where: { userId: id } });
-      expect(deadline.title).toBe("Collector's validation due: Northstar Recovery");
-      expect(deadline.dueOn.toISOString().slice(0, 10)).toBe(
-        rows[0].deadlineOn.toISOString().slice(0, 10),
-      );
+      // A validation letter puts nothing on the deadlines list: the law gives no day to answer by.
+      expect(await client.deadline.count({ where: { userId: id } })).toBe(0);
+      expect(rows[0].deadlineId).toBeNull();
       expect(vi.mocked(logAudit)).toHaveBeenCalledWith(
         { type: "user", id },
         "credit_dispute_sent",

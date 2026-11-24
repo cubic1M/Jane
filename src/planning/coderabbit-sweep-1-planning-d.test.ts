@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { fitPersonFrom } from "./fit-person";
+import { billPlan } from "./bill-pay";
 import { payoffPlan } from "./debt";
 import { reviewReason } from "./debt-review";
 import { overdraft, savingsOrDebt, type DecisionInput } from "./debt-decisions";
@@ -127,5 +128,29 @@ describe("fit person: loan payments over the months the data covers", () => {
     } as ProfileInput;
     expect(buildProfile(d).months).toBe(1);
     expect(fitPersonFrom(d).debtPaymentsCents).toBe(90_000);
+  });
+});
+
+describe("a bill due today is never scheduled after its due date", () => {
+  const bill = {
+    accountId: "c",
+    name: "Card",
+    kind: "card",
+    dueOn: "2026-11-24",
+    minimumCents: 5_000,
+    balanceCents: 20_000,
+    autopay: null,
+  };
+  const series = ["2026-11-24", "2026-11-25", "2026-12-03", "2026-12-05"].map((date) => ({
+    date,
+    balanceCents: 500_000,
+  }));
+  it("says late for a bill due today rather than a run date after it", () => {
+    expect(billPlan(bill, series, "2026-11-24").status).toBe("late");
+  });
+  it("still schedules a bill due after the earliest run date, on or before it", () => {
+    const plan = billPlan({ ...bill, dueOn: "2026-12-05" }, series, "2026-11-24");
+    expect(plan.status).toBe("pay");
+    if (plan.status === "pay") expect(plan.runOn <= "2026-12-05").toBe(true);
   });
 });
