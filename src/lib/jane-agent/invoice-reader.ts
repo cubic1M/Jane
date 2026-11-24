@@ -11,7 +11,9 @@ import type { ChargeExplanation } from "./charge-explain";
 // What it reads: text with one line item to a line, ending in its amount ("Pro plan, 1 seat  $20.00",
 // "Bandwidth, 150 GB  $60.00", "Credit  -$5.00" or "($5.00)"), a total ("Total", "Amount due", "Amount
 // paid") and an optional subtotal. What it can't: a PDF or a picture (copy its text out and paste
-// that), a layout that puts the amount on the line below its words, and amounts without cents.
+// that), a layout that puts the amount on the line below its words, and amounts without cents. A
+// quantity column is taken off a line's words only where the layout marks it (a column gap, a pipe,
+// "x 3"): "Office 365" and "Plan 2" keep their numbers.
 
 export type InvoiceLine = { description: string; cents: number };
 
@@ -22,26 +24,60 @@ export type Invoice = {
   linesCents: number;
 };
 
-// An amount with its cents, a dollar sign or not, a minus or brackets for a credit. Not a unit price
-// ("$0.15/GB", "$0.15 per GB"), and never part of a longer number ("$0.015/GB" isn't "$0.01").
+// An amount with its cents, a dollar sign or not, a minus (hyphen, minus sign or en dash) or brackets
+// for a credit. Not a unit price ("$0.15/GB", "$0.15 per GB"), and never part of a longer number
+// ("$0.015/GB" isn't "$0.01").
 const AMOUNT =
-  /(?<![\d.,])(-|−)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/g;
-const TOTAL =
-  /^(?:invoice\s+)?(?:grand\s+)?(?:total(?:\s+(?:due|amount|paid))?|amount\s+(?:due|paid)|balance\s+due|paid)\b/i;
-const SUBTOTAL = /^subtotal\b/i;
-// "Total excluding tax", "Total before VAT", "Pre-tax total": a total of the lines, not the one charged.
-const PRETAX = /\b(?:excl(?:uding|\.)?|before|pre-?tax|without|ex\.?\s*(?:tax|vat|gst))\b/i;
+  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/g;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
+// What a line's words are, however it is cased or punctuated: "Pre-tax Total:" is "pre tax total".
+const wordsOf = (description: string) =>
+  description
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+// The lines that sum up the others, read from their whole words, in any position and case:
+//  - a subtotal ("Subtotal", "Items sub-total", "Pre-tax subtotal");
+//  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"):
+//    a sum of the lines, never the one charged;
+//  - the total charged: "Total", "Grand total", "Order total", "Total due", "Total (USD)",
+//    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
+//    whole forms: "Total Protection" and "Total Wine" are things sold.
+const SUBTOTAL = /\bsub ?total\b/;
+const SUMS = /\b(?:total|amount|balance|sum)\b/;
+const BEFORE_TAX = /\b(?:excl|excluding|before|pre ?tax|without|net|ex (?:tax|vat|gst))\b/;
+const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
+const TOTAL_CHARGED = new RegExp(
+  `^(?:(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|paid|payable|charged|owed|amount|price|${CURRENCY}))*` +
+    `|(?:total\\s+)?(?:amount|balance)\\s+(?:due|paid|payable|owed)(?:\\s+${CURRENCY})?` +
+    `|paid)` +
+    `(?:\\s+incl(?:uding)?\\s+(?:tax|vat|gst))?(?:\\s+(?:on|by|for|before|until)\\s+.+)?$`,
+);
+// A line that takes money off ("Discount", "Promo code", "Credit applied"; not "Credit card fee").
+const TAKES_OFF =
+  /\b(?:discount|coupon|promo|promotion|promotional|rebate|refund|credit(?! card))\b/;
+
 const toCents = (digits: string) => Math.round(Number(digits.replace(/,/g, "")) * 100);
-const tidy = (text: string) =>
-  text
+
+// A line's words: what comes before its first price, without the quantity column and the dots that
+// lead to the price. A number that is part of the name stays ("Office 365", "Plan 2"): a quantity is
+// taken off only where the layout marks it, by a column gap (a tab, two spaces, a pipe) or "x 3".
+const QUANTITY = [/\s+[x×]\s*\d+(?:\.\d+)?$/i, /(?:\t|\s{2,}|\s*\|\s*)\d+(?:\.\d+)?$/];
+function descriptionOf(beforePrice: string): string {
+  let text = beforePrice
+    .replace(/\s*\.{2,}\s*$/, "")
+    .replace(/[\s|:·]+$/, "")
+    .replace(/\s+[x×]$/i, "");
+  for (const quantity of QUANTITY) text = text.replace(quantity, "");
+  return text
     .replace(/^[\s|•·*\-–—>]+/, "")
-    .replace(/[\s|:·.\-–—]+$/, "")
-    .replace(/\s+[x×]$/i, "")
+    .replace(/[\s|:·\-–—]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
 
 export function readInvoice(text: string): Invoice | null {
   const lines: InvoiceLine[] = [];
@@ -50,23 +86,36 @@ export function readInvoice(text: string): Invoice | null {
     const found = [...raw.matchAll(AMOUNT)];
     const last = found[found.length - 1];
     if (!last) continue;
-    // Its words are what comes before the first price on the line, a unit price included, less the
-    // quantity column.
     const firstPrice = FIRST_PRICE.exec(raw)?.index ?? found[0]!.index;
-    const description = tidy(raw.slice(0, firstPrice)).replace(/(?:\s+\d+)+$/, "");
+    const description = descriptionOf(raw.slice(0, firstPrice));
     if (!description) continue;
-    const credit = Boolean(last[1] || (last[2] && last[4]));
+    // A minus or brackets, or "CR" or a dash after it.
+    const after = raw.slice(last.index + last[0].length);
+    const credit = Boolean(last[1] || (last[2] && last[4]) || /^\s*(?:cr\b|-\s*$)/i.test(after));
     const cents = (credit ? -1 : 1) * toCents(last[3]!);
-    if (SUBTOTAL.test(description) || (TOTAL.test(description) && PRETAX.test(description)))
-      continue;
-    if (TOTAL.test(description)) {
+    const words = wordsOf(description);
+    if (SUBTOTAL.test(words) || (SUMS.test(words) && BEFORE_TAX.test(words))) continue;
+    if (TOTAL_CHARGED.test(words)) {
       totalCents ??= Math.abs(cents);
       continue;
     }
     lines.push({ description, cents });
   }
   if (lines.length === 0) return null;
-  return { lines, totalCents, linesCents: lines.reduce((sum, l) => sum + l.cents, 0) };
+  const signed = signedToTotal(lines, totalCents);
+  return { lines: signed, totalCents, linesCents: sumOf(signed) };
+}
+
+const sumOf = (lines: InvoiceLine[]) => lines.reduce((total, l) => total + l.cents, 0);
+
+// A "Discount $5.00" with no minus takes money off all the same: read it so, but only when that makes
+// the lines add up to the total the invoice states.
+function signedToTotal(lines: InvoiceLine[], totalCents: number | null): InvoiceLine[] {
+  if (totalCents === null || sumOf(lines) === totalCents) return lines;
+  const flipped = lines.map((l) =>
+    l.cents > 0 && TAKES_OFF.test(wordsOf(l.description)) ? { ...l, cents: -l.cents } : l,
+  );
+  return sumOf(flipped) === totalCents ? flipped : lines;
 }
 
 export type InvoiceReading = {

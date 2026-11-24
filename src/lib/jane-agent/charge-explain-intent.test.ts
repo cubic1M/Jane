@@ -47,8 +47,27 @@ describe("charge_explain", () => {
     });
   });
 
-  it("keeps real APR questions with the interest handling", () => {
-    for (const q of ["why is my apr so high", "why did Chase charge me a high apr"]) {
+  it("reads 'Apr. 20' and 'April 20' as dates too", () => {
+    for (const q of [
+      "why did I pay $100 to Vercel on Apr. 20",
+      "why did I pay $100 to Vercel on apr 20th",
+      "why did I pay $100 to Vercel on April 20",
+    ]) {
+      expect(parseIntent(q, AS_OF), q).toMatchObject({
+        kind: "charge_explain",
+        target: "vercel",
+        day: "2026-04-20",
+      });
+    }
+  });
+
+  it("keeps real APR questions with the interest handling, a rate with a number too", () => {
+    for (const q of [
+      "why is my apr so high",
+      "why did Chase charge me a high apr",
+      "why did Chase charge me an apr 20%",
+      "why did I pay $100 to Chase at an apr of 24%",
+    ]) {
       expect(parseIntent(q, AS_OF).kind, q).not.toBe("charge_explain");
     }
   });
