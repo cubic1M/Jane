@@ -93,6 +93,21 @@ describe.runIf(url)(
       const issue = books.open.find((i) => i.kind === "maybe_same")!;
       expect(issue.words).toBe(words);
       expect(booksFix({ ...issue } as never)).toEqual({ label: "Remove one", href: "/import" });
+      expect(said?.short).toBe(
+        "Wells Fargo checking (uploaded) and Everyday Checking (linked) may be the same account; net worth counts both.",
+      );
+    });
+
+    it("says nothing when the upload has no balance: only the linked one is counted", async () => {
+      await client.account.updateMany({
+        where: { userId, name: "Wells Fargo checking" },
+        data: { currentBalanceCents: null },
+      });
+      const { worth } = await loadNetWorthInputs(userId!, { client });
+      expect(worth.netCents).toBe(8_000_000 + 100_000);
+      expect(await loadMaybeSame(userId!, { client })).toBeNull();
+      const books = await runBooksCheck(userId!, { client, now: NOW });
+      expect(books.open.map((i) => i.kind)).not.toContain("maybe_same");
     });
   },
 );

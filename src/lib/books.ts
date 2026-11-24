@@ -184,6 +184,7 @@ export async function runBooksCheck(
         type: true,
         subtype: true,
         source: true,
+        currentBalanceCents: true,
       },
     }),
     db.plaidItems.findMany({
@@ -333,7 +334,7 @@ export async function runBooksCheck(
   // Accounts that may be one account counted twice, which nothing can prove: said, never merged.
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
   for (const { a, b } of maybeSameAccounts(
-    accounts.filter((x) => !copies.has(x.id)),
+    accounts.filter((x) => !copies.has(x.id) && x.currentBalanceCents !== null),
     (x) => (x.itemId ? (bank.get(x.itemId) ?? null) : null),
   )) {
     found.push({

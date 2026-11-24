@@ -136,6 +136,14 @@ export const maybeSamePair = ({ a, b }: MaybeSame) =>
 // Where one of them is removed: an uploaded account on the import page, links in Settings.
 export const maybeSameHref = (pairs: readonly MaybeSame[]) =>
   pairs.some(({ a, b }) => a.itemId === null || b.itemId === null) ? "/import" : "/settings#banks";
+// The same in one sentence, for a line with room for one (Money's net worth).
+export function maybeSameShort(pairs: readonly MaybeSame[]): string | null {
+  const [only, ...more] = pairs;
+  if (!only) return null;
+  if (more.length === 0)
+    return `${only.a.name} (${how(only.a)}) and ${only.b.name} (${how(only.b)}) may be the same account; net worth counts both.`;
+  return `${pairs.length} pairs of your accounts may be the same account; net worth counts both of each.`;
+}
 export function maybeSameWords(pairs: readonly MaybeSame[]): string | null {
   if (pairs.length === 0) return null;
   if (pairs.length <= 2) return pairs.map(maybeSamePair).join(" ");

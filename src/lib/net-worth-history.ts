@@ -7,6 +7,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
   maybeSameHref,
+  maybeSameShort,
   maybeSameWords,
   netWorth,
   netWorthCovers,
@@ -135,17 +136,21 @@ export async function loadNetWorthCovers(
 export async function loadMaybeSame(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
-): Promise<{ words: string; href: string } | null> {
+): Promise<{ words: string; short: string; href: string } | null> {
   const [{ accounts }, items] = await Promise.all([
     loadNetWorthInputs(userId, { client }),
     scopedFor(userId, client).plaidItems.findMany({ select: { id: true, institutionName: true } }),
   ]);
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-  const pairs = maybeSameAccounts(accounts, (a) =>
-    a.itemId ? (bank.get(a.itemId) ?? null) : null,
+  // Only accounts whose balance is counted: net worth leaves out one with no balance, so it isn't
+  // counted twice and there is nothing to say.
+  const pairs = maybeSameAccounts(
+    accounts.filter((a) => a.currentBalanceCents !== null),
+    (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
   );
   const words = maybeSameWords(pairs);
-  return words ? { words, href: maybeSameHref(pairs) } : null;
+  const short = maybeSameShort(pairs);
+  return words && short ? { words, short, href: maybeSameHref(pairs) } : null;
 }
 
 // The accounts net worth can't count yet for want of a balance (src/insights/net-worth.ts
