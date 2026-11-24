@@ -37,19 +37,33 @@ import {
 
 type Series = { description: string; pfc: string | null; txs: ProfileTx[] };
 
+// The middle gap, in days, between a series' charges on different days (0 with fewer than two).
+function medianGapDays(dates: string[]): number {
+  const days = [...new Set(dates)].sort().map((d) => Date.parse(`${d}T00:00:00Z`) / 86_400_000);
+  const gaps = days.slice(1).map((d, i) => d - days[i]!);
+  if (gaps.length === 0) return 0;
+  const sorted = [...gaps].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)]!;
+}
+
 // Charges that repeat: the same description in at least `regularMonthsMin` months.
-function regular(data: ProfileInput): Series[] {
+export function regular(data: ProfileInput): Series[] {
   const by = new Map<string, ProfileTx[]>();
   for (const t of tx(data, (x) => x.amountCents > 0)) {
     by.set(t.description, [...(by.get(t.description) ?? []), t]);
   }
-  return [...by.entries()]
-    .filter(([, list]) => new Set(list.map((t) => t.date.slice(0, 7))).size >= S.regularMonthsMin)
-    .map(([description, list]) => ({
-      description,
-      pfc: list[0].pfc,
-      txs: [...list].sort((a, b) => a.date.localeCompare(b.date)),
-    }));
+  return (
+    [...by.entries()]
+      .filter(([, list]) => new Set(list.map((t) => t.date.slice(0, 7))).size >= S.regularMonthsMin)
+      // A monthly bill, not a quarterly one: charges in three separate months can be January,
+      // April and July. The usual gap between charges must be about a month.
+      .filter(([, list]) => medianGapDays(list.map((t) => t.date)) <= 45)
+      .map(([description, list]) => ({
+        description,
+        pfc: list[0].pfc,
+        txs: [...list].sort((a, b) => a.date.localeCompare(b.date)),
+      }))
+  );
 }
 
 const median = (xs: number[]) => {
