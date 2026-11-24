@@ -1,6 +1,7 @@
 import type { ActionType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { ConnectorRefused, planAction, type PlannedAction } from "./pipeline";
+import { scopedFor } from "@/lib/db-scoped";
+import { cancelAction, ConnectorRefused, planAction, type PlannedAction } from "./pipeline";
 import type { ActionDetails } from "./types";
 
 // A card's act, when a connector can do it, goes through the one planner (./pipeline.ts planAction):
@@ -71,4 +72,26 @@ export async function planForCard(
     }
   }
   return null;
+}
+
+// Takes back a finding's plan while nothing has reached a partner (still waiting for the person's
+// yes, or in its hold), and frees its key so a later yes plans afresh. True when it did. Used when
+// the card's yes is reverted, and when a yes lost the claim on its finding to another answer.
+export async function cancelCardPlan(
+  userId: string,
+  findingId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<boolean> {
+  const key = `finding:${findingId}`;
+  const db = scopedFor(userId, client);
+  const plan = await db.connectorActions.findFirst({
+    where: { idempotencyKey: key, status: { in: ["awaiting_yes", "approved"] } },
+    select: { id: true },
+  });
+  if (!plan || !(await cancelAction(userId, plan.id, { client, now }))) return false;
+  await db.connectorActions.updateMany({
+    where: { id: plan.id },
+    data: { idempotencyKey: `${key}:cancelled:${plan.id}` },
+  });
+  return true;
 }

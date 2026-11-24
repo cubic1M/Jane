@@ -228,7 +228,13 @@ export function DecisionButtons({
                   const sent = sending.current;
                   if (!sent) return;
                   e.preventDefault();
-                  void sent.then(() => router.push(shownHref("/actions")));
+                  void sent.then((answer) =>
+                    router.push(
+                      "connectorActionId" in answer && answer.connectorActionId
+                        ? "/settings/connections#actions"
+                        : shownHref("/actions"),
+                    ),
+                  );
                 }}
                 className="font-medium underline"
               >
