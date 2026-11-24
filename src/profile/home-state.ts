@@ -37,8 +37,12 @@ export function stateMove(
   txs: readonly { date: string; amountCents: number; description: string }[],
 ): { from: string; to: string; month: string } | null {
   const byMonth = new Map<string, { amountCents: number; description: string }[]>();
-  for (const t of txs)
-    byMonth.set(t.date.slice(0, 7), [...(byMonth.get(t.date.slice(0, 7)) ?? []), t]);
+  for (const t of txs) {
+    const month = t.date.slice(0, 7);
+    const rows = byMonth.get(month);
+    if (rows) rows.push(t);
+    else byMonth.set(month, [t]);
+  }
   const months = [...byMonth.keys()]
     .sort()
     .map((month) => {

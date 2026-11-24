@@ -6,6 +6,7 @@ import { withoutAchDetails } from "@/data-sources/merchant";
 export function employerName(description: string): string {
   return (
     withoutAchDetails(description)
+      .trim()
       .replace(
         /^(?:DEPOSIT FROM|DEPOSIT -|ACH CREDIT|ACH DEPOSIT,?|DIRECT DEP(?:OSIT)?(?: FROM)?)\s+/i,
         "",

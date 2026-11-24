@@ -79,8 +79,17 @@ const list = (parts: string[]) =>
 
 // --- Children -----------------------------------------------------------------------------
 export function kidsReading(txs: readonly LifeTx[]): Reading {
+  // A payment counts for one kind of signal, the first in the config's order that holds: a
+  // "KIDS SCHOOL LUNCH" is a school payment, not also a kids' store's.
+  let unclaimed = txs;
   const fired = (Object.keys(KIDS_SIGNALS) as (keyof typeof KIDS_SIGNALS)[])
-    .map((key) => ({ key, hits: hitsOf(txs, KIDS_SIGNALS[key]) }))
+    .map((key) => {
+      const hits = hitsOf(unclaimed, KIDS_SIGNALS[key]);
+      // Only a signal that holds claims its payments: the rest stay for the signals after it.
+      if (meets(hits, KIDS_SIGNALS[key]))
+        unclaimed = unclaimed.filter((t) => !hits.txs.includes(t));
+      return { key, hits };
+    })
     .filter(({ key, hits }) => meets(hits, KIDS_SIGNALS[key]));
   if (fired.length === 0) {
     return {
@@ -245,7 +254,13 @@ export function eatingReading(txs: readonly LifeTx[]): Reading | null {
 
 // --- Income and health costs --------------------------------------------------------------
 export function sideGigReading(txs: readonly LifeTx[], salaried: boolean): Reading {
-  const h = hitsOf(txs, SIDE_GIG_SIGNAL, "in");
+  // A transfer the bank files as a transfer is the person's own money moving (a PayPal balance),
+  // not a gig's pay: only deposits filed as gig or contractor income, or worded like one, count.
+  const h = hitsOf(
+    txs.filter((t) => !(t.pfc ?? "").startsWith("TRANSFER_")),
+    SIDE_GIG_SIGNAL,
+    "in",
+  );
   const yes = salaried && meets(h, SIDE_GIG_SIGNAL);
   return {
     value: yes,
