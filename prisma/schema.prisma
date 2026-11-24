@@ -246,6 +246,9 @@ model User {
   firstScanDoneAt            DateTime?       @map("first_scan_done_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
   digestEnabled              Boolean         @default(true) @map("digest_enabled")
+  // The daily report email (src/lib/daily-report/): opt-in, off for everyone until they turn it on in
+  // /settings. What was sent, a day at a time, is in daily_reports.
+  dailyReportEnabled         Boolean         @default(false) @map("daily_report_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.
   timezone                   String?
   // Membership offer: when it was last shown (counted once per snooze period) and when
@@ -330,6 +333,7 @@ model User {
   decisions              Decision[]
   actions                Action[]
   digests                Digest[]
+  dailyReports           DailyReport[]
   membershipIntents      MembershipIntent[]
   analyticsEvents        AnalyticsEvent[]
   activityEvents         ActivityEvent[]
@@ -1747,6 +1751,29 @@ model Digest {
   @@unique([userId, weekStart])
   @@index([userId])
   @@map("digests")
+}
+
+// The daily report (src/lib/daily-report/): one row a person a local day, which is the guarantee that a
+// day never gets two reports whatever the cron does. The row is taken before the send (the unique
+// (user, day) refuses a second one) and removed if the send fails. `sentAt` is the run's clock at the
+// send: the next report lists the lines that arrived after it, so no line is in two reports.
+model DailyReport {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  // The person's own day the report is for (users.timezone).
+  day        DateTime  @db.Date
+  sentAt     DateTime? @map("sent_at") @db.Timestamptz(3)
+  // The keys of the changes Jane noticed (src/insights/changes.ts) that this report listed, so a later
+  // report doesn't list one again and a change Jane noticed late (an event dated before the last
+  // report) is still new.
+  changeKeys String[]  @default([]) @map("change_keys")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([userId])
+  @@map("daily_reports")
 }
 
 model MembershipIntent {
