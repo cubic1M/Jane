@@ -984,7 +984,8 @@ const disasterRelief: Detector = {
     if (typeof county.value !== "string") return null;
     const r = reliefFor(
       data.extras?.disasterRelief ?? [],
-      { county: county.value, state: null },
+      // A same-named county in another state is not theirs: the home state narrows it when known.
+      { county: county.value, state: data.state ?? null },
       profile.today,
     )[0];
     if (!r) return null;
