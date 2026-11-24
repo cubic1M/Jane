@@ -79,9 +79,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       </>
     );
   }
-  // The cards are the one place a suggestion or a waiting decision shows (on a computer, the
-  // dock above this chat; in the phone's sheet, over its message box): the list has no card
-  // of its own, and no gap where one was.
+  // The chat holds what the person typed and Jane's answers to it, and nothing Jane brings up
+  // unasked (inChat, src/lib/jane-agent/popups.ts): those wait in the dock (on a phone, Home's
+  // folded "Jane · N for you"), with no card or gap here. The stack is still read so that a card
+  // floating in the dock is never also listed, and the dock beside it reloads when it changes.
   const listed = chatList(chat.messages, stacked);
   after(() => markChatRead(user.id));
 
@@ -134,11 +135,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           ))}
         </ol>
       )}
-      {listed.length === 0 && stacked.length === 0 && !chat.scanning && (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Nothing new from me yet. I&apos;ll post here as soon as I spot something.
-        </p>
-      )}
       {/* Each sign-in starts the conversation empty; what Jane learned stays (src/lib/memory/). */}
       {!listed.some((m) => m.kind === "user" || m.kind === "reply") && !chat.scanning && (
         <p data-memory-note className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -171,9 +167,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       />
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
       {/* Last, so its room under the message box is the end of the page: one set of cards at
-          a time, the options Jane just gave, then the day's suggestions, then the practice
-          portfolio's. */}
-      <ChatCards options={latestOptions(chat.messages)} suggestions={stacked} practice={practice} />
+          a time, the options Jane just gave, then the practice portfolio's. */}
+      <ChatCards options={latestOptions(chat.messages)} practice={practice} />
     </>
   );
 }

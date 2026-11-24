@@ -35,7 +35,7 @@ const ends = (chat: FrameLocator) =>
     };
   });
 
-test("on a phone, the chat sheet opens at its newest answer, clear of Jane's card", async ({
+test("on a phone, the chat sheet opens at its newest answer, clear of its message box", async ({
   context,
   page,
   baseURL,
@@ -57,13 +57,14 @@ test("on a phone, the chat sheet opens at its newest answer, clear of Jane's car
   await page.locator("#jane-fab").click();
   const chat = page.frameLocator('iframe[title="Chat with Jane"]');
   await expect(chat.getByText(LAST)).toBeAttached({ timeout: 60_000 });
-  // Clear of the card (or the message box), and on screen.
+  // Clear of the message box, and on screen. No card floats over the sheet: Jane's cards wait on
+  // Home's dock, never in the chat (founder 11-24).
   const clear = async () => {
     const e = await ends(chat);
     return e.lastBottom > 0 && e.lastBottom <= e.coverTop + 1;
   };
   await expect.poll(clear, { timeout: 15_000 }).toBe(true);
-  expect((await ends(chat)).card).toBe(true);
+  expect((await ends(chat)).card).toBe(false);
   await holds(async () => expect(await clear()).toBe(true), 1_500);
 
   // Grown to the whole screen: still at the end.

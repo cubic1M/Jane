@@ -199,7 +199,9 @@ describe("one stack of cards, never repeated", () => {
     expect(chatList([reply], []).map((m) => m.id)).toEqual(["reply"]);
   });
 
-  it("keeps a real account's Yes while its steps wait on Mark done, then lets it go", () => {
+  // Founder 11-24: nothing Jane brought up unasked is in the chat, answered or not. A real
+  // account's Yes keeps its steps and Mark done on the finding's report (diy-kit.tsx) and the plan.
+  it("leaves a real account's Yes, with its steps and Mark done, out of the chat", () => {
     const steps = message({
       id: "diy",
       kind: "decision",
@@ -208,7 +210,7 @@ describe("one stack of cards, never repeated", () => {
       note: "Here's how to do it yourself:\n1. Call them.\nTap Mark done once it's done.",
       buttons: [{ id: "diy.done", label: "Mark done", kind: "primary" }],
     });
-    expect(chatList([steps], []).map((m) => m.id)).toEqual(["diy"]);
+    expect(chatList([steps], [])).toEqual([]);
     expect(chatList([{ ...steps, buttons: [] }], [])).toEqual([]);
   });
 });

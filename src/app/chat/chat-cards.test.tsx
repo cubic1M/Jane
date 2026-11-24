@@ -11,7 +11,8 @@ import type { MessageView } from "@/lib/jane-agent/view";
 import { ChatCards, optionAction } from "./chat-cards";
 
 // The one place cards float over the chat, one set at a time: the options Jane just gave first,
-// as the pick card, then the day's suggestions, then the practice portfolio's cards.
+// as the pick card, then the practice portfolio's cards. The day's suggestions are never here
+// (founder 11-24): they float in the dock (src/lib/jane-agent/chat-no-unasked.test.ts).
 
 const base: MessageView = {
   id: "m1",
@@ -59,20 +60,9 @@ const withOptions: MessageView = {
   },
 };
 
-const suggestion: MessageView = {
-  ...base,
-  id: "s1",
-  kind: "decision",
-  body: "Cancel Hulu, save $216/yr\nWhy you: You pay $17.99 a month.\n85% sure: 12 charges.",
-  suggestion: true,
-  buttons: [{ id: "suggestion.yes", label: "Cancel it", kind: "primary" }],
-};
-
 describe("ChatCards", () => {
-  it("shows the options Jane gave first, as the pick card, ahead of the suggestions", () => {
-    const html = renderToStaticMarkup(
-      <ChatCards options={withOptions} suggestions={[suggestion]} />,
-    );
+  it("shows the options Jane gave as the pick card", () => {
+    const html = renderToStaticMarkup(<ChatCards options={withOptions} />);
     expect(html).toContain('data-floating-cards="pick"');
     expect(html).toContain('aria-label="Choose your life cover"');
     expect(html).toContain("1 of 2");
@@ -81,38 +71,21 @@ describe("ChatCards", () => {
     expect(html).toContain("The least for the cover you need.");
     expect(html).toContain("Pick this one");
     expect(html).toContain("Later");
-    expect(html).not.toContain("Cancel Hulu");
-  });
-
-  it("shows the suggestions when there are no options waiting", () => {
-    const html = renderToStaticMarkup(<ChatCards options={null} suggestions={[suggestion]} />);
-    expect(html).toContain('data-floating-cards="queue"');
-    expect(html).toContain("Cancel Hulu, save $216/yr");
   });
 
   it("is nothing at all with no cards of any kind", () => {
-    expect(renderToStaticMarkup(<ChatCards options={null} suggestions={[]} />)).toBe("");
+    expect(renderToStaticMarkup(<ChatCards options={null} />)).toBe("");
   });
 
-  it("shows the practice portfolio's cards only once the options and suggestions are done", () => {
+  it("shows the practice portfolio's cards only once the options are done", () => {
     const practice: FloatingCardData[] = [
       { id: "p1", headline: "Your practice portfolio is down 6%", details: {}, yesLabel: "Pause" },
     ];
-    const last = renderToStaticMarkup(
-      <ChatCards options={null} suggestions={[]} practice={practice} />,
-    );
+    const last = renderToStaticMarkup(<ChatCards options={null} practice={practice} />);
     expect(last).toContain('aria-label="Your practice portfolio"');
     expect(last).toContain("Your practice portfolio is down 6%");
-    for (const html of [
-      renderToStaticMarkup(
-        <ChatCards options={null} suggestions={[suggestion]} practice={practice} />,
-      ),
-      renderToStaticMarkup(
-        <ChatCards options={withOptions} suggestions={[]} practice={practice} />,
-      ),
-    ]) {
-      expect(html).not.toContain("Your practice portfolio is down 6%");
-    }
+    const html = renderToStaticMarkup(<ChatCards options={withOptions} practice={practice} />);
+    expect(html).not.toContain("Your practice portfolio is down 6%");
   });
 
   it("sends a pick as option.pick and anything else as option.later", () => {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scopedFor } from "@/lib/db-scoped";
-import { hiddenBriefWhere } from "@/lib/jane-agent/popups";
+import { CHAT_KINDS } from "@/lib/jane-agent/popups";
 import { getCurrentUser } from "@/lib/session";
 
 // The side chat's unread dot (docs/design/home-hub.md), checked while the chat is folded away:
@@ -14,8 +14,9 @@ export async function GET() {
     where: {
       readAt: null,
       OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: new Date() } }],
-      // Not a brief the chat never shows.
-      ...hiddenBriefWhere(),
+      // Only what the chat shows (inChat): Jane's unasked cards are counted by the dock, never as
+      // "new" in a chat that doesn't hold them.
+      kind: { in: [...CHAT_KINDS] },
     },
   });
   return NextResponse.json({ unread }, { headers: { "cache-control": "no-store" } });
