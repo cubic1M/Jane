@@ -106,7 +106,14 @@ const careDiscount: Detector = {
     if (!program) return null;
     const rule = program === "CARE" ? CA_CARE_FERA.care : CA_CARE_FERA.fera;
     const limit = program === "CARE" ? care : fera;
-    const worth = Math.round(yearlyEnergy * rule.lowestDiscount);
+    // FERA discounts electricity only: with it, the saving is worked on the electric bills the
+    // feed names; with none named, eligibility is shown with no dollar figure.
+    const electric = outCents(
+      tx(data, (t) => t.pfc === ENERGY && t.amountCents > 0 && ELECTRIC_PAYEE.test(t.description)),
+    );
+    const yearlyBase =
+      program === "FERA" ? Math.round((electric * 12) / Math.max(1, profile.months)) : yearlyEnergy;
+    const worth = Math.round(yearlyBase * rule.lowestDiscount);
     return suggestion("cost", "utility_discount", {
       title: `Your household may qualify for California's ${program} discount on energy bills`,
       headline: headlineOf(`Check the ${program} energy discount`, worth, "saves"),
@@ -121,12 +128,15 @@ const careDiscount: Detector = {
         },
       ]),
       urgency: "later",
-      why: `For a household of ${people}, ${program} takes gross yearly income up to ${formatCents(limit)} (${CA_CARE_FERA.from} to ${CA_CARE_FERA.until}); yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${program === "CARE" ? "CARE takes 30-35% off electric and 20% off gas" : "FERA takes 18% off electric"}: on your ${formatCents(yearlyEnergy)} a year of gas and electric, at least ${formatCents(worth)}. Your utility decides; you apply with it${program === "CARE" ? ", and getting SNAP, Medi-Cal or similar help can also qualify you" : ""}.`,
+      why: `For a household of ${people}, ${program} takes gross yearly income up to ${formatCents(limit)} (${CA_CARE_FERA.from} to ${CA_CARE_FERA.until}); yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${program === "CARE" ? "CARE takes 30-35% off electric and 20% off gas" : "FERA takes 18% off electric"}: ${program === "FERA" && worth === 0 ? "I can't tell which of your energy bills are electric, so no dollar figure." : program === "FERA" ? `on your ${formatCents(yearlyBase)} a year of electric, at least ${formatCents(worth)}.` : `on your ${formatCents(yearlyEnergy)} a year of gas and electric, at least ${formatCents(worth)}.`} Your utility decides; you apply with it${program === "CARE" ? ", and getting SNAP, Medi-Cal or similar help can also qualify you" : ""}.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${program}`, href: rule.url }],
     });
   },
 };
+
+// Payee words that name an electric bill (a gas-only bill isn't discounted by FERA).
+const ELECTRIC_PAYEE = /electric|power|edison|pg&e|pge\b|sdg&e|ladwp|smud/i;
 
 const INTERNET = "RENT_AND_UTILITIES_INTERNET_AND_CABLE";
 const PHONE = "RENT_AND_UTILITIES_TELEPHONE";
