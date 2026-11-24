@@ -50,3 +50,25 @@ describe("last month's close on Spending & bills", () => {
     expect(item?.label).toBe("Last month's close");
   });
 });
+
+// Founder 11-24: Home has no link to last month's close and the dock has no card for it, so
+// Spending & bills always says where it is; while it waits on a charge, its own item says so.
+describe("where last month's close is", () => {
+  const closeItems = (suggestions: MoneyTreeInput["suggestions"], hasAccounts = true) =>
+    moneyTree({ ...input, suggestions, hasAccounts })
+      .tree.branches.flatMap((b) => b.items)
+      .filter((i) => i.label === "Last month's close")
+      .map((i) => i.id);
+
+  it("is an item on Spending & bills that opens it, when it isn't waiting on a charge", () => {
+    expect(closeItems([])).toEqual(["spending:close"]);
+  });
+
+  it("is one item, not two, while it waits on a charge", () => {
+    expect(closeItems(input.suggestions)).toEqual(["spending:month_close"]);
+  });
+
+  it("isn't offered to someone with no accounts yet", () => {
+    expect(closeItems([], false)).toEqual([]);
+  });
+});

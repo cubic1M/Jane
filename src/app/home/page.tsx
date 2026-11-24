@@ -12,7 +12,6 @@ import { TryFeedbackBox } from "@/components/try-feedback-box";
 import { isTrialUser } from "@/lib/trial-ids";
 import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
-import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { HeroRow } from "@/components/hub/hub";
 import { HomeLoading } from "@/components/hub/home-loading";
 import { GiantTree } from "@/components/hub/giant-tree";
@@ -22,10 +21,9 @@ import { isFirstDetectionComplete } from "@/detection/engine";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
-import { CASH_FLOW_DAYS } from "@/config/areas";
-import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
 import { openBooks } from "@/lib/books";
+import { booksNoticeClosed, booksNoticeKey, worryingBooks } from "@/lib/books-notice";
 import { firstWeekChecklist } from "@/lib/checklist";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
@@ -33,7 +31,7 @@ import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { Blinded } from "@/components/hub/blinded";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
-import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { heroView, tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
 import { loadBankNotices, updatedAgo } from "@/lib/plaid/bank-status";
@@ -222,6 +220,11 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
   const oldStatements = staleStatementsEnd(read._max.date, top.hero.asOf);
   const { home } = top;
+  // The books box the person closed stays closed until the problems it names change.
+  const skipBanks = banks.map((b) => b.itemId);
+  const worrying = worryingBooks(books, skipBanks);
+  const booksKey = booksNoticeKey(worrying.map((o) => o.id));
+  const booksClosed = worrying.length > 0 && (await booksNoticeClosed(user.id, booksKey));
   const todayCents = top.hero.netWorth?.todayCents ?? 0;
 
   return (
@@ -229,7 +232,7 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       {/* Opening Home sets off the practice scan and the checklist's progress. */}
       <AppHeader user={user} opened={{ page: "home" }} />
       <BankStatusNotice notices={banks} />
-      <BooksNotice books={books} skipItems={banks.map((b) => b.itemId)} />
+      {!booksClosed && <BooksNotice books={books} skipItems={skipBanks} closeKey={booksKey} />}
       <h1 className="sr-only">Home</h1>
 
       <HeroRow
@@ -260,23 +263,6 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
           state={String((await searchParams).feedback ?? "") || undefined}
         />
       )}
-
-      {!oldStatements && (
-        <CashFlowStrip
-          view={cashFlowView(top.cashFlow)}
-          endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
-        />
-      )}
-
-      {/* The monthly close: Jane closing last month's books (src/app/close). */}
-      <Link
-        href="/close"
-        prefetch={false}
-        data-home-close=""
-        className="self-start text-sm font-medium underline-offset-2 hover:underline"
-      >
-        Last month&apos;s close ›
-      </Link>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
       {/* Only where Jane can act on its own: the read-only beta's real accounts can't, so the

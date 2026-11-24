@@ -28,11 +28,9 @@ const byClaude = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
 export const suggestionsSource: MessageSource = {
   key: "suggestions",
   gather(snapshot) {
-    // Last month's close asks about its charges in its own message, with "Looks right": the
-    // suggestion's Yes only opens the month's transactions, where nothing confirms them (debug 2
-    // re-walk, 11-16: with #1911 the dock kept that card and lost the one that closes). Never in the
-    // dock, not only while the close waits: a first scan's early run posts its picks before the close
-    // is worked out (debug 2, 11-17: "Confirm 1 charge to close October" was the only card for it).
+    // Last month's close is never a card in the dock (founder 11-24: Jane doesn't bring it up
+    // unasked). Its page is /close, reached from Spending & bills; asked about in the chat, it
+    // answers there with "Looks right" (replies-close.ts).
     return (snapshot.suggestions ?? [])
       .filter((s) => s.topic !== "month_close")
       .map((s) => ({

@@ -14,9 +14,8 @@ import { gather } from "@/lib/jane-agent/brain";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { formatCents } from "@/lib/money";
 import { parseIntent } from "@/lib/jane-agent/intents";
-import { postMessages } from "@/lib/jane-agent/messages";
+import { storeReply } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
-import { closeSource } from "@/lib/jane-agent/sources/close";
 import { reportSource } from "@/lib/jane-agent/sources/report";
 import { closeReply } from "@/lib/jane-agent/replies-close";
 import { linkDemoBank } from "@/lib/plaid/demo";
@@ -122,10 +121,12 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
     // The snapshot taken at the close stays as it was.
     expect(corrected.figures.netWorthCents).toBe(closed.figures.netWorthCents);
 
-    // Said in the chat once, in the month's report: the close has no message of its own when
-    // nothing needs a tap (its figures are the report's).
+    // Said once, in the month's report: the close has no message of its own (its figures are the
+    // report's).
     const snapshot = (await loadSnapshot(userId, { client, now: NOW }))!;
-    expect(gather(snapshot, NOW, { trigger: "open", sources: [closeSource] })).toEqual([]);
+    expect(gather(snapshot, NOW, { trigger: "open" }).filter((m) => m.source === "close")).toEqual(
+      [],
+    );
     const [report] = gather(snapshot, NOW, { trigger: "open", sources: [reportSource] });
     expect(report.body.split("\n")[0]).toBe("Your money report for October 2026 is ready.");
     expect(report.body).toMatch(/\nOctober 2026 is closed\. (Your books added up\.|\d+ things?)/);
@@ -135,7 +136,7 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
     );
   });
 
-  it("asks once about charges it wasn't sure of, and one tap closes the month", async () => {
+  it("asks about charges it wasn't sure of only when asked, and one tap closes the month", async () => {
     const { id: userId, checking } = await person("close-ask");
     await client.transaction.create({
       data: {
@@ -165,15 +166,14 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
     );
     expect(tool).toMatchObject({ month: "2026-10", status: "waiting" });
 
+    // Jane never brings the close up unasked (founder 11-24): no card of its own in what it
+    // posts, even with the close waiting on a charge.
     const snapshot = (await loadSnapshot(userId, { client, now: NOW }))!;
-    await postMessages(userId, gather(snapshot, NOW, { trigger: "open", sources: [closeSource] }), {
-      client,
-      now: NOW,
-    });
-    const ask = await client.janeMessage.findFirstOrThrow({
-      where: { userId, dedupeKey: "close:waiting:2026-10" },
-    });
-    expect(ask.kind).toBe("decision");
+    const unasked = gather(snapshot, NOW, { trigger: "open" });
+    expect(unasked.filter((m) => /^Closing October 2026/.test(m.body))).toEqual([]);
+    // Asked, it answers in the chat with "Looks right"; that answer is what one tap closes.
+    const asked = await storeReply(userId, reply, { client, at: NOW });
+    const ask = await client.janeMessage.findFirstOrThrow({ where: { id: asked.id } });
     const { message } = await takeChatAction(userId, ask.id, "close.confirm", {
       client,
       now: NOW,

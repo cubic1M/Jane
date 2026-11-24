@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// The monthly close (/close/[month]): a sample person (Try Jane) opens it from Home, sees one
+// The monthly close (/close/[month]): a sample person (Try Jane) opens it from Spending & bills
+// (Home has no link to it, founder 11-24), sees one
 // line of figures, at most three chips, the five parts with each line's detail behind a click,
 // and can step back a month. Last month's close for a sample person has Jane's verified wins.
 test.skip(!process.env.E2E_DATABASE_URL, "needs E2E_DATABASE_URL");
@@ -15,7 +16,9 @@ test("a sample person's monthly close, from Home", async ({ page }) => {
   await expect(page).toHaveURL(/\/home$/, { timeout: 60_000 });
   await expect(page.locator("[data-scan-bar]")).toHaveCount(0, { timeout: 150_000 });
 
-  await page.locator("[data-home-close]").click();
+  await expect(page.locator("[data-home-close]")).toHaveCount(0);
+  await page.goto("/money?focus=spending:close");
+  await page.getByRole("link", { name: "Open last month's close" }).click();
   await expect(page).toHaveURL(/\/close\/\d{4}-\d{2}$/);
   const month = page.url().slice(-7);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/ close$/);

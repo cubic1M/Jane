@@ -219,6 +219,7 @@ async function MoneyContent({
   details[itemId("have", "goals")] = <Go href="/goals">Your savings goals</Go>;
   details[itemId("have", "loans")] = <Go href="/loans">Loans and credit</Go>;
 
+  details[itemId("spending", "close")] = <Go href="/close">Open last month&apos;s close</Go>;
   details[itemId("transactions", "find")] = (
     <form action="/transactions" className="flex gap-2" role="search">
       <label htmlFor="money-q" className="sr-only">

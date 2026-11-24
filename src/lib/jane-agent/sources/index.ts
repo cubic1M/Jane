@@ -24,7 +24,6 @@ import { healthSource } from "./health";
 import { attentionSource } from "./attention";
 import { leanSource } from "./lean";
 import { booksSource } from "./books";
-import { closeSource } from "./close";
 import { questionsSource } from "./questions";
 import { rentInQuestionSource } from "./rent-in-question";
 import { rentQuestionSource } from "./rent-question";
@@ -78,7 +77,6 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   attentionSource,
   leanSource,
   booksSource,
-  closeSource,
   suggestionsSource,
   steadySource,
   priceRisesSource,
