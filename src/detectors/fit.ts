@@ -38,7 +38,12 @@ const consolidation: Detector = {
     // The cards' own rates when the bank gives them; otherwise what the interest charges in the
     // payments work out to on what is owed (a guess, and the confidence says so).
     const allRated = cards.every((c) => rate(c.id) !== null);
-    const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
+    // Interest on these cards: another card's, long cleared, doesn't make this one's rate.
+    const cardIds = new Set(cards.map((c) => c.id));
+    const charges = tx(
+      data,
+      (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && cardIds.has(t.accountId),
+    );
     const yearlyInterest = Math.round((outCents(charges) * 12) / rateMonthsOf(profile));
     const apr = allRated
       ? Math.round(cards.reduce((s, c) => s + (rate(c.id) ?? 0) * c.balanceCents, 0) / owed)
@@ -48,11 +53,11 @@ const consolidation: Detector = {
     // The card payments seen are whole statements, new spending included, so they say nothing
     // about what goes to the debt: the baseline is the minimum, the usual way to compare: the
     // bank's minimums when it gives them, as the options card does (src/lib/fit.ts).
-    const minimums = cards.reduce(
-      (s, c) => s + (data.liabilities.find((l) => l.accountId === c.id)?.minimumCents ?? 0),
-      0,
-    );
-    const monthlyCents = minimums || Math.round(owed * FIT_CARD_PAYMENT_SHARE);
+    // A card with no reported minimum is estimated on its own balance; the rest keep theirs.
+    const monthlyCents = cards.reduce((s, c) => {
+      const minimum = data.liabilities.find((l) => l.accountId === c.id)?.minimumCents;
+      return s + (minimum ?? Math.round(c.balanceCents * FIT_CARD_PAYMENT_SHARE));
+    }, 0);
     const month = data.today.slice(0, 7);
     const offers: LoanOffer[] = DEMO_LENDERS.flatMap((l) =>
       FIT_TERMS.personal.flatMap(
