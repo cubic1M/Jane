@@ -1,4 +1,4 @@
-import { CORE_FUNDS, FUND_FACTS } from "@/config/funds";
+import { CORE_FUNDS, FUND_FACTS, REAL_FUND_FACTS } from "@/config/funds";
 import { TARGET_MIXES } from "@/config/investing";
 import { HONEST_PERIODS } from "@/config/returns";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -37,6 +37,27 @@ export type HonestView = {
   simulatedPrices: boolean;
 };
 
+// Tax on a year of payouts in taxable accounts. A real account's funds are read from the real
+// facts only: the demo's merged entries give a real ticker the demo fund's yield.
+export function taxOnPayoutsCents(
+  held: { taxable: boolean; ticker: string | null; valueCents: number }[],
+  location: { ordinaryRate: number; gainRate: number },
+  facts: Readonly<Record<string, { yieldBps?: number; interest?: boolean }>>,
+): number {
+  return held
+    .filter((h) => h.taxable && h.ticker)
+    .reduce((sum, h) => {
+      const f = facts[h.ticker!];
+      if (!f?.yieldBps) return sum;
+      return (
+        sum +
+        h.valueCents *
+          (f.yieldBps / 10_000) *
+          (f.interest ? location.ordinaryRate : location.gainRate)
+      );
+    }, 0);
+}
+
 export async function loadHonest(
   userId: string,
   { client = defaultClient, now = new Date(), investments: loaded }: Options = {},
@@ -59,18 +80,7 @@ export async function loadHonest(
   const feeCents = held.reduce((s, h) => s + (h.valueCents * (h.expenseRatioBps ?? 0)) / 10_000, 0);
   const ownFeeBps = total > 0 ? (feeCents / total) * 10_000 : 0;
   // Tax on payouts in taxable accounts: interest at the ordinary rate, dividends at the lower.
-  const taxCents = held
-    .filter((h) => h.taxable && h.ticker)
-    .reduce((s, h) => {
-      const f = FUND_FACTS[h.ticker!];
-      if (!f?.yieldBps) return s;
-      return (
-        s +
-        h.valueCents *
-          (f.yieldBps / 10_000) *
-          (f.interest ? location.ordinaryRate : location.gainRate)
-      );
-    }, 0);
+  const taxCents = taxOnPayoutsCents(held, location, advice ? FUND_FACTS : REAL_FUND_FACTS);
   const taxDragBps = total > 0 ? (taxCents / total) * 10_000 : 0;
   if (!profile.complete) {
     return { advice, riskLevel: null, rows: [], ownFeeBps, taxDragBps, simulatedPrices: false };
