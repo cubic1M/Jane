@@ -23,10 +23,12 @@ export type ComingUpRow = {
 
 // A bill that is the same thing as a deadline on the same day (a yearly renewal, a card payment).
 export const sameThing = (bill: ComingUpBill, deadline: Deadline) =>
+  // A return window is never a bill: its amount is the purchase price, not owed, and its title
+  // ("Return window for Store") is not a bill's merchant.
+  deadline.kind !== "return" &&
   bill.date === deadline.date &&
   (deadline.title.toLowerCase().startsWith(bill.merchant.toLowerCase()) ||
-    // A return window's amount is the purchase price, never owed: it isn't a bill by amount alone.
-    (deadline.kind !== "return" && deadline.amountCents === bill.amountCents));
+    deadline.amountCents === bill.amountCents);
 
 // A bill that is also a deadline on the same day (a yearly renewal, a card payment) shows
 // once, as the deadline, which says what it is ("Netflix renews"). Deadlines already past

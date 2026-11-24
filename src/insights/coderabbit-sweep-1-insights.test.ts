@@ -32,6 +32,14 @@ describe("a new loan's payments made", () => {
     expect(d.balanceCents).toBeLessThan(1_000_000);
     expect(d.nextDue).toBe("2026-12-20");
   });
+  it("counts a payment on a month-end anniversary clamped to a short month", () => {
+    const d = debtBook(
+      { accounts: [], plans: [], typed: [], newLoans: [{ ...loan, fundedOn: "2026-01-31" }] },
+      "2026-02-28",
+    ).debts.find((x) => x.key === "loan:app1")!;
+    expect(d.balanceCents).toBeLessThan(1_000_000);
+    expect(d.nextDue).toBe("2026-03-31");
+  });
   it("clamps a due date on the 31st to the end of a short month", () => {
     const d = debtBook(
       { accounts: [], plans: [], typed: [], newLoans: [{ ...loan, fundedOn: "2026-01-31" }] },
@@ -97,5 +105,28 @@ describe("net worth events: borrowed money", () => {
       accountType: "depository",
     });
     expect(e).toMatchObject({ kind: "refund", cents: 5_000 });
+  });
+});
+
+describe("a return window and a bill named Return", () => {
+  it("never hides a bill, by title or by amount", () => {
+    const rows = comingUp(
+      [{ merchant: "Return", date: "2026-10-20", amountCents: 2_500 }],
+      [
+        {
+          key: "return:t1",
+          title: "Return window for Store",
+          date: "2026-10-20",
+          kind: "return",
+          source: "transactions",
+          amountCents: 9_900,
+          href: null,
+          detail: null,
+        },
+      ],
+      "2026-10-18",
+      { days: 30, limit: 7 },
+    );
+    expect(rows.map((r) => r.label).sort()).toEqual(["Return", "Return window for Store"]);
   });
 });

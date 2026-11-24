@@ -353,10 +353,11 @@ function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   // until the new card is linked.
   // Payments made are the completed monthly anniversaries: funded October 20, on November 15 none
   // is made yet (a month change is not a payment), on November 20 one is.
-  const early = Number(asOf.slice(8, 10)) < Number(loan.fundedOn.slice(8, 10)) ? 1 : 0;
-  const paid = loan.transfer
-    ? 0
-    : Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm) - early));
+  const elapsed = (ay - fy) * 12 + (am - fm);
+  // Compared with the anniversary itself, clamped to a short month (funded January 31, the
+  // anniversary in February is the 28th).
+  const early = asOf < addMonths(loan.fundedOn, elapsed) ? 1 : 0;
+  const paid = loan.transfer ? 0 : Math.max(0, Math.min(loan.termMonths, elapsed - early));
   let balance = loan.amountCents;
   for (let i = 0; i < paid && balance > 0; i += 1) {
     balance = Math.max(0, balance + monthlyInterest(balance, loan.aprBps) - loan.monthlyCents);

@@ -13,6 +13,13 @@ import { monthsBefore } from "@/detection/units";
 
 const MONTHS = 3;
 
+// One card's monthly payment as the fit engine counts it: its reported minimum when that is more
+// than nothing (a reported $0 is no figure), else a share of its balance.
+export const cardPaymentCents = (balanceCents: number, minimumCents?: number | null): number =>
+  minimumCents != null && minimumCents > 0
+    ? minimumCents
+    : Math.round(balanceCents * FIT_CARD_PAYMENT_SHARE);
+
 export function fitPersonFrom(input: ProfileInput, creditScore: number | null = null): FitPerson {
   const profile = buildProfile(input);
   const income = profile.facts.monthly_income.value;
@@ -32,11 +39,19 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
         t.date > since,
     )
     .reduce((s, t) => s + t.amountCents, 0);
-  const cardMinimums = Math.round(
-    input.accounts
-      .filter((a) => a.type === "credit" && a.balanceCents > 0)
-      .reduce((s, a) => s + a.balanceCents, 0) * FIT_CARD_PAYMENT_SHARE,
-  );
+  // What each card asks a month: the bank's reported minimum, else the estimate off its balance
+  // (src/detectors/fit.ts takes the same amount back off when a loan would replace the cards).
+  const cardMinimums = input.accounts
+    .filter((a) => a.type === "credit" && a.balanceCents > 0)
+    .reduce(
+      (s, a) =>
+        s +
+        cardPaymentCents(
+          a.balanceCents,
+          input.liabilities.find((l) => l.accountId === a.id)?.minimumCents,
+        ),
+      0,
+    );
   return {
     creditScore,
     // What a lender counts: a business owner's profit, not the business's sales.

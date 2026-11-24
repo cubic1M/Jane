@@ -2,7 +2,6 @@ import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { rateMonthsOf } from "@/profile/build";
 import {
   FIT_ASSUMED_SCORE,
-  FIT_CARD_PAYMENT_SHARE,
   FIT_CONSOLIDATION_MIN_APR_BPS,
   FIT_CONSOLIDATION_MIN_CENTS,
   FIT_MIN_SAVING_CENTS,
@@ -14,7 +13,7 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { creditBandOf } from "@/planning/credit";
 import { fit } from "@/planning/fit";
-import { fitPersonFrom } from "@/planning/fit-person";
+import { cardPaymentCents, fitPersonFrom } from "@/planning/fit-person";
 import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, outCents, tx, weakest } from "./helpers";
 import { formatRate } from "@/lib/percent";
@@ -54,10 +53,15 @@ const consolidation: Detector = {
     // about what goes to the debt: the baseline is the minimum, the usual way to compare: the
     // bank's minimums when it gives them, as the options card does (src/lib/fit.ts).
     // A card with no reported minimum is estimated on its own balance; the rest keep theirs.
-    const monthlyCents = cards.reduce((s, c) => {
-      const minimum = data.liabilities.find((l) => l.accountId === c.id)?.minimumCents;
-      return s + (minimum ?? Math.round(c.balanceCents * FIT_CARD_PAYMENT_SHARE));
-    }, 0);
+    const monthlyCents = cards.reduce(
+      (s, c) =>
+        s +
+        cardPaymentCents(
+          c.balanceCents,
+          data.liabilities.find((l) => l.accountId === c.id)?.minimumCents,
+        ),
+      0,
+    );
     const month = data.today.slice(0, 7);
     const offers: LoanOffer[] = DEMO_LENDERS.flatMap((l) =>
       FIT_TERMS.personal.flatMap(

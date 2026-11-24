@@ -10,6 +10,7 @@ import { DEBT_DETECTORS } from "./debt";
 import { LIFE_DETECTORS } from "./life";
 import { cushionOf } from "./money";
 import { emergencyTarget } from "@/planning/emergency-fund";
+import { cardPaymentCents, fitPersonFrom } from "@/planning/fit-person";
 
 // CodeRabbit sweep, part 1 (money figures), src/detectors chunk 1: each case is a finding
 // reproduced against the code first (failing), then fixed.
@@ -184,5 +185,40 @@ describe("a paycheck that stopped, with income not known", () => {
     expect(s.why).not.toMatch(/\$0\.00 a month is coming in/);
     expect(s.short).not.toMatch(/\$0\.00/);
     expect(s.worthCents).toBe(0);
+  });
+});
+
+describe("consolidation counts a card's payment once, from one source", () => {
+  it("a reported $0 minimum is no figure: the keep cost is a real payment", () => {
+    expect(cardPaymentCents(500_000, 0)).toBe(Math.round(500_000 * 0.03));
+    expect(cardPaymentCents(500_000, 40_000)).toBe(40_000);
+    expect(cardPaymentCents(500_000, null)).toBe(Math.round(500_000 * 0.03));
+  });
+  it("the person's debt payments count the same card amount the baseline takes off", () => {
+    const d = inputFor("debt");
+    const card = d.accounts.find((a) => a.type === "credit" && a.balanceCents > 0)!;
+    const withMin = {
+      ...d,
+      liabilities: [
+        ...d.liabilities.filter((l) => l.accountId !== card.id),
+        {
+          accountId: card.id,
+          kind: "credit",
+          aprBps: 2_400,
+          hasPmi: null,
+          payoffDate: null,
+          minimumCents: 40_000,
+        },
+      ],
+    };
+    const noMin = {
+      ...withMin,
+      liabilities: withMin.liabilities.map((l) =>
+        l.accountId === card.id ? { ...l, minimumCents: null } : l,
+      ),
+    };
+    // The reported $400 replaces the 3% estimate of this card in the person's debt payments.
+    const diff = fitPersonFrom(withMin).debtPaymentsCents - fitPersonFrom(noMin).debtPaymentsCents;
+    expect(diff).toBe(40_000 - cardPaymentCents(card.balanceCents, null));
   });
 });
