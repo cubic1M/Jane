@@ -31,7 +31,10 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
     userId = (
       await client.user.create({
-        data: { email: "books-upload-and-link@example.com", timezone: "America/Los_Angeles" },
+        data: {
+          email: `books-upload-and-link-${Date.now().toString(36)}@example.com`,
+          timezone: "America/Los_Angeles",
+        },
       })
     ).id;
     // Uploaded first: its statement ended Oct 31 at $1,200.00.
@@ -73,6 +76,57 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
         },
       })
     ).id;
+    // A $2,000.00 transfer out on both copies (the same line twice) to a savings account that got
+    // it once, and a September line only the statement has: the link starts on Oct 3.
+    const savingsId = (
+      await client.account.create({
+        data: {
+          userId,
+          source: "csv",
+          name: "Savings",
+          mask: "9876",
+          type: "depository",
+          subtype: "savings",
+          currentBalanceCents: 200_000,
+        },
+      })
+    ).id;
+    await client.transaction.createMany({
+      data: [
+        ...[uploadId, linkedId].map((accountId, a) => ({
+          userId,
+          accountId,
+          source: a === 0 ? ("csv" as const) : ("plaid" as const),
+          ...(a === 0 ? { dedupeKey: "up-transfer" } : { plaidTransactionId: "pl-transfer" }),
+          date: new Date("2026-10-20T00:00:00Z"),
+          amountCents: 200_000,
+          description: "TRANSFER TO SAVINGS",
+          pfcPrimary: "TRANSFER_OUT",
+          pending: false,
+        })),
+        {
+          userId,
+          accountId: savingsId,
+          source: "csv" as const,
+          dedupeKey: "sv-transfer",
+          date: new Date("2026-10-21T00:00:00Z"),
+          amountCents: -200_000,
+          description: "TRANSFER FROM CHECKING",
+          pfcPrimary: "TRANSFER_IN",
+          pending: false,
+        },
+        {
+          userId,
+          accountId: uploadId,
+          source: "csv" as const,
+          dedupeKey: "up-sept",
+          date: new Date("2026-09-20T00:00:00Z"),
+          amountCents: 3_100,
+          description: "SAFEWAY STORE",
+          pending: false,
+        },
+      ],
+    });
     // The same October on both, so the two copies match transaction for transaction.
     const october = [
       ["2026-10-03", 4_210, "SAFEWAY STORE"],
@@ -95,7 +149,8 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
     });
   });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
+    // userId is unset when the setup failed: an undefined id would match every person.
+    if (userId) await client.user.deleteMany({ where: { id: userId } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
@@ -103,12 +158,19 @@ describe.runIf(url)("an account uploaded, then linked", { timeout: 120_000 }, ()
   it("counts the linked balance, keeps both copies, and says the statement is left out", async () => {
     const books = await runBooksCheck(userId, { client, now: NOW });
     const left = await client.account.findMany({ where: { userId }, select: { id: true } });
-    expect(left.map((a) => a.id).sort()).toEqual([uploadId, linkedId].sort());
+    expect(left).toHaveLength(3);
+    expect(left.map((a) => a.id)).toEqual(expect.arrayContaining([uploadId, linkedId]));
     const words = JSON.stringify(books);
     expect(words).toContain(
       "Chase checking (ending 1234) is a statement you uploaded of TOTAL CHECKING, which you've since linked. I count the linked one",
     );
+    // What leaving the statement out stops counting is said: its one September line.
+    expect(words).toContain(
+      "Its 1 line from Sep 20, 2026 to Sep 20, 2026, before the link's first day",
+    );
+    // The statement's copy of the transfer isn't matched again: the one transfer has its deposit.
+    expect(books.open.map((i) => i.kind)).not.toContain("transfer");
     const { worth } = await loadNetWorthInputs(userId, { client });
-    expect(worth.netCents).toBe(485_000);
+    expect(worth.netCents).toBe(485_000 + 200_000);
   });
 });
