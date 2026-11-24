@@ -164,6 +164,14 @@ export function priced(
   if (!pick) {
     return none(result.ineligible[0]?.reason ?? "None of the offers fits.");
   }
+  // The fit engine falls back to the lowest payment when none stays comfortable (a stretch). A
+  // borrowing-power figure is "what you can comfortably borrow", so a stretch isn't shown as it.
+  if (!pick.comfortable) {
+    return {
+      ...none("The lowest payment I found for this is more than stays comfortable on your pay."),
+      improve: ["Paying down debt, or a higher income, would make room for a payment."],
+    };
+  }
   return {
     product: kind,
     available: true,

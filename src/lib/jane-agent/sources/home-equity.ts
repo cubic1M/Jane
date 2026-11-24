@@ -24,7 +24,7 @@ export const homeEquitySource: MessageSource = {
       if (p.endsNow) {
         out.push({
           kind: "heads_up",
-          body: `Your loan is under 78% of the home's original value, so PMI has to end by itself when your payments are current. If it's still in your payment, ask your servicer to remove it and confirm in writing.`,
+          body: `Your loan is under 78% of the home's original value, so you can ask your servicer in writing to cancel PMI now. (It ends by itself only when the original payment schedule reaches 78%, not when extra payments do.) Ask them to confirm in writing.`,
           refs: {},
           actions: [EQUITY_PAGE],
           dedupeKey: `homeeq:pmi_ended:${acct}`,

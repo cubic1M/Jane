@@ -84,8 +84,8 @@ function factsOf(o: FitOption, view: FitView): string[] {
   }
   return [
     `APR: ${formatRate(o.aprBps)}${o.rateType ? ` ${o.rateType}` : ""}`,
-    `Term: ${o.termMonths} months`,
-    `Total interest: ${formatCents(interestOf(o, view))}`,
+    o.endless ? "Term: not paid off at this payment" : `Term: ${o.termMonths} months`,
+    `Total interest: ${o.endless ? "at least " : ""}${formatCents(interestOf(o, view))}`,
     `Fees: ${o.feeCents > 0 ? formatCents(o.feeCents) : "none"}`,
   ];
 }
@@ -142,9 +142,17 @@ function compareOf(o: FitOption): OptionCompare {
       {
         key: "term",
         label: "Term",
-        value: payoff ? "paid off now" : `${o.termMonths} months`,
+        value: payoff
+          ? "paid off now"
+          : o.endless
+            ? "not paid off at this payment"
+            : `${o.termMonths} months`,
       },
-      { key: "total", label: "Total cost", value: dollars(o.totalCostCents) },
+      {
+        key: "total",
+        label: "Total cost",
+        value: `${o.endless ? "at least " : ""}${dollars(o.totalCostCents)}`,
+      },
       { key: "fees", label: "Fees", value: o.feeCents > 0 ? dollars(o.feeCents) : "none" },
     ],
     bestFor: BEST_FOR[o.label],

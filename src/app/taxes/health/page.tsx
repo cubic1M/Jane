@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadHealthTaxes } from "@/lib/health-taxes";
+import { selfOnlyOver } from "@/lib/jane-agent/health-tax-message";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
@@ -74,7 +75,7 @@ async function Content() {
         </h2>
         <p className="text-sm">
           {h.deposits > 0
-            ? `${formatCents(h.contributedCents)} in this year, about ${formatCents(h.projectedCents)} by December at this pace, against the ${formatCents(h.limitCents)} ${h.family ? "family" : "self-only"} limit.`
+            ? `${formatCents(h.contributedCents)} in this year, about ${formatCents(h.projectedCents)} by December at this pace, against the ${formatCents(h.limitCents)} ${h.family ? "family" : "self-only"} limit${h.coverageAssumed ? ` (I don't know your cover; with self-only cover the limit is ${formatCents(h.selfLimitCents)})` : ""}.${selfOnlyOver(h)}`
             : "No deposits to an HSA seen this year."}{" "}
           {h.projectedExcessCents > 0 &&
             `${formatCents(Math.max(h.excessCents, h.projectedExcessCents))} over costs a 6% penalty (${formatCents(h.exciseCents)}) each year it stays in, unless it's taken out, with what it earned, before you file.`}

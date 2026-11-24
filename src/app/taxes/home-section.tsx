@@ -78,7 +78,7 @@ export function HomeSection({ view }: { view: HomeTaxesView }) {
         <p className="text-sm">
           Home sale: a gain of about {formatCents(Math.max(0, view.sale.gainCents))};{" "}
           {view.sale.qualifies
-            ? `${formatCents(view.sale.exclusionCents)} of gain can be tax-free, so about ${formatCents(view.sale.taxableGainCents)} is taxed.`
+            ? `${formatCents(view.sale.exclusionCents)} of gain can be tax-free, so about ${formatCents(view.sale.taxableGainCents)} is taxed.${view.sale.assumption ? ` ${view.sale.assumption}` : ""}`
             : `it doesn't qualify for the exclusion: ${view.sale.why.join(" ")}`}
         </p>
       )}

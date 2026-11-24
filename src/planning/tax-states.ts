@@ -324,7 +324,9 @@ function localTax(
   } else {
     const taxable = residentTax(local.state, agi, who)?.taxableCents ?? 0;
     const full = local.brackets ? bracketTax(taxable, local.brackets) : taxable * (local.rate ?? 0);
-    tax = full * statePart.share;
+    // The part-year city resident's own share: the state's share also holds remote wages a
+    // nonresident employer's state taxes, which aren't city income.
+    tax = full * (agi > 0 ? Math.min(1, home.income / agi) : statePart.share);
   }
   return {
     key,

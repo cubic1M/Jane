@@ -475,6 +475,7 @@ export async function runTaxTool(
           taxed: money(view.sale.taxableGainCents),
           qualifies: view.sale.qualifies,
           why: view.sale.why,
+          assumption: view.sale.assumption ?? undefined,
         },
       });
     }
@@ -790,6 +791,9 @@ export async function runTaxTool(
           deposited: money(v.hsa.contributedCents),
           byDecemberAtThisPace: money(v.hsa.projectedCents),
           cover: v.hsa.family ? "family" : "self-only",
+          coverAssumed: v.hsa.coverageAssumed
+            ? `not told; family cover assumed for a married filer, self-only limit is ${money(v.hsa.selfLimitCents)}`
+            : undefined,
           limit: money(v.hsa.limitCents),
           over: money(Math.max(v.hsa.excessCents, v.hsa.projectedExcessCents)),
           penaltyEachYear: money(v.hsa.exciseCents),
@@ -912,6 +916,7 @@ export async function runTaxTool(
                 on: e.event.occurredOn,
                 espp: e.espp && {
                   qualifying: e.espp.qualifying,
+                  offeringDateUnknown: e.espp.grantUnknown || undefined,
                   ordinaryIncome: money(e.espp.ordinaryCents),
                 },
                 isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,

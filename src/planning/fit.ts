@@ -1,3 +1,4 @@
+import { MAX_PAYOFF_MONTHS } from "@/config/planning";
 import {
   FIT_ASSUMED_SCORE,
   FIT_COMFORT_SHARE,
@@ -101,6 +102,9 @@ export type FitOption = {
   comfortable: boolean;
   headline: string;
   details: string[];
+  // The keep option only: the payment doesn't pay the debt off within the cap, so its term and
+  // total are where it was cut off (the total a floor), not a payoff.
+  endless?: boolean;
 };
 
 type FitIneligible = { lender: string; aprBps: number; termMonths: number; reason: string };
@@ -145,7 +149,13 @@ const years = (months: number) => {
 
 // Keeping what they have: paying what they pay now until it's gone, month by month (a card's
 // minimum may barely cover its interest, so it can run for years).
-export function keepCost(b: FitBaseline): { months: number; totalCents: number } {
+// `endless`: the payment doesn't pay the balance off within the cap, so months and the total are
+// where it was cut off (a floor on the real cost), not a payoff.
+export function keepCost(b: FitBaseline): {
+  months: number;
+  totalCents: number;
+  endless: boolean;
+} {
   const plan = payoffPlan(
     [
       {
@@ -160,8 +170,21 @@ export function keepCost(b: FitBaseline): { months: number; totalCents: number }
     "avalanche",
   );
   return plan.ok
-    ? { months: plan.months, totalCents: plan.totalPaidCents }
-    : { months: FIT_BASELINE_MAX_MONTHS, totalCents: b.monthlyCents * FIT_BASELINE_MAX_MONTHS };
+    ? { months: plan.months, totalCents: plan.totalPaidCents, endless: false }
+    : {
+        months: FIT_BASELINE_MAX_MONTHS,
+        totalCents: b.monthlyCents * FIT_BASELINE_MAX_MONTHS,
+        endless: true,
+      };
+}
+
+// "X less than keeping it", honest when the current payment never pays it off: then it's at
+// least X, and the months are not a payoff date.
+function keepWords(b: FitBaseline, savesCents: number): string {
+  const keep = keepCost(b);
+  return keep.endless
+    ? `At least ${formatCents(savesCents)} less than keeping ${b.label} (${formatCents(b.monthlyCents)} a month doesn't pay it off within ${years(MAX_PAYOFF_MONTHS)})`
+    : `${formatCents(savesCents)} less than keeping ${b.label} (${formatCents(b.monthlyCents)} a month for ${keep.months} more months)`;
 }
 
 type Scored = Omit<FitOption, "label" | "headline" | "details"> & {
@@ -249,7 +272,7 @@ function detailsOf(o: Scored, baseline: FitBaseline | null | undefined): string[
   if (baseline && o.savesCents !== null) {
     lines.push(
       o.savesCents >= 0
-        ? `${formatCents(o.savesCents)} less than keeping ${baseline.label} (${formatCents(baseline.monthlyCents)} a month for ${keepCost(baseline).months} more months)`
+        ? keepWords(baseline, o.savesCents)
         : `${formatCents(-o.savesCents)} more than keeping ${baseline.label}`,
     );
   }
@@ -309,7 +332,7 @@ function payoffOption(input: FitInput): FitOption | null {
     details: [
       `Uses ${formatCents(b.balanceCents)} of your ${formatCents(input.person.cashCents)} in cash`,
       `Leaves ${formatCents(input.person.cashCents - b.balanceCents)}, your emergency cushion of ${formatCents(cushion)} kept`,
-      `${formatCents(saves)} less than keeping ${b.label} (${formatCents(b.monthlyCents)} a month for ${keepCost(b).months} more months)`,
+      keepWords(b, saves),
     ],
   };
 }
@@ -462,10 +485,15 @@ export function fit(input: FitInput): FitResult {
           : null,
       breakEvenMonths: null,
       comfortable: true,
-      headline: `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month for ${years(kept.months)} more`,
+      endless: kept.endless || undefined,
+      headline: kept.endless
+        ? `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month, which doesn't pay it off within ${years(MAX_PAYOFF_MONTHS)}`
+        : `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month for ${years(kept.months)} more`,
       details: [
         `${formatRate(b.aprBps)} on ${formatCents(b.balanceCents)}`,
-        `${formatCents(b.monthlyCents)} a month for ${kept.months} more months`,
+        kept.endless
+          ? `${formatCents(b.monthlyCents)} a month doesn't pay it off within ${years(MAX_PAYOFF_MONTHS)}`
+          : `${formatCents(b.monthlyCents)} a month for ${kept.months} more months`,
       ],
     };
     if (keeps) {

@@ -1,3 +1,4 @@
+import { US_STATES } from "@/config/referrals";
 import {
   CASUALTY,
   COUNTY_IN_PAYEE,
@@ -65,6 +66,46 @@ export function reliefFor(
   );
 }
 
+// A deadline owned by a state: titled "State income tax return" or with a state's name
+// ("California estimated tax payment"), and not as the IRS's or federal.
+const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
+// Where `word` first appears in `text` as a whole word (not inside "Maineville"), or -1.
+function wholeWordAt(text: string, word: string): number {
+  const letter = /[a-z]/;
+  for (let at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + 1)) {
+    const before = at === 0 ? "" : text[at - 1]!;
+    const after = text[at + word.length] ?? "";
+    if (!letter.test(before) && !letter.test(after)) return at;
+  }
+  return -1;
+}
+
+// The state a title names first ("Texas estimated tax payment (Washington County)" is Texas's);
+// where two names start at the same place the longer wins ("West Virginia", not "Virginia").
+const stateIn = (title: string) => {
+  const lower = title.toLowerCase();
+  let best: { state: (typeof US_STATES)[number]; at: number } | null = null;
+  for (const s of US_STATES) {
+    const at = wholeWordAt(lower, s.name.toLowerCase());
+    if (at < 0) continue;
+    if (!best || at < best.at || (at === best.at && s.name.length > best.state.name.length))
+      best = { state: s, at };
+  }
+  return best?.state ?? null;
+};
+const SAYS_STATE = /\bstate\b/i;
+
+// Whether the relief moves a deadline by who owns it: a federal one always; one naming a state
+// only for that state's own relief, and only when the state follows; one saying just "state"
+// under a state that follows.
+function movedByOwner(r: Relief, title: string): boolean {
+  if (FEDERAL_TITLE.test(title)) return true;
+  const named = stateIn(title);
+  if (named) return named.code === r.state && r.stateFollows;
+  if (SAYS_STATE.test(title)) return r.stateFollows;
+  return true;
+}
+
 // A deadline the relief moves: one falling from the incident to the postponed date.
 export const covers = (r: Relief, dueOn: string) =>
   dueOn >= r.incidentFrom && dueOn < r.postponedTo;
@@ -77,7 +118,13 @@ export function deadlineMoves(
   deadlines: readonly { id: string; title: string; dueOn: string; done: boolean }[],
 ): Move[] {
   return deadlines
-    .filter((d) => !d.done && TAX_DEADLINE_TITLE.test(d.title) && covers(r, d.dueOn))
+    .filter(
+      (d) =>
+        !d.done &&
+        TAX_DEADLINE_TITLE.test(d.title) &&
+        movedByOwner(r, d.title) &&
+        covers(r, d.dueOn),
+    )
     .map((d) => ({ id: d.id, title: d.title, from: d.dueOn, to: r.postponedTo }));
 }
 

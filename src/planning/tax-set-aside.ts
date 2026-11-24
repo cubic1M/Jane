@@ -540,14 +540,18 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
     status,
     advice: x.advice,
     // Unknown withholding isn't $0 left: the lines above rest on an assumption about it.
-    lines:
-      status === "unknown"
-        ? lines.map((l) =>
-            l.key === "left"
-              ? { ...l, cents: null, from: "Jane can't see all that's withheld from your pay." }
-              : l,
-          )
-        : lines,
+    lines: lines.map((l) => {
+      if (status === "unknown" && l.key === "left")
+        return { ...l, cents: null, from: "Jane can't see all that's withheld from your pay." };
+      // Under the minimum nothing is held, so the line must not say Safe to spend holds it.
+      if (l.key === "held" && status !== "needed")
+        return {
+          ...l,
+          label: "Still not covered after what you keep apart",
+          from: "Under the smallest amount Safe to spend holds back, so nothing is held.",
+        };
+      return l;
+    }),
     share,
     taxForYearCents: total,
     taxSoFarCents: taxSoFar,

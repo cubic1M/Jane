@@ -3,6 +3,7 @@ import { HOME_OFFICE_SIMPLIFIED } from "@/config/tax-rates";
 import { HOME_SALE_EXCLUSION, MORTGAGE_DEBT_LIMIT } from "@/config/home-taxes";
 import type { FilingStatus } from "@/config/tax";
 import { DAY_MS } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 
 // Homeowner taxes (spec step 170). Pure. What a home changes at tax time, each figure with
 // the transactions, loan, documents or answers it comes from: mortgage interest (on up to
@@ -71,6 +72,9 @@ export type HomeTaxes = {
     taxableGainCents: number;
     qualifies: boolean;
     why: string[];
+    // The joint exclusion needs both spouses to pass the use test and neither to have used it in
+    // the last 2 years; the spouse's side isn't an input, so say what the figure assumes.
+    assumption: string | null;
   } | null;
 };
 
@@ -245,6 +249,10 @@ export function homeTaxes(h: HomeInput): HomeTaxes {
       taxableGainCents: Math.max(0, gainCents - exclusionCents),
       qualifies,
       why,
+      assumption:
+        qualifies && h.status === "married_joint"
+          ? `The ${formatCents(HOME_SALE_EXCLUSION.marriedJoint)} assumes your spouse also lived in the home 2 of the last 5 years and neither of you excluded another home's gain in the last 2 years. If not, it can be as low as ${formatCents(HOME_SALE_EXCLUSION.normal)}, and only if you yourself meet those tests.`
+          : null,
     };
   }
 

@@ -32,12 +32,34 @@ export function repaymentMessage(v: HealthTaxView): MessageParts | null {
   };
 }
 
+// A married filer's cover type isn't known: the family limit is assumed, and the lower self-only
+// one is named so a person on self-only cover isn't told they have room they don't.
+function coverWords(h: HealthTaxView["hsa"]): string {
+  if (h.coverageAssumed)
+    return `family cover (I don't know yours; with self-only cover the limit is ${formatCents(h.selfLimitCents)})`;
+  return h.family ? "family cover" : "self-only cover";
+}
+
+// With the cover assumed, what's already over the lower self-only limit, said beside the family
+// figures so a person on self-only cover isn't told they have room they don't.
+export function selfOnlyOver(h: HealthTaxView["hsa"]): string {
+  if (!h.coverageAssumed) return "";
+  const now = Math.max(0, h.contributedCents - h.selfLimitCents);
+  const byDecember = Math.max(0, h.projectedCents - h.selfLimitCents);
+  const limit = formatCents(h.selfLimitCents);
+  if (now > 0)
+    return ` If your cover is self-only, that's ${formatCents(now)} over its ${limit} limit already, with the same 6% penalty each year it stays in.`;
+  return byDecember > 0
+    ? ` If your cover is self-only, at this pace you'd be about ${formatCents(byDecember)} over its ${limit} limit by December.`
+    : "";
+}
+
 export function hsaMessage(v: HealthTaxView): MessageParts | null {
   const h = v.hsa;
   if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
   const over = h.excessCents > 0;
   return {
-    body: `You've put ${formatCents(h.contributedCents)} into your HSA this year${over ? `, ${formatCents(h.excessCents)} over` : `, and at this pace about ${formatCents(h.projectedCents)} by December, ${formatCents(h.projectedExcessCents)} over`} the ${formatCents(h.limitCents)} limit for ${h.family ? "family" : "self-only"} cover. Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in; taken out with what it earned before you file, there's no penalty. Your HSA provider has a form for a "return of excess contribution".`,
+    body: `You've put ${formatCents(h.contributedCents)} into your HSA this year${over ? `, ${formatCents(h.excessCents)} over` : `, and at this pace about ${formatCents(h.projectedCents)} by December, ${formatCents(h.projectedExcessCents)} over`} the ${formatCents(h.limitCents)} limit for ${coverWords(h)}. Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in; taken out with what it earned before you file, there's no penalty. Your HSA provider has a form for a "return of excess contribution".${selfOnlyOver(h)}`,
     refs: { taxYear: v.year },
     actions: [see],
   };
@@ -75,7 +97,7 @@ export function healthReply(v: HealthTaxView): MessageParts {
   const h = v.hsa;
   lines.push(
     h.deposits > 0
-      ? `HSA: ${formatCents(h.contributedCents)} in this year (about ${formatCents(h.projectedCents)} by December at this pace) against the ${formatCents(h.limitCents)} ${h.family ? "family" : "self-only"} limit${h.projectedExcessCents > 0 ? `: ${formatCents(Math.max(h.excessCents, h.projectedExcessCents))} over, which costs a 6% penalty each year it stays in unless it's taken out before you file` : `, ${formatCents(h.roomCents)} of room left`}.`
+      ? `HSA: ${formatCents(h.contributedCents)} in this year (about ${formatCents(h.projectedCents)} by December at this pace) against the ${formatCents(h.limitCents)} limit for ${coverWords(h)}${h.projectedExcessCents > 0 ? `: ${formatCents(Math.max(h.excessCents, h.projectedExcessCents))} over, which costs a 6% penalty each year it stays in unless it's taken out before you file` : h.coverageAssumed ? `, up to ${formatCents(h.roomCents)} of room if your cover is family` : `, ${formatCents(h.roomCents)} of room left`}.${selfOnlyOver(h)}`
       : "HSA: I don't see deposits to one this year.",
   );
   const m = v.medical;

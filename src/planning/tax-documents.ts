@@ -158,15 +158,19 @@ export function expectedForms(input: {
         : t.pfcDetailed === "INCOME_MILITARY" && /\bDFAS\b/i.test(t.description)
           ? MILITARY_PAYER
           : payer(t);
+    // Social Security under several payer names (SSA, Social Security) is one form of the year's
+    // total, not one per name.
+    let ssaCents = 0;
     for (const [from, cents] of totals(INCOME_KINDS[kind].categories, payerOf)) {
       // Social Security has a form of its own (debugger 11-04: "1099-R from Ssa Treas Xxsoc Sec").
       if (formKey === "r" && SOCIAL_SECURITY_PAYEE.test(from)) {
-        forms.push(make("ssa", "Social Security", cents));
+        ssaCents += cents;
         continue;
       }
       const mayNotSend = formKey === "nec" && cents < necThreshold(input.year);
       forms.push(make(formKey, from, cents, mayNotSend));
     }
+    if (ssaCents > 0) forms.push(make("ssa", "Social Security", ssaCents));
   }
   // Interest: one 1099-INT per bank account that paid at least the threshold.
   for (const [from, cents] of totals(["INCOME_INTEREST_EARNED"], (t) => t.accountName)) {

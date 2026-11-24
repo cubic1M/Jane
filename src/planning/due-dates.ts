@@ -19,8 +19,12 @@ export function paydaysOf(incomeDates: readonly string[]): number[] {
     .map(([day]) => day);
 }
 
-// Days from `from` to `to` going forward around the month (1–31 days).
-const daysForward = (from: number, to: number) => (to - from + 31) % 31;
+// Days from day `from` to the next day `to` in the calendar, in a month of `length` days (a
+// later day of the same month, or a day of the next one).
+const daysForward = (from: number, to: number, length = 31) =>
+  to >= from ? to - from : length - from + to;
+const monthLength = (isoDay: string) =>
+  new Date(Date.UTC(Number(isoDay.slice(0, 4)), Number(isoDay.slice(5, 7)), 0)).getUTCDate();
 
 export type DueMove = {
   debtKey: string;
@@ -40,11 +44,17 @@ export function dueMoves(debts: readonly Debt[], paydays: readonly number[]): Du
       return [];
     const dueDay = Number(d.nextDue.slice(8, 10));
     // The payday that comes soonest after the due date.
-    const next = [...paydays].sort((a, b) => daysForward(dueDay, a) - daysForward(dueDay, b))[0];
-    const gap = daysForward(dueDay, next);
+    const len = monthLength(d.nextDue);
+    const next = [...paydays].sort(
+      (a, b) => daysForward(dueDay, a, len) - daysForward(dueDay, b, len),
+    )[0];
+    const gap = daysForward(dueDay, next, len);
     // Due on payday itself, or well before it: fine.
     if (gap === 0 || gap > DUE_BEFORE_PAYDAY_DAYS) return [];
-    const suggestedDay = ((next + DUE_AFTER_PAYDAY_DAYS - 1) % 28) + 1;
+    // Day 28 is the latest day every month has: a payday just before it keeps its offset up to
+    // there (not wrapping to the 1st, days later), and a payday after it wraps.
+    const after = next + DUE_AFTER_PAYDAY_DAYS;
+    const suggestedDay = after <= 28 ? after : next <= 27 ? 28 : ((after - 1) % 28) + 1;
     return [
       {
         debtKey: d.key,
