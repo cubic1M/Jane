@@ -64,8 +64,7 @@ import {
   proposedLine,
   savingLine,
 } from "../investments/menu-copy";
-import { MIN_GAIN_CENTS } from "@/config/short-term";
-import { candidateLine, ladderButton, SHORT_LINK } from "../investments/short-term-copy";
+import { shortAskKey, shortTermCard, shortTermToBringUp } from "../investments/short-term-copy";
 import {
   planBody,
   suddenQuestionButtons,
@@ -413,16 +412,11 @@ function valuesCards({ inv }: In): Candidate | null {
 // by enough, one tap, every bill maturing by the date.
 function shortTermCards({ inv }: In): Candidate[] {
   if (!inv.advice) return [];
-  return inv.shortTerm.candidates
-    .filter((c) => !c.hasLadder && !(c.gainCents < MIN_GAIN_CENTS))
-    .map((c) => ({
-      kind: c.ladder ? "decision" : "heads_up",
-      body: candidateLine(c),
-      refs: { advice: true, ...(c.ladder ? { ladderKey: c.key } : {}) },
-      actions: [...(c.ladder ? [ladderButton(c)] : []), SHORT_LINK, snoozeButton()],
-      dedupeKey: `short:${c.key}:${Math.round(c.amountCents / 100_000)}`,
-      priority: MESSAGE_PRIORITY.short_term,
-    }));
+  return shortTermToBringUp(inv.shortTerm.candidates).map((c) => ({
+    ...shortTermCard(c),
+    dedupeKey: `short:${shortAskKey(c)}`,
+    priority: MESSAGE_PRIORITY.short_term,
+  }));
 }
 
 // Step 232: a plan fund list Jane read is confirmed before it is used; once it is, the
