@@ -43,9 +43,12 @@ test("says what it can't read, with no invoice's lines in the text", async ({
 }) => {
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/invoice");
-  await page.getByLabel("The invoice's text").fill("Thanks for your business!");
+  const box = page.getByLabel("The invoice's text");
+  await box.fill("Thanks for your business!");
   await page.getByRole("button", { name: "Read it" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "can't be read here" })).toContainText(
     "copy the invoice's text out of it and paste that",
   );
+  // What they pasted stays in the box to be fixed: a form action empties an uncontrolled field.
+  await expect(box).toHaveValue("Thanks for your business!");
 });

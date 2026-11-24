@@ -30,7 +30,10 @@ const CHARGED_ME =
 
 // Words that make it something else: a fee or interest, or no name at all.
 const NOT_A_NAME =
-  /^(?:every|each|so|this|that|it|again|twice|monthly|yearly|weekly|a|an|extra|more|much|too|there|these|those|something|someone|anything|nothing|my bank|the bank|bank|them)\b|\b(?:fees?|interest|overdraft|nsf|apr|penalty|penalties)\b/;
+  /^(?:every|each|so|this|that|it|again|twice|monthly|yearly|weekly|a|an|extra|more|much|too|there|these|those|something|someone|anything|nothing|my bank|the bank|bank|them)\b/;
+// A fee or interest anywhere in the question is the fee's answer (./replies-fees.ts), whoever charged it:
+// "why did Chase charge me $34 in overdraft fees" names Chase and a fee.
+const FEE_WORDS = /\b(?:fees?|interest|overdraft|nsf|apr|penalty|penalties)\b/;
 
 const MONTHS = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
 
@@ -43,7 +46,10 @@ const dollars = (text: string) => {
 // The merchant named in a question's words, or null when they name none.
 export function merchantIn(raw: string | undefined): string | null {
   if (!raw) return null;
+  // Trimmed first: what a pattern captures starts with its space (" my netflix bill"), and the
+  // prefixes come off only at the start.
   const cleaned = raw
+    .trim()
     .replace(new RegExp(AMOUNT, "g"), " ")
     .replace(new RegExp(` on (?:${MONTHS})[a-z]*\\.? \\d{1,2}(?:st|nd|rd|th)?\\b.*$`), "")
     .replace(/ on \d{1,2}\/\d{1,2}\b.*$/, "")
@@ -57,7 +63,9 @@ export function merchantIn(raw: string | undefined): string | null {
     )
     .replace(/\s+/g, " ")
     .trim();
-  if (!cleaned || cleaned.length > 40 || NOT_A_NAME.test(cleaned)) return null;
+  if (!cleaned || cleaned.length > 40 || NOT_A_NAME.test(cleaned) || FEE_WORDS.test(cleaned)) {
+    return null;
+  }
   return cleaned;
 }
 
@@ -65,6 +73,7 @@ export function parseChargeExplain(
   text: string,
   stage: ChargeExplainStage,
 ): ChargeExplainAsk | null {
+  if (FEE_WORDS.test(text)) return null;
   const much = /\b(?:so much|that much)\b/.test(text);
   const amount = dollars(text);
   const paid = WHY_PAID.exec(text);

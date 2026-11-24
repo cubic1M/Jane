@@ -81,6 +81,14 @@ describe("reading an invoice", () => {
     expect(readInvoice("Total $100.00")).toBeNull();
   });
 
+  it("doesn't take part of a longer unit price for an amount", () => {
+    expect(readInvoice("Storage $0.015/GB\nTotal $0.00")).toBeNull();
+    expect(readInvoice("Storage, 1000 GB  $0.015/GB  $15.00\nTotal  $15.00")!.lines).toEqual([
+      { description: "Storage, 1000 GB", cents: 1_500 },
+    ]);
+    expect(readInvoice("Seats 1.234.56")).toBeNull();
+  });
+
   it("reads only so many lines", () => {
     const many = Array.from({ length: 200 }, (_, i) => `Item ${i}  $1.00`).join("\n");
     expect(readInvoice(many)!.lines.length).toBeLessThanOrEqual(80);
@@ -112,6 +120,24 @@ describe("set against the charge", () => {
     expect(body).toContain(
       "The other lines (Bandwidth ($60.00); Build minutes ($20.00)) make up the extra $80.00.",
     );
+  });
+
+  it("won't name lines that don't add up to the extra", () => {
+    // The lines come to $80, not the $100 total: the $60 line isn't the $80 extra.
+    const body = words("Pro plan  $20.00\nBandwidth  $60.00\nTotal  $100.00");
+    expect(body).toContain("The Pro plan ($20.00) line matches what you usually pay.");
+    expect(body).toContain("The other lines come to $60.00, not the extra $80.00");
+    expect(body).toContain("won't say which one explains the charge");
+    expect(body).not.toContain("accounts for");
+    expect(body).not.toContain("make up the extra");
+  });
+
+  it("won't name lines that don't add up to the extra, in the tool's reading either", () => {
+    const invoice = readInvoice("Pro plan  $20.00\nBandwidth  $60.00\nTotal  $100.00")!;
+    const reading = readAgainst(invoice, explanation);
+    expect(reading.explaining).toEqual([]);
+    expect(reading.usualLine).toEqual({ description: "Pro plan", cents: 2_000 });
+    expect(reading.otherLinesCents).toBe(6_000);
   });
 
   it("won't name a line when the total isn't the charge", () => {

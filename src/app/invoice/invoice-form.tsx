@@ -1,12 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { INVOICE_MAX_CHARS } from "@/config/agent-chat";
 import { readInvoice, type InvoiceState } from "./actions";
 
 // Paste an invoice's text, see its line items. Nothing is kept.
 export function InvoiceForm({ charge }: { charge: string | null }) {
   const [state, action, pending] = useActionState<InvoiceState, FormData>(readInvoice, null);
+  // Kept here, not in the field: React empties an uncontrolled field after a form action, so a
+  // pasted invoice that can't be read would be lost just when it needs fixing.
+  const [text, setText] = useState("");
   return (
     <div className="flex flex-col gap-3">
       <form action={action} className="flex flex-col gap-2">
@@ -15,6 +18,8 @@ export function InvoiceForm({ charge }: { charge: string | null }) {
           The invoice&apos;s text
           <textarea
             name="invoice"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
             rows={10}
             maxLength={INVOICE_MAX_CHARS}
             placeholder={"Pro plan   $20.00\nBandwidth, 150 GB   $60.00\nTotal   $80.00"}

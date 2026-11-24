@@ -22,6 +22,10 @@ describe("charge_explain", () => {
     ["what is this Vercel charge", "vercel", null, null, false],
     ["what's the $100 charge from Vercel", "vercel", 10_000, null, false],
     ["why was I charged for netflix", "netflix", null, null, false],
+    // A prefix after the verb comes off ("my" isn't part of the name).
+    ["why did I pay my Netflix bill", "netflix", null, null, false],
+    ["why did I pay the Vercel invoice", "vercel", null, null, false],
+    ["why did Chase charge me $34", "chase", 3_400, null, false],
   ])("%s", (question, target, amountCents, day, high) => {
     expect(parseIntent(question, AS_OF)).toEqual({
       kind: "charge_explain",
@@ -52,6 +56,11 @@ describe("charge_explain", () => {
     ["why am i paying $12 every month", "charge_amount"],
     ["What was the $14 Nelnet charge?", "charge_amount"],
     ["what is this $12 fee", "fee_why"],
+    // A fee or interest anywhere in the question is the fee's answer, whoever charged it.
+    ["why did Chase charge me $34 in overdraft fees", "fee_why"],
+    ["why did Chase charge me an overdraft fee", "fee_why"],
+    ["why did I pay $12 in fees to Chase", "charge_amount"],
+    ["why did I pay interest on my Chase card", "card_interest"],
     // A bank fee is the fee's answer.
     ["why was I charged a maintenance fee", "fee_why"],
     ["why am I paying fees at Bank of America?", "fee_why"],

@@ -14,7 +14,10 @@ import {
 
 // An invoice pasted for a charge (founder 11-24): the charge from the person's own transactions
 // (a transaction id, which is only ever theirs), and the invoice's text read in memory and never
-// kept. The invoice page and Claude's read_invoice tool both come here.
+// kept by the read: the invoice page keeps none of it. Text typed into the chat, though, is stored as
+// a chat message and goes to learnFromChat like any other (src/lib/jane-agent/typing.ts), so the
+// answers send people to /invoice rather than asking them to paste it into the chat. The invoice page
+// and Claude's read_invoice tool both come here.
 
 type Options = { client?: PrismaClient; now?: Date };
 

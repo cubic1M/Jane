@@ -106,6 +106,24 @@ describe("a merchant that stepped up and stayed (20, 20, 100, 100, 100)", () => 
   });
 });
 
+describe("whether it is the first time this high", () => {
+  const highest = (lines: BillLine[], asked: ChargeAsked = NONE) => {
+    const found = lookUpCharge("vercel", lines, asked);
+    return found.kind === "found" ? found.explanation.highest : null;
+  };
+
+  it("is true for a spike above every charge before it", () => {
+    expect(highest(spike)).toBe(true);
+  });
+
+  it("is false for a $100 charge when an earlier $100 is in its own run", () => {
+    expect(highest(step)).toBe(false);
+    expect(highest(step, { amountCents: 10_000, day: "2026-10-20" })).toBe(false);
+    // The first $100 of the run is the one that was above everything before it.
+    expect(highest(step, { amountCents: 10_000, day: "2026-09-20" })).toBe(true);
+  });
+});
+
 describe("a variable bill", () => {
   const power = [
     line("p1", "2026-06-04", 38.72, "Xcel Energy"),

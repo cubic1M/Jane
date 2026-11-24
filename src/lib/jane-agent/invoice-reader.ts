@@ -23,8 +23,9 @@ export type Invoice = {
 };
 
 // An amount with its cents, a dollar sign or not, a minus or brackets for a credit. Not a unit price
-// ("$0.15/GB", "$0.15 per GB").
-const AMOUNT = /(-|−)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(\))?(?!\s*(?:\/|per\b))/g;
+// ("$0.15/GB", "$0.15 per GB"), and never part of a longer number ("$0.015/GB" isn't "$0.01").
+const AMOUNT =
+  /(?<![\d.,])(-|−)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/g;
 const TOTAL =
   /^(?:invoice\s+)?(?:grand\s+)?(?:total(?:\s+(?:due|amount|paid))?|amount\s+(?:due|paid)|balance\s+due|paid)\b/i;
 const SUBTOTAL = /^subtotal\b/i;
@@ -74,6 +75,8 @@ export type InvoiceReading = {
   usualLine: InvoiceLine | null;
   explaining: InvoiceLine[];
   extraCents: number | null;
+  // With the usual line found but the other lines not adding up to the extra: what they do come to.
+  otherLinesCents: number | null;
 };
 
 export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null): InvoiceReading {
@@ -83,6 +86,7 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
     usualLine: null,
     explaining: [],
     extraCents: null,
+    otherLinesCents: null,
   };
   if (!charge) return plain;
   const against = {
@@ -100,8 +104,13 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   const whole = positive.find((l) => l.cents === extra);
   if (whole) return { ...plain, against, usualLine, explaining: [whole], extraCents: extra };
   if (usualLine) {
+    // The other lines are the explanation only when they add up to the extra: a missed line, or a
+    // total that isn't the lines, and they'd name the wrong ones.
     const rest = invoice.lines.filter((l) => l !== usualLine);
-    return { ...plain, against, usualLine, explaining: rest, extraCents: extra };
+    const restCents = rest.reduce((sum, l) => sum + l.cents, 0);
+    return restCents === extra
+      ? { ...plain, against, usualLine, explaining: rest, extraCents: extra }
+      : { ...plain, against, usualLine, extraCents: extra, otherLinesCents: restCents };
   }
   return { ...plain, against, extraCents: extra };
 }
@@ -137,11 +146,12 @@ export function readingWords(r: InvoiceReading): string[] {
   if (r.explaining.length === 1) {
     out.push(`The ${priced(r.explaining[0]!)} line accounts for the extra ${extra}.`);
   } else if (r.explaining.length > 1) {
-    const rest = r.explaining.reduce((sum, l) => sum + l.cents, 0);
     out.push(
-      rest === r.extraCents
-        ? `The other lines (${r.explaining.map(priced).join("; ")}) make up the extra ${extra}.`
-        : `The other lines (${r.explaining.map(priced).join("; ")}) come to ${money(rest)}, not the extra ${extra}: I may have missed a line.`,
+      `The other lines (${r.explaining.map(priced).join("; ")}) make up the extra ${extra}.`,
+    );
+  } else if (r.otherLinesCents !== null) {
+    out.push(
+      `The other lines come to ${money(r.otherLinesCents)}, not the extra ${extra}, so I may have missed a line and won't say which one explains the charge.`,
     );
   } else {
     out.push(

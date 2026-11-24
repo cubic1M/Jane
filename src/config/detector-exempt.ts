@@ -28,7 +28,7 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   explain_charge:
     "explains one merchant's charge from the person's own charges when they ask why they paid it; the price-rise and bill-change detectors raise a change unasked, and this suggests nothing",
   read_invoice:
-    "reads an invoice the person pasted, when they ask, and lists its lines; it suggests nothing and keeps nothing",
+    "reads an invoice the person pasted, when they ask, and lists its lines; it suggests nothing, and the read keeps nothing (src/app/invoice). Text typed into the chat is kept as a chat message like any other (the chat box takes 500 characters), so the answer sends them to the invoice page, which keeps none",
   trading_agent:
     "reports the 24-hour agent the person started on the paper account and the replay of its strategies; the agent itself trades only on simulated money",
   what_jane_did: "reports what Jane already did, when asked; nothing to suggest",

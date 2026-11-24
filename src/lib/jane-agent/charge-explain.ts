@@ -31,7 +31,7 @@ export type ChargeExplanation = {
   usual: { cents: number; exact: boolean; monthly: boolean } | null;
   // This charge minus the usual: positive is more.
   differenceCents: number | null;
-  // Above every charge before it.
+  // Above every charge before it, including the equal ones just before it.
   highest: boolean;
   // How many equal charges in a row it is part of, and the day the run began.
   run: { count: number; since: string };
@@ -116,8 +116,9 @@ export function lookUpCharge(
       chargesSeen: charges.length,
       usual,
       differenceCents: usual ? chosen.amountCents - usual.cents : null,
+      // Above every charge before it, the ones in its own run too: the third $100 isn't a first.
       highest:
-        before.length > 0 && chosen.amountCents > Math.max(...before.map((t) => t.amountCents)),
+        at > 0 && chosen.amountCents > Math.max(...charges.slice(0, at).map((t) => t.amountCents)),
       run: { count: end - start + 1, since: charges[start]!.date },
       next: after ? { date: after.date, cents: after.amountCents } : null,
     },

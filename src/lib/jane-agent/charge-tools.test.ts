@@ -50,6 +50,16 @@ describe("the tools exist for Claude", () => {
     expect(text).toContain("only as general");
     expect(text).toContain("never as a fact about this person's bill");
   });
+
+  // A chat message is stored (src/lib/jane-agent/typing.ts), so the tools send people to /invoice,
+  // which keeps none of what's pasted, and say what the read itself keeps.
+  it("send the person to the invoice page, since the chat keeps what is typed into it", () => {
+    const [explain, read] = CHARGE_TOOLS.map((t) => t.description!);
+    expect(explain).toContain("send the person to the invoice page");
+    expect(explain).toContain("a chat message is kept like any other");
+    expect(read).toContain("text the person typed into the chat is kept as a chat message");
+    expect(read).toContain("send them to the invoice page");
+  });
 });
 
 describe("explain_charge", () => {
