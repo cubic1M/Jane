@@ -65,6 +65,9 @@ export function reliefFor(
   );
 }
 
+// A deadline titled as a state's ("State income tax return"), not the IRS's.
+const STATE_DEADLINE_TITLE = /\bstate\b(?!.*\b(?:IRS|federal)\b)/i;
+
 // A deadline the relief moves: one falling from the incident to the postponed date.
 export const covers = (r: Relief, dueOn: string) =>
   dueOn >= r.incidentFrom && dueOn < r.postponedTo;
@@ -77,7 +80,14 @@ export function deadlineMoves(
   deadlines: readonly { id: string; title: string; dueOn: string; done: boolean }[],
 ): Move[] {
   return deadlines
-    .filter((d) => !d.done && TAX_DEADLINE_TITLE.test(d.title) && covers(r, d.dueOn))
+    .filter(
+      (d) =>
+        !d.done &&
+        TAX_DEADLINE_TITLE.test(d.title) &&
+        // A state's own deadline moves only when the state follows the federal relief.
+        (r.stateFollows || !STATE_DEADLINE_TITLE.test(d.title)) &&
+        covers(r, d.dueOn),
+    )
     .map((d) => ({ id: d.id, title: d.title, from: d.dueOn, to: r.postponedTo }));
 }
 

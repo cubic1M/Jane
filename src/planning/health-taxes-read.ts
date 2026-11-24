@@ -58,6 +58,10 @@ export type HealthTaxes = {
     contributedCents: number;
     projectedCents: number;
     family: boolean;
+    // The cover type isn't told: a married filer is read as family cover (the higher limit), so
+    // the limit and the room are an assumption, and the self-only limit is shown beside it.
+    coverageAssumed: boolean;
+    selfLimitCents: number;
     limitCents: number;
     excessCents: number;
     projectedExcessCents: number;
@@ -219,6 +223,8 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
       contributedCents: contributed,
       projectedCents: projected,
       family,
+      coverageAssumed: family,
+      selfLimitCents: hsaLimitFor(false, toldNumber(f.age.value)),
       limitCents: limit,
       ...excess,
     },

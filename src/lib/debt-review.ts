@@ -175,7 +175,7 @@ function homeItem(h: HomeEquity): ReviewItem | null {
     return item(
       "home",
       "tap",
-      "Your loan is under 78% of the home's original value, so PMI has to end by itself. Ask your servicer if it's still in your payment.",
+      "Your loan is under 78% of the home's original value, so you can ask your servicer to cancel PMI now. It ends by itself only on the original payment schedule.",
       { kind: "link", href: "/loans/equity", label: "See your home loan" },
     );
   }

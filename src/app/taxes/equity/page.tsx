@@ -97,7 +97,9 @@ async function Content() {
               {e.espp && (
                 <span>
                   {e.espp.qualifying
-                    ? "Qualifying sale: most of the gain is long-term."
+                    ? e.espp.grantUnknown
+                      ? "Qualifying only if your offering date was more than 2 years before the sale (I don't have it): then most of the gain is long-term."
+                      : "Qualifying sale: most of the gain is long-term."
                     : `Disqualifying sale: ${formatCents(e.espp.ordinaryCents)} is ordinary income.`}
                 </span>
               )}

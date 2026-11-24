@@ -122,7 +122,7 @@ export function pmiOriginalLetter(input: {
 }
 
 export type EscrowCheck =
-  | { kind: "unknown"; why: "no_bills" | "no_split" }
+  | { kind: "unknown"; why: "no_bills" | "no_split" | "one_bill" }
   | {
       kind: "over" | "short" | "ok";
       billsCents: number;
@@ -153,7 +153,12 @@ export function escrowCheck(input: {
   if (input.paymentCents === null || input.paymentPiCents === null) {
     return { kind: "unknown", why: "no_split" };
   }
-  const billsCents = (input.yearlyTaxCents ?? 0) + (input.yearlyInsuranceCents ?? 0);
+  // One bill not entered isn't a $0 bill: the escrow holds both, so the total, and "over", would
+  // be a guess. (A person with no insurance in escrow enters 0.)
+  if (input.yearlyTaxCents === null || input.yearlyInsuranceCents === null) {
+    return { kind: "unknown", why: "one_bill" };
+  }
+  const billsCents = input.yearlyTaxCents + input.yearlyInsuranceCents;
   const monthlyEscrowCents = Math.max(0, input.paymentCents - input.paymentPiCents);
   const collectedYearlyCents = monthlyEscrowCents * 12;
   const cushionCents = Math.round((billsCents / 12) * ESCROW_CUSHION_MONTHS);

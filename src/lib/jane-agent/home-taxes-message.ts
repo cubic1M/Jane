@@ -44,7 +44,7 @@ export function homeSaleMessage(view: HomeTaxesView): MessageParts | null {
       : `It's all under the ${formatCents(s.exclusionCents)} you can exclude, so none of it is taxed.`
     : `It doesn't qualify for the exclusion (${s.why.join(" ")}), so the gain is taxed.`;
   return {
-    body: `Your home sale: a gain of about ${formatCents(Math.max(0, s.gainCents))} (sold for ${formatCents(s.sale.cents)} after costs; it cost you ${formatCents(s.basis.cents)} with improvements). ${outcome} Keep the closing papers and improvement receipts.`,
+    body: `Your home sale: a gain of about ${formatCents(Math.max(0, s.gainCents))} (sold for ${formatCents(s.sale.cents)} after costs; it cost you ${formatCents(s.basis.cents)} with improvements). ${outcome}${s.assumption ? ` ${s.assumption}` : ""} Keep the closing papers and improvement receipts.`,
     refs: { taxYear: view.year },
     actions: [openLink("See your home's taxes", HOME_HREF)],
   };

@@ -303,9 +303,11 @@ export function listOf(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
+// The employer in a pay line: the label cut at the words a bank adds ("ACME PAYROLL PPD",
+// "ACME DIRECT DEP" and "ACME SALARY" are one payer, not two).
 const employerOfPayroll = (name: string) =>
   name
-    .replace(/\s+PAYROLL.*$/i, "")
+    .replace(/\s+(?:PAYROLL|DIRECT\s+DEP(?:OSIT)?|DIR\s+DEP|PPD|SALARY|WAGES)\b.*$/i, "")
     .trim()
     .toUpperCase();
 
@@ -330,7 +332,9 @@ export function payingTogether(
   const spans = new Map(repeated.length > 0 ? repeated : all);
   const overlaps = (key: string) => {
     const a = spans.get(key);
-    if (!a) return false;
+    // With no employer paying more than once, nothing is concurrent: two one-off deposits on
+    // one date aren't two jobs.
+    if (!a || repeated.length === 0) return false;
     return [...spans].some(([other, b]) => other !== key && a.first <= b.last && b.first <= a.last);
   };
   const latest = [...spans].sort(([, a], [, b]) => b.last.localeCompare(a.last))[0]?.[0];

@@ -308,6 +308,19 @@ export function closeCard(i: DecisionInput): Decision {
       advice: false,
     };
   }
+  // A card without a known limit still counts in the real total, so use and the limit after a
+  // closing worked from the others alone would be wrong: say so instead of a figure.
+  if (withLimit.length < i.cards.length) {
+    return {
+      id: "close_card",
+      sentences: [
+        "Closing a card lowers your total limit, which raises how much of it you use and can lower your score.",
+        `I know the limit on ${withLimit.length} of your ${i.cards.length} cards, so I can't say by how much.`,
+      ],
+      href: "/loans/credit",
+      advice: false,
+    };
+  }
   const smallest = [...withLimit].sort((a, b) => (a.limitCents ?? 0) - (b.limitCents ?? 0))[0];
   const after = limit - (smallest.limitCents ?? 0);
   const useNow = Math.round((owed / limit) * 100);
@@ -343,9 +356,11 @@ export function payoffHurts(i: DecisionInput): Decision {
     id: "payoff_hurts",
     sentences: [
       first,
-      limit > 0
-        ? `Paying all your cards off would take your use from ${Math.round((owed / limit) * 100)}% to 0% of ${formatCents(limit)}.`
-        : "Only closing the card afterward can cost points, because that lowers your limit.",
+      limit > 0 && withLimit.length < i.cards.length
+        ? `On the ${withLimit.length} of your ${i.cards.length} cards whose limit I know, paying them off would take your use from ${Math.round((owed / limit) * 100)}% to 0%.`
+        : limit > 0
+          ? `Paying all your cards off would take your use from ${Math.round((owed / limit) * 100)}% to 0% of ${formatCents(limit)}.`
+          : "Only closing the card afterward can cost points, because that lowers your limit.",
       // A pick ("keep it open") is demo advice only.
       ...(limit > 0 && i.advice
         ? ["Only closing a card afterward can cost points, so keep it open."]

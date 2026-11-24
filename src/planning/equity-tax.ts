@@ -38,6 +38,9 @@ const cents = (n: number) => Math.round(n);
 
 export type EsppResult = {
   qualifying: boolean;
+  // The offering date isn't known, so "qualifying" rests on the purchase date alone: it holds
+  // only if the offering was also more than 2 years before the sale.
+  grantUnknown: boolean;
   // Ordinary income and capital gain from the sale.
   ordinaryCents: number;
   gainCents: number;
@@ -61,6 +64,7 @@ export function esppSale(e: Event): EsppResult | null {
   if (qualifying) {
     return {
       qualifying,
+      grantUnknown: e.grantedOn === null,
       ordinaryCents: cents(qualifyingOrdinary),
       gainCents: cents(total - qualifyingOrdinary),
       longTerm: true,
@@ -73,6 +77,7 @@ export function esppSale(e: Event): EsppResult | null {
   const ordinary = Math.max(0, spread);
   return {
     qualifying,
+    grantUnknown: false,
     ordinaryCents: cents(ordinary),
     gainCents: cents((e.soldPriceCents - e.fmvCents) * e.shares),
     longTerm: e.soldOn > addYears(e.occurredOn, 1),

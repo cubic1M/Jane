@@ -48,7 +48,7 @@ export function equityReply(view: EquityTaxView): MessageParts {
   for (const e of view.income.events) {
     if (e.espp && e.event.soldOn?.startsWith(String(view.year))) {
       lines.push(
-        `ESPP sale of ${e.event.shares} ${e.event.company} shares: ${e.espp.qualifying ? "a qualifying sale, so most of the gain is long-term" : `a disqualifying sale (inside 2 years of the offering or 1 of the purchase), so ${formatCents(e.espp.ordinaryCents)} is ordinary income${e.espp.lostTreatmentCents > 0 ? `, ${formatCents(e.espp.lostTreatmentCents)} more than a qualifying sale` : ""}`}.`,
+        `ESPP sale of ${e.event.shares} ${e.event.company} shares: ${e.espp.qualifying ? (e.espp.grantUnknown ? "a qualifying sale only if the offering date was more than 2 years before the sale (I don't have it), and then most of the gain is long-term" : "a qualifying sale, so most of the gain is long-term") : `a disqualifying sale (inside 2 years of the offering or 1 of the purchase), so ${formatCents(e.espp.ordinaryCents)} is ordinary income${e.espp.lostTreatmentCents > 0 ? `, ${formatCents(e.espp.lostTreatmentCents)} more than a qualifying sale` : ""}`}.`,
       );
     }
     if (e.iso && e.iso.preferenceCents > 0) {

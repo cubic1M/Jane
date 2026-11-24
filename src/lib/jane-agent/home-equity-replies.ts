@@ -30,7 +30,7 @@ export function pmiTimelineLines(p: PmiTimeline): string[] {
   ];
   if (p.endsNow) {
     lines.push(
-      `That's under ${formatPercentTenths(PMI_AUTO_LTV)}, the point where PMI has to end by itself when your payments are current. If it's still on your statement, ask your servicer why.`,
+      `That's under ${formatPercentTenths(PMI_AUTO_LTV)}. PMI ends by itself when the loan's original payment schedule reaches that point, not when extra payments do, so if it's still on your statement you can ask your servicer in writing to cancel it now (you're under ${formatPercentTenths(PMI_ASK_LTV)}).`,
     );
   } else if (p.canAskNow) {
     lines.push(
@@ -48,6 +48,10 @@ export function escrowLines(data: HomeEquity): string[] {
   const e = data.escrow;
   if (!e) return [];
   if (e.kind === "unknown") {
+    if (e.why === "one_bill")
+      return [
+        "I have only one of your two yearly bills, property tax and insurance. Tell me the other (0 if your insurance isn't in escrow) and I'll check your escrow.",
+      ];
     return e.why === "no_bills"
       ? ["Tell me your yearly property tax and insurance bills and I'll check your escrow."]
       : [
