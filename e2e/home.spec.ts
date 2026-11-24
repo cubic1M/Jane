@@ -63,7 +63,9 @@ test("new people land on Connect; once data is in, the hub matches the report @c
       .getByRole("link", { name: /See the whole plan/ }),
   ).toHaveAttribute("href", "/plan");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Next 30 days" })).toBeVisible();
+  // No month-ahead strip and no link to last month's close on Home (founder 11-24).
+  await expect(page.getByRole("heading", { name: "Next 30 days" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Last month's close/ })).toHaveCount(0);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

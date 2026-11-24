@@ -17,17 +17,17 @@ vi.mock("@/lib/hub/load", () => ({
   loadHubTop: async () => ({
     hero: { asOf: "2026-11-18", netWorth: { known: false } },
     home: { plan: { items: [] }, waitingOnYou: [], unreadAlerts: 2, lastUpdated: null },
-    cashFlow: { asOf: "2026-11-18" },
   }),
 }));
 vi.mock("@/lib/hub/view", () => ({
   heroView: () => ({}),
-  cashFlowView: () => ({}),
   tilesView: () => [],
 }));
 vi.mock("@/lib/checklist", () => ({ firstWeekChecklist: async () => null }));
 vi.mock("@/lib/autopilot", () => ({ autopilotOf: async () => "suggest" }));
-vi.mock("@/lib/books", () => ({ openBooks: async () => null }));
+vi.mock("@/lib/books", () => ({
+  openBooks: async () => ({ open: [], markedAccountIds: [], merged: 0 }),
+}));
 vi.mock("@/lib/jane-agent/popup-stack", () => ({ loadPopupStack: async () => [] }));
 vi.mock("@/lib/plaid/bank-status", () => ({
   loadBankNotices: async () => [],
@@ -47,7 +47,6 @@ vi.mock("@/components/app-header", () => ({ AppHeader: none }));
 vi.mock("@/components/bank-status-notice", () => ({ BankStatusNotice: none }));
 vi.mock("@/components/books-notice", () => ({ BooksNotice: none }));
 vi.mock("@/components/hub/hub", () => ({ HeroRow: none }));
-vi.mock("@/components/hub/cash-flow", () => ({ CashFlowStrip: none }));
 vi.mock("@/components/loading-bar", () => ({ LoadingBar: none }));
 vi.mock("@/components/autopilot-chooser", () => ({ AutopilotChooser: none }));
 vi.mock("../chat/suggestion-cards", () => ({ SuggestionCards: none }));

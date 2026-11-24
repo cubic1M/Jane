@@ -4,7 +4,7 @@ import { CHAT } from "./chat-page";
 import { demoPerson } from "./demo-person";
 
 // Debugger 11-13, the chat on a phone: after a message the cards fold to one line,
-// "[JANE] 11 for you", and it sat on the message box, so a tap on the box's start opened the cards.
+// "[JANE] 11 for you", and it sat on the message box, so touching the box's start opened the cards.
 // The folded line sits above the box, and the box's start is the box.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");

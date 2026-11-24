@@ -602,6 +602,17 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
+  // Last month's close has no card and no spot on Home (founder 11-24); here is where to look for
+  // it. While it waits on a charge, its own item below says so (SUGGESTION_NODES.month_close).
+  if (input.hasAccounts && !input.suggestions.some((s) => s.topic === "month_close")) {
+    items.spending.push(
+      item("spending", "close", {
+        label: "Last month's close",
+        summary: "How last month's books ended: what came in, what went out and what Jane checked.",
+      }),
+    );
+  }
+
   if (input.hasAccounts) {
     items.transactions.push(
       item("transactions", "find", {

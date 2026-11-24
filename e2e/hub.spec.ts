@@ -47,27 +47,8 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await expect(hero.getByRole("img", { name: /Safe to spend \d+%/ })).toBeVisible();
   await expect(hero.getByRole("link", { name: "Net worth" })).toHaveAttribute("href", "/net-worth");
 
-  // The month ahead: one tab stop, the arrow keys step along it, each mark says what it is.
-  const strip = page.getByRole("group", { name: /^Next 30 days:/ });
-  const marks = strip.getByRole("button");
-  expect(await marks.count()).toBeGreaterThan(1);
-  await expect(strip.locator('button[tabindex="0"]')).toHaveCount(1);
-  await marks.first().focus();
-  await expect(page.getByRole("tooltip")).toBeVisible();
-  const first = await page.getByRole("tooltip").textContent();
-  await page.keyboard.press("ArrowRight");
-  await expect(marks.nth(1)).toBeFocused();
-  await expect(page.getByRole("tooltip")).not.toHaveText(first ?? "");
-  // One event: "Rent, bill, Nov 1, $1,200.00"; a day's events of one kind are one mark that
-  // lists them: "2 bills, Nov 1: Rent $1,200.00; Phone $80.00".
-  await expect(marks.nth(1)).toHaveAccessibleName(
-    /, (bill|payday|date), [A-Z][a-z]{2} \d+|^\d+ (bill|payday|date)s, [A-Z][a-z]{2} \d+: /,
-  );
-  // No two marks on the same spot: each can be tapped (tap audit).
-  const spots = await marks.evaluateAll((els) =>
-    els.map((el) => `${el.getAttribute("data-kind")}|${(el as HTMLElement).style.left}`),
-  );
-  expect(new Set(spots).size).toBe(spots.length);
+  // No month-ahead strip on Home (founder 11-24): bills and paydays are on Coming up.
+  await expect(page.getByRole("group", { name: /^Next 30 days/ })).toHaveCount(0);
 
   // One set of area tiles (audit round 2: the areas were on Home twice): "What Jane does", a
   // tile per area in tab order, each with its status and its figure; no "Your areas" too.

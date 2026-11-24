@@ -314,8 +314,11 @@ describe("moneyTree", () => {
 
   it("orders the branches money lost first, reference last, and hides empty ones", () => {
     expect(moneyTree(FULL).tree.branches.map((b) => b.id)).toEqual(Object.keys(MONEY_BRANCHES));
+    // Spending & bills is there for anyone with an account: it holds where last month's close is
+    // (founder 11-24: Home no longer links to it).
     expect(moneyTree(EMPTY).tree.branches.map((b) => b.id)).toEqual([
       "budgets",
+      "spending",
       "have",
       "transactions",
     ]);

@@ -8,16 +8,18 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { addDays } from "@/detection/units";
 import { takeChatAction } from "@/lib/jane-agent/actions";
+import { answerByRules } from "@/lib/jane-agent/answer";
+import { storeReply } from "@/lib/jane-agent/messages";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
 import { runJaneAgent } from "@/lib/jane-agent/run";
 import { loadClose } from "@/lib/month-close";
 import { scanSuggestions } from "@/lib/suggestions";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 
-// The month close's own message reaches the dock once the scan's month-close suggestion never
-// does (#2008; manager's check 11-17). A first Plaid scan posts the day's brief in its early run,
-// before the close is worked out, so the close waits for the next day's run: it must come by day
-// two at the latest, as a card with "Looks right", and its tap closes the month.
+// Founder 11-24: Jane doesn't bring last month's close up unasked. It used to reach the dock as a
+// card with "Looks right" (#2008: by day two after a first Plaid scan, on day one after an upload);
+// now no run posts it, whatever the day, and it waits to be asked. Asked in the chat ("is last
+// month closed?"), it answers there with "Looks right", and that tap closes the month.
 
 const url = process.env.TEST_DATABASE_URL;
 const DAY1 = new Date("2026-11-17T19:00:00Z");
@@ -25,7 +27,7 @@ const DAY2 = new Date("2026-11-18T19:00:00Z");
 // When the person looks: the run stamps its messages a few milliseconds after its start.
 const LATER = (d: Date) => new Date(d.getTime() + 60_000);
 
-describe.runIf(url)("the month close after a first scan", { timeout: 240_000 }, () => {
+describe.runIf(url)("the month close, never brought up unasked", { timeout: 240_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
 
@@ -74,33 +76,37 @@ describe.runIf(url)("the month close after a first scan", { timeout: 240_000 }, 
     (await loadPopupStack(userId, { client, now })).find((m) =>
       m.body.startsWith("Closing October"),
     );
+  const closeMessages = (userId: string) =>
+    client.janeMessage.count({ where: { userId, body: { startsWith: "Closing October" } } });
 
-  it("is a card with Looks right by day two, and its tap closes October", async () => {
-    const userId = await person("close-reaches-dock-plaid@example.com");
+  it("is no card in the dock on day one or day two, and asked, its tap closes October", async () => {
+    const userId = await person("close-not-in-dock-plaid@example.com");
     // Day one, as a first Plaid sync runs it (src/lib/plaid/sync.ts): suggestions, the early run,
-    // then the whole run.
+    // then the whole run; day two's run, as the daily job runs it.
     await scanSuggestions(userId, { client, now: DAY1 });
     await runJaneAgent(userId, { client, now: DAY1, trigger: "open", early: true });
     await runJaneAgent(userId, { client, now: DAY1, trigger: "open" });
     expect((await loadClose(userId, { client }))?.status).toBe("waiting");
-    // The day's brief went out in the early run, so the close waits for tomorrow's.
     expect(await closeCard(userId, LATER(DAY1))).toBeUndefined();
-
-    // Day two's run, as the daily job runs it.
     await runJaneAgent(userId, { client, now: DAY2 });
-    const card = await closeCard(userId, LATER(DAY2));
-    expect(card?.buttons.map((b) => b.label)).toContain("Looks right");
+    expect(await closeCard(userId, LATER(DAY2))).toBeUndefined();
+    expect(await closeMessages(userId)).toBe(0);
 
-    await takeChatAction(userId, card!.id, "close.confirm", { client, now: LATER(DAY2) });
+    // Asked, it answers with "Looks right"; that answer is what one tap closes.
+    const reply = (await answerByRules(userId, { kind: "month_close" }, { client, now: DAY2 }))!;
+    expect(reply.actions.map((a) => a.label)).toContain("Looks right");
+    const asked = await storeReply(userId, reply, { client, at: LATER(DAY2) });
+    await takeChatAction(userId, asked.id, "close.confirm", { client, now: LATER(DAY2) });
     expect((await loadClose(userId, { client }))?.status).toBe("closed");
   });
 
-  it("is a card on day one after an upload, whose one run works the close out first", async () => {
-    const userId = await person("close-reaches-dock-upload@example.com");
+  it("is no card on day one after an upload either", async () => {
+    const userId = await person("close-not-in-dock-upload@example.com");
     // An upload's one run (src/lib/import/background.ts).
     await scanSuggestions(userId, { client, now: DAY1 });
     await runJaneAgent(userId, { client, now: DAY1, trigger: "import" });
-    const card = await closeCard(userId, LATER(DAY1));
-    expect(card?.buttons.map((b) => b.label)).toContain("Looks right");
+    expect((await loadClose(userId, { client }))?.status).toBe("waiting");
+    expect(await closeCard(userId, LATER(DAY1))).toBeUndefined();
+    expect(await closeMessages(userId)).toBe(0);
   });
 });

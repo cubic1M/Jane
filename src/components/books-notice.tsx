@@ -1,24 +1,27 @@
 import Link from "next/link";
 import type { BooksView } from "@/lib/books";
 import { booksFix } from "@/lib/books-fix";
+import { worryingBooks } from "@/lib/books-notice";
+import { ClosableNote } from "./closable-note";
 
 // Books that balance (spec step 238): figures that rely on data Jane isn't sure of are marked
 // until it's fixed, with what's wrong in words and where to fix each one. skipItems: banks
 // whose trouble is already said elsewhere on the page (Home's bank notice), not said twice.
+// With closeKey (Home), it has a close button, and stays closed until the problems change.
 export function BooksNotice({
   books,
   skipItems = [],
+  closeKey,
 }: {
   books: BooksView;
   skipItems?: readonly string[];
+  closeKey?: string;
 }) {
-  const worrying = books.open.filter(
-    (o) => o.kind !== "transfer" && !(o.itemId && skipItems.includes(o.itemId)),
-  );
+  const worrying = worryingBooks(books, skipItems);
   if (worrying.length === 0) return null;
   return (
-    <aside
-      role="note"
+    <ClosableNote
+      closeKey={closeKey}
       className="flex flex-col gap-1 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100"
     >
       <strong>Some figures here rely on data I&apos;m still checking.</strong>
@@ -35,6 +38,6 @@ export function BooksNotice({
           );
         })}
       </ul>
-    </aside>
+    </ClosableNote>
   );
 }
