@@ -17,7 +17,7 @@ import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { recordFindingDone, retireAnsweredTopics } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { conciergeMode } from "@/lib/concierge-mode";
-import { planForCard } from "@/lib/connectors/for-card";
+import { cancelCardPlan, planForCard } from "@/lib/connectors/for-card";
 import { hasKit } from "@/lib/diy";
 import { learnFromAnswer } from "@/lib/memory/learn";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
@@ -204,47 +204,60 @@ export async function recordDecision(
         )
       : null;
 
-  const result: DecisionResult = await db.transaction(async (tx) => {
-    // Claims the finding, so two clicks can't both record an answer.
-    const claimed = await tx.findings.updateMany({
-      where: { id: finding.id, status: { in: DECIDABLE } },
-      data: { status: STATUS_FOR[choice] },
+  const result: DecisionResult = await db
+    .transaction(async (tx) => {
+      // Claims the finding, so two clicks can't both record an answer.
+      const claimed = await tx.findings.updateMany({
+        where: { id: finding.id, status: { in: DECIDABLE } },
+        data: { status: STATUS_FOR[choice] },
+      });
+      if (claimed.count === 0) {
+        throw new DecisionError("already_decided", "You've already answered this one.");
+      }
+      const decision = await tx.decisions.create({
+        data: {
+          userId,
+          findingId: finding.id,
+          choice,
+          cardSnapshot: card as unknown as Prisma.InputJsonObject,
+          source,
+          ...(options ? { options } : {}),
+          ...((source === "rule" || source === "auto") && answer.ruleKey
+            ? { ruleKey: answer.ruleKey }
+            : {}),
+          // The caller's clock when it has one: a rule's monthly limit counts decisions from the
+          // month of its `now` (debugger 11-01: stamped with the database's clock, a rule run "on
+          // Oct 18" counted against November, and standing-rules.integration failed from Nov 1).
+          ...(now ? { createdAt: now } : {}),
+        },
+        select: { id: true },
+      });
+      const action =
+        choice === "yes" && !plan
+          ? await tx.actions.create({
+              data: { userId, decisionId: decision.id, type: card.actionType },
+              select: { id: true },
+            })
+          : null;
+      return {
+        decisionId: decision.id,
+        actionId: action?.id ?? null,
+        ...(choice !== answer.choice ? { diy: true } : {}),
+        ...(plan ? { connectorActionId: plan.id } : {}),
+      };
+    })
+    .catch(async (error: unknown) => {
+      // A plan is made before the claim, so a yes that loses it (a No got there first, or the
+      // write failed) takes its plan back, unless another yes holds the finding: that one shares it.
+      if (plan) {
+        const held = await db.decisions.findFirst({
+          where: { findingId: finding.id, choice: "yes", undoneAt: null },
+          select: { id: true },
+        });
+        if (!held) await cancelCardPlan(userId, finding.id, { client, ...(now ? { now } : {}) });
+      }
+      throw error;
     });
-    if (claimed.count === 0) {
-      throw new DecisionError("already_decided", "You've already answered this one.");
-    }
-    const decision = await tx.decisions.create({
-      data: {
-        userId,
-        findingId: finding.id,
-        choice,
-        cardSnapshot: card as unknown as Prisma.InputJsonObject,
-        source,
-        ...(options ? { options } : {}),
-        ...((source === "rule" || source === "auto") && answer.ruleKey
-          ? { ruleKey: answer.ruleKey }
-          : {}),
-        // The caller's clock when it has one: a rule's monthly limit counts decisions from the
-        // month of its `now` (debugger 11-01: stamped with the database's clock, a rule run "on
-        // Oct 18" counted against November, and standing-rules.integration failed from Nov 1).
-        ...(now ? { createdAt: now } : {}),
-      },
-      select: { id: true },
-    });
-    const action =
-      choice === "yes" && !plan
-        ? await tx.actions.create({
-            data: { userId, decisionId: decision.id, type: card.actionType },
-            select: { id: true },
-          })
-        : null;
-    return {
-      decisionId: decision.id,
-      actionId: action?.id ?? null,
-      ...(choice !== answer.choice ? { diy: true } : {}),
-      ...(plan ? { connectorActionId: plan.id } : {}),
-    };
-  });
 
   await keepAnswerAboutThePrice(db, finding, choice);
   await logAudit(

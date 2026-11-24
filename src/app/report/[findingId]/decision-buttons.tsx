@@ -15,6 +15,8 @@ const CHOSEN_BUTTON =
 const GREYED_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold opacity-40 sm:w-auto dark:border-zinc-700";
 
+const CONNECTIONS_PLANS = "/settings/connections#actions";
+
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "error"; message: string };
 
 // What the server said about an answer: its decision (for Revert), or why not.
@@ -54,6 +56,9 @@ export function DecisionButtons({
   // grey them out, and there should be a revert button"), and the save on its way behind it.
   const [chosen, setChosen] = useState<"yes" | "no" | null>(null);
   const sending = useRef<Promise<Answer> | null>(null);
+  // Set once the saved answer says a connector planned the yes: the follow-up link's address then
+  // matches where its click goes (until then it waits for the answer, and /actions is the fallback).
+  const [planned, setPlanned] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   // A No can be taken back for a few seconds: Revert counts them down, then goes.
@@ -123,7 +128,8 @@ export function DecisionButtons({
         router.refresh();
       } else if (answer.connectorActionId) {
         // A connector planned it: its exact steps wait for the person's own yes.
-        router.push("/settings/connections#actions");
+        setPlanned(true);
+        router.push(CONNECTIONS_PLANS);
       }
     });
   }
@@ -133,6 +139,7 @@ export function DecisionButtons({
     const sent = sending.current;
     if (!was || !sent) return;
     setChosen(null);
+    setPlanned(false);
     sending.current = null;
     setState({ kind: "idle" });
     void sent
@@ -222,13 +229,19 @@ export function DecisionButtons({
               {/* Your actions, or what Jane is doing while /actions is hidden
                   (src/config/hidden-pages.ts). */}
               <Link
-                href={shownHref("/actions")}
+                href={planned ? CONNECTIONS_PLANS : shownHref("/actions")}
                 // After the yes is saved, so the action is there when the page opens.
                 onClick={(e) => {
                   const sent = sending.current;
                   if (!sent) return;
                   e.preventDefault();
-                  void sent.then(() => router.push(shownHref("/actions")));
+                  void sent.then((answer) =>
+                    router.push(
+                      "connectorActionId" in answer && answer.connectorActionId
+                        ? CONNECTIONS_PLANS
+                        : shownHref("/actions"),
+                    ),
+                  );
                 }}
                 className="font-medium underline"
               >
