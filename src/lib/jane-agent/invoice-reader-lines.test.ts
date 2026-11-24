@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lookUpCharge } from "./charge-explain";
-import { readAgainst, readInvoice } from "./invoice-reader";
+import { readAgainst, readInvoice, readingWords } from "./invoice-reader";
 import type { BillLine } from "./replies-old-bills";
 
 // What each kind of invoice line is, one table of real-looking lines (CodeRabbit's rounds on the
@@ -84,6 +84,8 @@ const totals = [
   "Total due by Dec 1  $100.00",
   "Amount due until Dec 1  $100.00",
   "Balance due before Dec 1 incl. tax  $100.00",
+  "Balance due before Friday incl. tax  $100.00",
+  "Amount due before the 15th incl. VAT  $100.00",
   "Total due before Dec 1 (incl. VAT)  $100.00",
 ];
 
@@ -261,38 +263,68 @@ describe("which total is the one charged, whatever the order the invoice ends in
     ).toBe(10_000);
   });
 
-  it("is the same invoice as the $100 charge when a smaller amount due was chosen as its total", () => {
-    const vercel = (id: string, date: string, dollars: number): BillLine => ({
-      id,
-      date,
-      amountCents: dollars * 100,
-      description: "VERCEL INC",
-      merchantName: "Vercel",
-      pfcDetailed: null,
-    });
+  // What has been paid of an invoice is not the invoice (CodeRabbit's part-paid examples).
+  const vercel = (id: string, date: string, dollars: number): BillLine => ({
+    id,
+    date,
+    amountCents: dollars * 100,
+    description: "VERCEL INC",
+    merchantName: "Vercel",
+    pfcDetailed: null,
+  });
+  const explanationFor = (charges: number[], asked: number) => {
     const found = lookUpCharge(
       "vercel",
-      [
-        vercel("a", "2026-09-20", 20),
-        vercel("b", "2026-10-20", 20),
-        vercel("c", "2026-11-20", 100),
-      ],
-      { amountCents: 10_000, day: null },
+      charges.map((c, i) => vercel(`v${i}`, `2026-0${i + 1}-20`, c)),
+      { amountCents: asked * 100, day: null },
     );
-    const explanation = found.kind === "found" ? found.explanation : null;
-    const invoice = readInvoice(
-      "Plan  $20.00\nUsage  $80.00\nTotal  $100.00\nAmount paid  $50.00\nAmount due  $50.00",
-    )!;
-    expect(invoice.totalCents).toBe(5_000);
-    expect(readAgainst(invoice, explanation).against?.totalMatches).toBe(true);
-  });
+    return found.kind === "found" ? found.explanation : null;
+  };
 
-  it("keeps every total it states, so a part-paid invoice still matches the charge", () => {
+  it("keeps the invoice's total on a part-paid invoice, not the amount left or paid", () => {
     const invoice = readInvoice(
       "Plan  $90.00\nTax  $10.00\nTotal  $100.00\nAmount paid  $50.00\nAmount due  $50.00",
     )!;
-    expect(invoice.totalCents).toBe(5_000);
-    expect(invoice.chargedCents).toEqual([10_000, 5_000, 5_000]);
+    expect(invoice.totalCents).toBe(10_000);
+    expect(invoice.linesCents).toBe(10_000);
+  });
+
+  it("uses the amount due or paid only when the invoice states no total", () => {
+    expect(readInvoice("Plan  $100.00\nAmount due  $100.00")!.totalCents).toBe(10_000);
+    expect(readInvoice("Plan  $100.00\nAmount paid  $100.00\nAmount due  $0.00")!.totalCents).toBe(
+      10_000,
+    );
+  });
+
+  it("reads a discount against the whole total, not the amount left", () => {
+    const invoice = readInvoice(
+      "Plan  $100.00\nDiscount  $10.00\nTotal  $90.00\nAmount paid  $40.00\nAmount due  $50.00",
+    )!;
+    expect(invoice.totalCents).toBe(9_000);
+    expect(invoice.lines.map((l) => l.cents)).toEqual([10_000, -1_000]);
+    expect(invoice.linesCents).toBe(9_000);
+  });
+
+  it("doesn't put a payment's lines on a charge that is only the payment", () => {
+    // Plan $20, Usage $30, Support $50, Total $100, half paid; the charge was the $50 paid, usual $20.
+    const invoice = readInvoice(
+      "Plan  $20.00\nUsage  $30.00\nSupport  $50.00\nTotal  $100.00\nAmount paid  $50.00\nAmount due  $50.00",
+    )!;
+    const reading = readAgainst(invoice, explanationFor([20, 20, 20, 50], 50));
+    expect(reading.against?.totalMatches).toBe(false);
+    expect(reading.explaining).toEqual([]);
+    expect(readingWords(reading).join("\n")).toContain(
+      "I won't say which line explains the charge",
+    );
+  });
+
+  it("still sets the lines against a charge that is the invoice's total", () => {
+    const invoice = readInvoice(
+      "Plan  $20.00\nUsage  $80.00\nTotal  $100.00\nAmount paid  $100.00\nAmount due  $0.00",
+    )!;
+    const reading = readAgainst(invoice, explanationFor([20, 20, 20, 100], 100));
+    expect(reading.against?.totalMatches).toBe(true);
+    expect(reading.explaining.map((l) => l.description)).toEqual(["Usage"]);
   });
 });
 
