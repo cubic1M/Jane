@@ -70,7 +70,10 @@ export function promoPlan(input: {
   const onPace =
     input.balanceCents <= 0 || input.monthlyPaidCents >= monthlyNeededCents * PROMO_PACE_SHARE;
   // What would be left unpaid at the end at the current pace.
-  const leftAtEnd = Math.max(0, input.balanceCents - input.monthlyPaidCents * monthsLeft);
+  // An ended promotion has no months left to pay in: the balance now is what's left.
+  const leftAtEnd = ended
+    ? Math.max(0, input.balanceCents)
+    : Math.max(0, input.balanceCents - input.monthlyPaidCents * monthsLeft);
   const costIfMissedCents = input.deferred
     ? interestCents(
         leftAtEnd,

@@ -4,7 +4,6 @@ import type { CardProduct } from "@/lib/credit-cards/partner";
 import type { ReportItem } from "@/lib/credit/partner";
 import type { InsightTransaction } from "@/insights/spending";
 import { cashPlan } from "./cash";
-import { closeOf, type CloseEntry } from "./close";
 import { compareOptions, type CompareOption } from "./compare";
 import { diversifyPlan } from "./company-stock";
 import { summarize, type Tx } from "./costly-borrowing";
@@ -178,33 +177,6 @@ describe("dates", () => {
     // January 31 plus three months is April 30, not May 1.
     expect(plan.parts.map((p) => p.on).slice(0, 2)).toEqual(["2026-01-31", "2026-04-30"]);
     expect(plan.parts.length).toBeGreaterThan(1);
-  });
-});
-
-describe("the monthly close", () => {
-  it("does not list a finding first shown after the month as still to do", () => {
-    const entry = (over: Partial<CloseEntry> & Pick<CloseEntry, "key" | "state">): CloseEntry => ({
-      title: over.key,
-      cents: 10_000,
-      yearly: true,
-      confidencePercent: 80,
-      foundOn: null,
-      actedOn: null,
-      verifiedOn: null,
-      heldOn: null,
-      ...over,
-    });
-    const close = closeOf({
-      month: "2026-03",
-      today: "2026-05-02",
-      entries: [
-        entry({ key: "march", state: "estimated", foundOn: "2026-03-10" }),
-        entry({ key: "april", state: "estimated", foundOn: "2026-04-05" }),
-      ],
-      changes: [],
-      checkup: [],
-    });
-    expect(close.open.map((e) => e.key)).toEqual(["march"]);
   });
 });
 

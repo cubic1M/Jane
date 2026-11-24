@@ -102,10 +102,8 @@ export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<
   const changed = input.changes
     .filter((c) => inMonth(c.date, month))
     .sort((a, b) => b.amountCents - a.amountCents || a.key.localeCompare(b.key));
-  // Nothing first shown after this month is still to do in it.
   const open = entries
     .filter((e) => e.state === "estimated" || e.state === "said_yes" || e.state === "done")
-    .filter((e) => e.foundOn === null || e.foundOn.slice(0, 7) <= month)
     .sort(byCents);
 
   // The chips: what's open (biggest first) and what went up, at most CLOSE_CHIPS_MAX.

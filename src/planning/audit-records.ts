@@ -105,8 +105,10 @@ export function retentionSchedule(years: number[], today: string): Retention[] {
   return [...new Set(years)].sort().map((y) => retentionFor(y, "return", today));
 }
 
-const csvCell = (value: string): string => {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+// Text cells that a spreadsheet could read as a formula get an apostrophe; an amount cell (digits, a
+// point and a minus) doesn't, or a negative amount turns into text that SUM skips.
+const csvCell = (value: string, isAmount = false): string => {
+  const safe = !isAmount && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 };
 
@@ -143,5 +145,5 @@ export function auditPackCsv(pack: AuditPack): string {
       centsToInput(item.claimedCents),
     ]);
   }
-  return `${rows.map((r) => r.map(csvCell).join(",")).join("\r\n")}\r\n`;
+  return `${rows.map((r) => r.map((cell, i) => csvCell(cell, i === 4)).join(",")).join("\r\n")}\r\n`;
 }

@@ -42,9 +42,13 @@ export function decideContribution({
       : Math.min(MAX_CONTRIBUTION_CENTS, Math.floor(Math.max(0, room) * LEFTOVER_SHARE));
   const amount = Math.min(wanted, Math.max(0, room));
   if (amount < MIN_CONTRIBUTION_CENTS) {
+    // Room under the minimum is the safe-to-spend floor; with room to spare, the amount is the reason.
     return {
       status: "paused",
-      reason: `Safe to spend is ${dollars(safeCents)}, and I keep at least ${dollars(SAFE_TO_SPEND_FLOOR_CENTS)} of it for you.`,
+      reason:
+        room < MIN_CONTRIBUTION_CENTS
+          ? `Safe to spend is ${dollars(safeCents)}, and I keep at least ${dollars(SAFE_TO_SPEND_FLOOR_CENTS)} of it for you.`
+          : `${dollars(Math.max(0, wanted))} is under the ${dollars(MIN_CONTRIBUTION_CENTS)} minimum a contribution can be.`,
     };
   }
   return { status: "invested", amountCents: amount };
