@@ -171,7 +171,7 @@ export async function sendReportLetter(
       partner: CREDIT_FIX_PARTNER,
       sentAt: now,
       // The column can't be empty: a validation letter stores the day it was sent, read as no date.
-      deadlineOn: new Date(`${deadlineOn ?? isoDay(now)}T00:00:00Z`),
+      deadlineOn: new Date(`${deadlineOn ?? data.asOf}T00:00:00Z`),
       deadlineId,
     },
     select: { id: true },
