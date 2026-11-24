@@ -418,6 +418,9 @@ const lowBalance: Detector = {
   detect({ profile, data }) {
     // Cash in checking and savings: what could pay the month's bills. Unknown is not low.
     if (!cashKnown(data)) return null;
+    // An account with no balance on file isn't an empty one: the total would be partial, and so
+    // the shortfall against the month's bills.
+    if (data.accounts.some((a) => a.type === "depository" && a.balanceKnown === false)) return null;
     const checking = liquidCents(data);
     // A month's regular bills: the latest charge of each regular series.
     const bills = regular(data).filter(

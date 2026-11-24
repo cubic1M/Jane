@@ -201,30 +201,42 @@ const saveEnding: Detector = {
         !(SAVE_ENDING.doneStatuses as readonly string[]).includes(l.loanStatus ?? ""),
     );
     let owed = 0;
+    // Standard and today's payment, summed only over loans where both are known: a payment the
+    // bank didn't report isn't $0, and a loan with no rate has no Standard figure.
     let standard = 0;
     let now = 0;
+    let unknown = 0;
     for (const l of loans) {
       const balance = Math.abs(data.accounts.find((a) => a.id === l.accountId)?.balanceCents ?? 0);
-      if (balance <= 0 || l.aprBps === null) continue;
+      if (balance <= 0) continue;
       owed += balance;
+      if (l.aprBps === null || l.minimumCents === null || l.minimumCents === undefined) {
+        unknown += 1;
+        continue;
+      }
       standard += levelPaymentCents(balance, l.aprBps, standardMonths(l, balance));
-      now += l.minimumCents ?? 0;
+      now += l.minimumCents;
     }
     const rise = standard - now;
-    if (owed <= 0 || rise <= 0) return null;
+    // The plan choice is due whatever the dollars say; with every figure known and no rise there
+    // is nothing to flag, and with any unknown the card says what it can't compare.
+    if (owed <= 0 || (unknown === 0 && rise <= 0)) return null;
     const simulate = STUDENT_STEPS.find((s) => s.key === "simulate")!;
     return suggestion("debt", "student_save_ending", {
       title: "Pick a new repayment plan now that SAVE has ended",
       headline: "Pick a new student loan plan",
-      short: `SAVE has ended: without a choice, Standard could be about ${formatCents(standard)} a month.`,
-      worthCents: rise * 12,
+      short:
+        unknown === 0
+          ? `SAVE has ended: without a choice, Standard could be about ${formatCents(standard)} a month.`
+          : "SAVE has ended: you need to pick a new plan, or you're put on Standard.",
+      worthCents: Math.max(0, rise) * 12,
       worthKind: "risk",
       confidence: {
         percent: confidenceOf("guessed", { months: profile.months, matches: loans.length }),
         reason: "your bank reports a loan on SAVE; I can't see your notice's date",
       },
       urgency: "now",
-      why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard or Tiered Standard. Standard would be about ${formatCents(standard)} a month, ${formatCents(rise)} more than now. Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
+      why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard or Tiered Standard. ${unknown === 0 ? `Standard would be about ${formatCents(standard)} a month, ${formatCents(rise)} more than now.` : "I can't compare Standard with your payment now: your bank didn't report a payment or rate for every loan."} Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
       more: [{ label: simulate.title, href: simulate.url }],
     });
