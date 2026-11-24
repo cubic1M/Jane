@@ -82,7 +82,13 @@ export function yearPlan(input: YearInput): YearMonth[] {
       const base = kept ?? planned(month, input, zeroOwed());
       out.push({ ...base, actual });
       for (const sector of FLEX_SECTORS) {
-        owed[sector] += Math.max(0, base.targets[sector] - actual[sector]);
+        // A past target holds its own part and the catch-up added to it (already in what was
+        // owed): only the own part's shortfall is new, and catch-up that was achieved is paid off.
+        const own = Math.min(base.targets[sector], input.wants[sector]);
+        owed[sector] = Math.max(
+          0,
+          owed[sector] + Math.max(0, own - actual[sector]) - Math.max(0, actual[sector] - own),
+        );
       }
       return;
     }

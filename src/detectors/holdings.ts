@@ -31,14 +31,15 @@ const feeDrag: Detector = {
   topic: "investment_fees",
   covers: ["investment_fees"],
   needs: [],
-  detect({ profile, data }) {
+  detect(ctx) {
+    const { profile, data } = ctx;
     const rows = feeCardRows(data);
     if (rows.length === 0) return null;
     const total = rows.reduce((s, r) => s + r.saving, 0);
     const top = [...rows].sort((a, b) => b.saving - a.saving)[0]!;
     // A 401(k) fund here whose plan's menu has a cheaper one of the same kind: said here, as a
     // fact with its source, not as a second card (plan_menu, ./fund-costs.ts).
-    const menu = menuRowsOf(data)
+    const menu = menuRowsOf(data, ctx.advice)
       .filter((m) => rows.some((r) => sameHolding(r.h, m.h)))
       .map(
         (m) =>

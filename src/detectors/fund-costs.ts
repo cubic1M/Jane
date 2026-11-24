@@ -45,7 +45,10 @@ export function feeCardRows(data: Data): FeeRow[] {
 }
 
 // Each 401(k) fund whose plan's own menu has a cheaper fund of the same kind.
-export function menuRowsOf(data: Data): MenuRow[] {
+// The menu is the demo plan's (DEMO_EMPLOYER_PLAN_MENU): a real account's own plan menu isn't
+// known, so with `advice === false` no menu claim is made (a fund it can't buy isn't offered).
+export function menuRowsOf(data: Data, advice?: boolean): MenuRow[] {
+  if (advice === false) return [];
   const plans = new Set(data.accounts.filter((a) => a.subtype === "401k").map((a) => a.id));
   return (data.holdings ?? []).flatMap((h) => {
     if (!plans.has(h.accountId) || !h.ticker || h.isCash || h.valueCents <= 0) return [];

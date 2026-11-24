@@ -26,6 +26,11 @@ export const tx = (data: Pick<ProfileInput, "transactions">, f: (t: ProfileTx) =
 export const outCents = (list: readonly ProfileTx[]) =>
   list.filter((t) => t.amountCents > 0).reduce((s, t) => s + t.amountCents, 0);
 
+// A total seen over `months` months of history, as a year: a month of a premium is not a year of
+// them. Null when too little history to say (under 3 months).
+export const perYear = (cents: number, months: number): number | null =>
+  months >= 3 ? Math.round((cents * 12) / months) : null;
+
 // The rows and day a monthly spending figure is read from: a profile, or anything shaped like one.
 type Spending = Pick<ProfileInput, "transactions" | "today">;
 

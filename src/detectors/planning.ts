@@ -25,11 +25,14 @@ const planMenu: Detector = {
   topic: "plan_menu",
   covers: ["plan_menu"],
   needs: ["has_401k"],
-  detect({ profile, data }) {
+  detect(ctx) {
+    const { profile, data } = ctx;
     // One fund, one card: a fund the fee card names has the menu said in its detail
     // (./fund-costs.ts).
     const fees = feeCardRows(data);
-    const rows = menuRowsOf(data).filter((m) => !fees.some((f) => sameHolding(f.h, m.h)));
+    const rows = menuRowsOf(data, ctx.advice).filter(
+      (m) => !fees.some((f) => sameHolding(f.h, m.h)),
+    );
     const total = rows.reduce((s, r) => s + r.saving, 0);
     if (total < R.feeMinCents) return null;
     const top = [...rows].sort((a, b) => b.saving - a.saving)[0];

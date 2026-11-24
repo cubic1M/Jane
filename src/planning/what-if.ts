@@ -149,16 +149,21 @@ export function runScenario(
   const yearlyIncomeChange = Math.round(
     -baseline.monthlyIncomeCents *
       params.incomeLossShare *
-      (params.months > 0 ? params.months : 12),
+      // The year's tax is on the year's months: a longer lapse counts the year, not 18 months.
+      Math.min(params.months > 0 ? params.months : WHAT_IF_MONTHS, WHAT_IF_MONTHS),
   );
   const taxes =
     baseline.marginalRate === null || params.incomeLossShare === 0
       ? null
       : `About ${formatCents(Math.abs(Math.round(yearlyIncomeChange * baseline.marginalRate)))} ${yearlyIncomeChange < 0 ? "less" : "more"} in tax for the year, at your ${Math.round(baseline.marginalRate * 100)}% rate on the next dollar.`;
 
+  // The goals' monthly needs come out of the margin first when they fit: those dollars are theirs.
+  const afterGoals = goals.some((g) => g.status === "slips")
+    ? room
+    : Math.max(0, room - totalNeeded);
   const investing =
-    room > 0
-      ? `${formatCents(room)} a month left over for investing once things settle.`
+    afterGoals > 0
+      ? `${formatCents(afterGoals)} a month left over for investing once things settle.`
       : "Nothing left over for investing while this lasts.";
 
   const plan: PlanChange[] = [];
