@@ -28,7 +28,7 @@ export type Invoice = {
 // for a credit. Not a unit price ("$0.15/GB", "$0.15 per GB"), and never part of a longer number
 // ("$0.015/GB" isn't "$0.01").
 const AMOUNT =
-  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/g;
+  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/gi;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
@@ -41,14 +41,16 @@ const wordsOf = (description: string) =>
 
 // The lines that sum up the others, read from their whole words, in any position and case:
 //  - a subtotal ("Subtotal", "Items sub-total", "Pre-tax subtotal");
-//  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"):
+//  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"; "before"
+//    alone isn't it: "Balance due before Dec 1" is the total charged):
 //    a sum of the lines, never the one charged;
 //  - the total charged: "Total", "Grand total", "Order total", "Total due", "Total (USD)",
 //    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
 //    whole forms: "Total Protection" and "Total Wine" are things sold.
 const SUBTOTAL = /\bsub ?total\b/;
 const SUMS = /\b(?:total|amount|balance|sum)\b/;
-const BEFORE_TAX = /\b(?:excl|excluding|before|pre ?tax|without|net|ex (?:tax|vat|gst))\b/;
+const BEFORE_TAX =
+  /\b(?:(?:excl|excluding|before|without|ex)\s+(?:(?:any|all|the|sales)\s+)?(?:tax|taxes|vat|gst)|pre ?tax|net\s+(?:total|amount|price))\b/;
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
 const TOTAL_CHARGED = new RegExp(
   `^(?:(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|paid|payable|charged|owed|amount|price|${CURRENCY}))*` +

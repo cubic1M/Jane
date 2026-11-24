@@ -32,6 +32,9 @@ const sums = [
   "Total ex tax  $90.00",
   "Total without tax  $90.00",
   "Net total  $90.00",
+  "Net amount  $90.00",
+  "Amount excluding VAT  $90.00",
+  "Total before all taxes  $90.00",
   "Amount before tax  $90.00",
   "Balance before tax  $90.00",
 ];
@@ -54,6 +57,22 @@ const totals = [
   "Amount paid  $100.00",
   "Total paid  $100.00",
   "Paid  $100.00",
+  // Dated totals charged: "before" without tax wording is a date, not a total before tax.
+  "Balance due before Dec 1  $100.00",
+  "Amount due before Dec 1  $100.00",
+  "Total due before Dec 1  $100.00",
+  "Total due by Dec 1  $100.00",
+  "Amount due until Dec 1  $100.00",
+];
+
+// A unit price, however it is cased, is not the line's amount.
+const unitPrices = [
+  "Storage $0.15/GB",
+  "Storage $0.15 per GB",
+  "Storage $0.15 PER GB",
+  "Storage $0.15 Per GB",
+  "STORAGE $0.15 PER GB",
+  "Storage $0.015 PER GB",
 ];
 
 const items: [string, Expected][] = [
@@ -95,6 +114,19 @@ const items: [string, Expected][] = [
     "Bandwidth, 150 GB    150    $0.40/GB    $60.00",
     { is: "item", description: "Bandwidth, 150 GB", cents: 6_000 },
   ],
+  // The extended amount after a unit price counts, whatever the case of "per".
+  [
+    "Storage, 100 GB  $0.15 PER GB  $15.00",
+    { is: "item", description: "Storage, 100 GB", cents: 1_500 },
+  ],
+  [
+    "Storage, 100 GB  $0.15 per GB  $15.00",
+    { is: "item", description: "Storage, 100 GB", cents: 1_500 },
+  ],
+  [
+    "Storage, 100 GB  $0.15/GB  $15.00",
+    { is: "item", description: "Storage, 100 GB", cents: 1_500 },
+  ],
   // Leaders, bullets and separators come off the ends, not the name.
   ["Support ........ $50.00", { is: "item", description: "Support", cents: 5_000 }],
   ["• Hosting - monthly  $12.00", { is: "item", description: "Hosting - monthly", cents: 1_200 }],
@@ -128,6 +160,12 @@ describe("an invoice's summary lines", () => {
       ).toEqual(["Plan", "Tax"]);
       expect(invoice.linesCents, order).toBe(10_000);
     }
+  });
+});
+
+describe("a unit price on its own line", () => {
+  it.each(unitPrices)("%s is no line and no total", (line) => {
+    expect(read(line)).toEqual({ lines: [FILLER], total: null });
   });
 });
 
