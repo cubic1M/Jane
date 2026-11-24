@@ -173,9 +173,10 @@ function simulate(
     if (plan === "rap") {
       // Interest first; anything it doesn't cover is waived; principal drops by at least the
       // minimum, the rest matched.
+      // The matched drop can't be more than what was paid: a $10 payment drops $10, not $50.
       const towardPrincipal = Math.max(
         pay - interest,
-        Math.min(RAP.minPrincipalDropCents, principal),
+        Math.min(RAP.minPrincipalDropCents, principal, pay),
       );
       principal = Math.max(0, principal - towardPrincipal);
     } else {

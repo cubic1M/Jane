@@ -77,7 +77,12 @@ export function residencePeriods(
   const inYear = moves
     .filter((m) => m.date > start && m.date <= end && m.from !== m.to)
     .sort((a, b) => a.date.localeCompare(b.date));
-  const first = inYear[0]?.from ?? state;
+  // With no move inside the year, they lived where the earliest later move says they left from, and
+  // only with none after it, in the state they're in now (a 2024 pack for someone who moved in 2025).
+  const later = moves
+    .filter((m) => m.date > end && m.from !== m.to)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const first = inYear[0]?.from ?? later?.from ?? state;
   if (!first) return [];
   const periods: ResidencePeriod[] = [];
   let from = start;

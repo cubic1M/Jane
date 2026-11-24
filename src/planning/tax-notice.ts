@@ -53,7 +53,13 @@ export function checkNotice(
   }
   for (const key of ["noticeDate", "respondBy"] as const) {
     const v = fields[key];
-    if (v !== undefined && (!DATE.test(v) || Number.isNaN(Date.parse(v)))) {
+    // A date that exists: 2026-02-30 parses, as March 2, but isn't one.
+    if (
+      v !== undefined &&
+      (!DATE.test(v) ||
+        Number.isNaN(Date.parse(v)) ||
+        new Date(Date.parse(v)).toISOString().slice(0, 10) !== v)
+    ) {
       drop(key, "I couldn't read that date. Type it as YYYY-MM-DD.");
     }
   }
