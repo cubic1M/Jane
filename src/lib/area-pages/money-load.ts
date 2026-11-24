@@ -194,18 +194,21 @@ export async function loadMoneyArea(
       newestLine ? new Date(`${newestLine}T00:00:00Z`) : null,
       asOf,
     ),
-    lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
-      accountId: f.accountId,
-      name: f.accountName,
-      // Today's balance: a statement's is walked forward to today, so it's an estimate.
-      startCents: f.todayCents,
-      // With the statement's own balance and day, as /bills says it (balanceLine).
-      ...(f.startOn !== input.asOf
-        ? { estimated: true, fromCents: f.startCents, fromOn: f.startOn }
-        : {}),
-      lowCents: f.lowest.balanceCents,
-      date: f.lowest.date,
-    })),
+    // An account whose statement stops early has no low worth showing (/bills says so instead).
+    lows: forecastAccounts(input, FORECAST_DAYS)
+      .filter((f) => !f.staleFrom)
+      .map((f) => ({
+        accountId: f.accountId,
+        name: f.accountName,
+        // Today's balance: a statement's is walked forward to today, so it's an estimate.
+        startCents: f.todayCents,
+        // With the statement's own balance and day, as /bills says it (balanceLine).
+        ...(f.startOn !== input.asOf
+          ? { estimated: true, fromCents: f.startCents, fromOn: f.startOn }
+          : {}),
+        lowCents: f.lowest.balanceCents,
+        date: f.lowest.date,
+      })),
     bills: comingUpBills(input, FORECAST_DAYS).map((b) => ({
       merchant: b.merchant,
       date: b.date,
