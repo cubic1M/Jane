@@ -77,6 +77,9 @@ function grossIncome(
       : 0;
   return gross + Math.round(stock * T.stockVestShare);
 }
+// The payer of a federal tax refund.
+const FEDERAL_REFUND = /\b(?:IRS|US TREAS|U\.?S\.? TREAS|TREAS(?:URY)?)\b/i;
+
 const bracketOf = (
   profile: Parameters<typeof grossIncome>[0],
   data: Parameters<typeof grossIncome>[1],
@@ -535,7 +538,12 @@ const fileReturn: Detector = {
     if ((pattern as Fact).confidence === 0) return null;
     const refund = tx(
       data,
-      (t) => t.pfc === "INCOME_TAX_REFUND" && t.date > `${profile.today.slice(0, 4)}-01-01`,
+      (t) =>
+        t.pfc === "INCOME_TAX_REFUND" &&
+        t.date > `${profile.today.slice(0, 4)}-01-01` &&
+        // A federal refund is the proof of a filed federal return; a state refund (FTB, a
+        // department of revenue) isn't.
+        FEDERAL_REFUND.test(t.description),
     );
     if (refund.length > 0) return null;
     const year = Number(profile.today.slice(0, 4));
