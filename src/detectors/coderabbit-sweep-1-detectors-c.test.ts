@@ -7,6 +7,9 @@ import { inputFor } from "@/profile/sample";
 import { COVER_GAP_DETECTORS } from "./cover-gaps";
 import { runDetectors } from "./index";
 import { DEBT_DETECTORS } from "./debt";
+import { LIFE_DETECTORS } from "./life";
+import { cushionOf } from "./money";
+import { emergencyTarget } from "@/planning/emergency-fund";
 
 // CodeRabbit sweep, part 1 (money figures), src/detectors chunk 1: each case is a finding
 // reproduced against the code first (failing), then fixed.
@@ -99,5 +102,87 @@ describe("a balance transfer's interest is a card's", () => {
       "balance_transfer",
     )!;
     expect(more.worthCents).toBe(base.worthCents);
+  });
+});
+
+describe("a pension reserve needs the income it is a gap against", () => {
+  const base = { spendingCents: 300_000, pattern: "pension", debtTrouble: false };
+  it("is sized like anyone's when income is unknown, not as a $0-income gap", () => {
+    expect(emergencyTarget({ ...base, incomeCents: null })?.kind).toBe("months");
+    expect(emergencyTarget({ ...base, incomeCents: 200_000 })?.kind).toBe("gap");
+    // A measured zero is a measurement.
+    expect(emergencyTarget({ ...base, incomeCents: 0 })?.kind).toBe("gap");
+  });
+});
+
+describe("the cushion's cash total", () => {
+  it("is not claimed when a bank account's balance isn't on file", () => {
+    const d = inputFor("debt");
+    const profile = buildProfile(d);
+    const before = cushionOf({ profile, data: d });
+    const checking = d.accounts.find((a) => a.type === "depository")!;
+    const unknown = {
+      ...d,
+      accounts: [
+        ...d.accounts,
+        { ...checking, id: "x-unknown", balanceCents: 0, balanceKnown: false },
+      ],
+    };
+    expect(before).not.toBeNull();
+    expect(cushionOf({ profile: buildProfile(unknown), data: unknown })).toBeNull();
+  });
+});
+
+describe("a paycheck that stopped, with income not known", () => {
+  it("says it stopped without calling what comes in now $0", () => {
+    const sample = inputFor("renter");
+    const accountId = sample.accounts.find((a) => a.type === "depository")!.id;
+    const days: string[] = [];
+    for (
+      let t = Date.parse("2026-02-06T00:00:00Z");
+      t <= Date.parse("2026-08-07T00:00:00Z");
+      t += 14 * 86_400_000
+    )
+      days.push(new Date(t).toISOString().slice(0, 10));
+    const data = {
+      ...sample,
+      today: "2026-11-02",
+      transactions: [
+        ...days.map((date, i) => ({
+          id: `p${i}`,
+          date,
+          amountCents: -264_018,
+          description: "ACME LOGISTICS INC PAYROLL",
+          pfc: "INCOME_SALARY",
+          accountId,
+        })),
+        // Spending through to the end of October: the account is seen well past the last paycheck.
+        ...Array.from({ length: 38 }, (_, i) => ({
+          id: `s${i}`,
+          date: new Date(Date.parse("2026-02-01T00:00:00Z") + i * 7 * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+          amountCents: 5_000,
+          description: "SAFEWAY",
+          pfc: "FOOD_AND_DRINK_GROCERIES",
+          accountId,
+        })),
+      ],
+    };
+    const profile = buildProfile(data);
+    const unknownIncome = {
+      ...profile,
+      facts: {
+        ...profile.facts,
+        monthly_income: { ...profile.facts.monthly_income, value: null },
+      },
+    };
+    const s = LIFE_DETECTORS.find((d) => d.topic === "pay_stopped")!.detect({
+      profile: unknownIncome,
+      data,
+    })!;
+    expect(s.why).not.toMatch(/\$0\.00 a month is coming in/);
+    expect(s.short).not.toMatch(/\$0\.00/);
+    expect(s.worthCents).toBe(0);
   });
 });

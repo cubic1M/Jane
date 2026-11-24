@@ -129,28 +129,33 @@ const payStopped: Detector = {
     if (!stopped) return null;
     const { name, lastDay, paychecks: count } = stopped;
     const pay = tx(data, (x) => x.amountCents < 0 && x.pfc === "INCOME_SALARY");
-    const now =
+    // Unknown current income isn't $0: the notice stands, and the amounts wait for it.
+    const known =
       typeof profile.facts.monthly_income.value === "number"
         ? profile.facts.monthly_income.value
-        : 0;
+        : null;
+    const now = known ?? 0;
     const paychecks = pay.filter((t) => employerName(t.description) === name);
     const total = paychecks.reduce((s, t) => s - t.amountCents, 0);
     const firstDay = paychecks.reduce((m, t) => (t.date < m ? t.date : m), lastDay);
     const months = Math.max(1, daysBetween(firstDay, lastDay) / 30);
     // The first to the last paycheck spans one gap fewer than there are paychecks.
     const before = Math.round((total * (paychecks.length - 1)) / paychecks.length / months);
-    const less = Math.max(0, before - now);
+    const less = known === null ? 0 : Math.max(0, before - now);
     return suggestion("life_event", "pay_stopped", {
       title: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}`,
       headline: headlineOf("Your pay looks like it stopped", less, "risk"),
-      short: `About ${formatCents(now)} a month is coming in now, about ${formatCents(less)} less.`,
+      short:
+        known === null
+          ? `The last one I see is ${dayLabel(lastDay)}; I don't know what is coming in now.`
+          : `About ${formatCents(now)} a month is coming in now, about ${formatCents(less)} less.`,
       worthCents: less,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, count, "paychecks"),
       urgency: "now",
       // A month's shortfall against a year's savings tip: as a year, so it comes first.
       rankCents: less * 12,
-      why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}, and about ${formatCents(now)} a month is coming in now: about ${formatCents(less)} less than the ${formatCents(before)} a month before. Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
+      why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}${known === null ? `; it was about ${formatCents(before)} a month before, and I can't tell what is coming in now.` : `, and about ${formatCents(now)} a month is coming in now: about ${formatCents(less)} less than the ${formatCents(before)} a month before.`} Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
       action: { label: "See what's coming up", href: "/bills" },
     });
   },
