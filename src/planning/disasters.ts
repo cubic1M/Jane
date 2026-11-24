@@ -69,13 +69,24 @@ export function reliefFor(
 // A deadline owned by a state: titled "State income tax return" or with a state's name
 // ("California estimated tax payment"), and not as the IRS's or federal.
 const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
+// Where `word` first appears in `text` as a whole word (not inside "Maineville"), or -1.
+function wholeWordAt(text: string, word: string): number {
+  const letter = /[a-z]/;
+  for (let at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + 1)) {
+    const before = at === 0 ? "" : text[at - 1]!;
+    const after = text[at + word.length] ?? "";
+    if (!letter.test(before) && !letter.test(after)) return at;
+  }
+  return -1;
+}
+
 // The state a title names first ("Texas estimated tax payment (Washington County)" is Texas's);
 // where two names start at the same place the longer wins ("West Virginia", not "Virginia").
 const stateIn = (title: string) => {
   const lower = title.toLowerCase();
   let best: { state: (typeof US_STATES)[number]; at: number } | null = null;
   for (const s of US_STATES) {
-    const at = lower.indexOf(s.name.toLowerCase());
+    const at = wholeWordAt(lower, s.name.toLowerCase());
     if (at < 0) continue;
     if (!best || at < best.at || (at === best.at && s.name.length > best.state.name.length))
       best = { state: s, at };

@@ -52,3 +52,18 @@ describe("a county name in the title", () => {
     expect(deadlineMoves({ ...harris, state: "WA", stateFollows: true }, t)).toHaveLength(0);
   });
 });
+
+describe("a state name inside a longer word", () => {
+  it("is not that state", () => {
+    const t = [
+      {
+        id: "m",
+        title: "Maineville business: Ohio estimated tax payment",
+        dueOn: due,
+        done: false,
+      },
+    ];
+    expect(deadlineMoves({ ...harris, state: "OH", stateFollows: true }, t)).toHaveLength(1);
+    expect(deadlineMoves({ ...harris, state: "ME", stateFollows: true }, t)).toHaveLength(0);
+  });
+});
