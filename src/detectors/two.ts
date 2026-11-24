@@ -18,6 +18,10 @@ const billSplit: Detector = {
   needs: [],
   detect({ profile, data }) {
     if (data.extras?.splitChosen) return null;
+    // Two employers' pay is two earners only in a household of more than one: a single person
+    // with two jobs isn't a couple splitting bills.
+    const household = profile.facts.household.value;
+    if (household !== "couple" && household !== "family") return null;
     const since = before(profile.today, SPLIT_INCOME_DAYS);
     const pay = tx(
       data,
