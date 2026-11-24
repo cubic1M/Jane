@@ -1,66 +1,10 @@
 [
  {
-  "on": 2033,
+  "on": 2236,
   "lane": "lane:connectors",
-  "task": "claude/student-no-paychecks",
+  "task": "claude/plan-action-everywhere",
   "when": "merged",
-  "since": "2026-11-18T05:26:48.885Z",
-  "expires": "2026-11-21T05:26:48.885Z"
- },
- {
-  "on": 2035,
-  "lane": "lane:connectors",
-  "task": "claude/plaid-read-products-doc",
-  "when": "merged",
-  "since": "2026-11-18T05:26:51.303Z",
-  "expires": "2026-11-21T05:26:51.303Z"
- },
- {
-  "on": 2046,
-  "lane": "lane:connectors",
-  "task": "claude/akoya-tax",
-  "when": "merged",
-  "since": "2026-11-18T07:28:19.523Z",
-  "expires": "2026-11-21T07:28:19.523Z"
- },
- {
-  "on": 2049,
-  "lane": "lane:connectors",
-  "task": "claude/chart-transcripts",
-  "when": "merged",
-  "since": "2026-11-18T07:43:38.201Z",
-  "expires": "2026-11-21T07:43:38.201Z"
- },
- {
-  "on": 2057,
-  "lane": "lane:suggest",
-  "task": "claude/suggest-money-2",
-  "when": "merged",
-  "since": "2026-11-18T08:46:35.834Z",
-  "expires": "2026-11-21T08:46:35.834Z"
- },
- {
-  "on": 2112,
-  "lane": "lane:connectors",
-  "task": "claude/connect-flow",
-  "when": "merged",
-  "since": "2026-11-19T06:50:56.518Z",
-  "expires": "2026-11-22T06:50:56.518Z"
- },
- {
-  "on": 2120,
-  "lane": "lane:debug-3",
-  "task": "d3/inv-6",
-  "when": "merged",
-  "since": "2026-11-19T09:37:42.913Z",
-  "expires": "2026-11-22T09:37:42.913Z"
- },
- {
-  "on": 2200,
-  "lane": "lane:debug-3",
-  "task": "d3/payday-today",
-  "when": "merged",
-  "since": "2026-11-20T23:15:21.611Z",
-  "expires": "2026-11-23T23:15:21.611Z"
+  "since": "2026-11-24T03:48:06.609Z",
+  "expires": "2026-11-27T03:48:06.609Z"
  }
 ]
