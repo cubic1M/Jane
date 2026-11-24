@@ -332,9 +332,8 @@ export async function runBooksCheck(
   }
   // Accounts that may be one account counted twice, which nothing can prove: said, never merged.
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-  const left = copiesToLeaveOut(accounts);
   for (const { a, b } of maybeSameAccounts(
-    accounts.filter((x) => !left.has(x.id)),
+    accounts.filter((x) => !copies.has(x.id)),
     (x) => (x.itemId ? (bank.get(x.itemId) ?? null) : null),
   )) {
     found.push({
@@ -348,7 +347,7 @@ export async function runBooksCheck(
   // A copy left out of the figures is left out of transfer matching too: its spare lines would
   // otherwise make a transfer with no other side.
   const unmatched = unmatchedToSay(
-    matchTransfers(txns.filter((t) => !left.has(t.accountId)).map(asTx)).unmatchedOut,
+    matchTransfers(txns.filter((t) => !copies.has(t.accountId)).map(asTx)).unmatchedOut,
     accounts,
   ).slice(-3);
   for (const t of unmatched) {
