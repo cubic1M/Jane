@@ -270,28 +270,35 @@ export async function undoApproval(
     },
   });
   const ageHours = decision ? (now.getTime() - decision.createdAt.getTime()) / 3_600_000 : Infinity;
-  if (!decision || ageHours > windowHours || decision.action?.status !== "queued") {
-    throw new DecisionError(
-      "cannot_undo",
-      "This can't be taken back anymore: the work has started.",
-    );
-  }
-  const actionId = decision.action.id;
-  await db.transaction(async (tx) => {
-    // Only while still queued, so the team can't be mid-way through it.
-    const removed = await tx.actions.deleteMany({ where: { id: actionId, status: "queued" } });
-    if (removed.count === 0) {
-      throw new DecisionError(
-        "cannot_undo",
-        "This can't be taken back anymore: the work has started.",
-      );
-    }
-    await tx.decisions.updateMany({ where: { id: decision.id }, data: { undoneAt: now } });
-    await tx.findings.updateMany({
-      where: { id: decision.findingId, status: "approved" },
-      data: { status: "shown" },
+  const started = () =>
+    new DecisionError("cannot_undo", "This can't be taken back anymore: the work has started.");
+  if (!decision || ageHours > windowHours) throw started();
+  if (!decision.action) {
+    // A yes a connector planned has no queued action: its plan, still waiting for the person's yes
+    // on its steps (or in its hold), is what's taken back.
+    const { cancelCardPlan } = await import("@/lib/connectors/for-card");
+    if (!(await cancelCardPlan(userId, decision.findingId, { client, now }))) throw started();
+    await db.transaction(async (tx) => {
+      await tx.decisions.updateMany({ where: { id: decision.id }, data: { undoneAt: now } });
+      await tx.findings.updateMany({
+        where: { id: decision.findingId, status: "approved" },
+        data: { status: "shown" },
+      });
     });
-  });
+  } else {
+    if (decision.action.status !== "queued") throw started();
+    const actionId = decision.action.id;
+    await db.transaction(async (tx) => {
+      // Only while still queued, so the team can't be mid-way through it.
+      const removed = await tx.actions.deleteMany({ where: { id: actionId, status: "queued" } });
+      if (removed.count === 0) throw started();
+      await tx.decisions.updateMany({ where: { id: decision.id }, data: { undoneAt: now } });
+      await tx.findings.updateMany({
+        where: { id: decision.findingId, status: "approved" },
+        data: { status: "shown" },
+      });
+    });
+  }
   await logAudit(
     { type: "user", id: userId },
     "decision_undone",
