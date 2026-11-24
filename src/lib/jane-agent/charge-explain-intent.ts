@@ -33,7 +33,8 @@ const NOT_A_NAME =
   /^(?:every|each|so|this|that|it|again|twice|monthly|yearly|weekly|a|an|extra|more|much|too|there|these|those|something|someone|anything|nothing|my bank|the bank|bank|them)\b/;
 // A fee or interest anywhere in the question is the fee's answer (./replies-fees.ts), whoever charged it:
 // "why did Chase charge me $34 in overdraft fees" names Chase and a fee.
-const FEE_WORDS = /\b(?:fees?|interest|overdraft|nsf|apr|penalty|penalties)\b/;
+// APR is not "Apr 20": a month abbreviation is followed by its day.
+const FEE_WORDS = /\b(?:fees?|interest|overdraft|nsf|penalty|penalties)\b|\bapr\b(?!\s+\d)/;
 
 const MONTHS = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
 

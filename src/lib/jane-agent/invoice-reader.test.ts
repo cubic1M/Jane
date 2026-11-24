@@ -95,6 +95,58 @@ describe("reading an invoice", () => {
   });
 });
 
+describe("a total that is before tax", () => {
+  it("keeps the final total, and counts neither summary as a line", () => {
+    const invoice = readInvoice(
+      "Plan  $90.00\nTotal excluding tax  $90.00\nTax  $10.00\nTotal  $100.00",
+    )!;
+    expect(invoice.totalCents).toBe(10_000);
+    expect(invoice.lines.map((l) => l.description)).toEqual(["Plan", "Tax"]);
+    expect(invoice.linesCents).toBe(10_000);
+    for (const pretax of [
+      "Total before tax",
+      "Pre-tax total",
+      "Total (excl. VAT)",
+      "Total ex tax",
+    ]) {
+      expect(
+        readInvoice(`Plan  $90.00\n${pretax}  $90.00\nTax  $10.00\nTotal  $100.00`)!.totalCents,
+      ).toBe(10_000);
+    }
+  });
+
+  it("is the same invoice as a $100 charge", () => {
+    const body = words("Plan  $90.00\nTotal excluding tax  $90.00\nTax  $10.00\nTotal  $100.00");
+    expect(body).toContain("Together they come to $100.00, its total.");
+    expect(body).not.toContain("isn't the $100.00 you were charged");
+  });
+});
+
+describe("when the usual and the extra are the same amount (usual $50, now $100)", () => {
+  const fifty = [
+    charge("f1", "2026-08-20", 50),
+    charge("f2", "2026-09-20", 50),
+    charge("f3", "2026-10-20", 50),
+    charge("f4", "2026-11-20", 100),
+  ];
+  const found50 = lookUpCharge("vercel", fifty, { amountCents: 10_000, day: null });
+  const explanation50 = found50.kind === "found" ? found50.explanation : null;
+  const reading = (text: string) => readAgainst(readInvoice(text)!, explanation50);
+
+  it("names the other lines, not the plan, as the extra", () => {
+    const r = reading("Plan  $50.00\nUsage  $30.00\nTax  $20.00\nTotal  $100.00");
+    expect(r.usualLine).toEqual({ description: "Plan", cents: 5_000 });
+    expect(r.explaining.map((l) => l.description)).toEqual(["Usage", "Tax"]);
+    expect(readingWords(r).join("\n")).not.toContain("The Plan ($50.00) line accounts for");
+  });
+
+  it("still finds a separate $50 line as the extra", () => {
+    const r = reading("Plan  $50.00\nOverage  $50.00\nTotal  $100.00");
+    expect(r.usualLine?.description).toBe("Plan");
+    expect(r.explaining.map((l) => l.description)).toEqual(["Overage"]);
+  });
+});
+
 describe("set against the charge", () => {
   it("names the lines that make up the extra over the usual, and the one that is the usual", () => {
     const body = words(INVOICE);

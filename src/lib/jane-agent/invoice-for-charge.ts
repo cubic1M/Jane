@@ -36,6 +36,8 @@ export async function loadChargeExplanation(
   const found = lookUpCharge(name.toLowerCase(), lines, {
     amountCents: charge.amountCents,
     day: charge.date,
+    // The row they chose: a $100, a $50 and a $100 on one day each have their own explanation.
+    id: charge.id,
   });
   return found.kind === "found" ? found.explanation : null;
 }

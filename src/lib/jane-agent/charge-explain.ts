@@ -20,6 +20,8 @@ export type ChargeAsked = {
   day: string | null;
   // "Why was it so high?": no amount, so the high one among the latest few.
   high?: boolean;
+  // That exact transaction (the invoice page's link): the amount and day can match several in a day.
+  id?: string;
 };
 
 export type ChargeExplanation = {
@@ -69,16 +71,18 @@ export function lookUpCharge(
     pool = exact.length > 0 ? exact : pool.filter((t) => Math.abs(days(asked.day!, t.date)) <= 1);
   }
   const last = charges[charges.length - 1]!;
-  if (pool.length === 0) {
+  const exact = asked.id ? charges.find((t) => t.id === asked.id) : undefined;
+  if (pool.length === 0 && !exact) {
     return { kind: "no_match", name, latest: { date: last.date, cents: last.amountCents } };
   }
   // No amount or day: the latest, or for "so high" the biggest of the last few.
   const chosen =
-    asked.amountCents === null && !asked.day && asked.high
+    exact ??
+    (asked.amountCents === null && !asked.day && asked.high
       ? charges
           .slice(-EXPLAIN_HIGH_LOOKBACK)
           .reduce((best, t) => (t.amountCents >= best.amountCents ? t : best))
-      : pool[pool.length - 1]!;
+      : pool[pool.length - 1]!);
   const at = charges.indexOf(chosen);
   let start = at;
   while (start > 0 && charges[start - 1]!.amountCents === chosen.amountCents) start -= 1;

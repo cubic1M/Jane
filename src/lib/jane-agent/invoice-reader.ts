@@ -29,6 +29,8 @@ const AMOUNT =
 const TOTAL =
   /^(?:invoice\s+)?(?:grand\s+)?(?:total(?:\s+(?:due|amount|paid))?|amount\s+(?:due|paid)|balance\s+due|paid)\b/i;
 const SUBTOTAL = /^subtotal\b/i;
+// "Total excluding tax", "Total before VAT", "Pre-tax total": a total of the lines, not the one charged.
+const PRETAX = /\b(?:excl(?:uding|\.)?|before|pre-?tax|without|ex\.?\s*(?:tax|vat|gst))\b/i;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
@@ -55,7 +57,8 @@ export function readInvoice(text: string): Invoice | null {
     if (!description) continue;
     const credit = Boolean(last[1] || (last[2] && last[4]));
     const cents = (credit ? -1 : 1) * toCents(last[3]!);
-    if (SUBTOTAL.test(description)) continue;
+    if (SUBTOTAL.test(description) || (TOTAL.test(description) && PRETAX.test(description)))
+      continue;
     if (TOTAL.test(description)) {
       totalCents ??= Math.abs(cents);
       continue;
@@ -101,7 +104,9 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   const usualLine = charge.usual.exact
     ? (positive.find((l) => l.cents === charge.usual!.cents) ?? null)
     : null;
-  const whole = positive.find((l) => l.cents === extra);
+  // Never the usual line itself: when the extra is the same amount as the usual (usual $50, now
+  // $100), a separate $50 line is the extra, and the plan isn't.
+  const whole = positive.find((l) => l !== usualLine && l.cents === extra);
   if (whole) return { ...plain, against, usualLine, explaining: [whole], extraCents: extra };
   if (usualLine) {
     // The other lines are the explanation only when they add up to the extra: a missed line, or a

@@ -36,6 +36,23 @@ describe("charge_explain", () => {
     });
   });
 
+  // "Apr" with a day is April, not an APR (CodeRabbit's example).
+  it("reads 'Apr 20' as a date, not as APR", () => {
+    expect(parseIntent("why did I pay $100 to Vercel on Apr 20", AS_OF)).toEqual({
+      kind: "charge_explain",
+      target: "vercel",
+      amountCents: 10_000,
+      day: "2026-04-20",
+      high: false,
+    });
+  });
+
+  it("keeps real APR questions with the interest handling", () => {
+    for (const q of ["why is my apr so high", "why did Chase charge me a high apr"]) {
+      expect(parseIntent(q, AS_OF).kind, q).not.toBe("charge_explain");
+    }
+  });
+
   it.each([
     ["why did Vercel go up", "vercel"],
     ["why did my Netflix go up", "netflix"],

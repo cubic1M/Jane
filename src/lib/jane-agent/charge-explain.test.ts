@@ -124,6 +124,35 @@ describe("whether it is the first time this high", () => {
   });
 });
 
+describe("one exact charge among same-day charges", () => {
+  // An October $20, then three on Nov 20: A $100, B $50 and C $100 (CodeRabbit's example).
+  const day = [
+    line("o", "2026-10-20", 20),
+    line("A", "2026-11-20", 100),
+    line("B", "2026-11-20", 50),
+    line("C", "2026-11-20", 100),
+  ];
+  const explain = (id?: string) => {
+    const found = lookUpCharge("vercel", day, { amountCents: 10_000, day: "2026-11-20", id });
+    return found.kind === "found" ? found.explanation : null;
+  };
+
+  it("explains the one asked about, with its own usual", () => {
+    const a = explain("A")!;
+    expect(a.charge.id).toBe("A");
+    expect(a.usual?.cents).toBe(2_000);
+    expect(a.differenceCents).toBe(8_000);
+  });
+
+  it("explains the last match when no id is given, as before", () => {
+    expect(explain()!.charge.id).toBe("C");
+  });
+
+  it("falls back to the amount and day for an id that isn't there", () => {
+    expect(explain("nope")!.charge.id).toBe("C");
+  });
+});
+
 describe("a variable bill", () => {
   const power = [
     line("p1", "2026-06-04", 38.72, "Xcel Energy"),
