@@ -50,10 +50,13 @@ export async function loadBaseline(
   ]);
   // An uploaded file often has no balance, and "the lowest it gets is $0.00" would be made up.
   if (health.cashCents === null) return null;
+  // Likewise no income or spending on file: zero would project no spending, and a job loss
+  // would remove no income. A measured zero is still a figure.
+  if (health.monthlyIncomeCents === null || health.monthlySpendingCents === null) return null;
   return {
     cashCents: health.cashCents,
-    monthlyIncomeCents: health.monthlyIncomeCents ?? 0,
-    monthlySpendingCents: health.monthlySpendingCents ?? 0,
+    monthlyIncomeCents: health.monthlyIncomeCents,
+    monthlySpendingCents: health.monthlySpendingCents,
     marginalRate: tax,
     goals: goals.flatMap((g) =>
       g.progress.status === "on_the_way"
