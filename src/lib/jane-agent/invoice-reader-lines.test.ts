@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readInvoice } from "./invoice-reader";
+import { lookUpCharge } from "./charge-explain";
+import { readAgainst, readInvoice } from "./invoice-reader";
+import type { BillLine } from "./replies-old-bills";
 
 // What each kind of invoice line is, one table of real-looking lines (CodeRabbit's rounds on the
 // reader: "Pre-tax total" read as an item, "Office 365" read as "Office"). Each is read beside a
@@ -41,6 +43,14 @@ const sums = [
   "Price excluding tax  $90.00",
   "Amount excluding VAT  $90.00",
   "Total before all taxes  $90.00",
+  // Any qualifier words between "before" or "excluding" and the tax.
+  "Total before local tax  $90.00",
+  "Pre-VAT total  $90.00",
+  "Total net of VAT  $90.00",
+  "Total before all applicable taxes  $90.00",
+  "Total before the state sales tax  $90.00",
+  "Total excluding any applicable VAT  $90.00",
+  "Amount without the local tax  $90.00",
   "Amount before tax  $90.00",
   "Balance before tax  $90.00",
 ];
@@ -69,6 +79,8 @@ const totals = [
   "Total due before Dec 1  $100.00",
   "Total due by Dec 1  $100.00",
   "Amount due until Dec 1  $100.00",
+  "Balance due before Dec 1 incl. tax  $100.00",
+  "Total due before Dec 1 (incl. VAT)  $100.00",
 ];
 
 // A unit price, however it is cased, is not the line's amount.
@@ -84,6 +96,11 @@ const unitPrices = [
   "Storage ($0.15) per GB",
   "Storage ($0.15)/GB",
   "Storage ($0.15 PER GB)",
+  // Space inside the brackets.
+  "Storage ($0.15 ) PER GB",
+  "Storage ($0.15   ) per GB",
+  "Storage ( $0.15 ) PER GB",
+  "Storage ($0.15 )/GB",
 ];
 
 const items: [string, Expected][] = [
@@ -142,6 +159,11 @@ const items: [string, Expected][] = [
     "Storage, 100 GB  ($0.15) PER GB  $15.00",
     { is: "item", description: "Storage, 100 GB", cents: 1_500 },
   ],
+  [
+    "Storage, 100 GB  ($0.15 ) PER GB  $15.00",
+    { is: "item", description: "Storage, 100 GB", cents: 1_500 },
+  ],
+  ["Promo  ($10.00 )", { is: "item", description: "Promo", cents: -1_000 }],
   // Leaders, bullets and separators come off the ends, not the name.
   ["Support ........ $50.00", { is: "item", description: "Support", cents: 5_000 }],
   ["• Hosting - monthly  $12.00", { is: "item", description: "Hosting - monthly", cents: 1_200 }],
@@ -181,6 +203,92 @@ describe("an invoice's summary lines", () => {
 describe("a unit price on its own line", () => {
   it.each(unitPrices)("%s is no line and no total", (line) => {
     expect(read(line)).toEqual({ lines: [FILLER], total: null });
+  });
+});
+
+describe("which total is the one charged, whatever the order the invoice ends in", () => {
+  const read100 = (text: string) => {
+    const invoice = readInvoice(text)!;
+    return {
+      total: invoice.totalCents,
+      lines: invoice.lines.map((l) => l.description),
+      linesCents: invoice.linesCents,
+    };
+  };
+  const CHARGED = { total: 10_000, lines: ["Plan", "Tax"], linesCents: 10_000 };
+
+  it.each([
+    ["subtotal, tax, total", "Plan  $90.00\nSubtotal  $90.00\nTax  $10.00\nTotal  $100.00"],
+    [
+      "total before tax, tax, grand total",
+      "Plan  $90.00\nTotal before tax  $90.00\nTax  $10.00\nGrand total  $100.00",
+    ],
+    [
+      "total before local tax, tax, grand total",
+      "Plan  $90.00\nTotal before local tax  $90.00\nTax  $10.00\nGrand total  $100.00",
+    ],
+    [
+      "grand total, then a total before tax",
+      "Plan  $90.00\nTax  $10.00\nGrand total  $100.00\nTotal before local tax  $90.00",
+    ],
+    [
+      "a plain total, then the amount due",
+      "Plan  $90.00\nTax  $10.00\nTotal  $100.00\nAmount due  $100.00",
+    ],
+    [
+      "total, amount paid, nothing left to pay",
+      "Plan  $90.00\nTax  $10.00\nTotal  $100.00\nAmount paid  $100.00\nAmount due  $0.00",
+    ],
+    [
+      "a plain total then a grand total (the strong label wins)",
+      "Plan  $90.00\nTax  $10.00\nTotal  $90.00\nGrand total  $100.00",
+    ],
+    [
+      "a grand total then a plain total (the strong label still wins)",
+      "Plan  $90.00\nTax  $10.00\nGrand total  $100.00\nTotal  $90.00",
+    ],
+  ])("%s", (_name, text) => {
+    expect(read100(text)).toEqual(CHARGED);
+  });
+
+  it("takes the last of equally plain totals", () => {
+    expect(
+      readInvoice("Plan  $90.00\nTotal  $90.00\nTax  $10.00\nTotal  $100.00")!.totalCents,
+    ).toBe(10_000);
+  });
+
+  it("is the same invoice as the $100 charge when a smaller amount due was chosen as its total", () => {
+    const vercel = (id: string, date: string, dollars: number): BillLine => ({
+      id,
+      date,
+      amountCents: dollars * 100,
+      description: "VERCEL INC",
+      merchantName: "Vercel",
+      pfcDetailed: null,
+    });
+    const found = lookUpCharge(
+      "vercel",
+      [
+        vercel("a", "2026-09-20", 20),
+        vercel("b", "2026-10-20", 20),
+        vercel("c", "2026-11-20", 100),
+      ],
+      { amountCents: 10_000, day: null },
+    );
+    const explanation = found.kind === "found" ? found.explanation : null;
+    const invoice = readInvoice(
+      "Plan  $20.00\nUsage  $80.00\nTotal  $100.00\nAmount paid  $50.00\nAmount due  $50.00",
+    )!;
+    expect(invoice.totalCents).toBe(5_000);
+    expect(readAgainst(invoice, explanation).against?.totalMatches).toBe(true);
+  });
+
+  it("keeps every total it states, so a part-paid invoice still matches the charge", () => {
+    const invoice = readInvoice(
+      "Plan  $90.00\nTax  $10.00\nTotal  $100.00\nAmount paid  $50.00\nAmount due  $50.00",
+    )!;
+    expect(invoice.totalCents).toBe(5_000);
+    expect(invoice.chargedCents).toEqual([10_000, 5_000, 5_000]);
   });
 });
 

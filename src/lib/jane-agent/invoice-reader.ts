@@ -20,6 +20,8 @@ export type InvoiceLine = { description: string; cents: number };
 export type Invoice = {
   lines: InvoiceLine[];
   totalCents: number | null;
+  // Every total the invoice states (a paid invoice has a total and an amount due of nothing).
+  chargedCents: number[];
   // What the lines add up to (credits taken off).
   linesCents: number;
 };
@@ -28,7 +30,7 @@ export type Invoice = {
 // for a credit. Not a unit price ("$0.15/GB", "$0.15 per GB"), and never part of a longer number
 // ("$0.015/GB" isn't "$0.01").
 const AMOUNT =
-  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(?!\)?\s*(?:\/|per\b))(\))?/gi;
+  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(?!\s*\)?\s*(?:\/|per\b))(\s*\))?/gi;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
@@ -44,13 +46,17 @@ const wordsOf = (description: string) =>
 //  - a total before tax ("Total excluding tax", "Pre-tax total", "Net total", "Amount before VAT"; "before"
 //    alone isn't it: "Balance due before Dec 1" is the total charged):
 //    a sum of the lines, never the one charged;
-//  - the total charged: "Total", "Grand total", "Order total", "Total due", "Total (USD)",
+//  - the total charged (the last of the strong labels, else the last of the others):
+//    "Total", "Grand total", "Order total", "Total due", "Total (USD)",
 //    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
 //    whole forms: "Total Protection" and "Total Wine" are things sold.
 const SUBTOTAL = /\bsub ?total\b/;
 const SUMS = /\b(?:total|amount|balance|sum|price)\b/;
 const BEFORE_TAX =
-  /\b(?:(?:excl|excluding|before|without|ex)\s+(?:(?:any|all|the|sales)\s+)?(?:tax|taxes|vat|gst)|pre ?tax|net\s+(?:total|amount|price)|(?:total|amount|price)\s+net)\b/;
+  /\b(?:(?:excl|excluding|before|without|ex)\b(?:\s+[a-z]+){0,5}?\s+(?:tax|taxes|vat|gst)|pre ?(?:tax|vat|gst)|net\s+(?:total|amount|price)|(?:total|amount|price)\s+net)\b/;
+// Among the totals charged, these labels say the most: the amount to pay, over a plain "Total".
+const STRONG_TOTAL =
+  /^(?:grand|final)\s+total\b|^(?:total\s+)?(?:amount|balance)\s+due\b|\btotal\s+(?:due|charged|payable)\b/;
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
 const TOTAL_CHARGED = new RegExp(
   `^(?:(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|paid|payable|charged|owed|amount|price|${CURRENCY}))*` +
@@ -83,7 +89,7 @@ function descriptionOf(beforePrice: string): string {
 
 export function readInvoice(text: string): Invoice | null {
   const lines: InvoiceLine[] = [];
-  let totalCents: number | null = null;
+  const charged: { cents: number; strong: boolean }[] = [];
   for (const raw of text.split(/\r?\n/).slice(0, INVOICE_MAX_LINES)) {
     const found = [...raw.matchAll(AMOUNT)];
     const last = found[found.length - 1];
@@ -98,14 +104,31 @@ export function readInvoice(text: string): Invoice | null {
     const words = wordsOf(description);
     if (SUBTOTAL.test(words) || (SUMS.test(words) && BEFORE_TAX.test(words))) continue;
     if (TOTAL_CHARGED.test(words)) {
-      totalCents ??= Math.abs(cents);
+      charged.push({ cents: Math.abs(cents), strong: STRONG_TOTAL.test(words) });
       continue;
     }
     lines.push({ description, cents });
   }
   if (lines.length === 0) return null;
+  const totalCents = chosenTotal(charged);
   const signed = signedToTotal(lines, totalCents);
-  return { lines: signed, totalCents, linesCents: sumOf(signed) };
+  return {
+    lines: signed,
+    totalCents,
+    chargedCents: charged.map((t) => t.cents),
+    linesCents: sumOf(signed),
+  };
+}
+
+// The total charged, from every line that says one: a strong label ("Grand total", "Amount due",
+// "Total charged") over a plain "Total", and the last of those, since an invoice ends with what is
+// to be paid. A nothing-to-pay line ("Amount due $0.00" on a paid invoice) only when nothing else is.
+function chosenTotal(charged: { cents: number; strong: boolean }[]): number | null {
+  const owing = charged.filter((t) => t.cents > 0);
+  const pool = owing.length > 0 ? owing : charged;
+  const strong = pool.filter((t) => t.strong);
+  const from = strong.length > 0 ? strong : pool;
+  return from.length > 0 ? from[from.length - 1]!.cents : null;
 }
 
 const sumOf = (lines: InvoiceLine[]) => lines.reduce((total, l) => total + l.cents, 0);
@@ -145,7 +168,8 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   if (!charge) return plain;
   const against = {
     chargeCents: charge.charge.cents,
-    totalMatches: invoice.totalCents === charge.charge.cents,
+    // Any total it states: a part-paid invoice has a total and a smaller amount due.
+    totalMatches: invoice.chargedCents.includes(charge.charge.cents),
   };
   const extra = charge.differenceCents;
   if (!against.totalMatches || !charge.usual || extra === null || extra <= 0) {
