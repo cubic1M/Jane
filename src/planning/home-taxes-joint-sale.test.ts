@@ -30,7 +30,9 @@ describe("home sale exclusion for a joint return", () => {
     const s = homeTaxes(input("married_joint")).sale!;
     expect(s.exclusionCents).toBe(50_000_000);
     expect(s.assumption).toMatch(/spouse also lived in the home 2 of the last 5 years/);
-    expect(s.assumption).toMatch(/otherwise it's \$250,000/);
+    expect(s.assumption).toMatch(
+      /as low as \$250,000\.00, and only if you yourself meet those tests/,
+    );
   });
   it("has no such assumption for a single filer", () => {
     expect(homeTaxes(input("single")).sale!.assumption).toBeNull();

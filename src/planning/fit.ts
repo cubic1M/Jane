@@ -165,7 +165,7 @@ export function keepCost(b: FitBaseline): {
     b.monthlyCents,
     "avalanche",
   );
-  return plan.ok
+  return plan.ok && plan.months <= FIT_BASELINE_MAX_MONTHS
     ? { months: plan.months, totalCents: plan.totalPaidCents, endless: false }
     : {
         months: FIT_BASELINE_MAX_MONTHS,
@@ -482,7 +482,7 @@ export function fit(input: FitInput): FitResult {
       breakEvenMonths: null,
       comfortable: true,
       headline: kept.endless
-        ? `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month, which doesn't pay it off`
+        ? `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month, which doesn't pay it off within ${years(FIT_BASELINE_MAX_MONTHS)}`
         : `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month for ${years(kept.months)} more`,
       details: [
         `${formatRate(b.aprBps)} on ${formatCents(b.balanceCents)}`,

@@ -65,8 +65,12 @@ export function reliefFor(
   );
 }
 
-// A deadline titled as a state's ("State income tax return"), not the IRS's.
-const STATE_DEADLINE_TITLE = /\bstate\b(?!.*\b(?:IRS|federal)\b)/i;
+// A deadline owned by a state: titled "State income tax return" or with a state's name
+// ("California estimated tax payment"), and not as the IRS's or federal.
+const US_STATES =
+  "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming";
+const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
+const STATE_DEADLINE_TITLE = new RegExp(`\\b(?:state|${US_STATES})\\b`, "i");
 
 // A deadline the relief moves: one falling from the incident to the postponed date.
 export const covers = (r: Relief, dueOn: string) =>
@@ -85,7 +89,7 @@ export function deadlineMoves(
         !d.done &&
         TAX_DEADLINE_TITLE.test(d.title) &&
         // A state's own deadline moves only when the state follows the federal relief.
-        (r.stateFollows || !STATE_DEADLINE_TITLE.test(d.title)) &&
+        (r.stateFollows || FEDERAL_TITLE.test(d.title) || !STATE_DEADLINE_TITLE.test(d.title)) &&
         covers(r, d.dueOn),
     )
     .map((d) => ({ id: d.id, title: d.title, from: d.dueOn, to: r.postponedTo }));

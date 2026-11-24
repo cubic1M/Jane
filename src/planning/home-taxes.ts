@@ -251,7 +251,7 @@ export function homeTaxes(h: HomeInput): HomeTaxes {
       why,
       assumption:
         qualifies && h.status === "married_joint"
-          ? `The ${formatCents(HOME_SALE_EXCLUSION.marriedJoint)} assumes your spouse also lived in the home 2 of the last 5 years and neither of you excluded another home's gain in the last 2 years; otherwise it's ${formatCents(HOME_SALE_EXCLUSION.normal)}.`
+          ? `The ${formatCents(HOME_SALE_EXCLUSION.marriedJoint)} assumes your spouse also lived in the home 2 of the last 5 years and neither of you excluded another home's gain in the last 2 years. If not, it can be as low as ${formatCents(HOME_SALE_EXCLUSION.normal)}, and only if you yourself meet those tests.`
           : null,
     };
   }

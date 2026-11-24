@@ -14,6 +14,10 @@ describe("keeping a debt the payment never pays off", () => {
     expect(keepCost(baseline).endless).toBe(true);
     expect(keepCost({ ...baseline, monthlyCents: 60_000 }).endless).toBe(false);
   });
+  it("a zero-interest balance that takes 121 months is cut at the cap too", () => {
+    const k = keepCost({ label: "c", balanceCents: 121_000, aprBps: 0, monthlyCents: 1_000 });
+    expect(k).toMatchObject({ endless: true, months: 120 });
+  });
   it("says 'at least' and not a payoff date in the option's details", () => {
     const r = fit({
       need: "personal",
