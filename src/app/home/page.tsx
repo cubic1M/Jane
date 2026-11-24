@@ -232,7 +232,9 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       {/* Opening Home sets off the practice scan and the checklist's progress. */}
       <AppHeader user={user} opened={{ page: "home" }} />
       <BankStatusNotice notices={banks} />
-      {!booksClosed && <BooksNotice books={books} skipItems={skipBanks} closeKey={booksKey} />}
+      {!booksClosed && (
+        <BooksNotice key={booksKey} books={books} skipItems={skipBanks} closeKey={booksKey} />
+      )}
       <h1 className="sr-only">Home</h1>
 
       <HeroRow
