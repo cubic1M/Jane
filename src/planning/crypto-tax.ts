@@ -104,13 +104,21 @@ export function lotsAndSales(
 }
 
 // A holding's unrealised gain split by the lots left: value less basis, the short-term part
-// by the share of coins in lots held a year or less.
+// the value of the coins in lots held a year or less (by their share of the coins) less those
+// lots' own cost.
 export function unrealised(valueCents: number, left: CryptoLot[], today: string) {
   const basis = left.reduce((s, l) => s + l.costCents, 0);
   const total = left.reduce((s, l) => s + l.quantity, 0);
-  const shortQty = left.filter((l) => !isLong(l.date, today)).reduce((s, l) => s + l.quantity, 0);
+  const short = left.filter((l) => !isLong(l.date, today));
+  const shortQty = short.reduce((s, l) => s + l.quantity, 0);
   const gain = valueCents - Math.round(basis);
-  const shortTerm = total > 0 ? Math.round((gain * shortQty) / total) : 0;
+  // Each group's value (by its coins) less its own cost; long-term is the rest of the total so
+  // the two always add up.
+  const shortTerm =
+    total > 0
+      ? Math.round((valueCents * shortQty) / total) -
+        Math.round(short.reduce((s, l) => s + l.costCents, 0))
+      : 0;
   return {
     gainCents: gain,
     shortTermCents: shortTerm,

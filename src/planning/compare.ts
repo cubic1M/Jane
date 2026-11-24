@@ -117,8 +117,10 @@ function scoreSavings(current: Extract<Current, { kind: "savings" }>, options: C
         o.kind === "savings" && o.apyBps !== null && o.minimumBalanceCents <= current.amountCents,
     )
     .map((option) => {
-      // A monthly fee would count against it; savings options carry none here.
-      const earns = Math.round((current.amountCents * option.apyBps!) / BASIS_POINTS);
+      // A monthly fee would count against it; savings options carry none here. A one-time fee comes
+      // off the first year's earnings.
+      const earns =
+        Math.round((current.amountCents * option.apyBps!) / BASIS_POINTS) - option.oneTimeFeeCents;
       return {
         option,
         firstYearCents: earns,

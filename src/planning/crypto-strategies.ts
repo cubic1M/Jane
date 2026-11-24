@@ -95,10 +95,13 @@ export function cryptoReplay(
   fromDate: string | null,
   toDate: string | null,
 ): { path: PathPoint[]; metrics: CryptoMetrics } | null {
-  const from = Math.max(LOOKBACK + 1, fromDate ? u.dates.findIndex((d) => d >= fromDate) : 0);
+  const start = fromDate ? u.dates.findIndex((d) => d >= fromDate) : 0;
+  // No date reaches fromDate: nothing to replay (not the warm-up bound inside the history).
+  if (start < 0) return null;
+  const from = Math.max(LOOKBACK + 1, start);
   let to = u.dates.length - 1;
   if (toDate) while (to >= 0 && u.dates[to] > toDate) to -= 1;
-  if (from < 0 || to - from < 30) return null;
+  if (to - from < 30) return null;
   const cost = CRYPTO_FEE + CRYPTO_SLIPPAGE;
   const units = { BTC: 0, ETH: 0 } as Record<CryptoAsset, number>;
   let cash = 1_000_000;

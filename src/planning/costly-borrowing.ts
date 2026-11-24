@@ -57,11 +57,18 @@ const daysBetween = (a: string, b: string) =>
 
 // Proceeds (money in) matched to the next repayment (money out) from the same lender, within
 // 60 days. For a pay advance app the tips and fees that day add to what was repaid.
-export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[]; repaidOnly: Tx[] } {
+export function pairLoans(txs: readonly Tx[]): {
+  loans: Loan[];
+  open: Tx[];
+  repaidOnly: Tx[];
+  // The tip and fee lines that went into a loan's cost.
+  attachedFees: Set<string>;
+} {
   const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date));
   const loans: Loan[] = [];
   const open: Tx[] = [];
   const used = new Set<string>();
+  const attachedFees = new Set<string>();
   const nameOf = (t: Tx) =>
     t.description
       .replace(/\b(?:loan|proceeds|payment|advance|repayment|tip|fee|deposit)\b/gi, "")
@@ -99,7 +106,10 @@ export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[]; repa
         daysBetween(repay.date, f.date) >= 0 &&
         daysBetween(repay.date, f.date) <= 3,
     );
-    for (const f of extras) used.add(f.id);
+    for (const f of extras) {
+      used.add(f.id);
+      attachedFees.add(f.id);
+    }
     const repaidCents = repay.amountCents + extras.reduce((s, f) => s + f.amountCents, 0);
     loans.push({
       kind,
@@ -119,7 +129,7 @@ export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[]; repa
       kindOf(r) === "payday" &&
       !/tip|fee/i.test(r.description),
   );
-  return { loans, open, repaidOnly };
+  return { loans, open, repaidOnly, attachedFees };
 }
 
 // A payday repayment without its loan, as a loan at the typical fee (stated in ASSUMED). The
@@ -248,23 +258,27 @@ export function summarize(txs: readonly Tx[], today: string): Costly {
 
   const appTxs = by("pay_app");
   const apps = pairLoans(appTxs);
+  // Every tip or fee a loan didn't take in: one from another lender still costs.
   const loose = appTxs.filter(
-    (t) => t.amountCents > 0 && /tip|fee/i.test(t.description) && !apps.loans.length,
+    (t) => t.amountCents > 0 && /tip|fee/i.test(t.description) && !apps.attachedFees.has(t.id),
   );
   if (apps.loans.length > 0 || loose.length > 0) {
     const cost =
       apps.loans.reduce((s, l) => s + l.feeCents, 0) + loose.reduce((s, t) => s + t.amountCents, 0);
-    const pd = apps.loans.length
-      ? apps.loans.reduce((s, l) => s + l.principalCents * l.days, 0)
-      : loose.length * ASSUMED.payAppCents * ASSUMED.payAppDays;
+    const pd =
+      apps.loans.reduce((s, l) => s + l.principalCents * l.days, 0) +
+      loose.length * ASSUMED.payAppCents * ASSUMED.payAppDays;
     out.push({
       kind: "pay_app",
-      count: Math.max(apps.loans.length, loose.length),
+      count: apps.loans.length + loose.length,
       costCents: cost,
       aprBps: apr(cost, pd),
-      basis: apps.loans.length
-        ? "the tips and fees on each advance over the days it was out"
-        : `each tip or fee on a $${ASSUMED.payAppCents / 100} advance for about ${ASSUMED.payAppDays} days`,
+      basis:
+        apps.loans.length === 0
+          ? `each tip or fee on a $${ASSUMED.payAppCents / 100} advance for about ${ASSUMED.payAppDays} days`
+          : loose.length === 0
+            ? "the tips and fees on each advance over the days it was out"
+            : `the tips and fees on each advance over the days it was out, and each other tip or fee on a $${ASSUMED.payAppCents / 100} advance for about ${ASSUMED.payAppDays} days`,
       lastOn:
         appTxs
           .map((t) => t.date)

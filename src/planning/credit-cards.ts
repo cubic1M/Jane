@@ -55,11 +55,13 @@ export function yearSpend(transactions: readonly InsightTransaction[], asOf: str
   let first = end;
   for (const t of transactions) {
     const day = dayNumber(t.date);
-    if (day <= start || day > end || kindOf(t) !== "spending") continue;
+    if (day <= start || day > end) continue;
+    // The history is every line in the window; only spending adds to a category.
+    first = Math.min(first, day);
+    if (kindOf(t) !== "spending") continue;
     const category = rewardCategoryOf(t);
     if (!category) continue;
     byCategory[category] += t.amountCents;
-    first = Math.min(first, day);
   }
   const days = Math.max(1, Math.round(end - first + 1));
   const scale = days >= CARD_SPEND_FULL_DAYS ? 1 : CARD_SPEND_DAYS / days;
@@ -152,7 +154,8 @@ export function feeCheck(
     earnsCents: earned,
     netCents: net,
     noFee,
-    paysForItself: noFee === null || net >= noFee.earnsCents,
+    // With no card without a fee to compare, it pays for itself when it earns back its own fee.
+    paysForItself: noFee === null ? net >= 0 : net >= noFee.earnsCents,
   };
 }
 
