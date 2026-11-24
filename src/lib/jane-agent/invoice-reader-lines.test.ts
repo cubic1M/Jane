@@ -33,6 +33,8 @@ const sums = [
   "Total without tax  $90.00",
   "Net total  $90.00",
   "Net amount  $90.00",
+  "Net price  $90.00",
+  "Price excluding tax  $90.00",
   "Amount excluding VAT  $90.00",
   "Total before all taxes  $90.00",
   "Amount before tax  $90.00",
@@ -73,6 +75,11 @@ const unitPrices = [
   "Storage $0.15 Per GB",
   "STORAGE $0.15 PER GB",
   "Storage $0.015 PER GB",
+  // In brackets, which a credit is written in too.
+  "Storage ($0.15) PER GB",
+  "Storage ($0.15) per GB",
+  "Storage ($0.15)/GB",
+  "Storage ($0.15 PER GB)",
 ];
 
 const items: [string, Expected][] = [
@@ -125,6 +132,10 @@ const items: [string, Expected][] = [
   ],
   [
     "Storage, 100 GB  $0.15/GB  $15.00",
+    { is: "item", description: "Storage, 100 GB", cents: 1_500 },
+  ],
+  [
+    "Storage, 100 GB  ($0.15) PER GB  $15.00",
     { is: "item", description: "Storage, 100 GB", cents: 1_500 },
   ],
   // Leaders, bullets and separators come off the ends, not the name.

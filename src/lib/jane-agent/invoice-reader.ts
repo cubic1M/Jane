@@ -28,7 +28,7 @@ export type Invoice = {
 // for a credit. Not a unit price ("$0.15/GB", "$0.15 per GB"), and never part of a longer number
 // ("$0.015/GB" isn't "$0.01").
 const AMOUNT =
-  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(\))?(?!\s*(?:\/|per\b))/gi;
+  /(?<![\d.,])(-|−|–)?(\()?\$?\s?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)(?!\)?\s*(?:\/|per\b))(\))?/gi;
 // The first price of any kind on a line: an amount, or a unit price that has more cents or "/GB".
 const FIRST_PRICE = /[-−(]?\$\s?\d|[-−(]?\b\d[\d,]*\.\d{2,}/;
 
@@ -48,7 +48,7 @@ const wordsOf = (description: string) =>
 //    "Total incl. tax", "Amount due", "Balance due on Dec 1", "Amount paid", "Paid". Only these
 //    whole forms: "Total Protection" and "Total Wine" are things sold.
 const SUBTOTAL = /\bsub ?total\b/;
-const SUMS = /\b(?:total|amount|balance|sum)\b/;
+const SUMS = /\b(?:total|amount|balance|sum|price)\b/;
 const BEFORE_TAX =
   /\b(?:(?:excl|excluding|before|without|ex)\s+(?:(?:any|all|the|sales)\s+)?(?:tax|taxes|vat|gst)|pre ?tax|net\s+(?:total|amount|price))\b/;
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
