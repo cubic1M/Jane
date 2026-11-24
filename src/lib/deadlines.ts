@@ -102,7 +102,9 @@ const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
 const handEnteredDeadlines: DeadlineSource = async (userId, { client }) =>
   enteredDeadlines(
     await scopedFor(userId, client).deadlines.findMany({
-      where: { doneAt: null },
+      // Not the collector answer dates that validation letters put here before the law's lack of
+      // one was noticed (credit letters now set none): open rows from then are left out.
+      where: { doneAt: null, NOT: { title: { startsWith: "Collector's validation due:" } } },
       select: { id: true, title: true, dueOn: true, kind: true, note: true, doneAt: true },
     }),
   );

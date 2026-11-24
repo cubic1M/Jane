@@ -249,6 +249,8 @@ export function savingsOrDebt(i: DecisionInput): Decision {
     yearly += Math.round((put * (c.aprBps ?? 0)) / 10_000);
     left -= put;
   }
+  // What went to cards whose rate isn't known isn't priced: said, not counted as the whole.
+  const unpriced = left;
   const first = `You have ${formatCents(i.liquidCents)} in cash and ${formatCents(total(i.cards))} on cards, the worst at ${pct(card.aprBps!)}.`;
   if (extra <= 0) {
     return {
@@ -265,9 +267,11 @@ export function savingsOrDebt(i: DecisionInput): Decision {
     id: "savings_or_debt",
     sentences: [
       first,
-      extra > card.balanceCents
-        ? `Putting ${formatCents(extra)} on your cards, ${card.name} first, saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`
-        : `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`,
+      unpriced > 0
+        ? `Putting ${formatCents(extra - unpriced)} on your cards, ${card.name} first, saves about ${formatCents(yearly)} a year in interest at the rates I know; the other ${formatCents(unpriced)} is on cards whose rate I don't have.`
+        : extra > card.balanceCents
+          ? `Putting ${formatCents(extra)} on your cards, ${card.name} first, saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`
+          : `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`,
       ...(i.advice ? ["Savings earn less than the card costs, so I'd do it."] : []),
     ],
     href: "/loans/interest",

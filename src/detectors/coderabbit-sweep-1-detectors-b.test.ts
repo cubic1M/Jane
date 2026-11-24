@@ -31,3 +31,27 @@ describe("the Marketplace repayment warning needs the months it is worked out fr
     expect(Array.isArray(sam(late))).toBe(true);
   });
 });
+
+describe("the Marketplace check reads this year's months only", () => {
+  it("is not raised when only last December precedes April", () => {
+    const data = inputFor("freelancer");
+    const year = Number(data.today.slice(0, 4));
+    const late = {
+      ...data,
+      transactions: [
+        ...data.transactions.filter((t) => t.date >= `${year}-04-01`),
+        {
+          date: `${year - 1}-12-15`,
+          amountCents: 100,
+          description: "COFFEE",
+          pfc: null,
+          accountId: data.accounts[0]!.id,
+        },
+      ],
+    };
+    const topics = runDetectors({ profile: buildProfile(late), data: late }, TAX_DETECTORS).map(
+      (s) => s.topic,
+    );
+    expect(topics).not.toContain("ptc_repayment");
+  });
+});

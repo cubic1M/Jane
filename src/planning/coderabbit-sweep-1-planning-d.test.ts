@@ -154,3 +154,19 @@ describe("a bill due today is never scheduled after its due date", () => {
     if (plan.status === "pay") expect(plan.runOn <= "2026-12-05").toBe(true);
   });
 });
+
+describe("savings or debt: a card with no rate", () => {
+  it("says what it prices and what it doesn't", () => {
+    const d = savingsOrDebt({
+      ...decision,
+      cards: [
+        { name: "Small Card", balanceCents: 100_000, aprBps: 2_500, limitCents: 500_000 },
+        { name: "No Rate", balanceCents: 900_000, aprBps: null, limitCents: 1_000_000 },
+      ],
+      cushionCents: 300_000,
+    });
+    expect(d.sentences[1]).toMatch(
+      /at the rates I know; the other \$9,000\.00 is on cards whose rate I don't have/,
+    );
+  });
+});

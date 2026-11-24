@@ -138,9 +138,10 @@ export function realised(
   if (holding.costBasisCents === null) return [];
   const perShare = holding.quantity > 0 ? holding.costBasisCents / holding.quantity : 0;
   // Each replacement purchase covers the shares it bought once, across this holding's loss sales.
-  const bought = allBuys.filter(
-    (t) => t.type === "buy" && t.securityId === holding.securityId && t.quantity > 0,
-  );
+  // Earliest purchase first, whatever order the rows came in (Publication 550's matching order).
+  const bought = allBuys
+    .filter((t) => t.type === "buy" && t.securityId === holding.securityId && t.quantity > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
   const left = new Map(bought.map((t) => [t, t.quantity]));
   return sales.map((s) => {
     const cost = Math.round(perShare * s.quantity);

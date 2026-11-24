@@ -122,3 +122,92 @@ describe("investment sales", () => {
     expect(disallowed.filter((c) => c > 0)).toHaveLength(1);
   });
 });
+
+describe("review comments on #2250", () => {
+  const rates = { investedLow: 0, investedHigh: 0, cash: 0, home: 0 };
+  const base: LongViewInput = {
+    cashCents: 0,
+    investedCents: 0,
+    growingAssetsCents: 0,
+    otherAssetsCents: 0,
+    debts: [],
+    marginCents: 0,
+    investMonthlyCents: 0,
+  };
+  it("an extra card payment the margin can't fund comes out of cash", () => {
+    // $1,200 card, $100 regular payment, $100 margin (all of it already the payment): a $100 extra
+    // is $100 a month more out of cash, so net worth at 10 years falls, never rises.
+    const card = {
+      name: "Card",
+      balanceCents: 120_000,
+      aprBps: 0,
+      paymentCents: 10_000,
+      fromMargin: true,
+    };
+    const input = { ...base, marginCents: 10_000, debts: [card] };
+    const withExtra = { ...input, debts: [{ ...card, extraCents: 10_000 }] };
+    expect(longView(withExtra, rates)[0].lowCents).toBeLessThanOrEqual(
+      longView(input, rates)[0].lowCents,
+    );
+  });
+  it("a non-card debt's unused last payment stays in cash", () => {
+    // $450 at $100 a month: the fifth payment is $50, and the other $50 is still the person's.
+    const loan = {
+      name: "Loan",
+      balanceCents: 45_000,
+      aprBps: 0,
+      paymentCents: 10_000,
+      fromMargin: false,
+    };
+    const out = longView({ ...base, debts: [loan] }, rates)[0];
+    // The fifth payment is $50: the other $50 stays in cash. The freed $100 a month from month 6
+    // on (115 months) goes to investments, as the long view rolls freed payments.
+    expect(out.parts.cashCents).toBe(5_000);
+    expect(out.parts.investedLowCents).toBe(115 * 10_000);
+  });
+  it("matches replacement purchases earliest first whatever order the rows are in", () => {
+    const holding = {
+      accountId: "brk",
+      securityId: "pdifx",
+      ticker: "PDIFX",
+      name: "Fund",
+      type: "mutual fund",
+      quantity: 100,
+      valueCents: 200_000,
+      costBasisCents: 500_000,
+    } as InvHolding;
+    const t = (o: Partial<InvTransaction>): InvTransaction => ({
+      accountId: "brk",
+      securityId: "pdifx",
+      date: "2026-09-24",
+      type: "sell",
+      subtype: "sell",
+      quantity: -10,
+      amountCents: -20_000,
+      ...o,
+    });
+    const { sales } = lotsFor(100, [
+      t({ date: "2026-09-24" }),
+      t({ date: "2026-10-28", quantity: -10 }),
+    ]);
+    const early = t({
+      type: "buy",
+      subtype: "buy",
+      date: "2026-09-26",
+      quantity: 10,
+      amountCents: 20_000,
+    });
+    const late = t({
+      type: "buy",
+      subtype: "buy",
+      date: "2026-10-22",
+      quantity: 10,
+      amountCents: 20_000,
+    });
+    const a = realised(holding, sales, [early, late]).map((r) => r.washDisallowedCents);
+    const b = realised(holding, sales, [late, early]).map((r) => r.washDisallowedCents);
+    // The Sep 26 purchase covers the Sep 24 sale and the Oct 22 one the Oct 28 sale, either way round.
+    expect(a.every((c) => c > 0)).toBe(true);
+    expect(b).toEqual(a);
+  });
+});
