@@ -71,3 +71,31 @@ describe("a return window isn't a bill", () => {
     expect(rows).toHaveLength(1);
   });
 });
+
+describe("net worth events: borrowed money", () => {
+  it("is cash and debt both going up, not a refund or a gain", async () => {
+    const { transactionEvent } = await import("./net-worth-events");
+    const e = transactionEvent({
+      date: "2026-10-05",
+      amountCents: -1_000_000,
+      name: "CLEARWATER LOAN PROCEEDS",
+      pfcPrimary: "LOAN_DISBURSEMENTS",
+      pfcDetailed: "LOAN_DISBURSEMENTS_PERSONAL_LOAN",
+      accountType: "depository",
+    });
+    expect(e).toMatchObject({ cents: 0, moved: 1_000_000, kind: "transfer" });
+    expect(e?.label).toMatch(/^Loan proceeds/);
+  });
+  it("leaves a real refund a refund", async () => {
+    const { transactionEvent } = await import("./net-worth-events");
+    const e = transactionEvent({
+      date: "2026-10-05",
+      amountCents: -5_000,
+      name: "TARGET",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+      pfcDetailed: "GENERAL_MERCHANDISE_OTHER",
+      accountType: "depository",
+    });
+    expect(e).toMatchObject({ kind: "refund", cents: 5_000 });
+  });
+});
