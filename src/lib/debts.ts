@@ -116,7 +116,6 @@ async function loadDebtsFrom(
           amountCents: true,
           monthlyCents: true,
           fundedAt: true,
-          status: true,
         },
       }),
       // Spec step 113: balances moved to a 0% card, until that card is linked.
@@ -193,12 +192,10 @@ async function loadDebtsFrom(
         asOf,
       ),
       newLoans: [
-        ...newLoans.map(({ id, fundedAt, status, ...l }) => ({
+        ...newLoans.map(({ id, fundedAt, ...l }) => ({
           ...l,
           applicationId: id,
           fundedOn: isoDay(fundedAt!),
-          // Paid off early: nothing owed and nothing due, whatever the schedule said.
-          paidOff: status === "paid_off",
         })),
         ...transfers.map((t) => ({
           applicationId: t.id,

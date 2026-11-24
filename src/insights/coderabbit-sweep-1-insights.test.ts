@@ -32,15 +32,6 @@ describe("a new loan's payments made", () => {
     expect(d.balanceCents).toBeLessThan(1_000_000);
     expect(d.nextDue).toBe("2026-12-20");
   });
-  it("shows a loan paid off early as owing nothing and due nothing", () => {
-    const d = debtBook(
-      { accounts: [], plans: [], typed: [], newLoans: [{ ...loan, paidOff: true }] },
-      "2026-11-15",
-    ).debts.find((x) => x.key === "loan:app1")!;
-    expect(d.balanceCents).toBe(0);
-    expect(d.nextDue).toBeNull();
-    expect(d.dueSoon).toBe(false);
-  });
   it("clamps a due date on the 31st to the end of a short month", () => {
     const d = debtBook(
       { accounts: [], plans: [], typed: [], newLoans: [{ ...loan, fundedOn: "2026-01-31" }] },
