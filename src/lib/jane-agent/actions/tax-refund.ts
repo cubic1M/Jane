@@ -14,7 +14,7 @@ export const taxRefundApply: ActionHandler = {
       const { reminders } = await applyRefundPlan(userId, id, { client, now, via: "chat" });
       return {
         answeredWith: action.label,
-        note: `Done: ${reminders} ${reminders === 1 ? "reminder is" : "reminders are"} on your deadlines. Move the money when you're ready.`,
+        note: `Done: ${reminders} ${reminders === 1 ? "reminder is" : "reminders are"} on your deadlines. The money stays where it is until you decide.`,
       };
     } catch (error) {
       if (error instanceof RefundError) throw new ChatActionError("failed", error.message);

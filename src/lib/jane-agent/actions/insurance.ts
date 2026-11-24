@@ -1,3 +1,4 @@
+import { adviceMode } from "@/lib/advice-mode";
 import { GAP_KEYS, type GapKey } from "@/config/insurance";
 import { dismissGap } from "@/lib/insurance/household";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
@@ -440,7 +441,11 @@ export const lifeCoverSubmit: ActionHandler = {
     const application = await lifeStep(() =>
       submitLifeApplication(userId, lifeId(message), { client, now }),
     );
-    const step = decisionStep(application, await timezoneOf(userId, { client }));
+    const step = decisionStep(
+      application,
+      await timezoneOf(userId, { client }),
+      await adviceMode(userId, { client }),
+    );
     if (application.status === "offered") {
       return { status: "open", answeredWith: null, ...step, refs: message.refs };
     }

@@ -80,7 +80,7 @@ describe.runIf(url)(
       const lines = reply.body.split("\n");
       expect(lines[0]).toBe("I can do both, in this order, once you say yes.");
       expect(lines[1]).toMatch(/^1\. Yes: .*Hulu/);
-      expect(lines[2]).toMatch(/^2\. Move \$[\d,]+\.\d\d from .+ to your Emergency fund goal/);
+      expect(lines[2]).toMatch(/^2\. \$[\d,]+\.\d\d from .+ to your Emergency fund goal/);
       expect(reply.actions.map((a) => a.id)).toEqual(["multi.confirm", "multi.cancel"]);
       expect(reply.refs.multi?.steps[1]).toMatchObject({ kind: "transfer", amountCents: month });
 
@@ -168,7 +168,7 @@ describe.runIf(url)(
         },
       });
       const month = Math.round((shop.savingCents ?? 0) / 12);
-      expect(lines[2]).toContain(`Move $${(month / 100).toFixed(2)} from`);
+      expect(lines[2]).toContain(`2. $${(month / 100).toFixed(2)} from`);
 
       const { message } = await takeChatAction(userId, reply.id, "multi.confirm", {
         client,
@@ -197,7 +197,7 @@ describe.runIf(url)(
       const userId = await demoPerson("multi-savings");
       const { reply } = await sendToJane(userId, "move $200 to savings", { client, now: later() });
       expect(reply.actions[0].id).toBe("multi.confirm");
-      expect(reply.body).toMatch(/Move \$200\.00 from .+ to .*[Ss]avings/);
+      expect(reply.body).toMatch(/\$200\.00 from .+ to .*[Ss]avings/);
       expect(await client.moneyTransfer.count({ where: { userId } })).toBe(0);
       await takeChatAction(userId, reply.id, "multi.confirm", { client, now: later() });
       expect(await client.moneyTransfer.findFirst({ where: { userId } })).toMatchObject({

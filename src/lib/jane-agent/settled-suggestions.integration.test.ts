@@ -50,7 +50,7 @@ describe.runIf(url)("a suggestion's message once the suggestion is gone", () => 
         confidenceReason: "no car-cover charges",
         urgency: "now",
         why: "I see car costs but no car-insurance charge.",
-        actionLabel: "Add or compare car cover",
+        actionLabel: "See your cover",
         actionHref: "/insurance",
         status: "selected",
       },
@@ -62,7 +62,7 @@ describe.runIf(url)("a suggestion's message once the suggestion is gone", () => 
         body: "Check your car is insured",
         refs: { suggestion: key },
         actions: [
-          { id: "suggestion.yes", label: "Add or compare car cover", kind: "primary" },
+          { id: "suggestion.yes", label: "See your cover", kind: "primary" },
           { id: "snooze", label: "Not now", kind: "secondary" },
           { id: "open", label: "Open", kind: "link", href: "/insurance" },
         ],

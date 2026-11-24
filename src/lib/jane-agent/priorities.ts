@@ -60,13 +60,14 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
     });
   }
   const insurance = snapshot.insurance;
-  for (const shop of insurance?.shops ?? []) {
+  // Which quote to take is demo advice (spec step 98): none on a real account.
+  for (const shop of snapshot.advice ? (insurance?.shops ?? []) : []) {
     if (!shop.pick || shop.savingCents === null || shop.savingCents <= 0) continue;
     const policy = insurance?.policies.find((p) => p.id === shop.policyId);
     items.push({
       key: `shop:${shop.id}`,
       kind: "offer",
-      title: `Switch ${policy ? `your ${policy.carrier} policy` : "your policy"} to ${shop.pick.carrier.name}`,
+      title: `${shop.pick.carrier.name}'s quote for ${policy ? `your ${policy.carrier} policy` : "your policy"}`,
       valueCents: shop.savingCents,
       minutes: MINUTES.tap,
       dueOn: policy?.nextRenewal ?? null,
@@ -75,13 +76,14 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
       ref: shop.id,
     });
   }
-  for (const c of snapshot.refinance?.comparisons ?? []) {
+  // Which offer to take is demo advice (spec step 98): none on a real account.
+  for (const c of snapshot.advice ? (snapshot.refinance?.comparisons ?? []) : []) {
     if (!c.pick || c.pick.savingCents <= 0) continue;
     const years = Math.max(1, c.termMonths / 12);
     items.push({
       key: `refinance:${c.debtKey}`,
       kind: "offer",
-      title: `Refinance ${c.debtName}`,
+      title: `A refinance offer for ${c.debtName}`,
       valueCents: Math.round(c.pick.savingCents / years),
       minutes: MINUTES.application,
       confidence: "medium",

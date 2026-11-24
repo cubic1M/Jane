@@ -55,7 +55,7 @@ export function findingCandidate(finding: SnapshotFinding, concierge = true): Ca
   if (finding.pick) {
     actions.push({
       id: "finding.pick",
-      label: `Switch to ${finding.pick.name}`,
+      label: `See ${finding.pick.name}`,
       kind: "primary",
     });
   }

@@ -44,7 +44,9 @@ export async function cardCoverAnswer(
     actions: [
       ...open
         .slice(0, 2)
-        .map((d): MessageAction => openLink(`Cancel ${d.merchant}`, `/report/${d.findingId}`)),
+        .map((d): MessageAction =>
+          openLink(`${d.merchant} and your card's cover`, `/report/${d.findingId}`),
+        ),
       INSURANCE,
     ],
     refs: {},

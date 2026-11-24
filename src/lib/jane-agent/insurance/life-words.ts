@@ -99,6 +99,8 @@ export function decisionStep(
   // The person's own day: an offer open for N days from 6pm in Los Angeles ends that day, not the
   // next UTC day (debugger 11-13). US Pacific when unknown, as timezoneOf says.
   timezone = validTimezone(null),
+  // Demo advice mode (spec step 98): buying life cover is advice, so the offer shows only there.
+  advice = false,
 ): {
   body: string;
   actions: MessageAction[];
@@ -106,6 +108,8 @@ export function decisionStep(
   const quote = chosenQuote(application);
   const carrier = quote?.carrier.name ?? "The carrier";
   const decision = application.decision;
+  if (decision?.outcome === "offered" && !advice)
+    return { body: `${carrier} has answered your application.`, actions: [LIFE_LINK] };
   if (decision?.outcome === "offered") {
     return {
       body: [

@@ -24,6 +24,9 @@ export function paycheckReply(
   plan: PaycheckPlanView | null,
   simulated = true,
   next: NextPaycheck | null = null,
+  // Whether the split can move money: a money-movement partner (moneyPartnerFor). "Move them"
+  // only then.
+  movesMoney = false,
 ): Reply {
   if (!plan || plan.moves.length === 0) {
     return {
@@ -78,7 +81,9 @@ export function paycheckReply(
   const actions: MessageAction[] = [
     ...(asked.length > 0 && open
       ? [
-          { id: "paycheck.move" as const, label: "Move them", kind: "primary" as const },
+          movesMoney
+            ? { id: "paycheck.move" as const, label: "Move them", kind: "primary" as const }
+            : { id: "paycheck.move" as const, label: "Go ahead", kind: "primary" as const },
           { id: "paycheck.skip" as const, label: "Not this time", kind: "secondary" as const },
         ]
       : []),

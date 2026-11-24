@@ -183,7 +183,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(await client.refinanceCheck.count({ where: { userId: realId } })).toBe(0);
     const { reply } = await sendToJane(realId, "find me a better rate", opts());
     expect(reply.body).toMatch(
-      /^Refinance offers come from a lending partner, and there isn't one/,
+      /^Offers to refinance come from a lending partner, and there isn't one/,
     );
   });
 });

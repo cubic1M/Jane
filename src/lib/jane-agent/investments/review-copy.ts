@@ -87,5 +87,12 @@ function reviewInput(inv: InvestmentSnapshot, year: number): ReviewInput {
 export const reviewFor = (inv: InvestmentSnapshot, year: number) => {
   const input = reviewInput(inv, year);
   const items = buildReview(input);
-  return { input, items, body: reviewBody(input, items), buttons: reviewButtons(items) };
+  // The buttons say what to do with the money: demo advice only (spec step 98), whatever the
+  // caller checked first.
+  return {
+    input,
+    items,
+    body: reviewBody(input, items),
+    buttons: inv.advice ? reviewButtons(items) : [],
+  };
 };

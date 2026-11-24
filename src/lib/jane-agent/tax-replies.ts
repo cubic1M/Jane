@@ -109,7 +109,7 @@ export function setFilingReply(status: FilingStatus | null): Reply {
 export function setKidsReply(count: number): Reply {
   if (count >= KIDS_BUTTONS.length) {
     return {
-      body: `You can put ${count} children on your tax profile, with any other dependants.`,
+      body: `Your tax profile has room for ${count} children, with any other dependants.`,
       actions: [link("Open my tax profile")],
       refs: {},
     };

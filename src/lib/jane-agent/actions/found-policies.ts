@@ -28,7 +28,7 @@ export const policyConfirm: ActionHandler = {
       const what = isPolicyKind(kind) && kind !== "other" ? POLICY_KINDS[kind].toLowerCase() : "";
       return {
         answeredWith: context.action.label,
-        note: `Confirmed. Your ${carrier} ${what ? `${what} ` : ""}insurance is on your profile. Add its deductible and limits on Insurance so I can check the cover.`,
+        note: `Confirmed. Your ${carrier} ${what ? `${what} ` : ""}insurance is on your profile. With its deductible and limits on Insurance, I can check the cover.`,
       };
     } catch (error) {
       if (error instanceof PolicyError) throw answeredElsewhere(error.message);

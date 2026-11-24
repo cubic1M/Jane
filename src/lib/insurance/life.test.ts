@@ -174,18 +174,22 @@ describe("in the chat", () => {
   });
 
   it("says the offer and asks to buy, or that the carrier will review it", () => {
-    const offered = decisionStep({
-      ...application,
-      status: "offered",
-      quoteId: "q1",
-      decision: {
-        outcome: "offered",
-        rateClass: "preferred",
-        premiumCents: 3_400,
-        annualPremiumCents: 40_800,
-        offerExpiresAt: "2026-11-18T16:00:00.000Z",
+    const offered = decisionStep(
+      {
+        ...application,
+        status: "offered",
+        quoteId: "q1",
+        decision: {
+          outcome: "offered",
+          rateClass: "preferred",
+          premiumCents: 3_400,
+          annualPremiumCents: 40_800,
+          offerExpiresAt: "2026-11-18T16:00:00.000Z",
+        },
       },
-    });
+      undefined,
+      true,
+    );
     expect(offered.body.split("\n")).toEqual([
       "Bluepeak Mutual (demo) offers you $1,150,000.00 of cover for 20 years at $34.00 a month, their best rate. Buy it?",
       "The offer is open until Nov 18, 2026.",

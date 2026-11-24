@@ -1016,7 +1016,7 @@ const disasterRelief: Detector = {
             }`
           : "If the disaster damaged your home or car, keep the repair bills and the insurance claim together."
       }${r.sample ? " (This is a sample declaration from Jane's stand-in feed.)" : ""}`,
-      action: { label: "Move my tax deadlines", href: "/deadlines" },
+      action: { label: "Update my deadline list", href: "/deadlines" },
     });
   },
 };

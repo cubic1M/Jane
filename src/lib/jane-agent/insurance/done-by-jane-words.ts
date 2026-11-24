@@ -77,8 +77,11 @@ export function draftBody(
   ].join("\n");
 }
 
-export const draftActions = (claim: Claim): MessageAction[] => [
-  { id: "claim.file", label: "File it", kind: "primary" },
+// Jane filing the claim is the concierge's (src/lib/concierge-mode.ts): "File it" only then.
+export const draftActions = (claim: Claim, concierge: boolean): MessageAction[] => [
+  concierge
+    ? { id: "claim.file", label: "File it", kind: "primary" }
+    : { id: "claim.file", label: "Looks right", kind: "primary" },
   openLink("Change it", `/insurance/claims#claim-${claim.id}`),
 ];
 
