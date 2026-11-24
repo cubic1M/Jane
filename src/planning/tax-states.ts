@@ -82,7 +82,12 @@ export function residencePeriods(
   const later = moves
     .filter((m) => m.date > end && m.from !== m.to)
     .sort((a, b) => a.date.localeCompare(b.date))[0];
-  const first = inYear[0]?.from ?? later?.from ?? state;
+  // A move on January 1 means living in the new state from the start of the year.
+  const onJan1 = moves
+    .filter((m) => m.date === start && m.from !== m.to)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .at(-1);
+  const first = onJan1?.to ?? inYear[0]?.from ?? later?.from ?? state;
   if (!first) return [];
   const periods: ResidencePeriod[] = [];
   let from = start;
