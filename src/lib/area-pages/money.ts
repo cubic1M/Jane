@@ -197,6 +197,10 @@ export type MoneyTreeInput = {
     debt: { accounts: number; others?: number; owedCents: number; known?: number };
     // Accounts net worth leaves out for having no balance (an uploaded card, say).
     missing?: Unbalanced[];
+    // Accounts that may be one account counted twice, as one short sentence (maybeSameShort). It
+    // is the second sentence of the summary, with the statements' end day folded into the first:
+    // the summary keeps two sentences, and the label already says a balance is missing.
+    maybeSame?: string | null;
   };
   rules: number;
 };
@@ -217,12 +221,39 @@ export function billsByWeek<T extends { date: string }>(
   return { week, later: week.length > 0 ? bills.filter((b) => b.date > weekEnds) : [...bills] };
 }
 
+// The net worth line: what's held and owed, then what it leaves out. With accounts that may be one
+// counted twice that is the second sentence, and the statements' end day moves into the first.
+function netWorthSummary(
+  h: MoneyTreeInput["have"],
+  left: ReturnType<typeof notCounting>,
+  statementsEnd: string | null | undefined,
+): string {
+  const owes = owedIsKnown(
+    { debtsCents: h.debtsCents, unbalanced: h.missing ?? [] },
+    h.loansSeen ?? [],
+  )
+    ? ` and owe ${formatCents(h.debtsCents)}`
+    : "; Jane can't see everything you owe";
+  const have = `You have ${formatCents(h.assetsCents)}${owes}`;
+  const end = statementsEnd ? dayLabel(statementsEnd) : null;
+  if (h.maybeSame)
+    return `${have}${end ? `, from your statements, which end on ${end}` : ""}. ${h.maybeSame}`;
+  return `${have}.${left ? ` ${left.sentence}` : ""}${end ? ` That's from your statements, which end on ${end}.` : ""}`;
+}
+
 export function moneyTree(input: MoneyTreeInput): AreaTree {
-  const item = (branch: MoneyBranch, key: string, rest: Omit<AreaItem, "id">): AreaItem => ({
+  // `sentences` is only widened for text that is already two sentences and holds account names:
+  // the splitter takes a period in a name ("J.P. Morgan") for the end of one.
+  const item = (
+    branch: MoneyBranch,
+    key: string,
+    rest: Omit<AreaItem, "id">,
+    sentences?: number,
+  ): AreaItem => ({
     id: itemId(branch, key),
     ...rest,
     label: asLabel(rest.label),
-    summary: firstSentences(rest.summary),
+    summary: firstSentences(rest.summary, sentences),
   });
   const items: Record<MoneyBranch, AreaItem[]> = {
     charges: [],
@@ -493,17 +524,22 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
   const left = notCounting(h.missing ?? []);
   if (input.hasAccounts) {
     items.have.push(
-      item("have", "net-worth", {
-        // Never a figure that silently leaves a debt out: "Not known" with no balance at all,
-        // else it says what it isn't counting.
-        label: left && h.netKnown !== false ? `Net worth, ${left.short}` : "Net worth",
-        status: left && h.netKnown !== false ? "look" : "good",
-        figure: h.netKnown === false ? "Not known" : shortMoney(h.netCents),
-        summary:
-          h.netKnown === false
-            ? "Your files don't include a balance yet. Add one on the import page."
-            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${left ? ` ${left.sentence}` : ""}${input.statementsEnd ? ` That's from your statements, which end on ${dayLabel(input.statementsEnd)}.` : ""}`,
-      }),
+      item(
+        "have",
+        "net-worth",
+        {
+          // Never a figure that silently leaves a debt out: "Not known" with no balance at all,
+          // else it says what it isn't counting.
+          label: left && h.netKnown !== false ? `Net worth, ${left.short}` : "Net worth",
+          status: left && h.netKnown !== false ? "look" : "good",
+          figure: h.netKnown === false ? "Not known" : shortMoney(h.netCents),
+          summary:
+            h.netKnown === false
+              ? "Your files don't include a balance yet. Add one on the import page."
+              : netWorthSummary(h, left, input.statementsEnd),
+        },
+        h.maybeSame ? Number.POSITIVE_INFINITY : undefined,
+      ),
     );
   }
   if (h.investmentsCents > 0) {

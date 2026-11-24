@@ -186,6 +186,43 @@ describe("moneyTree", () => {
     expect(allItems(FULL).find((i) => i.id === "have:net-worth")?.label).toBe("Net worth");
   });
 
+  describe("accounts that may be one counted twice", () => {
+    const warn = (a: string, b: string) =>
+      `${a} (uploaded) and ${b} (linked) may be the same account; net worth counts both.`;
+    const summaryOf = (have: Partial<MoneyTreeInput["have"]>, statementsEnd?: string) =>
+      moneyTree({ ...FULL, statementsEnd, have: { ...FULL.have, ...have } }).summaries[
+        "have:net-worth"
+      ]!;
+
+    it("is the second sentence, after what's held, whether or not a balance is missing", () => {
+      const maybeSame = warn("Chase checking", "TOTAL CHECKING");
+      const summary = summaryOf({ missing: [{ name: "Chase card", card: true }], maybeSame });
+      expect(summary).toMatch(/^You have .* and owe .*\. Chase checking \(uploaded\)/);
+      expect(summary).toContain(maybeSame);
+      expect(sentences(summary)).toBeLessThanOrEqual(SUMMARY_MAX_SENTENCES);
+      expect(
+        moneyTree({
+          ...FULL,
+          have: { ...FULL.have, missing: [{ name: "Chase card", card: true }], maybeSame },
+        })
+          .tree.branches.flatMap((b) => b.items)
+          .find((i) => i.id === "have:net-worth")?.label,
+      ).toBe("Net worth, not counting card balance");
+    });
+
+    it("keeps both account names when one has a period in it (J.P. Morgan, U.S. Bank)", () => {
+      const maybeSame = warn("J.P. Morgan checking", "U.S. Bank checking");
+      expect(summaryOf({ maybeSame })).toContain(maybeSame);
+    });
+
+    it("keeps the statements' end day beside the warning, in the first sentence", () => {
+      const maybeSame = warn("Chase checking", "TOTAL CHECKING");
+      const summary = summaryOf({ maybeSame }, "2026-11-13");
+      expect(summary).toMatch(/, from your statements, which end on Nov 13\. Chase checking/);
+      expect(summary).toContain(maybeSame);
+    });
+  });
+
   it("keeps every label and summary within the copy budget", () => {
     const area = moneyTree(FULL);
     for (const b of area.tree.branches) expect(words(b.label)).toBeLessThanOrEqual(LABEL_MAX_WORDS);

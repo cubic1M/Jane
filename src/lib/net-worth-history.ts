@@ -6,6 +6,9 @@ import {
 } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
+  maybeSameHref,
+  maybeSameShort,
+  maybeSameWords,
   netWorth,
   netWorthCovers,
   netWorthLine,
@@ -20,7 +23,7 @@ import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
-import { copiesToLeaveOut } from "@/planning/books";
+import { copiesToLeaveOut, maybeSameAccounts } from "@/planning/books";
 
 // What net worth is worked out from, read one way for every surface that shows it (gate B: the
 // weekly email left out what the person owns and their crypto, the month close and Home's line
@@ -125,6 +128,29 @@ export async function loadNetWorthCovers(
     accounts.map((a) => ({ type: a.type, balanceCents: a.currentBalanceCents })),
     { owned: owned.length, crypto: crypto > 0 },
   );
+}
+
+// Accounts that may be one account counted twice, in words (src/insights/net-worth.ts), from the
+// accounts net worth counts, and where one is removed; null when there are none. Said under the
+// figure on Home and Money.
+export async function loadMaybeSame(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<{ words: string; short: string; href: string } | null> {
+  const [{ accounts }, items] = await Promise.all([
+    loadNetWorthInputs(userId, { client }),
+    scopedFor(userId, client).plaidItems.findMany({ select: { id: true, institutionName: true } }),
+  ]);
+  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
+  // Only accounts whose balance is counted: net worth leaves out one with no balance, so it isn't
+  // counted twice and there is nothing to say.
+  const pairs = maybeSameAccounts(
+    accounts.filter((a) => a.currentBalanceCents !== null),
+    (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
+  );
+  const words = maybeSameWords(pairs);
+  const short = maybeSameShort(pairs);
+  return words && short ? { words, short, href: maybeSameHref(pairs) } : null;
 }
 
 // The accounts net worth can't count yet for want of a balance (src/insights/net-worth.ts

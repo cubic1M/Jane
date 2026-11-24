@@ -8,6 +8,7 @@ import {
   duplicateAccounts,
   copiesToLeaveOut,
   importsEnded,
+  maybeSameAccounts,
   linkProblems,
   matchTransfers,
   unmatchedToSay,
@@ -17,6 +18,7 @@ import {
 } from "@/planning/books";
 import { addDays, isoDay as iso } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { maybeSamePair } from "@/insights/net-worth";
 
 // Books that balance (spec step 238): every day Jane checks that balances agree with their
 // transactions, finds the same account linked twice (and merges it, only when both copies are
@@ -182,6 +184,7 @@ export async function runBooksCheck(
         type: true,
         subtype: true,
         source: true,
+        currentBalanceCents: true,
       },
     }),
     db.plaidItems.findMany({
@@ -326,6 +329,20 @@ export async function runBooksCheck(
       // Readable dates and fewer words (round-2 pass: "(3)'s data ends on 2026-10-12, the last
       // day in the file you imported, so I can't see anything after it…").
       words: `${a.name}'s file ends on ${a.lastDate ? dayLabel(a.lastDate, { year: true }) : "an earlier day"}. Import a newer one and I'll pick up from there.`,
+    });
+  }
+  // Accounts that may be one account counted twice, which nothing can prove: said, never merged.
+  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
+  for (const { a, b } of maybeSameAccounts(
+    accounts.filter((x) => !copies.has(x.id) && x.currentBalanceCents !== null),
+    (x) => (x.itemId ? (bank.get(x.itemId) ?? null) : null),
+  )) {
+    found.push({
+      kind: "maybe_same",
+      key: `same:${a.id}:${b.id}`,
+      accountId: (a.itemId === null ? a : b).id,
+      detail: { with: (a.itemId === null ? b : a).id },
+      words: maybeSamePair({ a, b }),
     });
   }
   // A copy left out of the figures is left out of transfer matching too: its spare lines would
