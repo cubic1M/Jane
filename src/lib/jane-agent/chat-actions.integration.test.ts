@@ -655,7 +655,14 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
       expect(back).toMatchObject({ status: "open", answeredWith: null, snoozedUntil: null });
       expect(back.createdAt.getTime()).toBeGreaterThanOrEqual(tomorrow.getTime());
       expect(buttonIds(back)).toEqual(["alert.got_it", "snooze", "open"]);
-      expect(chat?.messages.at(-1)?.id).toBe(message.id);
+      // Back for the dock (an open card with its buttons), never in the chat's own list
+      // (founder 11-24).
+      expect(chat?.messages.map((m) => m.id)).not.toContain(message.id);
+      expect(
+        (
+          await openPopupMessages(userId, { client, now: new Date(tomorrow.getTime() + 60_000) })
+        ).map((m) => m.id),
+      ).toContain(message.id);
     });
 
     it("refuses another person's snooze, and a message no longer open", async () => {

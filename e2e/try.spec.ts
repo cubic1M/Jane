@@ -6,6 +6,7 @@ test.skip(!process.env.E2E_DATABASE_URL, "needs E2E_DATABASE_URL");
 
 test("'Try it with sample data' opens Jane's chat with a sample person @critical", async ({
   page,
+  isMobile,
 }) => {
   await page.goto("/");
   const button = page.getByRole("button", { name: "Try it with sample data" });
@@ -41,6 +42,8 @@ test("'Try it with sample data' opens Jane's chat with a sample person @critical
   }
   // Home, where Jane's cards wait (never in the chat, founder 11-24).
   await page.goto("/home");
+  // On a phone Home's cards start folded into one line until it is tapped.
+  if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
   // Jane's first card shows on the open page by itself (no reload here) within 25 seconds of
   // the click: it was in the database long before it showed, once. (The morning greeting is
   // off for now, MORNING_BRIEF; whatever it brings first counts.)
@@ -65,6 +68,7 @@ test("'Try it with sample data' opens Jane's chat with a sample person @critical
 // click. One in three clicks once never left the landing page.
 test("five tries in a row each reach the chat in 8 seconds and a card in 25", async ({
   browser,
+  isMobile,
 }) => {
   test.setTimeout(300_000);
   for (let i = 1; i <= 5; i++) {
@@ -77,7 +81,13 @@ test("five tries in a row each reach the chat in 8 seconds and a card in 25", as
     const clicked = Date.now();
     await page.getByRole("button", { name: "Try it with sample data" }).click();
     await expect(page, `try ${i} reaches Home`).toHaveURL(/\/home$/, { timeout: 8000 });
-    // Jane's cards show on Home itself (never in the chat, founder 11-24).
+    // Jane's cards show on Home itself (never in the chat, founder 11-24); on a phone, once the
+    // folded line is tapped.
+    if (isMobile) {
+      await page.locator('[data-card-state="folded"]').click({
+        timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
+      });
+    }
     await expect(page.locator('[data-card-state="showing"]:visible').first()).toBeVisible({
       timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
     });

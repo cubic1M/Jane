@@ -93,8 +93,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         Chat with Jane
       </h1>
 
-      {/* Every message counts here, the floating ones too: the pulse counts them all. */}
-      {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
+      {/* Every message counts here, the cards too: the pulse counts them all, so a card posted by the
+          scan reloads the page and the dock beside it. */}
+      {chat.scanning && <ScanRefresher shown={chat.pulseCount} />}
 
       {/* What the person pinned (spec step 96). */}
       {pinned.length > 0 && (
