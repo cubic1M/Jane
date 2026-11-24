@@ -1,4 +1,5 @@
 import { BALANCE_ROLL_MAX_DAYS, FORECAST_DAYS } from "@/config/detection";
+import { chargeExplainReply, lookUpCharge } from "../charge-explain";
 import { loadSnapshotFast } from "../snapshot-store";
 import type { Snapshot } from "../snapshot";
 import { loadDetectionInput } from "@/detection/input";
@@ -242,6 +243,23 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const known = aboutReply({ kind: "about", target: intent.target }, recurring, snapshot, asOf);
       if (known) return known;
       return matchCategory(intent.target, CATEGORY_LIST) ? spendingOn(intent.target) : story;
+    }
+    case "charge_explain": {
+      // One merchant's charge with its history. No charge by that name: the amount's own answer, or
+      // the merchant's, which say so.
+      const lines = (await loadDetectionInput(userId, { client, now })).transactions;
+      const asked = { amountCents: intent.amountCents, day: intent.day, high: intent.high };
+      const found = lookUpCharge(intent.target, lines, asked);
+      if (found.kind !== "none") return chargeExplainReply(found, asked, intent.target);
+      return answer({
+        ...ctx,
+        intent:
+          intent.amountCents !== null
+            ? { kind: "charge_amount", amountCents: intent.amountCents, day: intent.day }
+            : intent.up
+              ? { kind: "price_change", target: intent.target }
+              : { kind: "charge_story", target: intent.target },
+      });
     }
     case "charge_story":
     case "money_from_people":

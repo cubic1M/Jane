@@ -36,6 +36,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "fee_why",
       "price_change",
       "charge_story",
+      "charge_explain",
       "money_from_people",
       "sent_by_app",
       "savings_moves",

@@ -1,3 +1,4 @@
+import { merchantIn, parseChargeExplain } from "./charge-explain-intent";
 import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
@@ -78,6 +79,15 @@ export type Intent =
   // The next paycheck.
   | { kind: "payday" }
   | { kind: "charge_story"; target: string }
+  | {
+      kind: "charge_explain";
+      target: string;
+      amountCents: number | null;
+      day: string | null;
+      high: boolean;
+      // "Why did it go up?": the price change's answer when no charge goes by that name.
+      up?: boolean;
+    }
   // who: the person asked about ("mom"), as typed; null for everyone ("from Venmo").
   | { kind: "money_from_people"; who: string | null }
   | { kind: "sent_by_app"; app: string }
@@ -716,6 +726,10 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  // "Why did I pay $100 to Vercel?": one merchant's charge, with its history, before the charge's
+  // own answers, which have no name to go by. The wordings nothing else claimed come near the end.
+  const explain = parseChargeExplain(text, "early");
+  if (explain) return { kind: "charge_explain", ...explain, day: dayAsked(text, asOf) };
   const story = CHARGE_STORY.exec(text);
   if (story) {
     const target = cleanTarget((story[1] ?? story[2] ?? story[3] ?? story[4])!);
@@ -996,8 +1010,24 @@ export function parseIntent(
   const wentUp = WENT_UP.exec(text);
   if (wentUp) {
     const target = cleanTarget(wentUp[1]!);
+    // "Why did it go up?" is the charge explained, with the day it went up in it; "when" and "how
+    // much" stay the price change's own.
+    const merchant = /^why\b/.test(text) ? merchantIn(target) : null;
+    if (merchant) {
+      return {
+        kind: "charge_explain",
+        target: merchant,
+        amountCents: null,
+        day: null,
+        high: false,
+        up: true,
+      };
+    }
     if (target) return { kind: "price_change", target };
   }
+  // "Why was Vercel so high?": nothing else read it.
+  const late = parseChargeExplain(text, "late");
+  if (late) return { kind: "charge_explain", ...late, day: dayAsked(text, asOf) };
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };
   // A name on its own ("netflix", "the bank fees").

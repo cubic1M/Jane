@@ -13,11 +13,23 @@ describe("a merchant's price going up", () => {
   it.each([
     ["How much did Hulu go up?", "hulu"],
     ["When did Netflix go up?", "netflix"],
-    ["why did my spotify go up", "spotify"],
     ["did my phone bill go up?", "phone"],
     ["has Planet Fitness gone up", "planet fitness"],
   ])("%s is about %s", (question, target) => {
     expect(parseIntent(question, ASOF)).toEqual({ kind: "price_change", target });
+  });
+
+  // "Why" is the charge explained, with the day it went up (./charge-explain.ts), and the price
+  // change's own answer when no charge goes by that name.
+  it("why did my spotify go up is the charge explained, up", () => {
+    expect(parseIntent("why did my spotify go up", ASOF)).toEqual({
+      kind: "charge_explain",
+      target: "spotify",
+      amountCents: null,
+      day: null,
+      high: false,
+      up: true,
+    });
   });
 
   it("leaves prices that are about to go up to their own answer", () => {

@@ -96,6 +96,7 @@ import { runInvestmentTool } from "./investments/tools-run";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
 import { EVENTS_TOOLS, isEventsTool, runEventsTool } from "./events-tools";
 import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
+import { CHARGE_CHAT_PAGES, CHARGE_TOOLS, isChargeTool, runChargeTool } from "./charge-tools";
 import {
   SETTINGS_CHAT_PAGES,
   SETTINGS_TOOLS,
@@ -181,6 +182,8 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   ...DEBT_CHAT_PAGES,
   // Settings, banks, documents, household, notifications (./settings-tools.ts).
   ...SETTINGS_CHAT_PAGES,
+  // A charge explained, and the invoice read for it (./charge-tools.ts).
+  ...CHARGE_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
   insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
@@ -562,6 +565,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...PRACTICE_TOOLS,
   // Connected banks and what Jane sends the person (./settings-tools.ts).
   ...SETTINGS_TOOLS,
+  // One merchant's charge explained, and a pasted invoice read (./charge-tools.ts).
+  ...CHARGE_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -594,6 +599,7 @@ async function runChatToolWork(
   if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });
+  if (isChargeTool(name)) return runChargeTool(userId, name, input, { client, now });
   const { cents, money, out } = toolAnswer();
   const asOf = await chatToday(userId, { client, now });
   const variesOut = (v: NonNullable<RecurringCharge["varies"]>) => ({
