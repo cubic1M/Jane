@@ -78,6 +78,7 @@ async function loadDebtsFrom(
       db.transactions.findMany({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           OR: words.flatMap((w) => [
             { merchantName: { contains: w, mode: "insensitive" as const } },
@@ -136,6 +137,7 @@ async function loadDebtsFrom(
       db.transactions.findMany({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           pfcDetailed: { in: Object.keys(PAID_LOAN_CATEGORIES) },
         },
@@ -153,6 +155,7 @@ async function loadDebtsFrom(
       db.transactions.count({
         where: {
           date: { gte: since },
+          pending: false,
           amountCents: { gt: 0 },
           pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
           account: { type: "depository" },

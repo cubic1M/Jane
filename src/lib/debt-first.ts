@@ -16,12 +16,12 @@ export async function debtFirst(userId: string, client: PrismaClient): Promise<s
       select: { aprBps: true, account: { select: { currentBalanceCents: true } } },
     }),
   ]);
-  const carried = costly.filter(
-    (l) => Math.abs(l.account.currentBalanceCents ?? 0) >= DEBT_FIRST_MIN_CENTS,
-  );
+  // A card in credit has a negative balance: it owes nothing, whatever the size of the credit.
+  const owed = (l: (typeof costly)[number]) => Math.max(0, l.account.currentBalanceCents ?? 0);
+  const carried = costly.filter((l) => owed(l) >= DEBT_FIRST_MIN_CENTS);
   const overdrawn = cash.some((a) => (a.currentBalanceCents ?? 0) < 0);
   const cashCents = cash.reduce((n, a) => n + Math.max(0, a.currentBalanceCents ?? 0), 0);
-  const owedCents = carried.reduce((n, l) => n + Math.abs(l.account.currentBalanceCents ?? 0), 0);
+  const owedCents = carried.reduce((n, l) => n + owed(l), 0);
   if (overdrawn)
     return "You're overdrawn" + (carried.length ? " and carrying debt at a high rate." : ".");
   // Cash that covers the costly debt means paying it off is a choice, not a pressing need.

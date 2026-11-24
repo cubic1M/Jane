@@ -142,7 +142,9 @@ export async function loadDecisionInput(
     .sort((a, b) => a.date.localeCompare(b.date));
   const home = await loadHomeBuying(userId, {}, { client, now, input });
   const today = await todayOf(userId, { client, now });
-  const singleLimit = owingCards.length === 1 ? (report?.cardLimitCents ?? null) : null;
+  // The report's limit is the total over every card: one card's only when it is the only card.
+  const cardCount = book.debts.filter((d) => d.kind === "card").length;
+  const singleLimit = cardCount === 1 ? (report?.cardLimitCents ?? null) : null;
   return {
     advice,
     cards: owingCards.map((d) => ({

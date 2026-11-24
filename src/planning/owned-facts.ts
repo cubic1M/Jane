@@ -58,9 +58,15 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
     .filter((m) => m.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
 
-  const stocks = holdings
-    .filter((h) => h.type === "equity" && !h.isCash)
-    .sort((a, b) => b.valueCents - a.valueCents);
+  // One stock held in several accounts is one position: grouped by ticker (a holding with none
+  // stands alone, never merged by its display name).
+  const positions = new Map<string, (typeof holdings)[number]>();
+  for (const h of holdings.filter((x) => x.type === "equity" && !x.isCash)) {
+    const key = h.ticker ? `ticker:${h.ticker}` : `holding:${h.id}`;
+    const have = positions.get(key);
+    positions.set(key, have ? { ...have, valueCents: have.valueCents + h.valueCents } : h);
+  }
+  const stocks = [...positions.values()].sort((a, b) => b.valueCents - a.valueCents);
   const biggest = stocks[0];
   const biggestStock = biggest
     ? {

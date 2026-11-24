@@ -443,6 +443,9 @@ export function cushionOf({
     debtTrouble: profile.facts.debt_trouble.value === true,
   });
   if (!target || !cashKnown(data)) return null;
+  // An account with no balance on file isn't an empty one: with one, the cash total is partial
+  // and so would be the shortfall, so no cushion is claimed.
+  if (data.accounts.some((a) => a.type === "depository" && a.balanceKnown === false)) return null;
   const cash = liquidCents(data);
   const short = target.targetCents - cash;
   return short > 0 ? { spend, cash, income, target, short } : null;

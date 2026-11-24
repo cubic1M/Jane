@@ -288,7 +288,12 @@ const balanceTransfer: Detector = {
   needs: ["card_debt_cents"],
   detect({ profile, data }) {
     const debt = profile.facts.card_debt_cents;
-    const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
+    // Interest charged to a card: an "interest charge" debit on another account isn't card interest.
+    const cardIds = new Set(data.accounts.filter((a) => a.type === "credit").map((a) => a.id));
+    const charges = tx(
+      data,
+      (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && cardIds.has(t.accountId),
+    );
     const interest = outCents(charges);
     if (
       typeof debt.value !== "number" ||

@@ -38,8 +38,10 @@ export function emergencyTarget(input: {
       name: "Emergency starter buffer",
     };
   }
-  if (input.pattern === "pension") {
-    const gap = input.spendingCents - (input.incomeCents ?? 0);
+  // The spending gap needs the income it is a gap against: with it unknown there is no measured
+  // gap (an income of $0 is a measurement; not knowing is not), so it's sized like anyone's.
+  if (input.pattern === "pension" && input.incomeCents !== null) {
+    const gap = input.spendingCents - input.incomeCents;
     if (gap <= 0) return null;
     return {
       kind: "gap",

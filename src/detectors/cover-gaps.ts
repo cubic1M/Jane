@@ -40,7 +40,12 @@ const disabilityGap: Detector = {
       share === null
         ? `You earn about ${monthly} a month`
         : `Your business makes you about ${monthly} a month (${Math.round(share * 100)}% of sales, my estimate)`;
-    const short = `${earn}, with no disability cover on file.`;
+    // Cover on file that pays less than the need isn't "no cover": say what it pays.
+    const onFile =
+      need.haveCents > 0
+        ? `only ${formatCents(need.haveCents)} a month of disability cover on file`
+        : "no disability cover on file";
+    const short = `${earn}, with ${onFile}.`;
     return suggestion("insurance", "disability_insurance", {
       title: "Cover your pay if you can't work",
       headline: headlineOf("Add disability cover for your pay", yearly, "risk"),
@@ -53,7 +58,7 @@ const disabilityGap: Detector = {
         "disability cover through your job doesn't show in your bank data",
       ),
       urgency: "later",
-      why: `${earn} and I see no disability policy. ${need.summary} A year without pay would cost ${formatCents(yearly)} of it.`,
+      why: `${earn} and ${need.haveCents > 0 ? `the disability cover I see pays ${formatCents(need.haveCents)} a month` : "I see no disability policy"}. ${need.summary} A year without pay would cost ${formatCents(yearly)} of it.`,
       action: OPTIONS("disability"),
     });
   },
@@ -99,7 +104,9 @@ const deductibleFit: Detector = {
     const { profile, data } = ctx;
     const found = needsOf(ctx);
     if (!found) return null;
-    const need = found.needs.find((n) => n.kind === "deductible" && n.direction !== "ok");
+    // A deductible above what cash comfortably carries comes first, whatever order the policies are in.
+    const deductibles = found.needs.filter((n) => n.kind === "deductible" && n.direction !== "ok");
+    const need = deductibles.find((n) => n.direction === "lower") ?? deductibles[0];
     if (!need) return null;
     if (need.direction === "raise") {
       const yearly = outCents(premiums(data, AUTO_HOME));
@@ -122,9 +129,10 @@ const deductibleFit: Detector = {
       });
     }
     return suggestion("insurance", "deductible_fit", {
-      title: "Your deductible is more than your cash carries",
+      title: "Your deductible is more than your cash comfortably carries",
       headline: headlineOf("Check your deductible", need.haveCents - need.needCents, "risk"),
-      short: `A ${formatCents(need.haveCents)} deductible is more than you could pay from cash.`,
+      // Above what cash comfortably carries, not "more than you could pay": the cash may cover it.
+      short: `A ${formatCents(need.haveCents)} deductible is more than your cash comfortably carries.`,
       worthCents: need.haveCents - need.needCents,
       worthKind: "risk",
       confidence: capped(
@@ -133,7 +141,7 @@ const deductibleFit: Detector = {
         "I can't see savings held elsewhere",
       ),
       urgency: "soon",
-      why: `${need.summary} A claim today would leave you ${formatCents(need.haveCents - need.needCents)} short of what the deductible needs.`,
+      why: `${need.summary} It's ${formatCents(need.haveCents - need.needCents)} above what your cash comfortably carries.`,
       action: OPTIONS("deductible"),
     });
   },

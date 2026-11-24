@@ -95,6 +95,16 @@ export function transactionEvent(t: EventTransaction): NetWorthEvent | null {
     };
   }
   if (primary === "TRANSFER_IN" || primary === "TRANSFER_OUT") return null;
+  // Borrowed money is cash and debt both going up: no change to net worth, not a refund or a gain.
+  if (primary === "LOAN_DISBURSEMENTS" && !out) {
+    return {
+      ...base,
+      kind: "transfer",
+      label: `Loan proceeds: ${t.name}`,
+      cents: 0,
+      moved: Math.abs(t.amountCents),
+    };
+  }
   if (primary === "INCOME" && !out) {
     return { ...base, kind: "pay", label: `Payday: ${t.name}`, cents };
   }
