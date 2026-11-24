@@ -50,7 +50,7 @@ const wordsOf = (description: string) =>
 const SUBTOTAL = /\bsub ?total\b/;
 const SUMS = /\b(?:total|amount|balance|sum|price)\b/;
 const BEFORE_TAX =
-  /\b(?:(?:excl|excluding|before|without|ex)\s+(?:(?:any|all|the|sales)\s+)?(?:tax|taxes|vat|gst)|pre ?tax|net\s+(?:total|amount|price))\b/;
+  /\b(?:(?:excl|excluding|before|without|ex)\s+(?:(?:any|all|the|sales)\s+)?(?:tax|taxes|vat|gst)|pre ?tax|net\s+(?:total|amount|price)|(?:total|amount|price)\s+net)\b/;
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
 const TOTAL_CHARGED = new RegExp(
   `^(?:(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|paid|payable|charged|owed|amount|price|${CURRENCY}))*` +
