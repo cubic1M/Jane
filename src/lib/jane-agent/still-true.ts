@@ -25,7 +25,7 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { findingFingerprint } from "./fingerprint";
 import { firstUnsent, tightPlanBody } from "./tight-money-replies";
-import { planRefOf, plansNow, type PlanCard, type PlanRef } from "./plan-cards";
+import { planGroupOf, planRefOf, plansNow, type PlanCard } from "./plan-cards";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { findingSure } from "@/lib/report-state";
 
@@ -94,7 +94,7 @@ type Facts = {
   // The tight month's plan as it is today, when a card here is one (./sources/tight-money.ts).
   tight: TightMoney | null;
   // Each plan card's card as it would be posted today (or null), for the plans a card here is on.
-  plans: Partial<Record<PlanRef, PlanCard | null>> | null;
+  plans: Map<string, PlanCard | null> | null;
   // The plan as /plan has it now, for the week's plan card; null when no card here is one.
   plan: { now: Snapshot["plan"]; concierge: boolean } | null;
 };
@@ -377,8 +377,8 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   // A plan card is said with today's figures, its buttons and plan key too, so a tap is the one
   // shown (./plan-cards.ts).
   const ref = planRefOf(m);
-  if (ref && facts.plans && ref in facts.plans) {
-    const card = facts.plans[ref];
+  if (ref && facts.plans?.has(ref)) {
+    const card = facts.plans.get(planGroupOf(m) ?? ref) ?? null;
     return card ? { ...m, ...card, refs: { ...m.refs, ...card.refs } } : null;
   }
   // The tight month's plan is said from today's forecast (debug 3, 11-21: a linked month's dock said
@@ -543,7 +543,7 @@ export async function stillTrue(
   // One card a plan, and one a set-up proposal: the newest says it; older ones, from before their
   // keys left out the figures (debug 3, 11-23), are put away.
   const oneOf = (m: ChatMessage) =>
-    planRefOf(m) ??
+    planGroupOf(m) ??
     (m.status === "open" && m.refs.proposalKey ? `proposal:${m.refs.proposalKey}` : null);
   const newest = new Map<string, ChatMessage>();
   for (const m of messages) {

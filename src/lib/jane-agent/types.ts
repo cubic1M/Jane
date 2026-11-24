@@ -682,6 +682,8 @@ export type MessageRefs = {
   menuId?: string;
   // Spec step 234: the short-term money candidate (a goal or the emergency fund) a button is about.
   ladderKey?: string;
+  // The short-term money a card is about, ladder or not: one card a candidate (./plan-cards.ts).
+  shortKey?: string;
   // Spec step 235: the large deposit a message is about, and its next stage.
   suddenId?: string;
   suddenStage?: string;
