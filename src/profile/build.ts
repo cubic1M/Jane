@@ -405,10 +405,13 @@ export function monthsForRate(txs: readonly ProfileTx[], today: string): number 
 // data the month holds still (debug 2, sweep 13: $1,376.80 on Nov 20, $1,351.82 on Nov 21); a year or
 // more, the calendar count as other rates.
 export function payMonths(txs: readonly ProfileTx[], today: string): number {
-  const whole = monthsOfData(txs, today);
-  if (whole === 0 || whole >= PROFILE_MONTHS) return Math.max(1, whole);
+  if (monthsOfData(txs, today) === 0) return 1;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
   const newest = txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), first);
+  // A year is reached by the lines alone (first to newest), not by the days since: counted to
+  // today, a linked bank's history crossed into a "year" with no new line and the month jumped
+  // (11.5 to 12 between Dec 16 and Dec 31 for lines that ended Dec 16).
+  if (monthsCovered(first, newest) >= PROFILE_MONTHS) return PROFILE_MONTHS;
   return monthsBetweenLines(first, newest);
 }
 
@@ -418,11 +421,13 @@ export function payMonths(txs: readonly ProfileTx[], today: string): number {
 // income fell 4% at midnight and the car refinance was turned down, over the debt limit).
 // A payment that says a car: its loan, gas, or car words, parking, tolls, cover and upkeep
 // (src/config/life-facts.ts).
+// Money going out only: a refund from an auto parts store is not a car.
 const isCarSign = (t: ProfileTx) =>
-  t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
-  t.pfc === "TRANSPORTATION_GAS" ||
-  CAR_WORDS.test(t.description) ||
-  hitsOf([t], CAR_SIGNAL).matches > 0;
+  t.amountCents > 0 &&
+  (t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
+    t.pfc === "TRANSPORTATION_GAS" ||
+    CAR_WORDS.test(t.description) ||
+    hitsOf([t], CAR_SIGNAL).matches > 0);
 
 // How many of the year's payments say a car, as has_car counts them: what a card resting on
 // that guess can weigh (debugger 11-16: one Shell charge made "Check your car is insured").
@@ -489,8 +494,11 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
   const older = Object.values(KIDS_SIGNALS).some((signal) => hitsOf(earlier, signal).matches > 0)
     ? [1]
     : [];
+  // The same two limits as everywhere else a signal is read: this many payments in this many months.
+  const recentMonths = new Set(recent.map((t) => t.date.slice(0, 7))).size;
   if (
     recent.length >= KIDS_SIGNALS.babyGoods.minMatches &&
+    recentMonths >= KIDS_SIGNALS.babyGoods.minMonths &&
     recent.length === goods.matches &&
     older.length === 0
   ) {
@@ -749,7 +757,7 @@ function lifeFacts(b: Builder) {
   else unknown("eating_style");
   const gig = sideGigReading(txs, salaried);
   set("side_gig", gig.value, gig.source, gig.what, gig.matches);
-  const health = healthCostReading(txs, months);
+  const health = healthCostReading(txs, monthsForRate(txs, b.input.today));
   set("health_costs", health.value, health.source, health.what, health.matches);
   const moved = lifeEventGuesses(detectionInputOf(input, txs)).find((g) => g.kind === "moving");
   set(
@@ -766,13 +774,25 @@ function debtFacts(b: Builder, { monthlyIncome }: { monthlyIncome: number }) {
   const { txs, count, set, unknown } = b;
   const { today, accounts } = b.input;
   const cardIds = new Set(accounts.filter((a) => a.type === "credit").map((a) => a.id));
-  const cardDebt = accounts
-    .filter((a) => cardIds.has(a.id))
-    .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
+  // A card whose statement gave no balance has a stand-in 0 (balanceKnown false): it is not $0 owed.
+  const knownCards = accounts.filter((a) => cardIds.has(a.id) && a.balanceKnown !== false);
+  const cardDebt = knownCards.reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
   // With no card linked the data can't say what's owed on cards (QA: "Credit card debt = $0,
-  // 63% sure, based on no cards linked").
-  if (cardIds.size > 0) set("card_debt_cents", cardDebt, "seen", "cards linked", cardIds.size);
+  // 63% sure, based on no cards linked"); nor can it with cards whose balances aren't known.
+  if (knownCards.length > 0)
+    set("card_debt_cents", cardDebt, "seen", "cards linked", knownCards.length);
   else unknown("card_debt_cents");
+  // What each card asks a month: its reported minimum, else the estimate off its balance.
+  const minimumOf = new Map(
+    b.input.liabilities
+      .filter((l) => typeof l.minimumCents === "number")
+      .map((l) => [l.accountId, l.minimumCents as number]),
+  );
+  const cardPayments = knownCards.reduce(
+    (s, a) =>
+      s + (minimumOf.get(a.id) ?? Math.round(Math.max(0, a.balanceCents) * FIT_CARD_PAYMENT_SHARE)),
+    0,
+  );
   const payday = count(
     (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
   );
@@ -797,9 +817,7 @@ function debtFacts(b: Builder, { monthlyIncome }: { monthlyIncome: number }) {
         t.date > since,
     )
     .reduce((s, t) => s + t.amountCents, 0);
-  const debtPayments =
-    Math.round((loanPaid * 30) / TROUBLE_PAYMENT_DAYS) +
-    Math.round(cardDebt * FIT_CARD_PAYMENT_SHARE);
+  const debtPayments = Math.round((loanPaid * 30) / TROUBLE_PAYMENT_DAYS) + cardPayments;
   const liquid = accounts
     .filter((a) => a.type === "depository")
     .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
@@ -1054,7 +1072,11 @@ export function buildProfile(input: ProfileInput): Profile {
   };
 
   const b: Builder = { input, txs, months, facts, count, set, unknown };
-  const { income, earners, pattern, monthlyIncome, paySchedules } = incomeFacts(b);
+  const { income, earners, pattern, monthlyIncome: detectedIncome, paySchedules } = incomeFacts(b);
+  // The income the person sees (what they told, which wins) is the one debt and life stage are
+  // judged on, not the detected one beside it.
+  const shown = facts.monthly_income.value;
+  const monthlyIncome = typeof shown === "number" ? shown : detectedIncome;
   const { hasChildren, mortgageLiab } = householdFacts(b, { income, earners });
   lifeFacts(b);
   debtFacts(b, { monthlyIncome });

@@ -176,8 +176,10 @@ const FACT_CHOICE_WORDS: Readonly<Record<string, Readonly<Record<string, string>
   app_income: { mixed: "some of each" },
 };
 export const choiceWords = (choice: string, key?: string) =>
-  (key ? FACT_CHOICE_WORDS[key]?.[choice] : undefined) ??
-  CHOICE_WORDS[choice] ??
+  (key && Object.hasOwn(FACT_CHOICE_WORDS, key) && Object.hasOwn(FACT_CHOICE_WORDS[key]!, choice)
+    ? FACT_CHOICE_WORDS[key]![choice]
+    : undefined) ??
+  (Object.hasOwn(CHOICE_WORDS, choice) ? CHOICE_WORDS[choice] : undefined) ??
   choice.replaceAll("_", " ");
 
 // A fact's value in words, where the stored value isn't how anyone says it. Money and yes or no are
