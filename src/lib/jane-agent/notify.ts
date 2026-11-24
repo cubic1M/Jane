@@ -173,7 +173,13 @@ export async function deliverChatNotifications(
   // Users have their own helpers, so a read of these columns by id.
   const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
-    select: { email: true, timezone: true, deletedAt: true, chatNotifyPrefs: true },
+    select: {
+      email: true,
+      timezone: true,
+      deletedAt: true,
+      chatNotifyPrefs: true,
+      dailyReportEnabled: true,
+    },
   });
   if (!user || user.deletedAt) return none;
   const prefs = chatNotifyPrefs(user.chatNotifyPrefs);
@@ -181,6 +187,13 @@ export async function deliverChatNotifications(
 
   const db = scopedFor(userId, client);
   const dayAgo = new Date(now.getTime() - DAY_MS);
+  // The daily report is on and has gone out lately (a day or two: it is not sent outside the person's
+  // 7am to 8pm, so someone it can't reach, or on the first day, still gets the brief by email).
+  const reportReaches =
+    user.dailyReportEnabled &&
+    (await db.dailyReports.count({
+      where: { sentAt: { gt: new Date(now.getTime() - 2 * DAY_MS) } },
+    })) > 0;
   const [waiting, sentToday, emailTimes] = await Promise.all([
     db.janeMessages.findMany({
       where: {
@@ -290,6 +303,10 @@ export async function deliverChatNotifications(
   for (const m of due) {
     if (batch.length >= CHAT_EMAIL_MAX_MESSAGES) break;
     if (pushedIds.has(m.id) || m.createdAt.getTime() > unreadSince) continue;
+    // One email a day of this kind: while the daily report is reaching them, the morning brief isn't
+    // also emailed (it stays in the app). The report carries what it would say: bills due, new
+    // suggestions, and how many decisions wait for an answer in the chat, with a link.
+    if (reportReaches && m.kind === "brief") continue;
     if (onlyUrgent && !pressing(m)) continue;
     // Spec step 147: what isn't urgent goes only the way they answer, when Jane knows it.
     if (pushWorks && !wants(m, "email")) continue;

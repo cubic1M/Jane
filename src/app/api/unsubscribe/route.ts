@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const userId = userFromUnsubscribeToken(url.searchParams.get("token"));
   const asked = url.searchParams.get("what");
-  const what = asked === "alerts" || asked === "chat" ? asked : "digest";
+  const what = asked === "alerts" || asked === "chat" || asked === "daily" ? asked : "digest";
   const fromPage = url.searchParams.get("from") === "page";
   if (!userId) {
     // From the page, back to it to say so in words; a mail app gets the error.
@@ -47,6 +47,19 @@ export async function POST(request: Request) {
         },
       });
       await track(userId, "chat_emails_unsubscribed", {});
+    }
+  } else if (what === "daily") {
+    // The daily report only: the weekly email and the monthly report stay.
+    const { count } = await systemDb(WHY).user.updateMany({
+      where: { id: userId },
+      data: { dailyReportEnabled: false },
+    });
+    if (count > 0) {
+      await logAudit({ type: "user", id: userId }, "daily_report_unsubscribed", {
+        type: "user",
+        id: userId,
+      });
+      await track(userId, "daily_report_unsubscribed", {});
     }
   } else if (what === "alerts") {
     const user = await systemDb(WHY).user.findUnique({

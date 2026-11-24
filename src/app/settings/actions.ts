@@ -38,7 +38,11 @@ export async function saveEmailPreferences(
   }
   await systemDb(WHY).user.update({
     where: { id: user.id },
-    data: { digestEnabled: formData.get("digest") === "on", timezone },
+    data: {
+      digestEnabled: formData.get("digest") === "on",
+      dailyReportEnabled: formData.get("daily") === "on",
+      timezone,
+    },
   });
   revalidatePath("/settings");
   return { ok: true, message: "Saved." };

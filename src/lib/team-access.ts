@@ -55,6 +55,9 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   // The weekly email: Jane's automatic send, and the person's own unsubscribe.
   digest_sent: automatic,
   digest_unsubscribed: own,
+  // The daily report: Jane's automatic send, and the person's own unsubscribe.
+  daily_report_sent: automatic,
+  daily_report_unsubscribed: own,
   // Loans (spec step 112): the person's own application and acceptance.
   loan_application_submitted: own,
   loan_accepted: own,

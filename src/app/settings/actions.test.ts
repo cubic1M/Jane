@@ -31,13 +31,13 @@ describe("saveEmailPreferences", () => {
     });
     expect(update).toHaveBeenCalledWith({
       where: { id: "u1" },
-      data: { digestEnabled: false, timezone: "America/New_York" },
+      data: { digestEnabled: false, dailyReportEnabled: false, timezone: "America/New_York" },
     });
 
     await saveEmailPreferences(null, form({ timezone: "UTC", digest: "on" }));
     expect(update).toHaveBeenLastCalledWith({
       where: { id: "u1" },
-      data: { digestEnabled: true, timezone: "UTC" },
+      data: { digestEnabled: true, dailyReportEnabled: false, timezone: "UTC" },
     });
   });
 

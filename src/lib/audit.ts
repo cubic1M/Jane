@@ -46,6 +46,10 @@ export type AuditEvent =
   // off from its one-click link.
   | "digest_sent"
   | "digest_unsubscribed"
+  // The daily report (src/lib/daily-report/send.ts): sent, as counts only, and turned off from its
+  // one-click link.
+  | "daily_report_sent"
+  | "daily_report_unsubscribed"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
   | "insurance_policy_removed"

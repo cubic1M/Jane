@@ -5,10 +5,12 @@ import { saveEmailPreferences, type SettingsState } from "./actions";
 
 export function EmailForm({
   digestEnabled,
+  dailyReportEnabled,
   timezone,
   timezones,
 }: {
   digestEnabled: boolean;
+  dailyReportEnabled: boolean;
   timezone: string;
   timezones: readonly { id: string; label: string }[];
 }) {
@@ -22,6 +24,16 @@ export function EmailForm({
         <input type="checkbox" name="digest" defaultChecked={digestEnabled} className="h-5 w-5" />
         Send me a weekly email on Monday with what we saved and what needs me, and the monthly money
         report
+      </label>
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          name="daily"
+          defaultChecked={dailyReportEnabled}
+          className="h-5 w-5"
+        />
+        Send me a short daily report: what your accounts showed yesterday, anything new Jane found
+        and what is coming up. It goes out between 7am and 8pm your time.
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Your timezone

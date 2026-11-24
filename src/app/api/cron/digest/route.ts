@@ -1,5 +1,6 @@
 import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
+import { runDailyReports } from "@/lib/daily-report/send";
 import { runDigests } from "@/lib/digest/send";
 import { sendErrorDigest } from "@/lib/error-alerts";
 import { sendAccuracyEmail } from "@/lib/invariants/accuracy-email";
@@ -13,6 +14,7 @@ import { MONTHLY_REPORTS_CRON_BUDGET_MS } from "@/config/monthly-report";
 import { runNews } from "@/lib/news/store";
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
+import { DAILY_REPORTS_CRON_BUDGET_MS } from "@/config/daily-report";
 
 // The function's limit, declared like the other long crons; the due jobs at the end get only
 // what's left of it (debugger 10-31: the health check called this job stale for over a day).
@@ -26,7 +28,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const dryRun = new URL(request.url).searchParams.get("dry_run") === "1";
-  if (dryRun) return NextResponse.json(await runDigests({ dryRun }));
+  if (dryRun) {
+    return NextResponse.json({
+      ...(await runDigests({ dryRun })),
+      dailyReports: await runDailyReports({ dryRun }),
+    });
+  }
   try {
     await reportMissedJobs();
   } catch (error) {
@@ -88,6 +95,25 @@ export async function GET(request: Request) {
         // Spec step 293: the watchlist's news, summarised in a few batched calls at most.
         news: await runNews().catch((error) => {
           log.error("News summaries failed", { error: String(error) });
+          return null;
+        }),
+        // The daily report, to people who turned it on, from 7am to 8pm on their own clock
+        // (src/lib/daily-report/send.ts). After the chat, the monthly reports and the news, so it
+        // can't starve them, and with at most half of what is left above the reserve (so the due
+        // jobs behind it still get the rest): it stops between people and leaves the others for the
+        // next run. A problem there never stops the rest of the run.
+        dailyReports: await runDailyReports({
+          budgetMs: Math.max(
+            0,
+            Math.min(
+              DAILY_REPORTS_CRON_BUDGET_MS,
+              Math.floor(
+                (maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt)) / 2,
+              ),
+            ),
+          ),
+        }).catch((error) => {
+          log.error("Daily reports failed", { error: String(error) });
           return null;
         }),
         // A second daily chance for jobs waiting to be retried.
