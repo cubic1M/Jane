@@ -49,7 +49,20 @@ describe("HSA limit when the cover type is not told", () => {
       },
     };
     const m = hsaMessage(forced as never);
-    expect(m?.body).toMatch(/\$1,600\.00 over its \$4,400\.00 limit/);
+    expect(m?.body).toMatch(/\$1,600\.00 over its \$4,400\.00 limit already/);
+    // Contributions already over the family limit and a higher projection: current and projected
+    // stay apart.
+    const high = hsaMessage({
+      ...forced,
+      hsa: {
+        ...forced.hsa,
+        contributedCents: 900_000,
+        projectedCents: 1_800_000,
+        excessCents: 20_000,
+      },
+    } as never);
+    expect(high?.body).toMatch(/\$4,600\.00 over its \$4,400\.00 limit already/);
+    expect(high?.body).not.toMatch(/\$13,600/);
     expect(m?.body).toMatch(/I don't know yours; with self-only cover the limit is \$4,400/);
   });
 });

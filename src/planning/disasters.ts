@@ -1,3 +1,4 @@
+import { US_STATES } from "@/config/referrals";
 import {
   CASUALTY,
   COUNTY_IN_PAYEE,
@@ -67,10 +68,21 @@ export function reliefFor(
 
 // A deadline owned by a state: titled "State income tax return" or with a state's name
 // ("California estimated tax payment"), and not as the IRS's or federal.
-const US_STATES =
-  "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming";
 const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
-const STATE_DEADLINE_TITLE = new RegExp(`\\b(?:state|${US_STATES})\\b`, "i");
+const stateIn = (title: string) =>
+  US_STATES.find((s) => new RegExp(`\\b${s.name}\\b`, "i").test(title)) ?? null;
+const SAYS_STATE = /\bstate\b/i;
+
+// Whether the relief moves a deadline by who owns it: a federal one always; one naming a state
+// only for that state's own relief, and only when the state follows; one saying just "state"
+// under a state that follows.
+function movedByOwner(r: Relief, title: string): boolean {
+  if (FEDERAL_TITLE.test(title)) return true;
+  const named = stateIn(title);
+  if (named) return named.code === r.state && r.stateFollows;
+  if (SAYS_STATE.test(title)) return r.stateFollows;
+  return true;
+}
 
 // A deadline the relief moves: one falling from the incident to the postponed date.
 export const covers = (r: Relief, dueOn: string) =>
@@ -88,8 +100,7 @@ export function deadlineMoves(
       (d) =>
         !d.done &&
         TAX_DEADLINE_TITLE.test(d.title) &&
-        // A state's own deadline moves only when the state follows the federal relief.
-        (r.stateFollows || FEDERAL_TITLE.test(d.title) || !STATE_DEADLINE_TITLE.test(d.title)) &&
+        movedByOwner(r, d.title) &&
         covers(r, d.dueOn),
     )
     .map((d) => ({ id: d.id, title: d.title, from: d.dueOn, to: r.postponedTo }));

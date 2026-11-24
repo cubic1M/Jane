@@ -44,9 +44,13 @@ function coverWords(h: HealthTaxView["hsa"]): string {
 // figures so a person on self-only cover isn't told they have room they don't.
 export function selfOnlyOver(h: HealthTaxView["hsa"]): string {
   if (!h.coverageAssumed) return "";
-  const over = Math.max(0, Math.max(h.contributedCents, h.projectedCents) - h.selfLimitCents);
-  return over > 0
-    ? ` If your cover is self-only, that's ${formatCents(over)} over its ${formatCents(h.selfLimitCents)} limit, with the same 6% penalty each year it stays in.`
+  const now = Math.max(0, h.contributedCents - h.selfLimitCents);
+  const byDecember = Math.max(0, h.projectedCents - h.selfLimitCents);
+  const limit = formatCents(h.selfLimitCents);
+  if (now > 0)
+    return ` If your cover is self-only, that's ${formatCents(now)} over its ${limit} limit already, with the same 6% penalty each year it stays in.`;
+  return byDecember > 0
+    ? ` If your cover is self-only, at this pace you'd be about ${formatCents(byDecember)} over its ${limit} limit by December.`
     : "";
 }
 
