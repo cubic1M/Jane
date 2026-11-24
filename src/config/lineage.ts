@@ -192,6 +192,8 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
 
   // Dated records: what was said, done or traded at the time.
   Digest: "record",
+  // Which day's daily report went out, and which changes it listed.
+  DailyReport: "record",
   AskConversation: "record",
   AskMessage: "record",
   CheckIn: "record",

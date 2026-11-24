@@ -242,6 +242,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     decisions: scoped.decision,
     actions: scoped.action,
     digests: scoped.digest,
+    dailyReports: scoped.dailyReport,
     membershipIntents: scoped.membershipIntent,
     merchantCategories: scoped.merchantCategory,
     subscriptionChecks: scoped.subscriptionCheck,
