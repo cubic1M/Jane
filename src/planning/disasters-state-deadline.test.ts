@@ -25,3 +25,15 @@ describe("state deadlines under federal relief", () => {
     expect(ids.sort()).toEqual(["f", "s", "t", "w"]);
   });
 });
+
+describe("West Virginia is not Virginia", () => {
+  const wv = [{ id: "x", title: "West Virginia estimated tax payment", dueOn: due, done: false }];
+  it("moves under West Virginia's relief and not Virginia's", () => {
+    expect(deadlineMoves({ ...harris, state: "WV", stateFollows: true }, wv)).toHaveLength(1);
+    expect(deadlineMoves({ ...harris, state: "VA", stateFollows: true }, wv)).toHaveLength(0);
+  });
+  it("keeps an ordinary Virginia title working", () => {
+    const va = [{ id: "v", title: "Virginia estimated tax payment", dueOn: due, done: false }];
+    expect(deadlineMoves({ ...harris, state: "VA", stateFollows: true }, va)).toHaveLength(1);
+  });
+});

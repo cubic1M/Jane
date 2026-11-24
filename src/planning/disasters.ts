@@ -69,8 +69,12 @@ export function reliefFor(
 // A deadline owned by a state: titled "State income tax return" or with a state's name
 // ("California estimated tax payment"), and not as the IRS's or federal.
 const FEDERAL_TITLE = /\b(?:IRS|federal)\b/i;
-const stateIn = (title: string) =>
-  US_STATES.find((s) => new RegExp(`\\b${s.name}\\b`, "i").test(title)) ?? null;
+// The longest names first, so "West Virginia" is never read as "Virginia".
+const BY_NAME_LENGTH = [...US_STATES].sort((a, b) => b.name.length - a.name.length);
+const stateIn = (title: string) => {
+  const lower = title.toLowerCase();
+  return BY_NAME_LENGTH.find((s) => lower.includes(s.name.toLowerCase())) ?? null;
+};
 const SAYS_STATE = /\bstate\b/i;
 
 // Whether the relief moves a deadline by who owns it: a federal one always; one naming a state
