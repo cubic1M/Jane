@@ -522,7 +522,28 @@ export function asWatch(value: unknown): Watch | null {
   if (w.kind === "fee_stops")
     return Array.isArray(w.pfcs) && typeof w.monthlyCents === "number" ? (value as Watch) : null;
   if (w.kind === "charge_stops" || w.kind === "bill_drops" || w.kind === "refund")
-    return Array.isArray(w.payees) && w.payees.length > 0 ? (value as Watch) : null;
+    return Array.isArray(w.payees) &&
+      w.payees.length > 0 &&
+      // Each payee has the description the check reads: {kind:"refund",payees:[null]} isn't one.
+      w.payees.every(
+        (p) =>
+          !!p &&
+          typeof p === "object" &&
+          typeof (p as { description?: unknown }).description === "string",
+      )
+      ? (value as Watch)
+      : null;
+  // Idle cash that moved: the accounts it left and what it was (stored as written, read back here).
+  if (w.kind === "cash_moved") {
+    const c = value as { accountIds?: unknown; amountCents?: unknown };
+    return Array.isArray(c.accountIds) &&
+      c.accountIds.length > 0 &&
+      c.accountIds.every((id) => typeof id === "string") &&
+      typeof c.amountCents === "number" &&
+      c.amountCents > 0
+      ? (value as Watch)
+      : null;
+  }
   const h = value as { funds?: unknown; accounts?: unknown; beforeCents?: unknown };
   if (w.kind === "funds_left")
     return Array.isArray(h.funds) && h.funds.length > 0 ? (value as Watch) : null;

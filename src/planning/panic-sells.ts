@@ -45,11 +45,13 @@ export function panicSells(
     const bars = barsByTicker[s.ticker];
     if (!bars || bars.length === 0 || soldFor < PANIC_MIN_SALE_CENTS || s.quantity <= 0) continue;
     const from = addDays(s.date, -PANIC_LOOKBACK_DAYS);
-    const before = bars.filter((b) => b.date >= from && b.date <= s.date);
+    // Closes before the sale day: its own close (after a morning sale) isn't a high it fell from.
+    const before = bars.filter((b) => b.date >= from && b.date < s.date);
     const high = Math.max(0, ...before.map((b) => b.closeCents), s.priceCents);
     const drop = high > 0 ? 1 - s.priceCents / high : 0;
     if (drop < PANIC_DROP_SHARE) continue;
-    const latest = bars[bars.length - 1];
+    // The latest close by date, whatever order the bars came in.
+    const latest = bars.reduce((a, b) => (b.date > a.date ? b : a));
     if (latest.date <= s.date) continue;
     const worthToday = Math.round(s.quantity * latest.closeCents);
     const cost = worthToday - soldFor;
