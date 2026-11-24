@@ -155,6 +155,7 @@ export function NetWorthChart({
   notCounting,
   loansLeft,
   covers,
+  maybeSame,
 }: {
   points: SeriesPoint[];
   // The days money moved because of something (src/lib/hub/net-worth-events.ts).
@@ -164,6 +165,8 @@ export function NetWorthChart({
   loansLeft?: string | null;
   // What the figure covers (netWorthCovers), said under it.
   covers?: string | null;
+  // Accounts that may be one account counted twice (maybeSameWords), said under it.
+  maybeSame?: string | null;
 }) {
   // Hidden until asked: the figure, and what would give it away (the scale, the dollars moved, the
   // figure on a day). The line's shape and the percent stay: they don't say how much.
@@ -485,6 +488,14 @@ export function NetWorthChart({
           {notCounting}{" "}
           <Link href="/import" className="font-medium underline">
             Add a balance
+          </Link>
+        </p>
+      )}
+      {maybeSame && (
+        <p data-net-worth-maybe-same="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          {maybeSame}{" "}
+          <Link href="/import" className="font-medium underline">
+            Remove one
           </Link>
         </p>
       )}

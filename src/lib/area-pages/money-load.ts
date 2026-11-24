@@ -30,7 +30,7 @@ import { frequencyWords } from "@/lib/explain-input";
 import { listGoals } from "@/lib/goals";
 import { listTransfers } from "@/lib/money-movement/transfers";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
-import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
+import { loadMaybeSame, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import type { MoneyTreeInput } from "./money";
 import { BEST_FIRST, SAID_YES } from "./tree";
 
@@ -269,6 +269,7 @@ export async function loadMoneyArea(
       ownedCents: worth.ownedCents,
       owned: owned.length,
       missing: worth.unbalanced,
+      maybeSame: await loadMaybeSame(userId, { client }),
       assetPrompt: prompt ? (prompt.kind === "vehicle" ? "vehicle" : "home") : null,
       // Of the goals not reached yet, on the way and in time with the others counted, as on Home and
       // the Plans tree (goalsOnTrack, gate B).

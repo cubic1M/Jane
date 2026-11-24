@@ -20,6 +20,11 @@ export function booksFix(issue: Issue): BooksFix {
   if (importEnded(issue)) return { label: "Import a newer file", href: "/import" };
   if (issue.kind === "broken") return { label: "Reconnect", href: "/connect" };
   if (issue.kind === "transfer") return { label: "Add that account", href: "/connect" };
+  // Which one to remove is the person's call: an uploaded one on the import page, else a link.
+  if (issue.kind === "maybe_same")
+    return issue.uploaded
+      ? { label: "Remove one", href: "/import" }
+      : { label: "Remove one", href: "/settings#banks" };
   // An uploaded account has no bank to check: its files are on the import page (overnight
   // upload QA: a balance that didn't add up said "Check my linked banks").
   if (issue.uploaded) return { label: "Check my uploads", href: "/import" };

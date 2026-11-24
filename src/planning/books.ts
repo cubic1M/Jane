@@ -109,6 +109,38 @@ export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Ac
   return out;
 }
 
+// Accounts the copy rule above can't tell apart but that could be one account counted twice: the
+// same type at the same bank, where an upload has no last four digits, two links have none, or the
+// last four agree and Plaid names the subtype differently. Both are counted, as today; the person
+// is told (the founder's Home read about twice the truth, 11-23). Never two accounts whose last
+// fours differ, nor an account with another subtype of the same bank (checking and savings), nor
+// two accounts of one link. `bankOf` is the bank's name, or null for an upload, which then goes by
+// its own name ("Chase checking" is Chase's). Pure.
+export function maybeSameAccounts(
+  accounts: readonly Acct[],
+  bankOf: (a: Acct) => string | null,
+): { a: Acct; b: Acct }[] {
+  const plain = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const sameBank = (a: Acct, b: Acct) => {
+    const [x, y] = [bankOf(a), bankOf(b)];
+    if (x && y) return plain(x) === plain(y);
+    if (x || y) return plain((x ? b : a).name).includes(plain((x ?? y)!));
+    const [m, n] = [plain(a.name), plain(b.name)];
+    return m.length >= 4 && n.length >= 4 && (m.includes(n) || n.includes(m));
+  };
+  const out: { a: Acct; b: Acct }[] = [];
+  const list = [...accounts].sort((x, y) => x.id.localeCompare(y.id));
+  list.forEach((a, i) => {
+    for (const b of list.slice(i + 1)) {
+      if (a.type !== b.type || (a.itemId !== null && a.itemId === b.itemId)) continue;
+      const masked = a.mask && b.mask;
+      if (masked ? a.mask !== b.mask || a.subtype === b.subtype : a.subtype !== b.subtype) continue;
+      if (sameBank(a, b)) out.push({ a, b });
+    }
+  });
+  return out;
+}
+
 // Books QA: the copies of an account linked twice, which the figures leave out so the account
 // counts once (its balance and transactions not twice) until Jane merges it or the person
 // removes the copy.
