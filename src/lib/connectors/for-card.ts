@@ -77,6 +77,10 @@ export async function planForCard(
 // Takes back a finding's plan while nothing has reached a partner (still waiting for the person's
 // yes, or in its hold), and frees its key so a later yes plans afresh. True when it did. Used when
 // the card's yes is reverted, and when a yes lost the claim on its finding to another answer.
+// The cancel and the key's release are one conditional write (cancelAction's `beforePartner`), so a
+// plan that began running after the lookup is left alone and a cancelled one never keeps the key.
+// A plan already cancelled that still holds the key (the person cancelled it on Connections, or the
+// stop-all switch did) is released here too, so the finding can be planned again.
 export async function cancelCardPlan(
   userId: string,
   findingId: string,
@@ -85,13 +89,17 @@ export async function cancelCardPlan(
   const key = `finding:${findingId}`;
   const db = scopedFor(userId, client);
   const plan = await db.connectorActions.findFirst({
-    where: { idempotencyKey: key, status: { in: ["awaiting_yes", "approved"] } },
-    select: { id: true },
+    where: { idempotencyKey: key },
+    select: { id: true, status: true },
   });
-  if (!plan || !(await cancelAction(userId, plan.id, { client, now }))) return false;
-  await db.connectorActions.updateMany({
-    where: { id: plan.id },
-    data: { idempotencyKey: `${key}:cancelled:${plan.id}` },
-  });
-  return true;
+  if (!plan) return false;
+  const freed = `${key}:cancelled:${plan.id}`;
+  if (plan.status === "cancelled") {
+    await db.connectorActions.updateMany({
+      where: { id: plan.id, idempotencyKey: key, status: "cancelled" },
+      data: { idempotencyKey: freed },
+    });
+    return true;
+  }
+  return cancelAction(userId, plan.id, { client, now, beforePartner: { idempotencyKey: freed } });
 }

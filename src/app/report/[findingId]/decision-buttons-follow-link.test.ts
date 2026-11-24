@@ -8,13 +8,23 @@ import { describe, expect, it } from "vitest";
 describe("the follow-up link after a yes", () => {
   const source = readFileSync(join(__dirname, "decision-buttons.tsx"), "utf8");
 
+  it("shows Connections as its address once a connector has planned the yes", () => {
+    const link = source.slice(
+      source.indexOf("<Link"),
+      source.indexOf("onClick", source.indexOf("<Link")),
+    );
+    expect(link).toContain("planned ? CONNECTIONS_PLANS");
+    expect(link).toContain('shownHref("/actions")');
+  });
+
   it("goes to Connections for a connector's plan and /actions for a queued action", () => {
     const click = source.slice(
       source.indexOf("const sent = sending.current;", source.indexOf("<Link")),
     );
     const follow = click.slice(0, click.indexOf("className="));
     expect(follow).toContain("connectorActionId");
-    expect(follow).toContain("/settings/connections#actions");
+    expect(follow).toContain("CONNECTIONS_PLANS");
+    expect(source).toContain('const CONNECTIONS_PLANS = "/settings/connections#actions"');
     expect(follow).toContain('shownHref("/actions")');
   });
 });

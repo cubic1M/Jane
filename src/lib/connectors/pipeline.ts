@@ -418,17 +418,29 @@ const contextFor = (userId: string, connectorId: string, actionId: string, now: 
 
 // Cancel: before it runs, in Jane, always (flags and kill switches don't stop a cancel). After, at
 // the partner, while it says it can still take it back.
+// `beforePartner`: the cancel is one conditional write that only takes a plan still waiting for
+// the person's yes or in its hold, and it also moves the plan's idempotency key to the one given, so
+// a plan that has started running is never reached for, and a cancelled one never keeps its key.
 export async function cancelAction(
   userId: string,
   actionId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    beforePartner,
+  }: Options & { beforePartner?: { idempotencyKey: string } } = {},
 ): Promise<boolean> {
   const db = scopedFor(userId, client);
   const before = await db.connectorActions.updateMany({
     where: { id: actionId, status: { in: ["awaiting_yes", "approved"] } },
-    data: { status: "cancelled", finishedAt: now },
+    data: {
+      status: "cancelled",
+      finishedAt: now,
+      ...(beforePartner && { idempotencyKey: beforePartner.idempotencyKey }),
+    },
   });
   let cancelled = before.count === 1;
+  if (!cancelled && beforePartner) return false;
   if (!cancelled) {
     const action = await db.connectorActions.findFirst({
       where: { id: actionId, status: { in: ["partner_pending", "succeeded"] } },

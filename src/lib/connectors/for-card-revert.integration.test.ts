@@ -34,9 +34,11 @@ import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { db } from "@/lib/db";
 import { recordDecision } from "@/lib/decisions";
 import { undoApproval } from "@/lib/standing-rules";
+import { cancelAction } from "./pipeline";
 import { systemDb } from "@/lib/system-db";
 import { removePeople, samplePerson } from "./__fixtures__/people";
 import { grantConsent } from "./consent";
+import { cancelCardPlan } from "./for-card";
 
 const url = process.env.TEST_DATABASE_URL;
 const system = () => systemDb("Test: reads what a card's yes wrote", db);
@@ -153,5 +155,59 @@ describe.runIf(url)("a connector-backed yes: revert, and a yes that loses its cl
     const plans = await plansOf(s.userId);
     expect(plans).toHaveLength(1);
     expect(plans[0]?.status).toBe("awaiting_yes");
+  });
+
+  it("never reaches a plan that started running after the check: the cancel is one conditional write", async () => {
+    const s = await setUp();
+    const first = await yes(s);
+    // The plan moved on to the partner between the lookup and the cancel.
+    await system().connectorAction.update({
+      where: { id: first.connectorActionId! },
+      data: {
+        status: "partner_pending",
+        externalRef: "sandbox_ref_1",
+        cancelUntil: new Date(Date.now() + 3_600_000),
+      },
+    });
+
+    const taken = await cancelAction(s.userId, first.connectorActionId!, {
+      beforePartner: { idempotencyKey: "freed" },
+    });
+
+    expect(taken).toBe(false);
+    expect(await cancelCardPlan(s.userId, s.findingId)).toBe(false);
+    const [plan] = await plansOf(s.userId);
+    expect(plan).toMatchObject({
+      status: "partner_pending",
+      idempotencyKey: `finding:${s.findingId}`,
+    });
+  });
+
+  it("cancels the plan and frees its key in the same write", async () => {
+    const s = await setUp();
+    const first = await yes(s);
+
+    expect(await cancelCardPlan(s.userId, s.findingId)).toBe(true);
+
+    const [plan] = await plansOf(s.userId);
+    expect(plan).toMatchObject({
+      status: "cancelled",
+      idempotencyKey: `finding:${s.findingId}:cancelled:${first.connectorActionId}`,
+    });
+  });
+
+  it("frees the key of a plan the person already cancelled, so Revert reopens the card", async () => {
+    const s = await setUp();
+    const first = await yes(s);
+    // Cancelled on Connections (or by the stop-all switch): cancelAction leaves the key where it was.
+    expect(await cancelAction(s.userId, first.connectorActionId!)).toBe(true);
+    expect((await plansOf(s.userId))[0]?.idempotencyKey).toBe(`finding:${s.findingId}`);
+
+    await undoApproval(s.userId, first.decisionId, "card", 24);
+
+    expect((await plansOf(s.userId))[0]?.idempotencyKey).not.toBe(`finding:${s.findingId}`);
+    expect(await statusOf(s.findingId)).toBe("shown");
+    const second = await yes(s);
+    expect(second.connectorActionId).not.toBe(first.connectorActionId);
   });
 });
