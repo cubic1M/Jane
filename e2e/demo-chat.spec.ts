@@ -57,8 +57,14 @@ test("after an upload the side chat catches up, and the chip keeps out of the wa
   await expect(page.locator("[data-card-dock] [data-card-sure]")).toHaveText(/^\d+% sure$/, {
     timeout: 60_000,
   });
-  // And the chat under them doesn't say there's nothing new (demo-video re-take).
-  await expect(chat.getByText("Nothing new from me yet")).toHaveCount(0);
+  // And the chat beside them holds none of them: its own list has no card, and no line about
+  // there being nothing new (demo-video re-take; founder 11-24: suggestions only in the dock).
+  // Once the chat has drawn (its message box is there), or "none" would be true of an empty frame.
+  await expect(chat.getByRole("textbox", { name: "Message Jane" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(chat.getByRole("region", { name: "Suggestions for you" })).toHaveCount(0);
+  await expect(chat.getByRole("listitem")).toHaveCount(0);
 
   // On the findings the chip has said its piece and goes, and stays gone.
   await page.goto("/report");

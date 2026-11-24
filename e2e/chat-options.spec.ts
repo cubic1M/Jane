@@ -117,12 +117,13 @@ test("a pick on the options card is instant, and the next card follows within 10
   const answer = page.locator(`li[id="${messageId}"]`);
   await expect(answer.getByRole("button", { name: /Pick this one/ })).toHaveCount(0);
 
-  // The pick: the card goes and the day's suggestions are there before the server replies.
+  // The pick: the card goes before the server replies, and no suggestion takes its place in the
+  // chat (they wait in the dock on Home, founder 11-24).
   const suggestions = page.getByRole("region", { name: "Suggestions for you" });
   const release = await holdSaves(page);
   await showing.getByRole("button", { name: "Pick this one" }).click();
-  await expect(suggestions.locator('[data-card-state="showing"]')).toBeVisible();
   await expect(pickCard).toHaveCount(0);
+  await expect(suggestions).toHaveCount(0);
   await release();
 
   // Behind it, the pick went to the team: Jane's answer says what happens next, and nothing in

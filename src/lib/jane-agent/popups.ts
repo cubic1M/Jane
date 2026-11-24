@@ -1,7 +1,8 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { GREETING_START, HELLO_START, MORNING_BRIEF } from "@/config/agent-chat";
-import { DONE_ACTION, isChoice, REVERT_ACTION } from "./choices";
+import { isChoice } from "./choices";
+import type { MessageKind } from "./types";
 import type { MessageView } from "./view";
 
 // Jane's own messages as pop-ups (founder: "replace all the yellow cards in the chat as pop up
@@ -46,19 +47,6 @@ export function hiddenBrief(m: Pick<MessageView, "kind" | "body">, on = MORNING_
   return HELLO_START.test(body) || (!on && GREETING_START.test(body));
 }
 
-// The same briefs as a filter, for a count that doesn't read each message (the chat's unread dot:
-// debugger 11-18, "Chat with Jane, 1 new" over a chat that said "Nothing new from me yet", the one
-// being the morning greeting that shows nowhere).
-export function hiddenBriefWhere(on = MORNING_BRIEF) {
-  const starts = [
-    "Hi, I'm Jane.",
-    ...(on ? [] : ["Good morning!", "Good afternoon!", "Good evening!"]),
-  ];
-  return {
-    NOT: { kind: "brief" as const, OR: starts.map((start) => ({ body: { startsWith: start } })) },
-  };
-}
-
 // One stack of cards (founder: "don't let the suggestion cards repeat"): the day's suggestions,
 // then the other pop-ups in their order, up to `limit`; one card per message and per headline,
 // so a finding a source also posted as a decision shows once.
@@ -89,23 +77,22 @@ export function popupStack(
   return out;
 }
 
-// Something the tap left for the person to do in the message (a real account's Yes: its steps and
-// Mark done), not an Undo, Revert or Done: until then it's a next step, not a trace.
-function stillToDo(m: Pick<MessageView, "buttons">): boolean {
-  return m.buttons.some(
-    (b) => !b.id.startsWith("undo.") && b.id !== REVERT_ACTION && b.id !== DONE_ACTION,
-  );
+// What the chat's conversation holds (founder 11-24: a suggestion about Delta Air Lines popped up
+// in the chat; "suggestions belong only in the suggestion box"): what the person typed and Jane's
+// answers to it, cards they asked for there included (a finding with Yes and No after "cancel
+// hulu", a card's "Why?", a pick-one answer: all stored as replies, src/lib/jane-agent/messages.ts
+// storeReply). Nothing Jane brings up unasked (brief, decision, done, heads_up: the day's picks,
+// finding cards, changes, heads-ups) is posted into it: those show in the dock and on their pages.
+// A real account's Yes leaves its steps and Mark done on the finding's report (its DIY kit) and on
+// the plan, not here.
+export const CHAT_KINDS = ["user", "reply"] as const satisfies readonly MessageKind[];
+
+export function inChat(m: Pick<MessageView, "kind">): boolean {
+  return (CHAT_KINDS as readonly string[]).includes(m.kind);
 }
 
-// Jane's own message, answered or put away, with nothing left in it to do: no trace of it in the
-// chat, after a reload too. What was chosen is still in the audit log and the analytics.
-function answeredAndDone(m: MessageView): boolean {
-  return m.fromJane && m.kind !== "reply" && m.status !== "open" && !stillToDo(m);
-}
-
-// The chat's list (founder: the cards are "right above the chat ... but not in the chat"): no
-// suggestion at all, waiting or answered, nothing that's floating, and nothing already answered;
-// no gaps, no placeholders.
+// The chat's list (founder: the cards are "right above the chat ... but not in the chat"): only
+// what inChat allows, never one that's floating; no gaps, no placeholders.
 export function chatList(
   messages: readonly MessageView[],
   stack: readonly MessageView[],
@@ -114,9 +101,7 @@ export function chatList(
   const headlines = new Set(stack.map((p) => p.body.split("\n")[0].trim().toLowerCase()));
   return messages.filter(
     (m) =>
-      !m.suggestion &&
-      !hiddenBrief(m) &&
-      !answeredAndDone(m) &&
+      inChat(m) &&
       !floating.has(m.id) &&
       !(
         m.status === "open" &&

@@ -1,14 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
-import { landInChat } from "./chat-page";
+import { CHAT, landInChat } from "./chat-page";
 import { holdSaves, nextSave } from "./waits";
 import { signInWith } from "./session";
 
-// The day's suggestions as floating cards over the chat (founder request): one at a time, a
-// card above the page and not in it, a short card with Yes and Not now, More details already
-// there, the next card sliding in, keys and swipe, and every tap answered on screen within
-// 100 ms (the server follows). A waiting suggestion is only in the cards, not the message list
-// too; answered, it is in the list as history. On a phone, with nothing sideways.
+// The day's suggestions as floating cards (founder request): one at a time, a card above the page
+// and not in it, a short card with Yes and Not now, More details already there, the next card
+// sliding in, keys and swipe, and every tap answered on screen within 100 ms (the server follows).
+// On a phone, with nothing sideways: Home's folded "Jane · N for you", opened. A suggestion is
+// never in the chat, waiting or answered (founder 11-24: "suggestions belong only in the
+// suggestion box"), so the chat is checked at the end.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -19,7 +20,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("suggestions float over the chat one at a time, and every tap answers at once", async ({
+test("suggestions float on Home one at a time, and every tap answers at once", async ({
   context,
   page,
   baseURL,
@@ -35,31 +36,26 @@ test("suggestions float over the chat one at a time, and every tap answers at on
     await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
-  await page.reload();
-  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
-
+  // On a phone the cards wait on Home, folded to one line: a tap opens them.
   const overlay = page.getByRole("region", { name: "Suggestions for you" });
+  const unfold = async () => {
+    await page.goto("/home");
+    await overlay.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+  };
+  await unfold();
   await expect(overlay).toBeVisible({ timeout: 60_000 });
   const counter = overlay.locator("p[aria-live]");
   await expect(counter).toHaveText(/^\d+ left$/);
   const total = Number(((await counter.textContent()) ?? "").split(" ")[0]);
   expect(total).toBeGreaterThanOrEqual(2);
 
-  // Floating: fixed over the page, not part of the message list.
+  // Floating: fixed over the page.
   expect(await overlay.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
-  expect(await page.getByRole("list", { name: "Messages" }).locator(overlay).count()).toBe(0);
-  // The suggestion's message in the list, if it is there.
-  const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
-  const inList = (headline: string) => messages.filter({ hasText: headline });
-  // The agenda waits on the person too, so it's a card in the stack, not a card in the list.
-  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
   const first = (await headline.textContent()) ?? "";
-  // The cards are the one place a waiting suggestion shows: it is not in the list as well.
-  await expect(inList(first)).toHaveCount(0);
   expect(first.trim().split(/\s+/).length).toBeLessThanOrEqual(10);
   expect((first.match(/\$[\d,.]+/g) ?? []).length).toBe(1);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
@@ -94,20 +90,30 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // Yes is just as quick, and the server catches up. A suggestion never shows in the chat,
   // waiting or answered (founder: "Don't let the suggestion cards repeat in the chat again").
   const second = (await headline.textContent()) ?? "";
-  await expect(inList(second)).toHaveCount(0);
   const saved = nextSave(page);
   release = await holdSaves(page);
   await showing.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(counter).toHaveText(`${total - 2} left`);
   await release();
   await saved;
-  await page.reload();
-  await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();
-  await expect(inList(second)).toHaveCount(0);
-  await expect(overlay.getByRole("heading", { level: 3, name: second })).toHaveCount(0);
-
-  // The ✕ is Not now too.
+  // Reloaded, the one answered Yes is gone; the ✕ is Not now too.
   if (total - 2 >= 1) {
+    await unfold();
+    await expect(overlay.getByRole("heading", { level: 3, name: second })).toHaveCount(0);
     await showing.getByRole("button", { name: "Not now", exact: true }).first().click();
+  } else {
+    await page.goto("/home");
+    await expect(overlay).toHaveCount(0);
   }
+
+  // Never in the chat: no card floats over it, and neither suggestion is in its list, answered or
+  // put off, nor the agenda.
+  await page.goto(CHAT);
+  await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Suggestions for you" })).toHaveCount(0);
+  const messages = page.getByRole("listitem");
+  for (const said of [first, second]) {
+    await expect(messages.filter({ hasText: said.trim() })).toHaveCount(0);
+  }
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 });

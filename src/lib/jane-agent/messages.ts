@@ -10,6 +10,7 @@ import type {
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { CHAT_KINDS } from "./popups";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
 import { closeAnsweredElsewhere } from "./settled";
@@ -48,7 +49,9 @@ export const sinceSignIn = (since: Date | undefined) =>
 
 // The newest messages, oldest first (the newest at the bottom of the chat). `pages` is how
 // many pages of CHAT_PAGE_SIZE to show ("Show earlier" adds one), and only from this sign-in
-// on when `since` is given.
+// on when `since` is given. With `kinds`, only those kinds, applied before the page limit: the
+// chat holds only what was typed and Jane's answers (CHAT_KINDS), so the cards Jane brings up on
+// its own never use up a page's places or make "Show earlier" appear over nothing.
 export async function chatFeed(
   userId: string,
   {
@@ -56,7 +59,14 @@ export async function chatFeed(
     pages = 1,
     now = new Date(),
     since,
-  }: { client?: PrismaClient; pages?: number; now?: Date; since?: Date } = {},
+    kinds,
+  }: {
+    client?: PrismaClient;
+    pages?: number;
+    now?: Date;
+    since?: Date;
+    kinds?: readonly string[];
+  } = {},
 ): Promise<{ messages: ChatMessage[]; hasEarlier: boolean }> {
   const take = CHAT_PAGE_SIZE * Math.max(1, pages);
   const rows = await scopedFor(userId, client).janeMessages.findMany({
@@ -64,6 +74,7 @@ export async function chatFeed(
     where: {
       OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
       ...sinceSignIn(since),
+      ...(kinds ? { kind: { in: [...kinds] } } : {}),
     },
     select: MESSAGE_SELECT,
     orderBy: NEWEST_FIRST,
@@ -73,6 +84,21 @@ export async function chatFeed(
     messages: rows.slice(0, take).reverse().map(toChatMessage),
     hasEarlier: rows.length > take,
   };
+}
+
+// How many messages the chat's pulse counts (src/app/api/chat/pulse/route.ts): every kind, the
+// same rule as the feed's, not one page of it.
+export async function visibleCount(
+  userId: string,
+  {
+    client = defaultClient,
+    now = new Date(),
+    since,
+  }: { client?: PrismaClient; now?: Date; since?: Date } = {},
+): Promise<number> {
+  return scopedFor(userId, client).janeMessages.count({
+    where: { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }], ...sinceSignIn(since) },
+  });
 }
 
 // Whether Jane has posted anything yet today, in the person's own day.
@@ -389,8 +415,13 @@ export async function pinnedMessages(
   { client = defaultClient, since }: { client?: PrismaClient; since?: Date } = {},
 ): Promise<ChatMessage[]> {
   const rows = await scopedFor(userId, client).janeMessages.findMany({
-    // Only those the chat shows, so each pin's link lands on its message.
-    where: { refs: { path: ["pinned"], equals: true }, ...sinceSignIn(since) },
+    // Only those the chat shows (what was typed and Jane's answers, CHAT_KINDS), so each pin's link
+    // lands on its message: a card pinned before they left the chat has no message to land on.
+    where: {
+      refs: { path: ["pinned"], equals: true },
+      kind: { in: [...CHAT_KINDS] },
+      ...sinceSignIn(since),
+    },
     orderBy: { createdAt: "desc" },
     select: MESSAGE_SELECT,
     take: CHAT_PAGE_SIZE,

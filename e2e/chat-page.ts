@@ -31,11 +31,25 @@ export async function answerTo(page: Page, ...words: string[]): Promise<Locator>
   return found.last();
 }
 
+// Jane's cards wait in the dock, never in the chat (founder 11-24: "suggestions belong only in the
+// suggestion box"): on a computer above the side chat, on a phone Home's folded "Jane · N for
+// you". Opens Home and its dock, unfolded.
+export async function homeDock(page: Page, isMobile: boolean | undefined): Promise<Locator> {
+  await page.goto("/home");
+  const dock = page.getByRole("region", { name: "Suggestions for you" });
+  if (isMobile) await dock.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+  return dock;
+}
+
 // Jane's pop-ups (src/lib/jane-agent/popups.ts): anything it brings up that waits on the
-// person floats as a card, not in the chat's list. The card showing, once it's the one with
-// this headline (the arrow keys step through the stack), or a failure if it never comes.
-export async function popupCard(page: Page, headline: RegExp, timeout = 30_000) {
-  const overlay = page.getByRole("region", { name: "Suggestions for you" });
+// person floats as a card in the dock (homeDock), not in the chat. The card showing, once it's the
+// one with this headline (the arrow keys step through the stack), or a failure if it never comes.
+export async function popupCard(
+  page: Page,
+  headline: RegExp,
+  timeout = 30_000,
+  overlay: Locator = page.getByRole("region", { name: "Suggestions for you" }),
+) {
   const showing = overlay.locator('[data-card-state="showing"]');
   const title = showing.getByRole("heading", { level: 3 });
   await expect(overlay).toBeVisible({ timeout });

@@ -48,13 +48,27 @@ describe.runIf(url && !MORNING_BRIEF)("the chat's unread dot", () => {
     expect(await count()).toBe(0);
   });
 
-  it("still counts what the chat shows", async () => {
+  // Founder 11-24: Jane's unasked cards (a heads-up here) wait in the dock, which counts them; the
+  // chat doesn't hold them, so the dot never calls one "new" there (src/lib/jane-agent/popups.ts).
+  it("leaves out a heads-up, which waits in the dock and not in the chat", async () => {
     await client.janeMessage.create({
       data: {
         userId: who.id,
         kind: "heads_up",
         dedupeKey: "heads_up:hulu",
         body: "Your Hulu renews tomorrow: $9.99.",
+      },
+    });
+    expect(await count()).toBe(0);
+  });
+
+  it("still counts an answer in the chat not yet seen", async () => {
+    await client.janeMessage.create({
+      data: {
+        userId: who.id,
+        kind: "reply",
+        dedupeKey: `reply:${crypto.randomUUID()}`,
+        body: "Your Hulu is $9.99 a month.",
       },
     });
     expect(await count()).toBe(1);

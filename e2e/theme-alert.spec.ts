@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CHAT, landInChat } from "./chat-page";
+import { landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
 import { signInWith } from "./session";
 
@@ -42,8 +42,12 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   // Through Jane's pop-ups to the theme's card: Not now puts each suggestion off (so the day's
   // later ones come up after a reload), and a decision without it is stepped past.
   await expect(async () => {
-    await page.goto(CHAT);
-    await expect(overlay).toBeVisible({ timeout: 5_000 });
+    // The dock is on Home (never in the chat); on a phone it waits folded.
+    await page.goto("/home");
+    // The dock has drawn once one of its states is there: folded on a phone, a card otherwise.
+    await expect(overlay.locator("[data-card-state]").first()).toBeVisible({ timeout: 5_000 });
+    const folded = overlay.locator('[data-card-state="folded"]');
+    if (await folded.isVisible()) await folded.click();
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     for (let i = 0; i < 16; i += 1) {
       if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;

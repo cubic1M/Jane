@@ -2,7 +2,8 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { chatFeed, closeSettled, postedToday } from "./messages";
+import { chatFeed, closeSettled, postedToday, visibleCount } from "./messages";
+import { CHAT_KINDS } from "./popups";
 import { SCANNING_HELLO } from "@/config/scan";
 import { scanInProgress } from "@/lib/scan";
 import { timezoneOf } from "@/lib/today";
@@ -45,7 +46,14 @@ export async function openChat(
     pages = 1,
     since,
   }: { client?: PrismaClient; now?: Date; pages?: number; since?: Date } = {},
-): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
+): Promise<{
+  messages: MessageView[];
+  hasEarlier: boolean;
+  scanning: boolean;
+  // While scanning: every message the pulse counts, cards included, which the chat's refresher
+  // compares with its own count (the feed holds only the chat's kinds).
+  pulseCount: number;
+} | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
   const [timezone, concierge] = await Promise.all([
     timezoneOf(userId, { client }),
@@ -58,13 +66,17 @@ export async function openChat(
   // this one from the chat").
   const scanning = await scanInProgress(userId, { client, now });
   if (scanning) {
-    const feed = await chatFeed(userId, { client, pages, now, since });
+    const [feed, pulseCount] = await Promise.all([
+      chatFeed(userId, { client, pages, now, since, kinds: CHAT_KINDS }),
+      visibleCount(userId, { client, now, since }),
+    ]);
     return {
       messages: feed.messages
         .filter(notTheOldHello)
         .map((m) => toView(m, now, timezone, { concierge })),
       hasEarlier: feed.hasEarlier,
       scanning: true,
+      pulseCount,
     };
   }
   // Jane looks again on the first visit of the day, and (spec step 92) after a
@@ -77,12 +89,13 @@ export async function openChat(
   } else {
     await runJaneAgentSafely(userId, { client, now, trigger: "open" });
   }
-  const feed = await chatFeed(userId, { client, pages, now, since });
+  const feed = await chatFeed(userId, { client, pages, now, since, kinds: CHAT_KINDS });
   return {
     messages: feed.messages
       .filter(notTheOldHello)
       .map((m) => toView(m, now, timezone, { concierge })),
     hasEarlier: feed.hasEarlier,
     scanning: false,
+    pulseCount: 0,
   };
 }

@@ -1,3 +1,4 @@
+import { HELLO_START } from "../src/config/agent-chat";
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
@@ -160,20 +161,21 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   await expect(area.locator("[data-giant-branch]").first()).toBeVisible();
   await expect(area.getByText("Taxes", { exact: true })).toHaveCount(0);
 
-  // No "Good morning" and no "Hi, I'm Jane" anywhere: not among the cards, not in the chat.
+  // No morning greeting and no first-run hello anywhere: not among the cards, not in the chat
+  // (HELLO_START is the rule that hides it, src/config/agent-chat.ts).
   const cards = await page.evaluate(async () =>
     ((await (await fetch("/api/chat/cards")).json()).cards as { body: string }[]).map(
       (c) => c.body,
     ),
   );
   expect(cards.filter((b) => /^Good (morning|afternoon|evening)!/.test(b))).toEqual([]);
-  expect(cards.filter((b) => /^Hi, I'm Jane\./.test(b))).toEqual([]);
+  expect(cards.filter((b) => HELLO_START.test(b))).toEqual([]);
   await page.goto("/chat?embed=1");
   await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible({
     timeout: 60_000,
   });
   await expect(page.getByText(/^Good (morning|afternoon|evening)!/)).toHaveCount(0);
-  await expect(page.getByText(/^Hi, I'm Jane\./)).toHaveCount(0);
+  await expect(page.getByText(HELLO_START)).toHaveCount(0);
   // And no search box in the chat (founder, 2026-10-26).
   await expect(page.getByRole("searchbox", { name: "Search the chat" })).toHaveCount(0);
 });

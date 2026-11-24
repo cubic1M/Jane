@@ -3,9 +3,11 @@ import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { CHAT } from "./chat-page";
 import { demoPerson } from "./demo-person";
 
-// Beta walk 11-12: on a phone the chat is a half-height sheet, and the day's card floating over it
-// covered every new message, so a typed question's answer landed out of sight under it. Sending a
-// message folds the cards to their one line; a tap opens them again.
+// Founder 11-24: "suggestions belong only in the suggestion box". Beta walk 11-12 had folded the
+// chat's card on a phone once a message was sent, so the answer showed; the chat now has no card
+// of Jane's own to fold. The demo person has a dock full of suggestions, and on a phone the chat
+// sheet shows none of them, before or after a message is sent: the answer lands where it is
+// typed. The dock is on Home (e2e/floating-cards.spec.ts).
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -16,33 +18,31 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("on a phone, sending a message folds the cards so the answer shows", async ({
+test("on a phone, the chat holds no suggestion, so a sent message's answer shows", async ({
   context,
   page,
   baseURL,
 }) => {
   userId = await demoPerson(context, page, baseURL);
+  // The dock has cards: Home's folded line counts them.
+  await page.goto("/home");
+  await expect(
+    page.getByRole("region", { name: "Suggestions for you" }).locator('[data-card-state="folded"]'),
+  ).toBeVisible({ timeout: 60_000 });
+
   await page.goto(CHAT);
-
-  const overlay = page.getByRole("region", { name: "Suggestions for you" });
-  const showing = overlay.locator('[data-card-state="showing"]');
-  const folded = overlay.locator('[data-card-state="folded"]');
-  await expect(showing).toBeVisible({ timeout: 60_000 });
-  await expect(folded).toHaveCount(0);
-
   const ask = page.getByRole("textbox", { name: "Message Jane" });
+  await expect(ask).toBeVisible({ timeout: 60_000 });
+  const overlay = page.getByRole("region", { name: "Suggestions for you" });
+  await expect(overlay).toHaveCount(0);
+
   await ask.fill("safe to spend");
   await ask.press("Enter");
-
-  await expect(folded).toBeVisible();
-  await expect(showing).toHaveCount(0);
   const answer = page
     .getByRole("list", { name: "Messages" })
     .getByRole("listitem")
     .filter({ hasText: /safe to spend/ })
     .last();
   await expect(answer).toBeVisible({ timeout: 45_000 });
-
-  await folded.click();
-  await expect(showing).toBeVisible();
+  await expect(overlay).toHaveCount(0);
 });

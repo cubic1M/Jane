@@ -25,9 +25,10 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   test.skip(isMobile, "phones get the bottom sheet");
   await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
-  // A message of Jane's with a link in it (its cards are in the dock above the chat, not in it).
+  // An answer of Jane's with a link in it (what it brings up unasked is a card in the dock above
+  // the chat, never in the chat, founder 11-24).
   await addJaneMessage(userId, {
-    kind: "heads_up",
+    kind: "reply",
     body: "Your insurance renews next month.",
     refs: {},
     actions: [{ id: "open", label: "See your insurance", kind: "link", href: "/insurance" }],
@@ -74,9 +75,10 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   await page.reload();
   await expect(open).toBeVisible();
 
-  // Something new while folded: the rail shows a dot.
+  // Something new in the chat while folded (an answer arriving; cards go to the dock, not here):
+  // the rail shows a dot.
   await addJaneMessage(userId, {
-    kind: "heads_up",
+    kind: "reply",
     body: "Your phone bill went up by $5.",
     refs: {},
     actions: [],

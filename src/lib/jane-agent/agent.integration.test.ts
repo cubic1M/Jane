@@ -243,7 +243,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
     it("opens the chat without running again once Jane posted today", async () => {
       const count = visible(await messagesOf(userId)).length;
       const chat = await openChat(userId, { client, now: new Date(LINKED.getTime() + 25 * HOUR) });
-      expect(chat?.messages).toHaveLength(count);
+      // Nothing posted by opening it again, and none of what Jane posted on its own is in the
+      // chat (founder 11-24: it shows in the dock).
+      expect(visible(await messagesOf(userId))).toHaveLength(count);
+      expect(chat?.messages).toEqual([]);
       expect(chat?.hasEarlier).toBe(false);
     });
   });
@@ -288,9 +291,11 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       const chat = await openChat(userId, { client, now: night });
       // The day's agenda (spec step 184, with the plan and the finding on it); no first-run
       // hello any more, and no autopilot question for a real account, where Jane does nothing
-      // on its own (read-only beta).
-      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief"]);
-      expect(chat?.messages[0].body).toMatch(/needs your yes:/);
+      // on its own (read-only beta). It is posted, for the dock, and not in the chat's list.
+      const posted = visible(await messagesOf(userId));
+      expect(posted.map((m) => m.kind)).toEqual(["brief"]);
+      expect(posted[0].body).toMatch(/needs your yes:/);
+      expect(chat?.messages).toEqual([]);
     });
 
     // Someone uploading at 9pm on a phone has no side chat loading to post for them: Home had no

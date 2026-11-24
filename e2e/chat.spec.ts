@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
-import { CHAT, answerTo, landInChat, popupCard } from "./chat-page";
+import { CHAT, answerTo, homeDock, landInChat, popupCard } from "./chat-page";
 import { holdSaves } from "./waits";
 import { signInWith } from "./session";
 
@@ -25,6 +25,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   context,
   page,
   baseURL,
+  isMobile,
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
@@ -105,8 +106,11 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   // Spec step 83: the autopilot question, answered with one tap on its pop-up. The card stays,
   // its choices greyed and the chosen one marked, with Revert, until Done (founder, 2026-10-25);
   // then it's gone from the chat, with no line of history (founder 11-11), after a reload too.
+  // It waits in the dock on Home, never in the chat (founder 11-24).
   await expect(messages.filter({ hasText: "How much should I do on my own?" })).toHaveCount(0);
-  const autopilotCard = await popupCard(page, /^How much should I do on my own\?/);
+  await expect(page.getByRole("region", { name: "Suggestions for you" })).toHaveCount(0);
+  const dock = await homeDock(page, isMobile);
+  const autopilotCard = await popupCard(page, /^How much should I do on my own\?/, 30_000, dock);
   const release = await holdSaves(page);
   await autopilotCard.getByRole("button", { name: "Handle the safe stuff" }).click();
   await expect(autopilotCard.locator("[data-card-chosen]")).toBeVisible();
@@ -114,6 +118,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   await autopilotCard.getByRole("button", { name: "Done" }).click();
   const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
   await expect(page.locator("[data-card-chosen]")).toHaveCount(0, { timeout: 15_000 });
+  await page.goto(CHAT);
   await expect(autopilot).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
