@@ -108,7 +108,6 @@ async function loadDebtsFrom(
         where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
         select: {
           id: true,
-          status: true,
           lender: true,
           product: true,
           aprBps: true,
@@ -193,9 +192,8 @@ async function loadDebtsFrom(
         asOf,
       ),
       newLoans: [
-        ...newLoans.map(({ id, fundedAt, status, ...l }) => ({
+        ...newLoans.map(({ id, fundedAt, ...l }) => ({
           ...l,
-          paidOff: status === "paid_off",
           applicationId: id,
           fundedOn: isoDay(fundedAt!),
         })),
