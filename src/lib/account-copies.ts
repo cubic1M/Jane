@@ -149,11 +149,11 @@ async function readCounting(db: Db) {
         truncated: rows.length > SAME_ACCOUNT_MAX_LINES,
       });
     const readingsOf = new Map<string, { date: string; balanceCents: number }[]>();
-    for (const r of readings)
-      readingsOf.set(r.accountId, [
-        ...(readingsOf.get(r.accountId) ?? []),
-        { date: day(r.date)!, balanceCents: r.balanceCents },
-      ]);
+    for (const r of readings) {
+      const list = readingsOf.get(r.accountId) ?? [];
+      list.push({ date: day(r.date)!, balanceCents: r.balanceCents });
+      readingsOf.set(r.accountId, list);
+    }
     for (const [upload, link] of candidates) {
       const [mine, theirs] = [lines.get(upload.id), lines.get(link.id)];
       const { verdict } = compareAccounts({
