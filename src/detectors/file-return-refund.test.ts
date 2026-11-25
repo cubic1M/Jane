@@ -31,6 +31,13 @@ describe("which refund shows the federal return was filed", () => {
   it("not a state refund", () => {
     expect(topics("CA FTB STATE TAX REFUND")).toContain("file_return");
   });
+  it("not a state's Treasury either", () => {
+    expect(topics("MICHIGAN TREASURY TAX REFUND")).toContain("file_return");
+  });
+  it("a federal one by its bank name", () => {
+    expect(topics("TREAS 310 TAX REF")).not.toContain("file_return");
+    expect(topics("US TREASURY TAX REFUND")).not.toContain("file_return");
+  });
   it("a federal one", () => {
     expect(topics("IRS TREAS 310 TAX REF")).not.toContain("file_return");
   });

@@ -78,7 +78,9 @@ function grossIncome(
   return gross + Math.round(stock * T.stockVestShare);
 }
 // The payer of a federal tax refund.
-const FEDERAL_REFUND = /\b(?:IRS|US TREAS|U\.?S\.? TREAS|TREAS(?:URY)?)\b/i;
+// A bare "TREASURY" is not enough: a state's Treasury (Michigan's) pays state refunds.
+const FEDERAL_REFUND =
+  /\b(?:IRS|U\.?S\.? TREAS(?:URY)?|UNITED STATES TREAS(?:URY)?|TREAS 3\d\d)\b/i;
 
 const bracketOf = (
   profile: Parameters<typeof grossIncome>[0],
@@ -92,12 +94,22 @@ const bracketOf = (
 };
 
 // An estimated payment's due date: the day on the calendar, moved to the next business day when
-// it falls on a weekend or on Martin Luther King Jr. Day (January 15 can be the third Monday).
+// it falls on a weekend, on Martin Luther King Jr. Day (January 15 can be the third Monday) or on
+// the observed Emancipation Day (April 16, Friday when it falls on Saturday, Monday on Sunday:
+// the April 2023 and April 2022 deadlines were April 18).
 function effectiveDue(isoDay: string): string {
   const at = new Date(`${isoDay}T00:00:00Z`);
   const isMlk = (d: Date) =>
     d.getUTCMonth() === 0 && d.getUTCDay() === 1 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21;
-  while (at.getUTCDay() === 0 || at.getUTCDay() === 6 || isMlk(at)) {
+  const isEmancipation = (d: Date) => {
+    if (d.getUTCMonth() !== 3) return false;
+    const day = d.getUTCDate();
+    const dow = d.getUTCDay();
+    return (
+      (day === 16 && dow >= 1 && dow <= 5) || (day === 15 && dow === 5) || (day === 17 && dow === 1)
+    );
+  };
+  while (at.getUTCDay() === 0 || at.getUTCDay() === 6 || isMlk(at) || isEmancipation(at)) {
     at.setUTCDate(at.getUTCDate() + 1);
   }
   return at.toISOString().slice(0, 10);

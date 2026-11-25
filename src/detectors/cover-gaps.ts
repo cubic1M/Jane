@@ -4,7 +4,7 @@ import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
 import { personalPay } from "@/profile/pay";
 import { type Detector, suggestion } from "./contract";
-import { evidence, factEvidence, headlineOf, outCents, perYear } from "./helpers";
+import { evidence, factEvidence, headlineOf, monthlyChargeYear } from "./helpers";
 import { AUTO_HOME, CAPS, capped, combine, premiums } from "./insurance";
 
 // Perfect coverage (spec step 277): a detector for each gap the need calculators find
@@ -109,9 +109,10 @@ const deductibleFit: Detector = {
     const need = deductibles.find((n) => n.direction === "lower") ?? deductibles[0];
     if (!need) return null;
     if (need.direction === "raise") {
-      // The premiums seen are over the months of history, not a year: put them on a year, and
-      // with too little history say nothing of a yearly saving.
-      const yearly = perYear(outCents(premiums(data, AUTO_HOME)), profile.months);
+      // The premiums seen are not a year: put them on a year by the months they were charged in
+      // (monthly premiums only), and say nothing of a yearly saving for an annual or a
+      // quarterly premium or with under 3 months of them.
+      const yearly = monthlyChargeYear(premiums(data, AUTO_HOME));
       if (yearly === null) return null;
       const saves = Math.round(yearly * SAVING_RATES.deductibleStepShare);
       if (saves <= 0) return null;

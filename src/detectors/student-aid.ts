@@ -229,7 +229,7 @@ const saveEnding: Detector = {
         unknown === 0
           ? `SAVE has ended: without a choice, Standard could be about ${formatCents(standard)} a month.`
           : "SAVE has ended: you need to pick a new plan, or you're put on Standard.",
-      worthCents: Math.max(0, rise) * 12,
+      worthCents: unknown > 0 ? 0 : Math.max(0, rise) * 12,
       worthKind: "risk",
       confidence: {
         percent: confidenceOf("guessed", { months: profile.months, matches: loans.length }),

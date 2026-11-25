@@ -29,7 +29,8 @@ describe("which accounts the inherited-IRA cards read", () => {
     );
   });
   it("doesn't say all of an inherited Roth is taxed", () => {
-    const why = cards("retiree", "roth").find((s) => s.topic === "inherited_ira")?.why ?? "";
-    expect(why).not.toMatch(/All of it is taxed/);
+    const card = cards("retiree", "roth").find((s) => s.topic === "inherited_ira");
+    expect(card).toBeDefined();
+    expect(card!.why).not.toMatch(/All of it is taxed/);
   });
 });

@@ -109,7 +109,7 @@ const careDiscount: Detector = {
     // FERA discounts electricity only: with it, the saving is worked on the electric bills the
     // feed names; with none named, eligibility is shown with no dollar figure.
     const electric = outCents(
-      tx(data, (t) => t.pfc === ENERGY && t.amountCents > 0 && ELECTRIC_PAYEE.test(t.description)),
+      tx(data, (t) => t.pfc === ENERGY && t.amountCents > 0 && isElectricPayee(t.description)),
     );
     const yearlyBase =
       program === "FERA" ? Math.round((electric * 12) / Math.max(1, profile.months)) : yearlyEnergy;
@@ -137,6 +137,9 @@ const careDiscount: Detector = {
 
 // Payee words that name an electric bill (a gas-only bill isn't discounted by FERA).
 const ELECTRIC_PAYEE = /electric|power|edison|pg&e|pge\b|sdg&e|ladwp|smud/i;
+// "PG&E GAS" names a gas bill from a utility that sells both: gas-only unless it also says electric.
+const isElectricPayee = (d: string) =>
+  ELECTRIC_PAYEE.test(d) && !(/\bgas\b/i.test(d) && !/electric|power|edison/i.test(d));
 
 const INTERNET = "RENT_AND_UTILITIES_INTERNET_AND_CABLE";
 const PHONE = "RENT_AND_UTILITIES_TELEPHONE";

@@ -26,6 +26,15 @@ describe("what-if sectors", () => {
     expect(run.sectors.goals[0].status).toBe("fine");
     expect(run.sectors.investing).toMatch(/\$500\.00 a month left over/);
   });
+  it("does not hand the goal's money to investing when the goal slips (#2258)", () => {
+    const run = runScenario(
+      "job_loss",
+      { ...baseline, goals: [{ id: "g1", name: "Emergency fund", monthlyNeededCents: 250_000 }] },
+      params,
+    );
+    expect(run.sectors.goals[0].status).toBe("slips");
+    expect(run.sectors.investing).toMatch(/^Nothing left over for investing/);
+  });
   it("prices the year's tax on 12 months at most", () => {
     const twelve = runScenario("job_loss", baseline, { ...params, incomeLossShare: 1, months: 12 });
     const eighteen = runScenario("job_loss", baseline, {

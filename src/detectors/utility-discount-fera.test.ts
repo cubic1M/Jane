@@ -41,6 +41,11 @@ describe("the FERA hint", () => {
     expect(s.worthCents).toBe(0);
     expect(s.why).toMatch(/can't tell which of your energy bills are electric/);
   });
+  it("has no dollar figure on a gas bill from a utility that sells both", () => {
+    const s = run("PG&E GAS");
+    expect(s.worthCents).toBe(0);
+    expect(s.why).toMatch(/can't tell which of your energy bills are electric/);
+  });
   it("is worked on electric bills", () => {
     const s = run("PG&E ELECTRIC");
     expect(s.worthCents).toBeGreaterThan(0);

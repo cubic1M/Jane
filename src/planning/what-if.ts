@@ -157,10 +157,9 @@ export function runScenario(
       ? null
       : `About ${formatCents(Math.abs(Math.round(yearlyIncomeChange * baseline.marginalRate)))} ${yearlyIncomeChange < 0 ? "less" : "more"} in tax for the year, at your ${Math.round(baseline.marginalRate * 100)}% rate on the next dollar.`;
 
-  // The goals' monthly needs come out of the margin first when they fit: those dollars are theirs.
-  const afterGoals = goals.some((g) => g.status === "slips")
-    ? room
-    : Math.max(0, room - totalNeeded);
+  // The goals' monthly needs come out of the margin first: those dollars are theirs, and a goal
+  // that slips has only its date moved in the plan below, not its monthly need dropped.
+  const afterGoals = Math.max(0, room - totalNeeded);
   const investing =
     afterGoals > 0
       ? `${formatCents(afterGoals)} a month left over for investing once things settle.`
