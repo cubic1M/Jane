@@ -6,7 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
-import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-taxes";
 import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
 import { recordAct } from "@/lib/sector-autopilot";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
@@ -42,6 +42,8 @@ export async function loadTaxPlan(
       // Already loaded by the caller (Jane's snapshot), so not loaded twice.
       savings?: TaxSavingsView;
       selfEmployed?: SelfEmployedView;
+      // The caller's own load of the same year's investment taxes, so it isn't read twice.
+      investments?: Promise<InvestmentTaxesView>;
     };
   } = {},
 ): Promise<TaxPlanView> {
@@ -53,7 +55,7 @@ export async function loadTaxPlan(
   const [savings, self, investments, tags, events, filed, profile] = await Promise.all([
     loaded?.savings ?? loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
     loaded?.selfEmployed ?? loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
-    advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
+    advice ? (loaded?.investments ?? loadInvestmentTaxes(userId, year, { client, now })) : null,
     loadTaxTags(userId, year, { client }),
     db.lifeEvents.findMany({
       where: { kind: { in: [...W4_LIFE_EVENTS] } },

@@ -7,7 +7,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { donorFundPartnerFor } from "@/lib/donor-fund";
-import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-taxes";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { localDate, timezoneOf } from "@/lib/today";
@@ -57,7 +57,14 @@ export async function loadGiving(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
+  }: Options & {
+    loaded?: {
+      estimate: TaxEstimateView;
+      advice: boolean;
+      // The caller's own load of the same year's investment taxes, so it isn't read twice.
+      investments?: Promise<InvestmentTaxesView>;
+    };
+  } = {},
 ): Promise<GivingView> {
   const [estimate, advice] = loaded
     ? [loaded.estimate, loaded.advice]
@@ -76,7 +83,7 @@ export async function loadGiving(
         donorFundOpenedAt: true,
       },
     }),
-    advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
+    advice ? (loaded?.investments ?? loadInvestmentTaxes(userId, year, { client, now })) : null,
     timezoneOf(userId, { client }),
   ]);
   const receipts = new Set(profile?.givingReceipts ?? []);

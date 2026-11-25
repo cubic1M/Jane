@@ -84,7 +84,10 @@ const asLabel = (name: string) => shortLabel(name);
 
 // #banks and #your-accounts open the first bank or file, when there is one.
 export function anchorFocus(anchor: string, tree: AreaTree): string | undefined {
-  const to = SETTINGS_ANCHORS[anchor];
+  // An own key only: "constructor" is not an anchor (it would read Object's).
+  const to = Object.prototype.hasOwnProperty.call(SETTINGS_ANCHORS, anchor)
+    ? SETTINGS_ANCHORS[anchor]
+    : undefined;
   // An item this person's tree doesn't have (a real account's standing rules) opens its branch.
   const items = tree.tree.branches.flatMap((b) => b.items.map((i) => i.id));
   if (to?.includes(":") && !items.includes(to)) return to.split(":")[0];

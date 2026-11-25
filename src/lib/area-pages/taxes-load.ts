@@ -1,7 +1,7 @@
 import { areaOfCapability } from "@/config/areas";
 import { FILING_STATUSES, INCOME_KINDS } from "@/config/tax";
 import { scopedFor } from "@/lib/db-scoped";
-import { SAID_YES } from "./tree";
+import { BEST_FIRST, SAID_YES } from "./tree";
 import { taxesTree } from "@/lib/area-pages/taxes";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
@@ -67,17 +67,22 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
         actionLabel: true,
         actionHref: true,
       },
-      orderBy: { score: "desc" },
+      orderBy: [...BEST_FIRST],
     }),
   ]);
   const suggestions = suggested.filter((s) => areaOfCapability(s.capability) === "taxes");
   // The audit records are built from the page's own estimate, tags, forms, gifts and home (#687).
   const homeLoad = loadHomeTaxes(userId, { now, loaded: { estimate } });
-  const givingLoad = loadGiving(userId, { now, loaded: { estimate, advice } });
+  // One read of the investment taxes for the page, the giving options and the plan.
+  const investmentsLoad = loadInvestmentTaxes(userId, estimate.year, { now });
+  const givingLoad = loadGiving(userId, {
+    now,
+    loaded: { estimate, advice, investments: investmentsLoad },
+  });
   const [refunds, investments, savings, sideIncome, records, home, family, giving, plan] =
     await Promise.all([
       loadRefunds(userId, { now }).then((r) => r.refunds),
-      loadInvestmentTaxes(userId, estimate.year, { now }),
+      investmentsLoad,
       loadTaxSavings(userId, { now, loaded: { estimate, advice } }),
       loadSideIncome(userId, { now, loaded: { estimate } }),
       Promise.all([homeLoad, givingLoad]).then(([home, giving]) =>
@@ -89,7 +94,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       homeLoad,
       loadFamilyTaxes(userId, { now, loaded: { estimate, advice } }),
       givingLoad,
-      loadTaxPlan(userId, { now, loaded: { estimate, advice } }),
+      loadTaxPlan(userId, { now, loaded: { estimate, advice, investments: investmentsLoad } }),
     ]);
   const check = checkFrom(estimate);
   const kids = view.dependants;

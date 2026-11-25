@@ -53,11 +53,11 @@ export function shortLabel(text: string, max = LABEL_MAX_WORDS): string {
   while (kept.length > 1 && LEADS_ON.has(kept[kept.length - 1]!.toLowerCase())) kept.pop();
   return kept.join(" ");
 }
-export const sentences = (text: string) =>
-  text
-    .trim()
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/)
-    .filter(Boolean).length;
+// One splitter for the count, the summary and "More". A single capital before its period is an
+// initial ("J. P. Morgan"), not the end of a sentence.
+const splitSentences = (text: string) =>
+  text.trim().split(/(?<=[.!?])(?<!(?:^|\s)[A-Z]\.)\s+(?=[A-Z0-9$"“])/);
+export const sentences = (text: string) => splitSentences(text).filter(Boolean).length;
 
 // A tree's line when something is urgent: "2 urgent · 3 to look at", or "1 urgent" alone, not
 // "1 urgent · 0 to look at" (debugger 11-16: Loans & credit and Plans & goals on a linked bank).
@@ -66,14 +66,14 @@ export const urgentLine = (urgent: number, look: number): string =>
 
 // The first `n` sentences of a text: a detail's summary before "More".
 export function firstSentences(text: string, n = SUMMARY_MAX_SENTENCES): string {
-  const parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);
+  const parts = splitSentences(text);
   return parts.slice(0, n).join(" ");
 }
 
 // What that summary leaves out, for "More": the summary isn't said twice (debugger 11-15: a
 // renters gap's More was its summary again, word for word).
 export function laterSentences(text: string, n = SUMMARY_MAX_SENTENCES): string {
-  const parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);
+  const parts = splitSentences(text);
   return parts.slice(n).join(" ");
 }
 

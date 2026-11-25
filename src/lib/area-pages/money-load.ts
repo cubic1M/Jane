@@ -1,7 +1,7 @@
 import { CASH_FLOW_MIN_HISTORY_DAYS, SPENDING_MONTHS } from "@/config/areas";
 import { goalsLate } from "@/lib/goals-late";
 import { goalsOnTrack } from "@/planning/goals";
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
+import { copiesAndKeepers, withoutCopies } from "@/lib/account-copies";
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
@@ -43,7 +43,7 @@ import { BEST_FIRST, SAID_YES } from "./tree";
 type Options = { client?: PrismaClient; now?: Date };
 
 export type MoneyArea = MoneyTreeInput & {
-  // For the details: each suggestion's button and why, by topic; each books problem's fix.
+  // For the details: each suggestion's button and why, by its id (two can share a topic); each books problem's fix.
   actions: Record<string, { label: string; href: string; why: string }>;
   fixes: Record<string, BooksFix>;
   assetPromptHref: string | null;
@@ -73,13 +73,14 @@ export async function loadMoneyArea(
     books,
     transfers,
     rules,
-    copies,
     book,
+    newestStored,
   ] = await Promise.all([
     loadDetectionInput(userId, { client, now }),
     db.accounts.findMany({
       select: {
         id: true,
+        itemId: true,
         name: true,
         mask: true,
         type: true,
@@ -136,11 +137,15 @@ export async function loadMoneyArea(
     openBooks(userId, { client }),
     listTransfers(userId, { client, now }),
     listMerchantRules(userId, { client }),
-    accountCopies(db),
     // What's owed, from the one book Home's tile, the loans page and the chat read (gate B).
     loadDebts(userId, { client, now }),
+    // The newest line stored, not the newest in the months read above: an account whose last line
+    // is older than that window has none in it (CodeRabbit sweep 1c), as on Home and the report.
+    db.transactions.aggregate({ _max: { date: true } }),
   ]);
-  // An account linked twice counts once (src/lib/account-copies.ts).
+  // An account linked twice counts once (src/lib/account-copies.ts). Found in the rows listed
+  // above, so what's left out always describes the balances counted.
+  const { copies, keeper } = copiesAndKeepers(listedAccounts);
   const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
 
   input.subscriptionMerchantKeys = confirmed
@@ -156,9 +161,10 @@ export async function loadMoneyArea(
     crypto,
   );
   // A home with nothing linked comes before a car, as on the hub.
+  // A home linked to a copy that's left out is linked to the loan kept.
   const prompts = assetPrompts(
     accounts,
-    owned.map((o) => o.loanAccountId),
+    owned.map((o) => (o.loanAccountId ? (keeper.get(o.loanAccountId) ?? o.loanAccountId) : null)),
   );
   const prompt = prompts.find((p) => p.kind === "home") ?? prompts[0];
   const budget = budgetSummary(transactions, budgets, asOf);
@@ -167,15 +173,16 @@ export async function loadMoneyArea(
   // such, the same month the tile and the money hub show (gate B).
   const insights = spendingInsights(transactions, { asOf, monthCount: SPENDING_MONTHS });
   const latest = shownSpendingMonth(insights.months);
-  const current = latest === insights.months.at(-1);
+  // Statements that reach a later month than the one shown (November has only income, October has
+  // the spending) do cover this month: only a statement that stops there is "not in yet".
+  const newestMonth = newestStored._max.date?.toISOString().slice(0, 7) ?? null;
+  const current =
+    latest === insights.months.at(-1) ||
+    (latest != null && newestMonth !== null && newestMonth > latest.month);
   const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "money");
   const open = books.open.filter((o) => o.kind !== "transfer");
 
   const late = await goalsLate(userId, goals, { client, now });
-  const newestLine = transactions.reduce<string | null>(
-    (m, t) => (m === null || t.date > m ? t.date : m),
-    null,
-  );
   return {
     hasAccounts: accounts.length > 0,
     cushionCents: LOW_BALANCE_CUSHION_CENTS,
@@ -190,11 +197,9 @@ export async function loadMoneyArea(
       status: s.status,
     })),
     shortHistory: historyDaysOf(input) < CASH_FLOW_MIN_HISTORY_DAYS,
-    statementsEnd: staleStatementsEnd(
-      newestLine ? new Date(`${newestLine}T00:00:00Z`) : null,
-      asOf,
-    ),
-    // An account whose statement stops early has no low worth showing (/bills says so instead).
+    statementsEnd: staleStatementsEnd(newestStored._max.date, asOf),
+    // Not an account whose balance is too old to walk forward: /bills says its balance and day
+    // and no lowest point (staleFrom), so the tree doesn't give one either.
     lows: forecastAccounts(input, FORECAST_DAYS)
       .filter((f) => !f.staleFrom)
       .map((f) => ({
@@ -283,7 +288,7 @@ export async function loadMoneyArea(
     },
     rules: rules.length,
     actions: Object.fromEntries(
-      mine.map((s) => [s.topic, { label: s.actionLabel, href: s.actionHref, why: s.why }]),
+      mine.map((s) => [s.id, { label: s.actionLabel, href: s.actionHref, why: s.why }]),
     ),
     fixes: Object.fromEntries(open.map((o) => [o.id, booksFix(o)])),
     assetPromptHref: prompt ? promptHref(prompt) : null,

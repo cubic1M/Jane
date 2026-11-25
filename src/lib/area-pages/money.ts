@@ -228,17 +228,29 @@ function netWorthSummary(
   left: ReturnType<typeof notCounting>,
   statementsEnd: string | null | undefined,
 ): string {
-  const owes = owedIsKnown(
+  const known = owedIsKnown(
     { debtsCents: h.debtsCents, unbalanced: h.missing ?? [] },
     h.loansSeen ?? [],
-  )
-    ? ` and owe ${formatCents(h.debtsCents)}`
+  );
+  // A debt figure that is known still leaves out a loan only its payments show (it has no account
+  // row for `left` to name): say so beside the figure.
+  const loans = (h.loansSeen ?? []).length;
+  const loanNames = h.loansSeen ?? [];
+  const owes = known
+    ? ` and owe ${formatCents(h.debtsCents)}${
+        loans > 0
+          ? `, not counting what you owe on ${loans <= 2 ? loanNames.join(" and ") : `${loans} loans`}`
+          : ""
+      }`
     : "; Jane can't see everything you owe";
   const have = `You have ${formatCents(h.assetsCents)}${owes}`;
   const end = statementsEnd ? dayLabel(statementsEnd) : null;
-  if (h.maybeSame)
-    return `${have}${end ? `, from your statements, which end on ${end}` : ""}. ${h.maybeSame}`;
-  return `${have}.${left ? ` ${left.sentence}` : ""}${end ? ` That's from your statements, which end on ${end}.` : ""}`;
+  const from = end ? `, from your statements, which end on ${end}` : "";
+  if (h.maybeSame) return `${have}${from}. ${h.maybeSame}`;
+  // With a "not counting" sentence after it the tree keeps two sentences, so the date goes in the
+  // first (it would be the third).
+  if (left) return `${have}${from}. ${left.sentence}`;
+  return `${have}.${end ? ` That's from your statements, which end on ${end}.` : ""}`;
 }
 
 export function moneyTree(input: MoneyTreeInput): AreaTree {
@@ -398,8 +410,14 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
 
   // Statements that end before this month have none of it: "$0.00 of $40.00 this month" isn't
   // known (debug 2, sweep 8, upload S7, 11-19: a Bank of America statement to Oct 20 read Nov 19).
+  // The day they end when they stop partway through their month; a statement to the month's last day
+  // has no such day (monthCutShortAt), so it's said by the month: "end in October".
   const notInYet =
-    input.spending?.current === false && input.spending.endsOn ? input.spending.endsOn : null;
+    input.spending?.current === false
+      ? input.spending.endsOn
+        ? `on ${dayLabel(input.spending.endsOn)}`
+        : `in ${monthLabel(input.spending.month, { long: true, year: false })}`
+      : null;
   for (const p of input.budgets.progress) {
     items.budgets.push(
       item("budgets", p.category, {
@@ -408,7 +426,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
           ? {
               status: "look" as const,
               figure: `${shortMoney(p.budgetCents)}/mo`,
-              summary: `A ${formatCents(p.budgetCents)} monthly budget. This month's spending isn't in yet: your statements end on ${dayLabel(notInYet)}.`,
+              summary: `A ${formatCents(p.budgetCents)} monthly budget. This month's spending isn't in yet: your statements end ${notInYet}.`,
             }
           : {
               status: p.over ? ("act" as const) : ("good" as const),
@@ -510,7 +528,8 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item("transfers", t.id, {
         label: `To ${t.toName}`,
         line: `${TRANSFER_STATUS[t.status] ?? t.status}, ${dayLabel(t.runOn)}`,
-        status: t.status === "pending" ? "look" : "good",
+        // A transfer that didn't go through needs a look, not an "All good".
+        status: t.status === "pending" || t.status === "failed" ? "look" : "good",
         figure: shortMoney(t.amountCents),
         summary:
           t.status === "pending"

@@ -58,11 +58,15 @@ async function MoneyContent({
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
 
+  const shownNodes = new Set<string>();
   for (const s of data.suggestions) {
-    const action = data.actions[s.topic];
+    const action = data.actions[s.id];
     const node = SUGGESTION_NODES[s.topic];
     if (!node || !action) continue;
     const id = itemId(node.branch, s.topic);
+    // Two on one topic share a node; the best-ranked (first) one's button and reason stay.
+    if (shownNodes.has(id)) continue;
+    shownNodes.add(id);
     if (action.href) details[id] = <Go href={action.href}>{action.label || "Open it"}</Go>;
     if (action.why) more[id] = <p className={MUTED}>{action.why}</p>;
   }

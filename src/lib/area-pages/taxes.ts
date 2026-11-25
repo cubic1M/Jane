@@ -338,6 +338,12 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     summary: firstSentences(rest.summary),
   });
 
+  // A saving that is also a dated move still open under Due soon is said once, there, with its
+  // date and its saving (debugger 11-15: "Add to your 401(k), by Dec 31" and "Save more for
+  // retirement, $1.9k/yr", both "Put about $1,975 more a paycheck into your 401(k)").
+  const openMoves = new Set(
+    input.moves.filter((m) => m.handled === null && m.opensOn <= input.asOf).map((m) => m.key),
+  );
   const soon = input.moves.map((m) => {
     const later = m.opensOn > input.asOf;
     const status: TreeStatus =
@@ -351,17 +357,18 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       status,
       figure: `by ${dayLabel(m.deadline)}`,
       cents: m.amountCents ?? 0,
+      // The saving this move replaces keeps its figure beside the deadline.
+      line: (() => {
+        const saving = (input.savings ?? []).find(
+          (s) => SAME_AS_MOVE[s.key] === m.key && openMoves.has(m.key),
+        );
+        return saving ? `${shortMoney(saving.estimateCents)}/yr` : undefined;
+      })(),
       // Its state ("Open now", "On your deadlines") and its button are the detail.
       summary: m.detail,
     });
   });
 
-  // A saving that is also a dated move still open under Due soon is said once, there, with its
-  // date and its saving (debugger 11-15: "Add to your 401(k), by Dec 31" and "Save more for
-  // retirement, $1.9k/yr", both "Put about $1,975 more a paycheck into your 401(k)").
-  const openMoves = new Set(
-    input.moves.filter((m) => m.handled === null && m.opensOn <= input.asOf).map((m) => m.key),
-  );
   const savings = (input.savings ?? [])
     .filter((s) => {
       const move = SAME_AS_MOVE[s.key];
@@ -451,21 +458,26 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         ]),
     item("estimate", "estimate", {
       label: `Your ${input.year} estimate`,
-      status: state === "unknown" ? undefined : r >= 0 ? "good" : "look",
+      // The refund sign means nothing while withholding is unknown ("tax" has a zero refund).
+      status: state === "unknown" || state === "tax" ? undefined : r >= 0 ? "good" : "look",
       figure:
-        state === "refund"
-          ? `${shortMoney(r)} back`
-          : state === "owed"
-            ? `${shortMoney(-r)} owed`
-            : state === "no_tax"
-              ? "No tax"
-              : undefined,
+        state === "tax" && input.estimate.totalTaxCents
+          ? `${shortMoney(input.estimate.totalTaxCents)} estimated tax`
+          : state === "refund"
+            ? `${shortMoney(r)} back`
+            : state === "owed"
+              ? `${shortMoney(-r)} owed`
+              : state === "no_tax"
+                ? "No tax"
+                : undefined,
       summary:
         state === "unknown"
           ? "Not enough to estimate yet: Jane works it out once it sees your pay."
           : state === "no_tax"
             ? "No income tax expected on what you've earned so far."
-            : "Worked out from your pay and accounts. Every figure is an estimate.",
+            : state === "tax"
+              ? "Withholding isn't known yet, so there's no refund or amount owed to show. Every figure is an estimate."
+              : "Worked out from your pay and accounts. Every figure is an estimate.",
     }),
     item("estimate", "withholding", {
       label: "Withholding",
