@@ -25,7 +25,7 @@ import {
 } from "@/planning/outcomes-holdings";
 import { addDays, DAY_MS, isoDay as isoDate } from "@/lib/dates";
 import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
-import { accountCopies, onlyCounted, withoutCopies, onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCounted, onlyCountedRows, withoutCopies } from "@/lib/account-copies";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
 // opened, answered, marked done) and what their later transactions showed. A saving counts as
@@ -330,8 +330,10 @@ export async function recordFindingDone(
 // What a person holds now, for the investing savings (src/planning/outcomes-holdings.ts).
 async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<HoldingsNow> {
   const db = scopedFor(userId, client);
-  const countedWhere = await onlyCounted(db);
-  const countedRows = await onlyCountedRows(db);
+  // One counted set for the whole load.
+  const counting = await loadCounting(db);
+  const countedWhere = await onlyCounted(counting);
+  const countedRows = await onlyCountedRows(counting);
   const [accounts, holdings] = await Promise.all([
     db.accounts.findMany({
       where: countedWhere,
@@ -355,7 +357,7 @@ async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<Ho
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
     })),
-    holdings: withoutCopies(holdings, await accountCopies(db), (h) => h.accountId).map((h) => ({
+    holdings: withoutCopies(holdings, counting.copies, (h) => h.accountId).map((h) => ({
       accountId: h.accountId,
       ticker: h.security.ticker,
       isCash: h.security.isCashEquivalent || h.security.type === "cash",

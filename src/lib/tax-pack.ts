@@ -1,4 +1,4 @@
-import { liabilitiesOnCounted } from "@/lib/account-copies";
+import { loadCounting, reconcileLiabilities } from "@/lib/account-copies";
 import { INTEREST_LOAN_KINDS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -20,6 +20,7 @@ export async function loadTaxPack(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<TaxPack> {
   const db = scopedFor(userId, client);
+  const counting = await loadCounting(db);
   const [transactions, loansAll, overrides, forms, profile, residency, side] = await Promise.all([
     db.transactions.findMany({
       where: {
@@ -59,7 +60,7 @@ export async function loadTaxPack(
     loadSideIncome(userId, { client, now }),
   ]);
   // A loan linked twice counts once, with the interest either link reported.
-  const loans = await liabilitiesOnCounted(db, loansAll);
+  const loans = reconcileLiabilities(counting, loansAll);
   const rental = side.year === year ? side.rental : null;
   return buildTaxPack({
     year,

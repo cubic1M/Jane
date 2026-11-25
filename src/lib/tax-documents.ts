@@ -1,4 +1,4 @@
-import { onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 import {
   TAXABLE_INVESTMENT_SUBTYPES,
   TAX_DOCUMENTS,
@@ -66,10 +66,11 @@ export const inDocumentSeason = (today: string) =>
 // Dividends seen in each taxable investment account, for its consolidated 1099.
 async function dividendsByAccount(userId: string, year: number, client: PrismaClient) {
   const db = scopedFor(userId, client);
-  const countedRows = await onlyCountedRows(db);
+  const counting = await loadCounting(db);
+  const countedRows = await onlyCountedRows(counting);
   const [accounts, cash] = await Promise.all([
     db.accounts.findMany({
-      where: { type: "investment" },
+      where: { type: "investment", ...(await onlyCounted(counting)) },
       select: { id: true, name: true, subtype: true },
     }),
     db.investmentTransactions.findMany({

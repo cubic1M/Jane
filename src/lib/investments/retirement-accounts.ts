@@ -1,4 +1,4 @@
-import { onlyCounted } from "@/lib/account-copies";
+import { foldCopiesInto, loadCounting, onlyCounted } from "@/lib/account-copies";
 import { randomUUID } from "node:crypto";
 import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
 import {
@@ -72,7 +72,8 @@ export async function loadRetirementAccounts(
   const db = scopedFor(userId, client);
   // The person's own day and year (src/lib/today.ts), not UTC's.
   const today = await todayOf(userId, { client, now });
-  const countedWhere = await onlyCounted(db);
+  const counting = await loadCounting(db);
+  const countedWhere = await onlyCounted(counting);
   const [advice, answers, plan, accounts, estimate, change, demoItem] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
@@ -93,17 +94,23 @@ export async function loadRetirementAccounts(
   const workplace = accounts.filter((a) => WORKPLACE_SUBTYPES.includes(sub(a)));
   const iras = accounts.filter((a) => IRA_SUBTYPES.includes(sub(a)));
   const ids = [...workplace, ...iras].map((a) => a.id);
+  // Contributions made before a link began sit on the upload that was left out for it: they count
+  // toward the year's room, once (foldCopiesInto), or the room read too big and the limit was crossed.
+  const copyIds = [...counting.copies].filter((c) => ids.includes(counting.representativeOf(c)));
   const txs =
     ids.length === 0
       ? []
-      : await db.investmentTransactions.findMany({
-          where: {
-            accountId: { in: ids },
-            subtype: { in: [...CONTRIBUTION_TX_SUBTYPES] },
-            date: { gte: yearStart(today), lte: new Date(`${today}T00:00:00Z`) },
-          },
-          select: { accountId: true, name: true, amountCents: true },
-        });
+      : foldCopiesInto(
+          counting,
+          await db.investmentTransactions.findMany({
+            where: {
+              accountId: { in: [...ids, ...copyIds] },
+              subtype: { in: [...CONTRIBUTION_TX_SUBTYPES] },
+              date: { gte: yearStart(today), lte: new Date(`${today}T00:00:00Z`) },
+            },
+            select: { accountId: true, name: true, amountCents: true, date: true },
+          }),
+        );
   // Money in is negative in Plaid's sign.
   const paidIn = (accts: { id: string }[], employer: boolean | null) =>
     txs

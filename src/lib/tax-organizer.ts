@@ -1,4 +1,4 @@
-import { liabilitiesOnCounted } from "@/lib/account-copies";
+import { loadCounting, onlyCounted, reconcileLiabilities } from "@/lib/account-copies";
 import { accountKindOf } from "@/data-sources/types";
 import { cache } from "react";
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
@@ -262,6 +262,7 @@ async function loadTaxFormsFrom(
 ): Promise<TaxFormsView> {
   const db = scopedFor(userId, client);
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);
+  const counting = await loadCounting(db);
   const [transactions, accounts, loansAll, received] = await Promise.all([
     db.transactions.findMany({
       // Income, and payments on loans, whose lenders send a 1098 or 1098-E (debugger 11-02).
@@ -288,7 +289,10 @@ async function loadTaxFormsFrom(
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     // In a fixed order, so the forms always come out in the same order.
+    // Only the counted accounts: a form is expected from the account that counts, not from a copy
+    // whose dividends the observation leaves out (tax-documents.ts).
     db.accounts.findMany({
+      where: await onlyCounted(counting),
       select: { name: true, type: true, subtype: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
@@ -305,7 +309,7 @@ async function loadTaxFormsFrom(
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
   ]);
   // A loan linked twice counts once, with the interest either link reported.
-  const loans = await liabilitiesOnCounted(db, loansAll);
+  const loans = reconcileLiabilities(counting, loansAll);
   const got = new Set(received.map((r) => r.key));
   const forms = expectedForms({
     year,

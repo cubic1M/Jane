@@ -7,7 +7,12 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { stubTestKeys } from "@/lib/__fixtures__/env";
-import { accountsNotCounted, liabilitiesOnCounted, onlyCountedRows } from "@/lib/account-copies";
+import {
+  accountsNotCounted,
+  loadCounting,
+  onlyCountedRows,
+  reconcileLiabilities,
+} from "@/lib/account-copies";
 import { encrypt } from "@/lib/crypto";
 import { scopedFor } from "@/lib/db-scoped";
 import { lifeInput } from "@/lib/insurance/life";
@@ -157,7 +162,7 @@ describe.runIf(url)("what counts, against a real database", { timeout: 120_000 }
     const rows = await db.liabilities.findMany({
       select: { accountId: true, ytdInterestPaidCents: true },
     });
-    const counted = await liabilitiesOnCounted(db, rows);
+    const counted = reconcileLiabilities(await loadCounting(db), rows);
     expect(counted).toHaveLength(1);
     expect(counted[0]).toEqual({ accountId: first.id, ytdInterestPaidCents: 123_400 });
   });
