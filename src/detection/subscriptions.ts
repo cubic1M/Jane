@@ -46,7 +46,12 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
   const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
   const cards = cardsWithCharges(input);
-  const arrived = paymentsSeenArriving(input.transactions, input.accounts);
+  const onFile = new Set(cards.map((a) => a.id));
+  // An arriving payment shows spending only on a card whose purchases are on file.
+  const arrived = paymentsSeenArriving(
+    input.transactions,
+    input.accounts.map((a) => (a.type === "credit" && !onFile.has(a.id) ? { ...a, type: "" } : a)),
+  );
   return (
     buildStreams(input)
       .filter((s) => s.active && s.frequency !== null && s.annualCostCents !== null)
@@ -54,7 +59,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       // Paying a card that's on file isn't a bill of its own: what's bought on it is counted
       // where it's bought (night QA 10-30: "Other regular bills $52,534.88 a year" counted a
       // $1,640/mo Chase card payment beside the NYT and Audible charged to that card).
-      .filter((s) => !paysCardOnFile(s, cards, arrived))
+      .filter((s) => !paysCardOnFile(s, input.accounts, cards, arrived))
       .map((s) => {
         const subscription =
           isSubscriptionUnless(declined)(s) ||
@@ -90,22 +95,42 @@ function varies(s: Stream): Pick<RecurringCharge, "varies"> {
   return { varies: { lowCents, highCents, usualCents } };
 }
 
-// Cards whose own charges are on file: a card account left empty (its upload removed) counts
-// none of what's bought on it, so paying it is still the only sign of that spending.
+// Cards whose own purchases are on file: a card account left empty (its upload removed), or one
+// showing only payments arriving, counts none of what's bought on it, so paying it is still the
+// only sign of that spending.
 function cardsWithCharges(input: DetectionInput): DetectionInput["accounts"] {
-  const charged = new Set(input.transactions.map((t) => t.accountId));
+  const charged = new Set(
+    input.transactions.filter((t) => t.amountCents > 0).map((t) => t.accountId),
+  );
   return input.accounts.filter((a) => a.type === "credit" && charged.has(a.id));
+}
+
+// The card a payment's words name, only when it is the one card of that issuer: with two Chase
+// cards the words don't say which was paid, so the payment stays a bill.
+function namedCard(said: string, all: DetectionInput["accounts"]) {
+  const card = paidCardOnFile(said, all);
+  if (
+    !card ||
+    paidCardOnFile(
+      said,
+      all.filter((a) => a !== card),
+    )
+  )
+    return null;
+  return card;
 }
 
 function paysCardOnFile(
   s: Stream,
+  all: DetectionInput["accounts"],
   accounts: DetectionInput["accounts"],
   arrived: ReadonlySet<string>,
 ): boolean {
   if (s.pfcDetailed !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT") return false;
+  const named = namedCard(`${s.charges[0]?.description ?? ""} ${s.merchant}`, all);
   return (
     accounts.some((a) => a.type === "credit" && a.id === s.accountId) ||
-    paidCardOnFile(`${s.charges[0]?.description ?? ""} ${s.merchant}`, accounts) !== null ||
+    (named !== null && accounts.includes(named)) ||
     // A card on file shows its payments arriving, whoever issued it (debugger 11-12).
     s.charges.some((c) => arrived.has(c.id))
   );

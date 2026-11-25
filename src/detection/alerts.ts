@@ -295,16 +295,24 @@ export function billReminderAlerts(
   const balanceOn = (accountId: string | null, date: string) =>
     forecasts.find((f) => f.accountId === accountId)?.days.find((d) => d.date === date)
       ?.balanceCents;
+  // The keys taken so far: a second card payment on a day takes its own (CodeRabbit 1c).
+  const taken = new Set<string>();
   return upcomingBills(input, BILL_REMINDER_DAYS, dueReported)
     .filter((b) => b.date > input.asOf && b.date <= until)
     .map((b): AlertCandidate => {
       const balance = balanceOn(b.accountId, b.date);
       const short = balance !== undefined && balance < LOW_BALANCE_CUSHION_CENTS;
+      // A card payment keeps the key it had before it was named for its card, so a reminder
+      // already made and emailed isn't made again under the new name. Only the first on a day
+      // keeps it; another the same day is told apart by its card and amount.
+      const shared = `${b.cardPayment ? CARD_PAYMENT_NAME : b.merchant}:${b.date}`;
+      const key = taken.has(shared)
+        ? `${shared}:${b.accountId ?? ""}:${b.merchant}:${b.amountCents}`
+        : shared;
+      taken.add(shared);
       return {
         type: "bill_due",
-        // A card payment keeps the key it had before it was named for its card, so a reminder
-        // already made and emailed isn't made again under the new name.
-        key: `${b.cardPayment ? CARD_PAYMENT_NAME : b.merchant}:${b.date}`,
+        key,
         title: `${b.merchant}, about ${formatCents(b.amountCents)}, due ${dayLabel(b.date)}`,
         body: short
           ? `Your balance could be about ${formatCents(balance)} that day, so there may not be enough. Moving money in first could avoid a fee.`
@@ -364,7 +372,7 @@ export function estimatedTaxAlerts(input: DetectionInput): AlertCandidate[] {
 // One alert per charge (docs/feature-audit.md, cluster 10). A charge the unusual rules ask
 // "Was this you?" about doesn't also get the large-charge alert: that one asks the same, with
 // the buttons and the teaching. A charge that is "Charged twice?" (a refund card) doesn't also
-// get the unusual "charged twice this month". Run on the alerts the person wants, so turning
+// get the unusual "charged twice this month", nor the large-charge alert. Run on the alerts the person wants, so turning
 // one kind off never silences the other.
 export function onePerCharge(alerts: AlertCandidate[]): AlertCandidate[] {
   const chargedTwice = new Set(
@@ -380,7 +388,9 @@ export function onePerCharge(alerts: AlertCandidate[]): AlertCandidate[] {
       a.type === "unusual_activity" ? (parseKey(a.key)?.transactionId ?? []) : [],
     ),
   );
-  return kept.filter((a) => !(a.type === "large_charge" && wasThisYou.has(a.key)));
+  return kept.filter(
+    (a) => !(a.type === "large_charge" && (wasThisYou.has(a.key) || chargedTwice.has(a.key))),
+  );
 }
 
 // Every alert for this scan, in a stable order.

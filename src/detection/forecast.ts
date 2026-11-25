@@ -210,12 +210,15 @@ export function nextUnevenPayBy(
 // step 182, src/detection/paydays.ts), and other regular deposits such as interest from
 // their streams.
 export function expectedIncome(input: DetectionInput, until: string): Expected[] {
-  const paychecks = expectedPaydays(input, until).map((p) => ({
-    merchant: p.employer,
-    date: p.date,
-    amountCents: p.amountCents,
-    accountId: p.accountId,
-  }));
+  // Pay split between accounts lands in each as it split (a share to savings isn't in checking).
+  const paychecks = expectedPaydays(input, until).flatMap((p) =>
+    p.shares.map((share) => ({
+      merchant: p.employer,
+      date: p.date,
+      amountCents: share.amountCents,
+      accountId: share.accountId,
+    })),
+  );
   const payroll = (s: Stream) =>
     s.charges.some((c) => isPaycheck({ ...c, amountCents: -Math.abs(c.amountCents) }));
   const other = expand(
@@ -343,8 +346,11 @@ function newPayIn4(input: DetectionInput, streams: Stream[], until: string): Exp
       Math.abs(cents - plan.paymentCents) <= BNPL_AMOUNT_TOLERANCE_CENTS;
     // Any of a stream's payments, not only its latest (review 10-31: a stream at $32.60 beside
     // a $32.49 plan expected the same day twice).
-    const covered = streams.some((s) =>
-      s.charges.some((c) => bnplProviderOf(c)?.key === plan.provider && same(c.amountCents)),
+    // Only a stream still running: an inactive one expects nothing, so it can't stand in for the plan.
+    const covered = streams.some(
+      (s) =>
+        s.active &&
+        s.charges.some((c) => bnplProviderOf(c)?.key === plan.provider && same(c.amountCents)),
     );
     if (covered) return [];
     const paid = input.transactions
@@ -404,7 +410,7 @@ export function expectedBetween(
   return (
     inGap(expectedIncome(then, addDays(then.asOf, days))) +
     inGap(scheduledTransfersIn(then, days)) -
-    inGap(upcomingBills(then, days)) -
+    inGap(comingUpBills(then, days)) -
     inGap(scheduledTransfers(then, days))
   );
 }

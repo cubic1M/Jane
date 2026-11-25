@@ -84,7 +84,11 @@ export function unusualAlerts(
   };
   const name = (t: DetectionTransaction) => t.merchantName ?? merchantOf(t)?.name ?? t.description;
   const oldest = input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
-  const knownDays = daysBetween(oldest, input.asOf);
+  // The history may reach back before the transactions loaded (input.historyFrom).
+  const knownDays = daysBetween(
+    input.historyFrom && input.historyFrom < oldest ? input.historyFrom : oldest,
+    input.asOf,
+  );
 
   for (const [merchantKey, charges] of byMerchant) {
     const sorted = [...charges].sort(

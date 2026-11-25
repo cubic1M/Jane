@@ -113,6 +113,17 @@ export async function loadInput(
   const balanceOn = new Map(
     balanceDays.flatMap((b) => (b._max.date ? [[b.accountId, isoDate(b._max.date)]] : [])),
   );
+  // A sync rewrites an account's balance but leaves an older statement snapshot in place, so a
+  // snapshot from before the last sync isn't this balance's day (CodeRabbit 1c). Without a date, the
+  // stale-bank check below dates it from the sync if the sync is days old. The proper fix is in the
+  // sync write (supersede the older snapshot), which this read-side check stands in for.
+  for (const a of allAccounts) {
+    const snapshotDay = balanceOn.get(a.id);
+    const synced = a.item?.lastSyncedAt;
+    if (snapshotDay !== undefined && synced && isoDate(synced) > snapshotDay) {
+      balanceOn.delete(a.id);
+    }
+  }
   // A bank's balance is from its last sync. Days old (signed out, or the bank's down), it isn't
   // today's: "safe to spend" read it as if it were. A sync that's merely overnight is today's.
   for (const a of allAccounts) {

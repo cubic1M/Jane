@@ -141,6 +141,24 @@ function contentOf(candidate: Candidate) {
   };
 }
 
+// One planned update. A resurfacing one was planned from a declined read, so it writes only while
+// the finding is still declined: a decision made since (the person approved it mid-scan) is never
+// set back to new (CodeRabbit 1c). Returns whether it wrote.
+export async function writeFindingUpdate(
+  db: Pick<ScopedDb, "findings">,
+  { id, candidate, resurface }: Plan["update"][number],
+): Promise<boolean> {
+  if (!resurface) {
+    await db.findings.update({ where: { id }, data: contentOf(candidate) });
+    return true;
+  }
+  const { count } = await db.findings.updateMany({
+    where: { id, status: "declined" },
+    data: { ...contentOf(candidate), status: "new" },
+  });
+  return count > 0;
+}
+
 export type DetectionSummary = {
   counts: Record<FindingType, number>;
   created: number;
@@ -284,11 +302,11 @@ export async function runDetection(
       where: { id: { in: plan.remove }, status: { in: UNDECIDED_STATUSES } },
     });
   }
-  for (const { id, candidate, resurface } of plan.update) {
-    await db.findings.update({
-      where: { id },
-      data: { ...contentOf(candidate), ...(resurface ? { status: "new" as const } : {}) },
-    });
+  // Only a resurfacing that wrote counts: one the person approved mid-scan was kept as approved.
+  let resurfaced = 0;
+  for (const change of plan.update) {
+    const wrote = await writeFindingUpdate(db, change);
+    if (wrote && change.resurface) resurfaced += 1;
   }
 
   const firstRun = await systemDb(
@@ -379,7 +397,7 @@ export async function runDetection(
     counts,
     created: plan.create.length,
     updated: plan.update.filter((u) => !u.resurface).length,
-    resurfaced: plan.update.filter((u) => u.resurface).length,
+    resurfaced,
     removed: plan.remove.length,
     moneyFoundCents: await moneyFound(userId, { client }),
     createdKeys: plan.create.map((c) => ({ type: c.type, key: c.key })),

@@ -17,7 +17,13 @@ const { scoped } = vi.hoisted(() => ({
     me: { findUnique: vi.fn(async () => ({ timezone: null })) },
     recurringStreams: { findMany: vi.fn() },
     balanceSnapshots: { groupBy: vi.fn(async () => []) },
-    findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+    findings: {
+      findMany: vi.fn(),
+      createMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+      deleteMany: vi.fn(),
+    },
     subscriptionChecks: { findMany: vi.fn(), createMany: vi.fn() },
     actions: { findMany: vi.fn(async () => []) },
     budgets: {
@@ -253,6 +259,7 @@ describe("runDetection", () => {
     scoped.findings.findMany.mockReset().mockResolvedValue([]);
     scoped.findings.createMany.mockReset().mockResolvedValue({ count: 1 });
     scoped.findings.update.mockReset();
+    scoped.findings.updateMany.mockReset().mockResolvedValue({ count: 1 });
     scoped.findings.deleteMany.mockReset();
     scoped.subscriptionChecks.findMany.mockReset().mockResolvedValue([]);
     scoped.subscriptionChecks.createMany.mockReset();
@@ -335,8 +342,9 @@ describe("runDetection", () => {
 
     const summary = await runDetection("user_1", { client, now });
 
-    expect(scoped.findings.update).toHaveBeenCalledWith({
-      where: { id: "finding_9" },
+    // Only while it is still declined (a decision made since is kept).
+    expect(scoped.findings.updateMany).toHaveBeenCalledWith({
+      where: { id: "finding_9", status: "declined" },
       data: expect.objectContaining({ status: "new", amountCents: 18588 }),
     });
     expect(summary.resurfaced).toBe(1);
