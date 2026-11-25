@@ -22,4 +22,9 @@ describe("sentences with spaced initials", () => {
     expect(sentences(text)).toBe(3);
     expect(laterSentences(text, 3)).toBe("");
   });
+  it("keeps compact initials (J.P.) in their sentence", () => {
+    const text = "J.P. Morgan was your biggest category. The total was $40.";
+    expect(sentences(text)).toBe(2);
+    expect(firstSentences(text, 1)).toBe("J.P. Morgan was your biggest category.");
+  });
 });

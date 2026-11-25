@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { db as appDb } from "@/lib/db";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 // The loaders use the app's own client; here it's the test database's (as push.integration.test.ts).
@@ -55,6 +56,7 @@ describe.runIf(url)("the Loans tree's loaders", { timeout: 120_000 }, () => {
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: userId } });
     await client.$disconnect();
+    await appDb.$disconnect();
     vi.unstubAllEnvs();
   });
 

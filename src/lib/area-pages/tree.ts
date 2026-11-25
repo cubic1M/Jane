@@ -56,7 +56,7 @@ export function shortLabel(text: string, max = LABEL_MAX_WORDS): string {
 // One splitter for the count, the summary and "More". A single capital before its period is an
 // initial ("J. P. Morgan"), not the end of a sentence.
 const splitSentences = (text: string) =>
-  text.trim().split(/(?<=[.!?])(?<!(?:^|\s)[A-Z]\.)\s+(?=[A-Z0-9$"“])/);
+  text.trim().split(/(?<=[.!?])(?<!(?:^|\s)(?:[A-Z]\.)+)\s+(?=[A-Z0-9$"“])/);
 export const sentences = (text: string) => splitSentences(text).filter(Boolean).length;
 
 // A tree's line when something is urgent: "2 urgent · 3 to look at", or "1 urgent" alone, not
