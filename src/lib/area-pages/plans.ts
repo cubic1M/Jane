@@ -10,6 +10,7 @@ import { type AreaItem, type AreaTree, buildAreaTree, shortLabel, urgentLine } f
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
+import { formatCents } from "@/lib/money";
 
 // The Plans & goals page (/ahead) as a tree (docs/design/area-pages.md): Plans & goals → its
 // branches (dates coming up, goals, net worth, big decisions, life events, looking back, bills
@@ -207,7 +208,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
   const left = nw && nw.known !== false ? notCounting(nw.unbalanced ?? []) : null;
   // A loan seen only in its payments is left out too (debugger 11-17: "Good: Net worth $3.4k" for a
   // student paying Nelnet $210.40 a month, where Home said it wasn't counting the loan).
-  const loans = nw && nw.known !== false && !left ? (nw.loansSeen ?? []) : [];
+  const loans = nw && nw.known !== false ? (nw.loansSeen ?? []) : [];
   const loansLeft = loansNotCounted(loans);
   const worth = nw
     ? [
@@ -223,7 +224,8 @@ export function plansTree(input: PlansTreeInput): AreaTree {
             nw.known === false
               ? "Your files don't include a balance yet. Add one on the import page."
               : left
-                ? left.sentence
+                ? // Both are said when both apply (a card with no balance, and a loan seen only in payments).
+                  `${left.sentence}${loansLeft ? ` ${loansLeft}` : ""}`
                 : loansLeft
                   ? loansLeft
                   : nw.lastMonthCents === null
@@ -272,6 +274,10 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     }),
   ];
 
+  const partialDebt =
+    input.debt.known !== undefined &&
+    input.debt.known > 0 &&
+    input.debt.known < input.debt.accounts;
   const money = [
     ...(input.yearly.bills > 0
       ? [
@@ -286,8 +292,17 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       ? [
           item("money", "debt", {
             label: "Paying off cards and loans",
-            figure: input.debt.known === 0 ? "Not known" : shortMoney(input.debt.owedCents),
-            summary: debtLine(input.debt),
+            // Some balances known, some not: the figure is what's known, not the total.
+            figure:
+              input.debt.known === 0
+                ? "Not known"
+                : partialDebt
+                  ? `${shortMoney(input.debt.owedCents)}+`
+                  : shortMoney(input.debt.owedCents),
+            line: partialDebt ? "known balances only" : undefined,
+            summary: partialDebt
+              ? `${debtLine(input.debt)} ${formatCents(input.debt.owedCents)} is what's known: ${plural(input.debt.accounts - (input.debt.known ?? 0), "balance")} missing.`
+              : debtLine(input.debt),
           }),
         ]
       : []),
