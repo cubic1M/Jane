@@ -202,6 +202,39 @@ describe.runIf(url)("the steady paycheck: sweep 1c fixes", { timeout: 120_000 },
     expect(before.plan!.paycheckCents).toBeGreaterThan(0);
   });
 
+  it("counts only the payments of this tax year (Feb 1 to Jan 31) against the reserve (#2261)", async () => {
+    const userId = await freelancer("steady-taxyear");
+    const view = (await loadSteady(userId, { client, now: NOW }))!;
+    await client.moneyTransfer.create({
+      data: {
+        userId,
+        fromAccountId: view.checkingAccountId!,
+        toAccountId: view.bufferAccountId!,
+        toName: "Taxes set aside",
+        amountCents: 100_000,
+        purpose: "goal",
+        sector: "taxes",
+        status: "completed",
+        runOn: day("2026-09-20"),
+        partner: "stand-in",
+        by: "autopilot",
+        planKey: "deposit:earlier:tax",
+      },
+    });
+    // A January payment belongs to the year before: it is not paid out of this year's reserve.
+    await client.taxProfile.upsert({
+      where: { userId },
+      create: { userId, taxPayments: [{ date: "2026-01-15", cents: 40_000, to: "federal" }] },
+      update: { taxPayments: [{ date: "2026-01-15", cents: 40_000, to: "federal" }] },
+    });
+    expect((await loadSteady(userId, { client, now: NOW }))!.taxReserveCents).toBe(100_000);
+    await client.taxProfile.update({
+      where: { userId },
+      data: { taxPayments: [{ date: "2026-06-15", cents: 40_000, to: "federal" }] },
+    });
+    expect((await loadSteady(userId, { client, now: NOW }))!.taxReserveCents).toBe(60_000);
+  });
+
   it("sends only the amount the caps were checked against", async () => {
     const userId = await freelancer("steady-authorized");
     const view = (await loadSteady(userId, { client, now: NOW }))!;

@@ -92,7 +92,7 @@ export async function loadSteady(
 
   const db = scopedFor(userId, client);
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - STEADY_MONTHS, 1));
-  const [rows, health, sent, setAside] = await Promise.all([
+  const [rows, health, sent] = await Promise.all([
     db.transactions.findMany({
       where: {
         amountCents: { lt: 0 },
@@ -110,17 +110,6 @@ export async function loadSteady(
       },
       select: { amountCents: true, runOn: true, by: true },
     }),
-    // What the tax part of each deposit put into the buffer account this year.
-    db.moneyTransfers.findMany({
-      where: {
-        sector: "taxes",
-        toAccountId: buffer.id,
-        status: "completed",
-        planKey: { startsWith: "deposit:" },
-        runOn: { gte: new Date(`${month.slice(0, 4)}-01-01T00:00:00Z`) },
-      },
-      select: { amountCents: true },
-    }),
   ]);
   // The last full months, oldest first, empty months counted as nothing.
   const months: number[] = [];
@@ -134,6 +123,22 @@ export async function loadSteady(
   const seen = start === -1 ? [] : months.slice(start);
   const selfEmployed = await loadSelfEmployed(userId, { client, now }).catch(() => null);
   const setAsideRate = selfEmployed?.setAsideRate ?? 0;
+  // The tax year runs from February 1 to January 31 (src/lib/tax-estimate.ts): what the tax part
+  // of each deposit put into the buffer account in it, and the payments entered for it.
+  const taxYear = selfEmployed?.year ?? Number(month.slice(0, 4));
+  const setAside = await db.moneyTransfers.findMany({
+    where: {
+      sector: "taxes",
+      toAccountId: buffer.id,
+      status: "completed",
+      planKey: { startsWith: "deposit:" },
+      runOn: {
+        gte: new Date(`${taxYear}-02-01T00:00:00Z`),
+        lt: new Date(`${taxYear + 1}-02-01T00:00:00Z`),
+      },
+    },
+    select: { amountCents: true },
+  });
   // The tax share sits in the same account as the buffer: it isn't spendable, so it is left
   // out of what the paycheck can draw on, less what the person has already paid in.
   // A payment entered in the last few days may not have left the balance yet: not counted yet.
@@ -141,7 +146,9 @@ export async function loadSteady(
     .toISOString()
     .slice(0, 10);
   const paidIn = (selfEmployed?.payments ?? [])
-    .filter((p) => p.date.startsWith(month.slice(0, 4)) && p.date <= syncedBy)
+    .filter(
+      (p) => p.date >= `${taxYear}-02-01` && p.date <= `${taxYear + 1}-01-31` && p.date <= syncedBy,
+    )
     .reduce((sum, p) => sum + p.cents, 0);
   const taxReserveCents = Math.max(0, setAside.reduce((sum, t) => sum + t.amountCents, 0) - paidIn);
   return {

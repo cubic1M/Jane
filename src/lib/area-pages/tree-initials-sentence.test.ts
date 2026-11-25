@@ -31,4 +31,10 @@ describe("sentences with spaced initials", () => {
     const text = "Your bank is in the U.S. Your balance is $40. Review the charge.";
     expect(sentences(text)).toBe(3);
   });
+  it("keeps U.S. Bank together but still ends a sentence at the U.S.", () => {
+    expect(sentences("You paid U.S. Bank yesterday. The total was $40.")).toBe(2);
+    expect(firstSentences("You paid U.S. Bank yesterday. The total was $40.", 1)).toBe(
+      "You paid U.S. Bank yesterday.",
+    );
+  });
 });
