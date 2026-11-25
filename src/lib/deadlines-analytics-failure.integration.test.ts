@@ -33,14 +33,14 @@ describe.runIf(url)("deadlines when analytics fails", { timeout: 60_000 }, () =>
 
   it("saves the deadline once and still resolves", async () => {
     vi.mocked(track).mockRejectedValueOnce(new Error("analytics down"));
-    await expect(
-      addDeadline(
-        userId,
-        { title: "Rebalance", dueOn: "2026-12-01", kind: "other", note: "" },
-        { client, now: NOW },
-      ),
-    ).resolves.toBeUndefined();
+    const id = await addDeadline(
+      userId,
+      { title: "Rebalance", dueOn: "2026-12-01", kind: "other", note: "" },
+      { client, now: NOW },
+    );
     expect(await client.deadline.count({ where: { userId } })).toBe(1);
+    // The id of the deadline just made, so a caller never looks one up by title and date.
+    expect(id).toBe((await client.deadline.findFirstOrThrow({ where: { userId } })).id);
   });
 
   it("ticks one off and still resolves", async () => {

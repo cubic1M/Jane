@@ -351,10 +351,14 @@ export async function addDeadline(
   userId: string,
   form: DeadlineForm,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<void> {
+): Promise<string> {
   const data = checkedData(form, await todayOf(userId, { client, now }));
-  await scopedFor(userId, client).deadlines.create({ data: { userId, ...data } });
+  const created = await scopedFor(userId, client).deadlines.create({
+    data: { userId, ...data },
+    select: { id: true },
+  });
   await trackQuietly(userId, "deadline_added", { kind: data.kind });
+  return created.id;
 }
 
 export async function markDeadlineDone(

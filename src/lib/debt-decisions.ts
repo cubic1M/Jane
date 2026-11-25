@@ -158,7 +158,8 @@ export async function loadDecisionInput(
         t.amountCents > 0,
     )
     .sort((a, b) => a.date.localeCompare(b.date));
-  const home = await loadHomeBuying(userId, {}, { client, now, input });
+  // A lender's mortgage check that fails costs only the home line, as the consolidation check does.
+  const home = await loadHomeBuying(userId, {}, { client, now, input }).catch(() => null);
   const today = await todayOf(userId, { client, now });
   // The report's limit is the total over every card: one card's only when it is the only card.
   const cardCount = book.debts.filter((d) => d.kind === "card").length;
@@ -190,7 +191,7 @@ export async function loadDecisionInput(
       incomeCents !== null && spendingCents !== null ? incomeCents - spendingCents : null,
     rentCents: rents.length ? rents[rents.length - 1].amountCents : null,
     home:
-      home.costs && home.affordability
+      home?.costs && home.affordability
         ? {
             maxPriceCents: home.affordability.maxPriceCents,
             housingCents: home.costs.housingCents,

@@ -39,6 +39,12 @@ describe.runIf(url)("the debt plan under races and failed analytics", { timeout:
   let userId = "";
   const opts = (now = LINKED) => ({ client, now });
   const plan = () => client.debtPlan.findFirst({ where: { userId } });
+  // Each test that needs a saved plan makes it itself, so a single test can be run alone.
+  const ensurePlan = async () => {
+    if (!(await plan())) {
+      await startDebtPlan(userId, { strategy: "avalanche", extraCents: 0 }, opts());
+    }
+  };
 
   beforeAll(async () => {
     stubTestKeys();
@@ -65,6 +71,7 @@ describe.runIf(url)("the debt plan under races and failed analytics", { timeout:
   });
 
   it("returns the recorded check when the analytics row fails", async () => {
+    await ensurePlan();
     vi.mocked(track).mockRejectedValueOnce(new Error("analytics down"));
     const check = await refreshDebtPlan(userId, opts(LATER));
     expect(check).not.toBeNull();
@@ -72,6 +79,7 @@ describe.runIf(url)("the debt plan under races and failed analytics", { timeout:
   });
 
   it("does not write an old strategy's schedule over a plan restarted meanwhile", async () => {
+    await ensurePlan();
     await client.debtPlan.update({
       where: { userId },
       data: { checkedOn: new Date("2026-10-18T00:00:00Z") },
@@ -90,6 +98,7 @@ describe.runIf(url)("the debt plan under races and failed analytics", { timeout:
   });
 
   it("reports no check for a plan stopped meanwhile", async () => {
+    await ensurePlan();
     await client.debtPlan.update({
       where: { userId },
       data: { checkedOn: new Date("2026-10-18T00:00:00Z"), expected: [100_000, 90_000, 80_000] },

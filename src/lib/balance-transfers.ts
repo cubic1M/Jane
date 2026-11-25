@@ -150,7 +150,9 @@ export async function startTransfer(
   const asOf = await todayOf(userId, { client, now });
   const scored = scoreTransfer(debt.balanceCents, debt.aprBps, offer, asOf);
   const title = `0% ends on ${offer.cardName}: pay off the balance you moved`;
-  await addDeadline(
+  // The deadline's own id, never a lookup by title and date: two starts for one card name and
+  // promotion end must not pick, attach or delete each other's.
+  const deadlineId = await addDeadline(
     userId,
     {
       title,
@@ -160,11 +162,6 @@ export async function startTransfer(
     },
     { client, now },
   );
-  const deadline = await db.deadlines.findFirst({
-    where: { title, dueOn: new Date(`${scored.promoEndsOn}T00:00:00Z`) },
-    select: { id: true },
-    orderBy: { createdAt: "desc" },
-  });
   // The transfer and its promotion go in together: a transfer with no promotion could never be
   // tracked for pace, and a retry would stop at "already tracking". If they fail, the deadline
   // made for them goes too.
@@ -188,7 +185,7 @@ export async function startTransfer(
             monthlyNeededCents: scored.monthlyNeededCents,
             startedOn: new Date(`${asOf}T00:00:00Z`),
             promoEndsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
-            deadlineId: deadline?.id ?? null,
+            deadlineId,
           },
           select: SELECT,
         });
@@ -202,7 +199,7 @@ export async function startTransfer(
             startedOn: new Date(`${asOf}T00:00:00Z`),
             endsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
             goToAprBps: offer.goToAprBps,
-            deadlineId: deadline?.id ?? null,
+            deadlineId,
             balanceTransferId: transfer.id,
           },
         });
@@ -211,7 +208,7 @@ export async function startTransfer(
       client,
     );
   } catch (error) {
-    if (deadline) await db.deadlines.deleteMany({ where: { id: deadline.id } }).catch(() => null);
+    await db.deadlines.deleteMany({ where: { id: deadlineId } }).catch(() => null);
     throw error;
   }
   await trackQuietly(userId, "balance_transfer_started", { promo_months: offer.promoMonths });

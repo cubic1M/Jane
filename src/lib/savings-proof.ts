@@ -93,7 +93,7 @@ function creditIsOwn(evidence: Evidence & { accountId?: unknown }, t: DetectionT
   if (typeof evidence.accountId === "string" && t.accountId !== evidence.accountId) return false;
   const want = keyOf(evidence.merchant);
   if (!want) return true;
-  const got = normalizeMerchant(t.merchantName ?? t.description)?.key;
+  const got = merchantOf(t)?.key;
   return Boolean(got && (got === want || got.startsWith(`${want} `)));
 }
 

@@ -100,12 +100,13 @@ export async function runLeanCheck(
     .at(-1);
   for (const row of await db.leanPlans.findMany({
     where: { status: { in: ["proposed", "active"] } },
-    select: { id: true, status: true, dueOn: true },
+    select: { id: true, status: true, dueOn: true, startedAt: true },
   })) {
     if (!latest || latest <= row.dueOn) continue;
     // Only the plan as it was read: one the person said yes to meanwhile isn't declined here.
     const moved = await db.leanPlans.updateMany({
-      where: { id: row.id, status: row.status },
+      // The same start too: one that was rolled back and started again isn't ended by this read.
+      where: { id: row.id, status: row.status, startedAt: row.startedAt },
       data: { status: row.status === "active" ? "ended" : "declined", endedAt: now },
     });
     if (moved.count === 0) continue;
