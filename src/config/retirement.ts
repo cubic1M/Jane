@@ -62,7 +62,7 @@ export const EMPLOYER_CONTRIBUTION = /\b(?:match|employer|company|profit sharing
 // system prints. Order matters: a Roth or loan line also says "401K". FOR REVIEW: payroll systems
 // abbreviate freely; a line none of these match stays "other", never guessed.
 export const PAYSTUB_DEDUCTIONS = {
-  loan: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b.*\bloan\b|\bloan\b.*\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b|\bk[- ]?loan\b/i,
+  loan: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b.*\bloan\b|\bloan\b.*\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b|\bk[- ]?loan\b|\btsp\b.*\bloan\b|\bloan\b.*\btsp\b/i,
   roth: /\broth\b.*\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457|tsp)\b|\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b.*\broth\b/i,
   pretax: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457\s?\(?b\)?|tsp)\b|\bdeferred comp(?:ensation)?\b/i,
 } as const;

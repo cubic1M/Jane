@@ -73,7 +73,8 @@ export function interestOver(
   for (let i = 0; i < months && balance > 0; i += 1) {
     const monthly = Math.round((balance * rateBps) / 10_000 / 12);
     interest += monthly;
-    balance = Math.max(0, balance - Math.max(0, paymentCents - monthly));
+    // A payment below the month's interest leaves the unpaid interest on the balance.
+    balance = Math.max(0, balance + monthly - paymentCents);
   }
   return { interestCents: interest, balanceCents: balance };
 }
