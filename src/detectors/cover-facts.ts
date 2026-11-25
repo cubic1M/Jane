@@ -110,6 +110,16 @@ const belongingsCover: Detector = {
   },
 };
 
+// A carrier's name alone (State Farm, Allstate) sells homes and lives too: a line that names another
+// kind of cover and no car is that other cover, not car insurance.
+const OTHER_COVER =
+  /\bHOME\b|HOMEOWNERS?|RENTERS?|\bCONDO\b|\bLIFE\b|UMBRELLA|\bFLOOD\b|\bHEALTH\b|\bPET\b/;
+const CAR_WORDS = /\bAUTO\b|\bCAR\b|VEHICLE|MOTOR/;
+// "AUTO PAY" is how a bill is paid, not a car.
+const PAYS_BY = /\bAUTO[- ]?PAY(?:MENT)?S?\b/g;
+export const isCarLine = (line: string): boolean =>
+  !OTHER_COVER.test(line) || CAR_WORDS.test(line.replace(PAYS_BY, " "));
+
 // Car cover above the US average: what the person pays a year against the NAIC's average, as a
 // reason to get quotes themselves before it renews. Not a quote and not a pick.
 const carCoverCost: Detector = {
@@ -119,7 +129,11 @@ const carCoverCost: Detector = {
   needs: ["insurance_auto"],
   detect({ profile, data }) {
     const paid = data.transactions.filter(
-      (t) => t.amountCents > 0 && t.date <= data.today && AUTO_PREMIUM_WORDS.test(lineOf(t)),
+      (t) =>
+        t.amountCents > 0 &&
+        t.date <= data.today &&
+        AUTO_PREMIUM_WORDS.test(lineOf(t)) &&
+        isCarLine(lineOf(t)),
     );
     if (paid.length < 2) return null;
     // A year of it: the last 12 months summed when the data reaches back a year; else the latest
