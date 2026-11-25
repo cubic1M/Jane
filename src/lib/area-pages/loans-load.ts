@@ -43,9 +43,9 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
       },
       orderBy: [...BEST_FIRST],
     }),
-    loadPayoff(userId, { book }),
-    loadCredit(userId, { book }),
-    loadDebtReview(userId, { book }),
+    loadPayoff(userId, { now, book }),
+    loadCredit(userId, { now, book }),
+    loadDebtReview(userId, { now, book }),
   ]);
   const prompts = assetPrompts(
     loans,

@@ -222,7 +222,7 @@ describe.runIf(url)("the hubs against a real database", () => {
     expect(area.lows.length).toBeGreaterThan(0);
     expect(area.bills.length).toBeGreaterThan(0);
     expect(area.suggestions.map((s) => s.topic)).toEqual(["bill_negotiation"]);
-    expect(area.actions.bill_negotiation).toEqual({
+    expect(area.actions[area.suggestions[0].id]).toEqual({
       label: "Ask for a lower rate",
       href: "/report",
       why: "Providers often lower the rate when asked.",

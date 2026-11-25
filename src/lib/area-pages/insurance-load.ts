@@ -58,8 +58,8 @@ export async function loadInsuranceArea(
     // Spec step 196: looked at again whenever the page opens.
     refresh ? refreshSavings(userId) : listSavings(userId, { status: "offered" }),
     // Spec step 198: the household's cover, what's shared with them and who is covered.
-    loadFamily(userId),
-    loadHealthYear(userId),
+    loadFamily(userId, { now }),
+    loadHealthYear(userId, { now }),
     // Spec step 197: the questions about how they live, read from their payments.
     (refresh ? refreshRisks(userId) : Promise.resolve()).then(() =>
       listRisks(userId, { status: "asked" }),
