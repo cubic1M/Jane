@@ -109,6 +109,20 @@ describe("comparing an upload with a link", () => {
     expect(compare(upload, link).verdict).not.toBe("different");
   });
 
+  it("is unknown when the only matches are across the edge and only the wider slack finds them", () => {
+    const upload: Line[] = [
+      ...[11, 12, 13, 14, 15].map((a) => ({ date: "2026-09-01", amountCents: a })),
+      ...[21, 22, 23, 24, 25].map((a) => ({ date: "2026-09-10", amountCents: a })),
+      { date: "2026-09-20", amountCents: 999 },
+    ];
+    const link: Line[] = [
+      ...[11, 12, 13, 14, 15].map((a) => ({ date: "2026-08-28", amountCents: a })),
+      ...[31, 32, 33, 34, 35].map((a) => ({ date: "2026-09-10", amountCents: a })),
+      { date: "2026-09-20", amountCents: 999 },
+    ];
+    expect(compare(upload, link).verdict).toBe("unknown");
+  });
+
   it("matches one to one: one line on the link can't vouch for two on the upload", () => {
     const ends = (amountCents: number): Line[] => [
       { date: "2026-09-10", amountCents },

@@ -148,12 +148,9 @@ export function compareAccounts({
       link,
       DIFFERENT_ACCOUNT_DAY_SLACK,
     );
-    if (
-      low(wide.upload) &&
-      low(wide.link) &&
-      flipped.upload.matched === 0 &&
-      flipped.link.matched === 0
-    )
+    const clean = (m: ReturnType<typeof matchLines>) =>
+      low(m.upload) && low(m.link) && low(m.fullUpload) && low(m.fullLink);
+    if (clean(wide) && clean(flipped))
       return { verdict: "different", by: "lines", matched, compared };
   }
   return { verdict: "unknown", by: "none", matched, compared };
