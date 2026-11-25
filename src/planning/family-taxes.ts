@@ -25,6 +25,9 @@ type Side = {
   taxCents: number;
   eligible: boolean;
   why: string[];
+  // For a side that is a credit: how much of it comes off tax owed and how much is paid back
+  // even with no tax, so credits chosen together can be applied to one estimate.
+  credit?: { nonrefundableCents: number; refundableCents: number };
 };
 
 export type FamilyChoice = {
@@ -206,6 +209,7 @@ export function careChoice(input: {
     {
       label: `Claim the credit on ${formatWholeDollars(Math.min(input.careCents, costLimit))} of care`,
       taxCents: withCredit,
+      credit: { nonrefundableCents: credit, refundableCents: 0 },
       eligible,
       why: eligible
         ? [
@@ -258,6 +262,7 @@ export function educationChoice(input: {
     {
       label: `American Opportunity Credit (${formatWholeDollars(aotc)})`,
       taxCents: withAotc,
+      credit: { nonrefundableCents: aotc - refundable, refundableCents: refundable },
       eligible: aotcWhy.length === 0,
       why:
         aotcWhy.length > 0
@@ -267,6 +272,7 @@ export function educationChoice(input: {
     {
       label: `Lifetime Learning Credit (${formatWholeDollars(llc)})`,
       taxCents: withLlc,
+      credit: { nonrefundableCents: llc, refundableCents: 0 },
       eligible: llcWhy.length === 0,
       why: llcWhy.length > 0 ? llcWhy : ["20% of up to $10,000 of tuition, any year of study."],
     },

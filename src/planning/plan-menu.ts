@@ -1,7 +1,6 @@
 import { CLASS_WORDS, type MenuClass } from "@/config/plan-menu";
 import { FUND_FACTS } from "@/config/funds";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
-import { glideMix } from "@/planning/goal-buckets";
 
 // The workplace plan's menu, used well (spec step 232, demo advice). Pure: read the menu from
 // pasted text, find the cheapest mix of the plan's own funds that matches the person's target,
@@ -24,19 +23,14 @@ export function classOf(text: string): MenuClass {
   return "other";
 }
 
-// A target-date fund's mix from its year, using the glide path; null without a year.
-function targetDateMix(text: string, today: string, risk: RiskLevel): MenuMix | null {
-  const year = Number(/\b(20[2-6]\d)\b/.exec(text)?.[1]);
-  if (!year) return null;
-  return glideMix(Math.max(0, year - Number(today.slice(0, 4))), risk);
-}
-
 const MENU_LINE_MAX_CHARS = 300;
 
 // Lines like: KTSIX  Keystone Total US Stock Index Fund  0.03%  US stock
 export function parseDisclosure(
   text: string,
-  { today, risk }: { today: string; risk: RiskLevel },
+  // A fund's holdings never come from who is looking, so neither the day nor the risk level is
+  // used: a target-date fund Jane has no holdings for keeps `mix: null` (and no saving).
+  _context: { today: string; risk: RiskLevel },
 ): { funds: MenuFund[]; skipped: string[] } {
   const funds: MenuFund[] = [];
   const skipped: string[] = [];
@@ -69,9 +63,7 @@ export function parseDisclosure(
           bonds: known.bonds ?? 0,
           cash: known.cash ?? 0,
         }
-      : kind === "target_date"
-        ? targetDateMix(`${name} ${rest}`, today, risk)
-        : null;
+      : null;
     funds.push({ ticker, name: name.trim(), expenseBps: bps, kind, mix });
   }
   return { funds, skipped };
@@ -97,6 +89,8 @@ function cheapestByKind(menu: MenuFund[]): Partial<Record<(typeof PURE)[number],
 export function cheapestMix(menu: MenuFund[], target: MenuMix) {
   const best = cheapestByKind(menu);
   const missing: string[] = [];
+  // Kinds the target holds that no fund on the menu (nor its closest kind) can stand in for.
+  const uncovered: string[] = [];
   const alloc = new Map<string, { fund: MenuFund; share: number }>();
   for (const kind of PURE) {
     const share = target[kind];
@@ -106,7 +100,10 @@ export function cheapestMix(menu: MenuFund[], target: MenuMix) {
       missing.push(kind);
       fund = kind === "cash" ? best.bonds : kind === "bonds" ? best.cash : undefined;
     }
-    if (!fund) continue;
+    if (!fund) {
+      uncovered.push(kind);
+      continue;
+    }
     const have = alloc.get(fund.ticker);
     alloc.set(fund.ticker, { fund, share: (have?.share ?? 0) + share });
   }
@@ -117,7 +114,7 @@ export function cheapestMix(menu: MenuFund[], target: MenuMix) {
     share: share / total,
     expenseBps: fund.expenseBps,
   }));
-  return { allocation, missing, bps: weightedBps(allocation) };
+  return { allocation, missing, uncovered, bps: weightedBps(allocation) };
 }
 
 export const weightedBps = (a: Allocation) => a.reduce((s, x) => s + x.share * x.expenseBps, 0);
@@ -130,6 +127,8 @@ export const yearlyCents = (balanceCents: number, bps: number) =>
 export function targetDateCheck(menu: MenuFund[], fund: MenuFund, balanceCents: number) {
   if (!fund.mix) return null;
   const hand = cheapestMix(menu, fund.mix);
+  // A hand-built mix that leaves out part of what the fund holds isn't like for like.
+  if (hand.uncovered.length > 0 || hand.allocation.length === 0) return null;
   return {
     ticker: fund.ticker,
     fundBps: fund.expenseBps,

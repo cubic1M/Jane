@@ -131,6 +131,13 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
       { year: 2025 },
     );
 
+    // The American Opportunity credit is only counted for a student whose year of college and
+    // half-time status the person gave.
+    await client.taxProfile.upsert({
+      where: { userId },
+      create: { userId, studentYearsBefore: 0, studentHalfTime: true },
+      update: { studentYearsBefore: 0, studentHalfTime: true },
+    });
     const { reviews } = await loadReturnReviews(userId, { client, now: LINKED });
     const review = reviews[0];
     expect(review.year).toBe(2025);

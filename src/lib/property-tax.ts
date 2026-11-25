@@ -298,6 +298,9 @@ export async function draftPropertyAppeal(
   if (view.appeal && view.appeal.status !== "dropped") {
     throw new PropertyTaxError("An appeal is already drafted.");
   }
+  if (view.comps.length === 0) {
+    throw new PropertyTaxError("I need comparable sales before I can draft an appeal.");
+  }
   const draft = draftAppeal({
     year: view.year,
     board: view.window.board,

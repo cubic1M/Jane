@@ -44,12 +44,32 @@ export async function loadReturnReviews(
   const reviews: ReturnReview[] = [];
   for (const r of confirmed) {
     const year = r.year!;
-    const [estimate, tags, docs, amendment] = await Promise.all([
+    const [estimate, tags, docs, amendment, family] = await Promise.all([
       loadTaxEstimate(userId, { client, now, year }),
       loadTaxTags(userId, year, { client }),
       loadTaxDocuments(userId, year, { client, now }),
       db.taxAmendments.findFirst({ where: { year } }),
+      db.taxProfiles.findFirst({
+        select: { spouseWagesCents: true, studentYearsBefore: true, studentHalfTime: true },
+      }),
     ]);
+    // What the person told Jane about the household; left out when they haven't, so the credits
+    // that need it are held back rather than assumed.
+    const married =
+      estimate.input.filingStatus === "married_joint" ||
+      estimate.input.filingStatus === "married_separate";
+    const bothWork = !married
+      ? true
+      : family?.spouseWagesCents == null
+        ? undefined
+        : family.spouseWagesCents > 0;
+    const studentFacts =
+      family?.studentYearsBefore == null || family.studentHalfTime == null
+        ? undefined
+        : {
+            yearsOfCollegeBefore: family.studentYearsBefore,
+            halfTime: family.studentHalfTime,
+          };
     const student = docs.forms.find((f) => f.formKey === "student" && f.document && f.usable);
     const review = reviewReturn({
       year,
@@ -62,6 +82,8 @@ export async function loadReturnReviews(
         .filter((t) => t.tag === "education" && TUITION_PAYEE.test(t.payee))
         .reduce((s, t) => s + t.amountCents, 0),
       careCents: tags.totals.childcare.totalCents,
+      bothWork,
+      student: studentFacts,
       children: Array.from({ length: estimate.input.childrenUnder17 }, () => ({
         ageAtYearEnd: 5,
         hasSsn: true,
