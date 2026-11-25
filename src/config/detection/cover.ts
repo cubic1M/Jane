@@ -61,3 +61,24 @@ export const COVER_PHONE_WORDS: readonly string[] = [
   "handset",
   "smartphone",
 ];
+// Words that say an ambiguous brand's charge is some other policy, though a phone word is in it
+// ("ASSURANT MOBILE HOME INSURANCE"): checked before COVER_PHONE_WORDS.
+export const COVER_NON_PHONE_WORDS: readonly string[] = [
+  "mobile home",
+  "manufactured home",
+  "home",
+  "renter",
+  "renters",
+  "tenant",
+  "tenants",
+  "condo",
+  "landlord",
+  "auto",
+  "car",
+  "life",
+  "pet",
+  "flood",
+];
+// A phone bill in a charge this recent, paid from another account than the card, means a bill the
+// card doesn't carry, even when the stream detection merged it into the card's own.
+export const PHONE_BILL_RECENT_DAYS = 62;

@@ -302,7 +302,12 @@ export async function runDetection(
       where: { id: { in: plan.remove }, status: { in: UNDECIDED_STATUSES } },
     });
   }
-  for (const change of plan.update) await writeFindingUpdate(db, change);
+  // Only a resurfacing that wrote counts: one the person approved mid-scan was kept as approved.
+  let resurfaced = 0;
+  for (const change of plan.update) {
+    const wrote = await writeFindingUpdate(db, change);
+    if (wrote && change.resurface) resurfaced += 1;
+  }
 
   const firstRun = await systemDb(
     "A person's own row: jane_rls only reads users",
@@ -392,7 +397,7 @@ export async function runDetection(
     counts,
     created: plan.create.length,
     updated: plan.update.filter((u) => !u.resurface).length,
-    resurfaced: plan.update.filter((u) => u.resurface).length,
+    resurfaced,
     removed: plan.remove.length,
     moneyFoundCents: await moneyFound(userId, { client }),
     createdKeys: plan.create.map((c) => ({ type: c.type, key: c.key })),

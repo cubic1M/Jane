@@ -551,6 +551,19 @@ function twinPlans(charges: DetectionTransaction[], asOf: string): Stream[] | nu
   return [a, { ...b, key: `${b.key}@second`, merchant: `${b.merchant} (second plan)` }];
 }
 
+// The day a price's charges first made a run: the date of the charge that, with the ones before it,
+// was enough (two a month or a quarter apart, three otherwise).
+function qualifiedOn(
+  byPrice: Map<number, DetectionTransaction[]>,
+  run: Stream,
+  asOf: string,
+): string {
+  const same = [...(byPrice.get(run.lastAmountCents) ?? [])].sort(byDate);
+  for (let n = SHORT_RUN_MIN_CHARGES; n < same.length; n += 1)
+    if (detectRun(same.slice(0, n), asOf)) return same[n - 1]!.date;
+  return same.at(-1)?.date ?? run.lastDate ?? "";
+}
+
 // Each exact price that comes regularly, a run of its own; every run after the first keeps the
 // merchant's key with its price ("merchant:apple@1099").
 function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
@@ -561,11 +574,16 @@ function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
     const run = detectRun(same, asOf);
     return run ? [run] : [];
   });
-  // The plan that has been billed longest keeps the bare key, so a second plan that qualifies later
-  // never takes it from the first (the unchanged plan's findings keep their key).
+  // The plan that qualified first keeps the bare key, so a plan that qualifies later never takes it
+  // from the first, even when its first charge is older (a lone $20 charge in April that a July
+  // charge turned into a quarterly plan must not take the key of the monthly plan seen since May).
+  // The unchanged plan's findings keep their key.
+  const qualified = new Map(found.map((run) => [run, qualifiedOn(byPrice, run, asOf)]));
   found.sort(
     (a, b) =>
-      a.charges[0]!.date.localeCompare(b.charges[0]!.date) || a.lastAmountCents - b.lastAmountCents,
+      qualified.get(a)!.localeCompare(qualified.get(b)!) ||
+      a.charges[0]!.date.localeCompare(b.charges[0]!.date) ||
+      a.lastAmountCents - b.lastAmountCents,
   );
   for (const run of found)
     runs.push(runs.length === 0 ? run : { ...run, key: `${run.key}@${run.lastAmountCents}` });
@@ -773,9 +791,12 @@ export function buildStreams(input: DetectionInput): Stream[] {
   // the merchant, on another account, is kept under a key of its own.
   const taken = new Set(fromPlaid.map((s) => s.key));
   const kept = fallback.flatMap((s): Stream[] => {
-    const same = fromPlaid.find((p) => p.key === s.key);
-    if (same && same.lastAmountCents === s.lastAmountCents && same.frequency === s.frequency)
-      return [];
+    // Any Plaid stream at the merchant with this price and frequency, not only the first one.
+    const seenTwice = fromPlaid.some(
+      (p) =>
+        p.key === s.key && p.lastAmountCents === s.lastAmountCents && p.frequency === s.frequency,
+    );
+    if (seenTwice) return [];
     if (!taken.has(s.key)) return [s];
     let key = `${s.key}@${s.lastAmountCents}`;
     while (taken.has(key)) key += "+";

@@ -353,10 +353,13 @@ export function paySchedules(input: DetectionInput): PaySchedule[] {
         shares: last.shares,
         lastDate: last.date,
         paychecks: deposits.length,
-        active:
-          !tooOldToSay(input, last.accountId) &&
-          daysBetween(last.date, seenTo(input, last.accountId)) <=
-            PAYDAY_GAP_DAYS[rule.frequency] * ACTIVE_WITHIN_INTERVALS,
+        // Still paying is judged where any account that got a share is seen, not only the largest's.
+        active: last.shares.some(
+          (share) =>
+            !tooOldToSay(input, share.accountId) &&
+            daysBetween(last.date, seenTo(input, share.accountId)) <=
+              PAYDAY_GAP_DAYS[rule.frequency] * ACTIVE_WITHIN_INTERVALS,
+        ),
       },
     ];
   });
@@ -384,6 +387,23 @@ const postedFrom = (dueOn: string) => {
 };
 const cameIn = (s: PaySchedule, dueOn: string) => s.lastDate >= postedFrom(dueOn);
 
+// The part of a payday in accounts Jane has seen through `day`: each share is judged by its own
+// account, so a smaller share in a seen account is not hidden by the largest share's account.
+// Null when no share's account has been seen that far.
+function seenPart(
+  input: DetectionInput,
+  s: PaySchedule,
+  day: string,
+): Pick<Payday, "amountCents" | "accountId" | "shares"> | null {
+  const shares = s.shares.filter((share) => seenThrough(input, share.accountId, day));
+  if (shares.length === 0) return null;
+  return {
+    amountCents: shares.reduce((sum, share) => sum + share.amountCents, 0),
+    accountId: shares[0]!.accountId,
+    shares,
+  };
+}
+
 // Every paycheck expected from today through `until`, soonest first. Pay due today counts today,
 // as bills due today do (phone debugger, 11-20: Blue Bottle's $1,650 due that day was left out of
 // safe to spend and the low point ahead). Pay that was due up to PAYDAY_POSTING_DAYS ago and
@@ -394,19 +414,24 @@ export function expectedPaydays(input: DetectionInput, until: string): Payday[] 
     .filter((s) => s.active)
     .flatMap((s) =>
       paydayDates(s, late, until)
-        .filter(
-          (dueOn) =>
-            !cameIn(s, dueOn) && (dueOn >= input.asOf || seenThrough(input, s.accountId, dueOn)),
-        )
-        .map((dueOn) => ({
-          date: dueOn < input.asOf ? input.asOf : dueOn,
-          dueOn,
-          key: s.key,
-          employer: s.employer,
-          amountCents: s.amountCents,
-          accountId: s.accountId,
-          shares: s.shares,
-        })),
+        .filter((dueOn) => !cameIn(s, dueOn))
+        .flatMap((dueOn): Payday[] => {
+          // Pay still to come is all expected; overdue pay only where its account is seen that far.
+          const part =
+            dueOn >= input.asOf
+              ? { amountCents: s.amountCents, accountId: s.accountId, shares: s.shares }
+              : seenPart(input, s, dueOn);
+          if (!part) return [];
+          return [
+            {
+              date: dueOn < input.asOf ? input.asOf : dueOn,
+              dueOn,
+              key: s.key,
+              employer: s.employer,
+              ...part,
+            },
+          ];
+        }),
     )
     .sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
 }
@@ -420,23 +445,10 @@ export function missedPaydays(input: DetectionInput): Payday[] {
     .filter((s) => s.active)
     .flatMap((s) => {
       const dueOn = paydayDates(s, s.lastDate, waited).at(-1);
-      if (
-        !dueOn ||
-        cameIn(s, dueOn) ||
-        !seenThrough(input, s.accountId, addDays(dueOn, PAYDAY_POSTING_DAYS))
-      )
-        return [];
-      return [
-        {
-          date: dueOn,
-          dueOn,
-          key: s.key,
-          employer: s.employer,
-          amountCents: s.amountCents,
-          accountId: s.accountId,
-          shares: s.shares,
-        },
-      ];
+      if (!dueOn || cameIn(s, dueOn)) return [];
+      const part = seenPart(input, s, addDays(dueOn, PAYDAY_POSTING_DAYS));
+      if (!part) return [];
+      return [{ date: dueOn, dueOn, key: s.key, employer: s.employer, ...part }];
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
 }

@@ -20,15 +20,17 @@ export const chargeAfterCancel: Rule = (input) =>
       (t) => t.amountCents > 0 && merchantOf(t)?.key === merchantKey,
     );
     // What the subscription charged before it was cancelled: a later charge at the merchant that is
-    // nothing like it (a one-time purchase) isn't the subscription continuing.
-    const prices = atMerchant.filter((t) => t.date < cancelledOn).map((t) => t.amountCents);
+    // nothing like it (a one-time purchase) isn't the subscription continuing. Only prices that
+    // recurred before the cancel count as the plan's; one unrelated purchase is not a price, and
+    // without a recurring price nothing is ruled out.
+    const within = (a: number, b: number) =>
+      a <= b * CHARGE_AFTER_CANCEL_PRICE_RATIO && a * CHARGE_AFTER_CANCEL_PRICE_RATIO >= b;
+    const before = atMerchant.filter((t) => t.date < cancelledOn);
+    const prices = before
+      .filter((t, i) => before.some((o, j) => j !== i && within(t.amountCents, o.amountCents)))
+      .map((t) => t.amountCents);
     const isPlanPrice = (cents: number) =>
-      prices.length === 0 ||
-      prices.some(
-        (p) =>
-          cents <= p * CHARGE_AFTER_CANCEL_PRICE_RATIO &&
-          cents * CHARGE_AFTER_CANCEL_PRICE_RATIO >= p,
-      );
+      prices.length === 0 || prices.some((p) => within(cents, p));
     const charges = atMerchant
       .filter(
         (t) =>

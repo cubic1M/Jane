@@ -2,9 +2,11 @@ import { CONDITION_WORDS, type CardBenefit, type CardProduct } from "@/config/ca
 import {
   COVERED_BY_CARD_MAX_CONFIDENCE,
   COVER_AMBIGUOUS_BRANDS,
+  COVER_NON_PHONE_WORDS,
   COVER_PHONE_WORDS,
   COVER_PLANS,
   PHONE_BILL_CATEGORIES,
+  PHONE_BILL_RECENT_DAYS,
   RENTAL_CATEGORIES,
   TRIP_CATEGORIES,
 } from "@/config/detection";
@@ -12,6 +14,7 @@ import { benefitOf, productById } from "@/lib/insurance/card-benefits";
 import { inList, lowest, merchantMatches } from "../helpers";
 import type { Stream } from "../streams";
 import type { Candidate, DetectionInput } from "../types";
+import { daysBetween } from "../units";
 import { streamEvidence, type Rule } from "./rule";
 
 // Cover the person already has (spec step 152): a plan they pay for (phone protection,
@@ -23,9 +26,16 @@ import { streamEvidence, type Rule } from "./rule";
 
 // A brand that also sells renters or home cover ("assurant") is the phone plan only when a charge's
 // own words say phone or device.
+// The config words are fixed text with no pattern characters, so building a pattern from them is safe.
+const hasWord = (words: readonly string[], text: string, end: string) =>
+  words.some((w) => new RegExp(`\\b${w}${end}`, "i").test(text));
+// Another kind of policy named in the charge rules it out before a phone word is looked for
+// ("ASSURANT MOBILE HOME INSURANCE"); a phone word starts a word ("cell" is "cellular").
 const saysPhone = (stream: Stream) =>
-  stream.charges.some((c) =>
-    COVER_PHONE_WORDS.some((w) => new RegExp(`\\b${w}`, "i").test(c.description)),
+  stream.charges.some(
+    (c) =>
+      !hasWord(COVER_NON_PHONE_WORDS, c.description, "\\b") &&
+      hasWord(COVER_PHONE_WORDS, c.description, ""),
   );
 
 function planOf(stream: Stream) {
@@ -54,7 +64,16 @@ function conditionMet(
       // Every phone bill is on the card: with another paid some other way, which line the plan
       // protects isn't known (nothing here ties a plan to a line).
       const bills = streams.filter((s) => s.active && inList(s.pfcDetailed, PHONE_BILL_CATEGORIES));
-      return bills.length > 0 && bills.every((s) => s.accountId === cardId);
+      // The streams may have merged an identical bill on another account into the card's (one plan
+      // seen twice), so a recent phone-bill charge elsewhere blocks it too.
+      const elsewhere = input.transactions.some(
+        (t) =>
+          t.amountCents > 0 &&
+          t.accountId !== cardId &&
+          inList(t.pfcDetailed, PHONE_BILL_CATEGORIES) &&
+          daysBetween(t.date, input.asOf) <= PHONE_BILL_RECENT_DAYS,
+      );
+      return bills.length > 0 && bills.every((s) => s.accountId === cardId) && !elsewhere;
     }
     case "the_purchase":
       // Paying for the warranty with the card isn't buying the item with it, and nothing here ties a
