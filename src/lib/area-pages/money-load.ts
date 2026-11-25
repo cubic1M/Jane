@@ -1,7 +1,7 @@
 import { CASH_FLOW_MIN_HISTORY_DAYS, SPENDING_MONTHS } from "@/config/areas";
 import { goalsLate } from "@/lib/goals-late";
 import { goalsOnTrack } from "@/planning/goals";
-import { copiesAndKeepers, withoutCopies } from "@/lib/account-copies";
+import { accountCopies, copiesAndKeepers, withoutCopies } from "@/lib/account-copies";
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
@@ -143,9 +143,10 @@ export async function loadMoneyArea(
     // is older than that window has none in it (CodeRabbit sweep 1c), as on Home and the report.
     db.transactions.aggregate({ _max: { date: true } }),
   ]);
-  // An account linked twice counts once (src/lib/account-copies.ts). Found in the rows listed
-  // above, so what's left out always describes the balances counted.
-  const { copies, keeper } = copiesAndKeepers(listedAccounts);
+  // What net worth counts (src/lib/account-copies.ts): an account linked twice once, and an upload
+  // only when it can't be a copy of a link. The keeper of a copy is found in the rows listed above.
+  const copies = await accountCopies(db);
+  const { keeper } = copiesAndKeepers(listedAccounts);
   const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
 
   input.subscriptionMerchantKeys = confirmed

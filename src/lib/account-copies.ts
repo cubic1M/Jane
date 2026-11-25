@@ -150,22 +150,3 @@ export function copiesAndKeepers(
     keeper: new Map(found.map((d) => [d.duplicate.id, d.keep.id])),
   };
 }
-
-// The copies to leave out of accounts already read, and for each the id of the account kept in its
-// place (a home linked to a copy is linked to the loan kept). Found in the rows given, so the
-// copies always describe the balances counted from them.
-export function copiesAndKeepers(
-  accounts: {
-    id: string;
-    itemId: string | null;
-    mask: string | null;
-    type: string;
-    subtype: string | null;
-  }[],
-): { copies: Set<string>; keeper: Map<string, string> } {
-  const found = duplicateAccounts(accounts.map((a) => ({ ...a, name: "" })));
-  return {
-    copies: new Set(found.map((d) => d.duplicate.id)),
-    keeper: new Map(found.map((d) => [d.duplicate.id, d.keep.id])),
-  };
-}
