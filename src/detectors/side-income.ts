@@ -84,14 +84,16 @@ const sideIncomeTax: Detector = {
     // Half of the self-employment tax comes off income; the tax on the side money is what the
     // return owes with it less what it owes without (a part of it may still fall inside the
     // standard deduction), not the top rate on all of it.
+    // A dependent's standard deduction is limited by earned income, and a taxable fellowship is
+    // earned income: so the base counts it there too (CodeRabbit on #2270).
     const withSide = federalTaxOf(
       baseIncome + pace - Math.round(se / 2),
       status,
       dependent,
-      wagesYear + pace,
+      baseIncome + pace,
     );
-    const income = Math.max(0, withSide - federalTaxOf(baseIncome, status, dependent, wagesYear));
-    const rate = marginalRateFor(baseIncome + pace, status, dependent, wagesYear + pace);
+    const income = Math.max(0, withSide - federalTaxOf(baseIncome, status, dependent, baseIncome));
+    const rate = marginalRateFor(baseIncome + pace, status, dependent, baseIncome + pace);
     const tax = se + income;
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const payers = [...new Set(counted.map((t) => nice(t.description).split(" ")[0]))];
