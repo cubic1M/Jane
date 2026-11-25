@@ -26,6 +26,26 @@ export const tx = (data: Pick<ProfileInput, "transactions">, f: (t: ProfileTx) =
 export const outCents = (list: readonly ProfileTx[]) =>
   list.filter((t) => t.amountCents > 0).reduce((s, t) => s + t.amountCents, 0);
 
+// A total seen over `months` months of history, as a year: a month of a premium is not a year of
+// them. Null when too little history to say (under 3 months).
+export const perYear = (cents: number, months: number): number | null =>
+  months >= 3 ? Math.round((cents * 12) / months) : null;
+
+// A charge seen in every month of a run of 3 or more months, as a year of it. A charge that comes
+// once (an annual premium) or in some months only (a quarterly one) can't be put on a year from
+// the span of the history, so the answer is null (CodeRabbit sweep 1b, #2258).
+export function monthlyChargeYear(
+  rows: readonly { date: string; amountCents: number }[],
+): number | null {
+  const months = new Set(rows.map((t) => t.date.slice(0, 7)));
+  if (months.size < 3) return null;
+  const keys = [...months].sort();
+  const index = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
+  if (index(keys[keys.length - 1]!) - index(keys[0]!) + 1 !== months.size) return null;
+  const total = rows.reduce((sum, t) => sum + t.amountCents, 0);
+  return Math.round((total * 12) / months.size);
+}
+
 // The rows and day a monthly spending figure is read from: a profile, or anything shaped like one.
 type Spending = Pick<ProfileInput, "transactions" | "today">;
 

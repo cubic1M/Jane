@@ -24,6 +24,10 @@ export type YearMonth = {
   marginCents: number;
   // True when the flexible targets had to be scaled down to fit.
   trimmed: boolean;
+  // The part of each flexible target that was the month's own, not catch-up, as it was when the
+  // month was planned. A later replan reads a passed month's shortfall off this, so a lower
+  // `wants` then doesn't wipe out what was owed. Absent on rows saved before it existed.
+  own?: Record<FlexSector, number>;
 };
 
 export type YearInput = {
@@ -82,7 +86,13 @@ export function yearPlan(input: YearInput): YearMonth[] {
       const base = kept ?? planned(month, input, zeroOwed());
       out.push({ ...base, actual });
       for (const sector of FLEX_SECTORS) {
-        owed[sector] += Math.max(0, base.targets[sector] - actual[sector]);
+        // A past target holds its own part and the catch-up added to it (already in what was
+        // owed): only the own part's shortfall is new, and catch-up that was achieved is paid off.
+        const own = base.own?.[sector] ?? Math.min(base.targets[sector], input.wants[sector]);
+        owed[sector] = Math.max(
+          0,
+          owed[sector] + Math.max(0, own - actual[sector]) - Math.max(0, actual[sector] - own),
+        );
       }
       return;
     }
@@ -118,7 +128,10 @@ function planned(month: string, input: YearInput, catchUp: Record<FlexSector, nu
   targets.saving = fitted.saving;
   targets.debt = fitted.debt;
   targets.investing = fitted.investing;
-  return { month, targets, actual: null, marginCents: input.marginCents, trimmed };
+  const own = Object.fromEntries(
+    FLEX_SECTORS.map((k) => [k, Math.min(targets[k], input.wants[k])]),
+  ) as Record<FlexSector, number>;
+  return { month, targets, actual: null, marginCents: input.marginCents, trimmed, own };
 }
 
 // The whole year, sector by sector. The months always add up to this.

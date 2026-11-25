@@ -107,7 +107,8 @@ export async function loadNetWorthHistory(
     client,
     since: `${first}-01`,
   });
-  if (accounts.length === 0) return null;
+  // Nothing to count: no accounts, and nothing owned or in crypto to give a known total.
+  if (accounts.length === 0 && !worth.known) return null;
   return {
     todayCents: worth.netCents,
     known: worth.known,

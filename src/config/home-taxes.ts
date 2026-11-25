@@ -20,9 +20,10 @@ export const HOME_SALE_EXCLUSION = {
   daysOfFiveYears: 730,
 } as const;
 
-// Payments to a county or city tax office for property tax.
+// Payments to a county or city tax office for property tax. A state's Treasurer of State takes
+// income tax too (Ohio's estimated payments), so that name is not property tax.
 export const PROPERTY_TAX_PAYEE =
-  /\b(?:PROPERTY TAX|PROP TAX|REAL ESTATE TAX|COUNTY TAX|TAX COLLECTOR|TREASURER|ASSESSOR)\b/i;
+  /\b(?:PROPERTY TAX|PROP TAX|REAL ESTATE TAX|COUNTY TAX|TAX COLLECTOR|TREASURER(?! OF STATE)|ASSESSOR)\b/i;
 
 // Spending that may be a home improvement (it adds to the home's cost basis; repairs
 // don't): these categories, at least this much each.

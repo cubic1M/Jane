@@ -77,6 +77,11 @@ function grossIncome(
       : 0;
   return gross + Math.round(stock * T.stockVestShare);
 }
+// The payer of a federal tax refund.
+// A bare "TREASURY" is not enough: a state's Treasury (Michigan's) pays state refunds.
+const FEDERAL_REFUND =
+  /\b(?:IRS|U\.?S\.? TREAS(?:URY)?|UNITED STATES TREAS(?:URY)?|TREAS 3\d\d)\b/i;
+
 const bracketOf = (
   profile: Parameters<typeof grossIncome>[0],
   data: Parameters<typeof grossIncome>[1],
@@ -88,17 +93,46 @@ const bracketOf = (
   );
 };
 
-// Days from today to the next estimated-payment date (April 15, June 15, September 15,
-// January 15), counting this year's and next year's.
-export function daysToEstimatedDate(today: string): number {
-  const year = Number(today.slice(0, 4));
-  const dates = [year - 1, year, year + 1].flatMap((y) =>
-    ESTIMATED_TAX_DATES.map(
-      (d) =>
+// An estimated payment's due date: the day on the calendar, moved to the next business day when
+// it falls on a weekend, on Martin Luther King Jr. Day (January 15 can be the third Monday) or on
+// the observed Emancipation Day (April 16, Friday when it falls on Saturday, Monday on Sunday:
+// the April 2023 and April 2022 deadlines were April 18).
+function effectiveDue(isoDay: string): string {
+  const at = new Date(`${isoDay}T00:00:00Z`);
+  const isMlk = (d: Date) =>
+    d.getUTCMonth() === 0 && d.getUTCDay() === 1 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21;
+  const isEmancipation = (d: Date) => {
+    if (d.getUTCMonth() !== 3) return false;
+    const day = d.getUTCDate();
+    const dow = d.getUTCDay();
+    return (
+      (day === 16 && dow >= 1 && dow <= 5) || (day === 15 && dow === 5) || (day === 17 && dow === 1)
+    );
+  };
+  while (at.getUTCDay() === 0 || at.getUTCDay() === 6 || isMlk(at) || isEmancipation(at)) {
+    at.setUTCDate(at.getUTCDate() + 1);
+  }
+  return at.toISOString().slice(0, 10);
+}
+
+// Every estimated-payment due date in the given calendar years, as effective dates.
+const estimatedDueDates = (years: readonly number[]) =>
+  years.flatMap((y) =>
+    ESTIMATED_TAX_DATES.map((d) =>
+      effectiveDue(
         `${y + (d.nextYear ? 1 : 0)}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`,
+      ),
     ),
   );
-  const next = dates.filter((d) => d >= today).sort()[0];
+
+// Days from today to the next estimated-payment date (April 15, June 15, September 15,
+// January 15, each moved to the next business day when it falls on a weekend or holiday),
+// counting this year's and next year's.
+export function daysToEstimatedDate(today: string): number {
+  const year = Number(today.slice(0, 4));
+  const next = estimatedDueDates([year - 1, year, year + 1])
+    .filter((d) => d >= today)
+    .sort()[0];
   return Math.round((Date.parse(next) - Date.parse(today)) / 86_400_000);
 }
 
@@ -108,14 +142,7 @@ export function estimatedDatesBetween(from: string, to: string): number {
     { length: Number(to.slice(0, 4)) - Number(from.slice(0, 4)) + 2 },
     (_, i) => Number(from.slice(0, 4)) - 1 + i,
   );
-  return years
-    .flatMap((y) =>
-      ESTIMATED_TAX_DATES.map(
-        (d) =>
-          `${y + (d.nextYear ? 1 : 0)}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`,
-      ),
-    )
-    .filter((d) => d >= from && d <= to).length;
+  return estimatedDueDates(years).filter((d) => d >= from && d <= to).length;
 }
 
 export function urgencyForEstimated(today: string): Urgency {
@@ -523,7 +550,12 @@ const fileReturn: Detector = {
     if ((pattern as Fact).confidence === 0) return null;
     const refund = tx(
       data,
-      (t) => t.pfc === "INCOME_TAX_REFUND" && t.date > `${profile.today.slice(0, 4)}-01-01`,
+      (t) =>
+        t.pfc === "INCOME_TAX_REFUND" &&
+        t.date > `${profile.today.slice(0, 4)}-01-01` &&
+        // A federal refund is the proof of a filed federal return; a state refund (FTB, a
+        // department of revenue) isn't.
+        FEDERAL_REFUND.test(t.description),
     );
     if (refund.length > 0) return null;
     const year = Number(profile.today.slice(0, 4));
@@ -724,7 +756,13 @@ function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
   const died = profile.facts.inherited_ira_death_year;
   if (profile.facts.inherited_from_spouse.value === true) return null;
   const accounts = data.accounts.filter(
-    (a) => a.type === "investment" && INHERITED_NAME.test(a.name ?? "") && a.balanceCents > 0,
+    (a) =>
+      a.type === "investment" &&
+      // An IRA, not any investment account with "inherited" in its name (a brokerage account
+      // isn't under the 10-year IRA rule).
+      /ira|roth/i.test(a.subtype ?? "") &&
+      INHERITED_NAME.test(a.name ?? "") &&
+      a.balanceCents > 0,
   );
   if (accounts.length === 0) return null;
   const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
@@ -751,7 +789,7 @@ function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
       },
     },
   });
-  return { income, balance, knownYear, emptyBy, yearsLeft, spread };
+  return { income, balance, taxableBalance, knownYear, emptyBy, yearsLeft, spread };
 }
 
 const INHERITED_NEEDS: Detector["needs"] = [
@@ -769,7 +807,7 @@ const inheritedIra: Detector = {
   detect(input) {
     const ira = inheritedIraOf(input);
     if (!ira) return null;
-    const { income, balance, emptyBy, yearsLeft } = ira;
+    const { income, balance, taxableBalance, emptyBy, yearsLeft } = ira;
     // In the last year there is nothing left to spread: what matters is emptying it, because
     // the money not taken out by the deadline costs 25% of what is left.
     if (emptyBy !== null && yearsLeft <= 1) {
@@ -789,7 +827,7 @@ const inheritedIra: Detector = {
           },
         ]),
         urgency: "now",
-        why: `The rule for most heirs is that your inherited IRA (${formatCents(balance)}) is empty by December 31, ${emptyBy}. Money left after that costs a penalty of 25% of what's left, up to ${formatCents(penalty)}. All of it is taxed as income the year it comes out, so a tax professional can say how much to take and when. If you are a spouse or another kind of heir the rule may not apply.`,
+        why: `The rule for most heirs is that your inherited IRA (${formatCents(balance)}) is empty by December 31, ${emptyBy}. Money left after that costs a penalty of 25% of what's left, up to ${formatCents(penalty)}. ${taxableBalance === 0 ? "Qualified withdrawals from an inherited Roth aren't taxed as income" : taxableBalance < balance ? "The traditional part is taxed as income the year it comes out (qualified Roth withdrawals aren't)" : "All of it is taxed as income the year it comes out"}, so a tax professional can say how much to take and when. If you are a spouse or another kind of heir the rule may not apply.`,
         action: { label: "See what applies", href: "/profile" },
       });
     }
@@ -966,7 +1004,8 @@ const disasterRelief: Detector = {
     if (typeof county.value !== "string") return null;
     const r = reliefFor(
       data.extras?.disasterRelief ?? [],
-      { county: county.value, state: null },
+      // A same-named county in another state is not theirs: the home state narrows it when known.
+      { county: county.value, state: data.state ?? null },
       profile.today,
     )[0];
     if (!r) return null;

@@ -54,7 +54,9 @@ const sideIncomeTax: Detector = {
         SIDE_INCOME.appWords.test(t.description.toUpperCase()),
     );
     const said = facts.app_income.value;
-    const counted = [...platform, ...(said === "work" || said === "mixed" ? apps : [])];
+    // Only app cash-outs the person confirmed are work count; "mixed" holds friends' repayments
+    // too and the work share isn't known, so it stays out of the figure (and is said so).
+    const counted = [...platform, ...(said === "work" ? apps : [])];
     if (counted.length === 0) return null;
     const months = rateMonthsOf(profile);
     const seen = sumCents(counted);
@@ -74,9 +76,11 @@ const sideIncomeTax: Detector = {
     const payers = [...new Set(counted.map((t) => nice(t.description).split(" ")[0]))];
     const span = `${profile.months} month${profile.months === 1 ? "" : "s"}`;
     const appLine =
-      apps.length > 0 && said !== "work" && said !== "mixed"
-        ? ` The IRS doesn't count friends paying back for shared costs as income, so the ${formatCents(sumCents(apps))} cashed out of payment apps is left out of this figure.`
-        : "";
+      apps.length > 0 && said === "mixed"
+        ? ` You said your payment-app money is mixed, and I can't tell which part is work, so the ${formatCents(sumCents(apps))} cashed out of payment apps is left out of this figure.`
+        : apps.length > 0 && said !== "work"
+          ? ` The IRS doesn't count friends paying back for shared costs as income, so the ${formatCents(sumCents(apps))} cashed out of payment apps is left out of this figure.`
+          : "";
     return suggestion("taxes", "side_income_tax", {
       title: `Nothing is withheld from your side income: about ${formatCents(tax)} of tax a year at this pace`,
       headline: headlineOf("Check tax on your side income", tax, "risk"),
@@ -88,7 +92,7 @@ const sideIncomeTax: Detector = {
       rankCents: Math.round(tax * DETECTOR_RATES.tax.rankShareOfBill),
       confidence: weakest([
         evidence("seen", profile.months, counted.length, "payouts"),
-        said === "work" || said === "mixed"
+        said === "work"
           ? factEvidence(facts.app_income)
           : {
               percent: 60,
