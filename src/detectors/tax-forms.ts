@@ -40,35 +40,64 @@ const taxFormsComing: Detector = {
         (t.pfc === "INCOME_CONTRACTOR" || t.pfc === "INCOME_GIG_ECONOMY"),
     );
     const platforms = [...new Set(payouts.map((t) => nice(t.description).split(" ")[0]))];
-    const lines = [
-      ...employers.map((e) => `a W-2 from ${e} by ${due}`),
-      ...schools.map((s) => `a Form 1098-T from ${s} (tuition) by ${due}`),
-      ...lenders.map(
-        (l) =>
-          `a Form 1098-E from ${l} by ${due}, if the year's interest reached ${formatWholeDollars(FORMS_COMING.loanInterestFormFromCents)}`,
-      ),
-      ...platforms.map(
-        (p) =>
-          `from ${p}, a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments (a client may send a 1099-NEC); the income counts either way`,
-      ),
+    // What's expected, each form with its own date; notes about forms that never come (or only
+    // might) aren't counted as forms.
+    type Line = { text: string; form: "january" | "march" | null };
+    const lines: Line[] = [
+      ...employers.map((e) => ({ text: `a W-2 from ${e} by ${due}`, form: "january" as const })),
+      ...schools.map((s) => ({
+        text: `a Form 1098-T from ${s} (tuition) by ${due}`,
+        form: "january" as const,
+      })),
+      ...lenders.map((l) => ({
+        text: `a Form 1098-E from ${l} by ${due}, if the year's interest reached ${formatWholeDollars(FORMS_COMING.loanInterestFormFromCents)}`,
+        form: "january" as const,
+      })),
+      ...platforms.map((p) => ({
+        text: `from ${p}, a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments (a client may send a 1099-NEC); the income counts either way`,
+        form: null,
+      })),
       ...(money.schoolDeposits.some((t) => /\bSTANFORD\b/i.test(t.description))
         ? [
             visa
-              ? "a Form 1042-S from Stanford in March, for the fellowship and the tax withheld from it"
-              : "for the fellowship, no W-2 or 1099: Stanford mails a letter in January summing payments over $600",
+              ? {
+                  text: "a Form 1042-S from Stanford in March, for the fellowship and the tax withheld from it",
+                  form: "march" as const,
+                }
+              : {
+                  text: "for the fellowship, no W-2 or 1099: Stanford mails a letter in January summing payments over $600",
+                  form: null,
+                },
           ]
         : []),
     ];
     if (lines.length === 0) return null;
+    const january = lines.filter((l) => l.form === "january").length;
+    const march = lines.filter((l) => l.form === "march").length;
+    const forms = january + march;
+    const noun = (n: number) => `${n} form${n === 1 ? "" : "s"}`;
+    const when =
+      january > 0 && march > 0
+        ? `${january} by ${due} and ${march} in March`
+        : january > 0
+          ? `by ${due}`
+          : "in March";
     return suggestion("taxes", "tax_forms_coming", {
-      title: `${lines.length} tax form${lines.length === 1 ? "" : "s"} for ${year} should reach you by ${due}`,
-      headline: `Note the ${year} tax forms on the way`,
-      short: `${lines.length} form${lines.length === 1 ? "" : "s"} from the payers in your accounts, most by ${due}.`,
+      title:
+        forms > 0
+          ? `${forms} tax form${forms === 1 ? "" : "s"} for ${year} should reach you ${when}`
+          : `Tax paperwork for ${year}: what to expect from the payers in your accounts`,
+      headline:
+        forms > 0 ? `Note the ${year} tax forms on the way` : `Note the ${year} tax paperwork`,
+      short:
+        forms > 0
+          ? `${noun(forms)} from the payers in your accounts, ${when}.`
+          : `Notes on the ${year} tax paperwork from the payers in your accounts.`,
       worthCents: 0,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, lines.length, "payers"),
       urgency: "later",
-      why: `From the payers in your accounts, for ${year}: ${lines.join("; ")}. Employers and schools send these by January 31, or the next business day (IRS).`,
+      why: `From the payers in your accounts, for ${year}: ${lines.map((l) => l.text).join("; ")}.${january > 0 ? " Employers and schools send these by January 31, or the next business day (IRS)." : ""}`,
       action: { label: "See your forms", href: "/taxes?focus=records:forms" },
     });
   },

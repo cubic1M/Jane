@@ -95,9 +95,9 @@ const stockVestTax: Detector = {
     const { plan, income, stock, vested, rate, short, assumed } = gap;
     const flat = DETECTOR_RATES.tax.rsuFlatWithholding;
     return suggestion("taxes", "stock_vest_tax", {
-      title: `Flat withholding on your stock vests leaves about ${formatCents(short)} to pay at filing`,
-      headline: headlineOf("Check tax on your stock vests", short, "risk"),
-      short: `${assumed ? "About " : ""}${formatCents(vested)} vesting, withheld at ${pct(flat)} against your ${pct(rate)} bracket.`,
+      title: `If your stock vests are withheld at the flat ${pct(flat)}, about ${formatCents(short)} is left to pay at filing`,
+      headline: headlineOf("Check tax if vests are flat-withheld", short, "risk"),
+      short: `${assumed ? "About " : ""}${formatCents(vested)} vesting; if withheld at ${pct(flat)}, against your ${pct(rate)} bracket.`,
       worthCents: short,
       worthKind: "risk",
       rankCents: Math.round(short * DETECTOR_RATES.tax.rankShareOfBill),
@@ -112,7 +112,7 @@ const stockVestTax: Detector = {
           : { percent: 90, reason: "your vests this year and your tax bracket" },
       ]),
       urgency: Number(profile.today.slice(5, 7)) >= 10 ? "soon" : "later",
-      why: `Stock that vests is pay the employer withholds at a flat ${pct(flat)} (IRS Pub. 15's rate for supplemental wages), but with your pay plus about ${formatCents(vested)} vesting, your top bracket is ${pct(rate)}. On that, about ${formatCents(short)} is left to pay when you file, beyond what the flat rate took.`,
+      why: `Stock that vests is pay. An employer can withhold it at a flat ${pct(flat)} (IRS Pub. 15's rate for supplemental wages) or add it to your regular pay for withholding; I can't see which yours does, or what was actually withheld, so this assumes the flat rate. With your pay plus about ${formatCents(vested)} vesting, your top bracket is ${pct(rate)}, so if the flat rate is what's withheld, about ${formatCents(short)} is left to pay when you file, beyond what it took.`,
       action: { label: "See your stock's tax", href: "/taxes/equity" },
     });
   },

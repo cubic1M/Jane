@@ -41,7 +41,7 @@ export function penaltyRule(owedLastYear: unknown, visa: boolean, taxCents: numb
     return `You said you owed no federal income tax for ${ESTIMATED_TAX.noLiabilityYear}: if you were a US citizen or resident all that year, the IRS doesn't require ${ESTIMATED_TAX.taxYear} estimated payments (Pub. 505). The tax itself is still due by ${due}.`;
   if (taxCents < ESTIMATED_TAX.requiredFromCents)
     return `Under ${formatWholeDollars(ESTIMATED_TAX.requiredFromCents)} owed at filing, the IRS doesn't require estimated payments (Pub. 505); it's due by ${due}.`;
-  return `Owing ${formatWholeDollars(ESTIMATED_TAX.requiredFromCents)} or more at filing brings an underpayment penalty unless withholding and estimated payments reach the smaller of ${Math.round(ESTIMATED_TAX.thisYearShare * 100)}% of ${ESTIMATED_TAX.taxYear}'s tax or ${Math.round(ESTIMATED_TAX.lastYearShare * 100)}% of ${ESTIMATED_TAX.noLiabilityYear}'s (${Math.round(ESTIMATED_TAX.lastYearShareHigh * 100)}% if ${ESTIMATED_TAX.noLiabilityYear}'s AGI was over ${formatWholeDollars(ESTIMATED_TAX.highAgiCents)}), Pub. 505.`;
+  return `Owing ${formatWholeDollars(ESTIMATED_TAX.requiredFromCents)} or more at filing brings an underpayment penalty unless withholding and estimated payments reach the smaller of ${Math.round(ESTIMATED_TAX.thisYearShare * 100)}% of ${ESTIMATED_TAX.taxYear}'s tax or ${Math.round(ESTIMATED_TAX.lastYearShare * 100)}% of ${ESTIMATED_TAX.noLiabilityYear}'s (${Math.round(ESTIMATED_TAX.lastYearShareHigh * 100)}% if ${ESTIMATED_TAX.noLiabilityYear}'s AGI was over ${formatWholeDollars(ESTIMATED_TAX.highAgiCents)}, or ${formatWholeDollars(ESTIMATED_TAX.highAgiSeparateCents)} for a married person on a separate return), Pub. 505.`;
 }
 
 // The next federal date, and California's when they live there.
@@ -53,9 +53,15 @@ export function datesLine(today: string, state: unknown): string {
   if (state !== "CA") return federal;
   const ca = CA_ESTIMATED_TAX.dates.find((d) => d.due >= today && d.share > 0);
   return ca
-    ? `${federal} California's next date is ${long(ca.due)}, for ${Math.round(ca.share * 100)}% of its year when ${formatWholeDollars(CA_ESTIMATED_TAX.requiredFromCents)} or more is owed (FTB).`
+    ? `${federal} California's next date is ${long(ca.due)}, for ${Math.round(ca.share * 100)}% of its year when ${formatWholeDollars(CA_ESTIMATED_TAX.requiredFromCents)} or more is owed (${formatWholeDollars(CA_ESTIMATED_TAX.requiredFromSeparateCents)} for a married person or registered domestic partner on a separate return; FTB).`
     : federal;
 }
+
+// The year's estimated-payment schedule and penalty rule are the ones in src/config/student-taxes.ts
+// (ESTIMATED_TAX.taxYear): for any other year the dates are not loaded, so the card says so instead
+// of attaching another year's deadlines.
+export const scheduleNote = (year: number) =>
+  `The ${year} estimated-payment dates and penalty rule aren't loaded here; IRS Pub. 505 and Form 1040-ES have them.`;
 
 // A fellowship's stipend: taxable for the part not for tuition and required books, and Stanford
 // withholds nothing from it for US students. The tax at the deposits' pace, the rule and the date.
@@ -90,6 +96,11 @@ const stipendTax: Detector = {
     const withheld = stanford
       ? "Stanford doesn't withhold tax from fellowship stipends for US citizens, permanent residents and tax residents (its Payroll page), and"
       : "If nothing was withheld from these deposits,";
+    const confirmed = said === "fellowship" || money.stipendNamed;
+    const scheduled = money.year === ESTIMATED_TAX.taxYear;
+    const rule = scheduled
+      ? `${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)}`
+      : scheduleNote(money.year);
     const kind =
       said === "fellowship"
         ? "you told me these are a fellowship"
@@ -97,10 +108,18 @@ const stipendTax: Detector = {
           ? "they say they're a stipend or fellowship"
           : "they come from the student account, so they may be a fellowship's stipend, a grant or loan money; which, only you know";
     return suggestion("taxes", "stipend_tax", {
-      title: `Nothing is withheld from your fellowship: about ${formatCents(tax)} of ${money.year} federal tax at this pace`,
-      headline: headlineOf("Check tax on your fellowship", tax, "risk"),
+      title: confirmed
+        ? `Nothing is withheld from your fellowship: about ${formatCents(tax)} of ${money.year} federal tax at this pace`
+        : `If these school deposits are a fellowship, nothing is withheld: about ${formatCents(tax)} of ${money.year} federal tax at this pace`,
+      headline: headlineOf(
+        confirmed ? "Check tax on your fellowship" : "Check tax if this is a fellowship",
+        tax,
+        "risk",
+      ),
       short: clip(
-        `${formatCents(received)} from your school in ${span}, nothing withheld: about ${formatCents(Math.round(tax / 12))} of tax a month.`,
+        confirmed
+          ? `${formatCents(received)} from your school in ${span}, nothing withheld: about ${formatCents(Math.round(tax / 12))} of tax a month.`
+          : `${formatCents(received)} from your school in ${span}; if it's a fellowship, nothing withheld: about ${formatCents(Math.round(tax / 12))} of tax a month.`,
       ),
       worthCents: tax,
       worthKind: "risk",
@@ -122,8 +141,10 @@ const stipendTax: Detector = {
       ]),
       // No estimates required under the no-2025-tax exception: the date that matters is April's.
       urgency:
-        facts.owed_tax_last_year.value === "no" ? "later" : urgencyForEstimated(profile.today),
-      why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)} This is arithmetic on your deposits, not tax advice.`,
+        facts.owed_tax_last_year.value === "no" || !scheduled
+          ? "later"
+          : urgencyForEstimated(profile.today),
+      why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${rule} This is arithmetic on your deposits, not tax advice.`,
       action: { label: "See your tax estimate", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });
@@ -145,7 +166,7 @@ const internationalStudent: Detector = {
       isStanford(t.description),
     );
     const withheld = stanford
-      ? ` Stanford withholds ${Math.round(INTERNATIONAL.stanfordFellowshipWithholding * 100)}% from nonresidents' fellowship and award payments and reports them on Form 1042-S, sent in March; a tax treaty can lower that, and Stanford's page says a US return may bring some of what was withheld back.`
+      ? ` Stanford withholds federal tax from nonresidents' fellowship and award payments and reports them on Form 1042-S, sent in March. The rate depends on your visa and on any tax treaty, and Stanford's funding pages give it; they also say a US return may bring some of what was withheld back.`
       : "";
     return suggestion("taxes", "student_tax_residency", {
       title: "On a student visa, the tax forms and credits are different",

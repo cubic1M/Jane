@@ -167,7 +167,8 @@ describe("a student on an F or J visa", () => {
     );
     expect(s.why).toContain("turns on the IRS's substantial presence test");
     expect(s.why).not.toMatch(/\bfiles Form\b|Form 1040-NR/);
-    expect(s.why).toContain("withholds 30%");
+    // The rate isn't shown: Stanford's two pages differ (30% and 14%), so it points to them.
+    expect(s.why).toContain("The rate depends on your visa and on any tax treaty");
     expect(s.why).toContain("Form 1042-S, sent in March");
     expect(s.required).toBe(true);
     expect(s.confidence.percent).toBe(100);

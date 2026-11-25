@@ -86,7 +86,11 @@ const OWN_WORDS =
 function cashPace(data: Data, leaveOut: (t: ProfileTx) => boolean) {
   const cash = cashIds(data);
   const end = dataEnd(data.transactions, data.today);
-  const first = data.transactions.reduce((m, t) => (t.date < m ? t.date : m), end);
+  // The window is the cash accounts' own history: a card's older rows say nothing of cash pace.
+  const first = data.transactions.reduce(
+    (m, t) => (cash.has(t.accountId) && t.date < m ? t.date : m),
+    end,
+  );
   const days = Math.min(60, daysBetween(first, end) + 1);
   if (days < 21) return null;
   const since = addDays(end, -days);
@@ -101,16 +105,35 @@ function cashPace(data: Data, leaveOut: (t: ProfileTx) => boolean) {
   return { inPerDay: inCents / days, outPerDay: outCents / days, days };
 }
 
-type Bill = { what: string; day: string; cents: number; stanford: boolean; txs: ProfileTx[] };
+// A bill's due dates to look at: one per Stanford calendar that applies. Undergraduate and graduate
+// bills are on different days (the page lists both); a student who hasn't said which they are gets
+// both next dates, never one as their deadline.
+type Due = { day: string; who: "undergraduates" | "graduate students" | null };
+type Bill = { what: string; dues: Due[]; cents: number; stanford: boolean; txs: ProfileTx[] };
 
 // The bill coming: Stanford's next due date if the person pays the bill themselves, else the next
-// rent, inside the window. Rent is the latest rent payment, a month on.
-function billAhead(data: Data): Bill | null {
+// rent, inside the window. Rent is the latest rent payment, a month on. `level` is the enrollment
+// fact: "undergrad", "grad" or not said.
+function billAhead(data: Data, level: unknown): Bill | null {
   const paid = billPayments(data);
   if (paid.length > 0) {
-    const day = nextDue(data.today, STANFORD_BILL.dueDates.undergraduate);
-    if (day && daysBetween(data.today, day) <= BILL_GAP.aheadDays) {
-      return { what: "Stanford bill", day, cents: paid[0]!.amountCents, stanford: true, txs: paid };
+    const calendars: { who: NonNullable<Due["who"]>; list: readonly string[] }[] = [];
+    if (level !== "grad")
+      calendars.push({ who: "undergraduates", list: STANFORD_BILL.dueDates.undergraduate });
+    if (level !== "undergrad")
+      calendars.push({ who: "graduate students", list: STANFORD_BILL.dueDates.graduate });
+    const dues = calendars.flatMap(({ who, list }) => {
+      const day = nextDue(data.today, list);
+      return day ? [{ day, who }] : [];
+    });
+    if (dues.some((d) => daysBetween(data.today, d.day) <= BILL_GAP.aheadDays)) {
+      return {
+        what: "Stanford bill",
+        dues,
+        cents: paid[0]!.amountCents,
+        stanford: true,
+        txs: paid,
+      };
     }
   }
   const cash = cashIds(data);
@@ -128,7 +151,13 @@ function billAhead(data: Data): Bill | null {
   const day = addMonths(latest.date, 1);
   const ahead = daysBetween(data.today, day);
   if (ahead < 0 || ahead > BILL_GAP.aheadDays) return null;
-  return { what: "rent", day, cents: latest.amountCents, stanford: false, txs: rents };
+  return {
+    what: "rent",
+    dues: [{ day, who: null }],
+    cents: latest.amountCents,
+    stanford: false,
+    txs: rents,
+  };
 }
 
 // The ways to cover a gap, cheapest first, each with its page: what the school offers that costs
@@ -175,28 +204,52 @@ const billGapAhead: Detector = {
   detect({ profile, data }) {
     const student = profile.facts.is_student;
     if (student.value !== true || !cashKnown(data) || !fresh(data)) return null;
-    const bill = billAhead(data);
+    const bill = billAhead(data, profile.facts.enrollment.value);
     if (!bill) return null;
     const pace = cashPace(data, (t) => bill.txs.includes(t));
     if (!pace) return null;
-    const days = daysBetween(data.today, bill.day);
     const cash = liquidCents(data);
-    const comingIn = Math.round(pace.inPerDay * days);
-    const goingOut = Math.round(pace.outPerDay * days);
-    const gap = bill.cents - (cash + comingIn - goingOut);
-    if (gap < BILL_GAP.minGapCents) return null;
+    // Each date the bill could be due on, inside the window, with what the pace leaves by then.
+    const cases = bill.dues
+      .filter((d) => daysBetween(data.today, d.day) <= BILL_GAP.aheadDays)
+      .map((d) => {
+        const days = daysBetween(data.today, d.day);
+        const comingIn = Math.round(pace.inPerDay * days);
+        const goingOut = Math.round(pace.outPerDay * days);
+        return { ...d, days, comingIn, goingOut, gap: bill.cents - (cash + comingIn - goingOut) };
+      })
+      .filter((c) => c.gap >= BILL_GAP.minGapCents);
+    if (cases.length === 0) return null;
+    // Several dates (level not said): the shortfall that holds on every one of them.
+    const gap = Math.min(...cases.map((c) => c.gap));
+    const first = cases[0]!;
+    const unsure = bill.stanford && bill.dues.length > 1;
     const stanford = atStanford(data);
-    const due = dayLabel(bill.day, { long: true });
+    const dueText = (d: Due) => dayLabel(d.day, { long: true });
     const { ways, more } = waysToCover(bill, stanford, data.today);
     const what = bill.stanford ? "your Stanford bill" : "rent";
+    const dueOn = unsure
+      ? `if it's due ${cases.map(dueText).join(" or ")}`
+      : `on ${dueText(first)}`;
+    const nextText = unsure
+      ? `${bill.dues.map((d) => `${dueText(d)} for ${d.who}`).join(" and ")} (which applies depends on your program)`
+      : bill.stanford
+        ? `${dueText(first)} for ${first.who}`
+        : dueText(first);
+    const pacing = cases
+      .map(
+        (c) =>
+          `by ${dueText(c)} about ${formatCents(c.comingIn)} comes in and ${formatCents(c.goingOut)} goes out, leaving about ${formatCents(c.gap)} short`,
+      )
+      .join("; ");
     return suggestion("safe_to_spend", "bill_gap_ahead", {
-      title: `Plan how to cover ${what} on ${due}: you're about ${formatCents(gap)} short`,
+      title: `Plan how to cover ${what} ${dueOn}: you're about ${formatCents(gap)} short`,
       headline: headlineOf(
-        `Plan for ${bill.stanford ? "your bill" : "rent"} on ${dayLabel(bill.day)}`,
+        `Plan for ${bill.stanford ? "your bill" : "rent"} on ${dayLabel(first.day)}`,
         gap,
         "risk",
       ),
-      short: `${formatCents(bill.cents)} due ${dayLabel(bill.day)}; you'll have about ${formatCents(bill.cents - gap)}.`,
+      short: `${formatCents(bill.cents)} due ${dayLabel(first.day)}; you'll have about ${formatCents(bill.cents - gap)}.`,
       worthCents: gap,
       worthKind: "risk",
       confidence: weakest([
@@ -208,8 +261,8 @@ const billGapAhead: Detector = {
           bill.stanford ? "bill payments" : "rent payments",
         ),
       ]),
-      urgency: days <= 14 ? "now" : "soon",
-      why: `Your last ${bill.stanford ? "Stanford bill payment" : "rent"} was ${formatCents(bill.cents)}, and the next is due ${due}${bill.stanford ? " for undergraduates (graduate students' next is January 20)" : ""}. You hold ${formatCents(cash)} in cash; at your pace over the last ${pace.days} days about ${formatCents(comingIn)} comes in and ${formatCents(goingOut)} goes out before then, leaving about ${formatCents(gap)} short. Ways to cover it, cheapest first: ${ways.join(" ")}`,
+      urgency: first.days <= 14 ? "now" : "soon",
+      why: `Your last ${bill.stanford ? "Stanford bill payment" : "rent"} was ${formatCents(bill.cents)}, and the next is due ${nextText}. You hold ${formatCents(cash)} in cash; at your pace over the last ${pace.days} days, ${pacing}. Ways to cover it, cheapest first: ${ways.join(" ")}`,
       action: { label: "Plan a tight month", href: "/loans/tight" },
       more,
     });
@@ -332,6 +385,9 @@ export function cashClearsCard(data: Data): {
   const keep = Math.max(CARD_VS_CASH.keepFloorCents, cushionSpendCents(data));
   const clear = Math.min(owed, liquidCents(data) - keep);
   if (clear < CARD_VS_CASH.minClearCents) return null;
+  // Part of what's owed across more than one card: the interest it stops depends on which card gets
+  // the payment (a 0% balance stops none), and which one is the person's, so no figure is quoted.
+  if (clear < owed && cards.filter((a) => Math.abs(a.balanceCents) > 0).length > 1) return null;
   const aprs = data.liabilities
     .filter((l) => ids.has(l.accountId) && typeof l.aprBps === "number" && l.aprBps > 0)
     .map((l) => l.aprBps!);
