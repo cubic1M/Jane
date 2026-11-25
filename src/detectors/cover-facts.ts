@@ -114,9 +114,9 @@ const belongingsCover: Detector = {
 // kind of cover and no car is that other cover, not car insurance.
 const OTHER_COVER =
   /\bHOME\b|HOMEOWNERS?|RENTERS?|\bCONDO\b|\bLIFE\b|UMBRELLA|\bFLOOD\b|\bHEALTH\b|\bPET\b/;
-const CAR_WORDS = /\bAUTO\b|\bCAR\b|VEHICLE|MOTOR/;
-// "AUTO PAY" is how a bill is paid, not a car.
-const PAYS_BY = /\bAUTO[- ]?PAY(?:MENT)?S?\b/g;
+const CAR_WORDS = /\bAUTO\b|\bAUTOMOBILES?\b|\bCAR\b|VEHICLE|MOTOR/;
+// "AUTO PAY", "AUTO PMT", "AUTO DEBIT" and "AUTO DRAFT" are how a bill is paid, not a car.
+const PAYS_BY = /\bAUTO(?:MATIC)?[- ]?(?:PAY(?:MENT)?|PMT|PYMT|PYMNT|DEBIT|DRAFT)S?\b/g;
 export const isCarLine = (line: string): boolean =>
   !OTHER_COVER.test(line) || CAR_WORDS.test(line.replace(PAYS_BY, " "));
 

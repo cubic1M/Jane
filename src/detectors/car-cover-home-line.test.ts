@@ -44,4 +44,17 @@ describe("car cover's line", () => {
     expect(isCarLine("STATE FARM AUTO INSURANCE")).toBe(true);
     expect(isCarLine("STATE FARM HOMEOWNERS AUTO")).toBe(true);
   });
+  it("takes AUTOMOBILE for a car beside a home word", () => {
+    expect(isCarLine("STATE FARM HOME AND AUTOMOBILE")).toBe(true);
+    expect(isCarLine("STATE FARM HOME")).toBe(false);
+    expect(fire("STATE FARM HOME AND AUTOMOBILE")).not.toBeNull();
+  });
+  it("does not take other automatic-payment labels for a car", () => {
+    for (const label of ["AUTO PMT", "AUTO DEBIT", "AUTO DRAFT", "AUTO-PAY", "AUTOMATIC PAYMENT"]) {
+      expect(isCarLine(`STATE FARM HOME ${label}`)).toBe(false);
+    }
+    expect(fire("STATE FARM HOME AUTO PMT")).toBeNull();
+    expect(isCarLine("STATE FARM AUTO")).toBe(true);
+    expect(isCarLine("GEICO AUTO INS")).toBe(true);
+  });
 });
