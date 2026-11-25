@@ -111,15 +111,19 @@ export function safeToSpend(
   // today that hasn't come in counts today, as a bill due today does, and safe to spend runs to
   // the payday after it (phone debugger, 11-20: "until Dec 4: $1,150" left out Nov 20's $1,650).
   const paydays = expectedPaydays(input, addDays(input.asOf, FORECAST_DAYS));
-  const intoChecking = (p: Payday): PayDue[] =>
-    checkingIds.has(p.accountId)
-      ? [{ employer: p.employer, cents: p.amountCents, dueOn: p.dueOn }]
-      : [];
+  // Only the share paid into checking: pay split with savings isn't all spendable.
+  const intoChecking = (p: Payday): PayDue[] => {
+    const cents = p.shares
+      .filter((s) => checkingIds.has(s.accountId))
+      .reduce((n, s) => n + s.amountCents, 0);
+    return cents > 0 ? [{ employer: p.employer, cents, dueOn: p.dueOn }] : [];
+  };
   const payDue = paydays.filter((p) => p.date === input.asOf).flatMap(intoChecking);
   const payDueCents = payDue.reduce((sum, p) => sum + p.cents, 0);
   // The next payday into an account counted here: another account's earlier one isn't this one's.
   const payday =
-    paydays.find((p) => p.date > input.asOf && checkingIds.has(p.accountId))?.date ?? null;
+    paydays.find((p) => p.date > input.asOf && p.shares.some((s) => checkingIds.has(s.accountId)))
+      ?.date ?? null;
   // Without one, pay that comes every week or two is still likely before a month's bills are due
   // (debugger 11-03: "Short $1,303" for a driver DoorDash pays each week).
   const until = payday ?? nextUnevenPayBy(input, [...checkingIds]);

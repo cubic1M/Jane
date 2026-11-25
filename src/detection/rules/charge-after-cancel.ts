@@ -1,4 +1,8 @@
-import { CHARGE_AFTER_CANCEL_GRACE_DAYS, REFUND_MAX_AGE_DAYS } from "@/config/detection";
+import {
+  CHARGE_AFTER_CANCEL_GRACE_DAYS,
+  CHARGE_AFTER_CANCEL_PRICE_RATIO,
+  REFUND_MAX_AGE_DAYS,
+} from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { byDate, evidenceOf, inLookback, sumCents } from "../helpers";
 import { merchantOf } from "../streams";
@@ -12,13 +16,25 @@ import type { Rule } from "./rule";
 export const chargeAfterCancel: Rule = (input) =>
   (input.cancelledMerchants ?? []).flatMap(({ merchantKey, cancelledOn }): Candidate[] => {
     const from = addDays(cancelledOn, CHARGE_AFTER_CANCEL_GRACE_DAYS);
-    const charges = inLookback(input)
+    const atMerchant = inLookback(input).filter(
+      (t) => t.amountCents > 0 && merchantOf(t)?.key === merchantKey,
+    );
+    // What the subscription charged before it was cancelled: a later charge at the merchant that is
+    // nothing like it (a one-time purchase) isn't the subscription continuing.
+    const prices = atMerchant.filter((t) => t.date < cancelledOn).map((t) => t.amountCents);
+    const isPlanPrice = (cents: number) =>
+      prices.length === 0 ||
+      prices.some(
+        (p) =>
+          cents <= p * CHARGE_AFTER_CANCEL_PRICE_RATIO &&
+          cents * CHARGE_AFTER_CANCEL_PRICE_RATIO >= p,
+      );
+    const charges = atMerchant
       .filter(
         (t) =>
-          t.amountCents > 0 &&
           t.date >= from &&
           daysBetween(t.date, input.asOf) <= REFUND_MAX_AGE_DAYS &&
-          merchantOf(t)?.key === merchantKey,
+          isPlanPrice(t.amountCents),
       )
       .sort(byDate);
     if (charges.length === 0) return [];

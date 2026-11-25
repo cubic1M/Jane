@@ -49,3 +49,15 @@ export const RENTAL_CATEGORIES: readonly PfcDetailed[] = ["TRAVEL_RENTAL_CARS"];
 export const TRIP_CATEGORIES: readonly PfcDetailed[] = ["TRAVEL_FLIGHTS", "TRAVEL_LODGING"];
 // A duplicate is never more sure than this: the card's terms can change.
 export const COVERED_BY_CARD_MAX_CONFIDENCE: ConfidenceLevel = "medium";
+// A brand that sells phone protection and other insurance too ("ASSURANT RENTERS"): its stream is
+// that plan only when a charge's own words say it is for a phone or device.
+export const COVER_AMBIGUOUS_BRANDS: readonly string[] = ["assurant"];
+export const COVER_PHONE_WORDS: readonly string[] = [
+  "phone",
+  "mobile",
+  "wireless",
+  "cell",
+  "device",
+  "handset",
+  "smartphone",
+];

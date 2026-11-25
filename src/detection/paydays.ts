@@ -53,6 +53,8 @@ export type PaySchedule = {
   shift: PayShift;
   // The latest paycheck, as a positive amount, and its date.
   amountCents: number;
+  // The latest paycheck's split between accounts, largest first; accountId is the largest.
+  shares: { accountId: string; amountCents: number }[];
   lastDate: string;
   paychecks: number;
   active: boolean;
@@ -67,6 +69,8 @@ export type Payday = {
   employer: string;
   amountCents: number;
   accountId: string;
+  // How the pay splits between accounts (sums to amountCents).
+  shares: { accountId: string; amountCents: number }[];
 };
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -103,7 +107,13 @@ function employerOf(t: DetectionTransaction): { key: string; name: string } {
   };
 }
 
-type Deposit = { date: string; amountCents: number; accountId: string };
+// `shares`: what each account got of the day's pay, largest first (pay split between accounts).
+type Deposit = {
+  date: string;
+  amountCents: number;
+  accountId: string;
+  shares: { accountId: string; amountCents: number }[];
+};
 
 // Each employer's paychecks as they posted, oldest first, by the one definition of a paycheck
 // and of whose it is (above). The changes, the lean plan, the paycheck split and life events
@@ -129,8 +139,20 @@ function byEmployer(input: DetectionInput) {
     const { key, name } = employerOf(t);
     const group = groups.get(key) ?? { name, deposits: [] };
     const last = group.deposits.at(-1);
-    if (last && last.date === t.date) last.amountCents += -t.amountCents;
-    else group.deposits.push({ date: t.date, amountCents: -t.amountCents, accountId: t.accountId });
+    if (last && last.date === t.date) {
+      last.amountCents += -t.amountCents;
+      const share = last.shares.find((x) => x.accountId === t.accountId);
+      if (share) share.amountCents += -t.amountCents;
+      else last.shares.push({ accountId: t.accountId, amountCents: -t.amountCents });
+      last.shares.sort((a, b) => b.amountCents - a.amountCents);
+      last.accountId = last.shares[0]!.accountId;
+    } else
+      group.deposits.push({
+        date: t.date,
+        amountCents: -t.amountCents,
+        accountId: t.accountId,
+        shares: [{ accountId: t.accountId, amountCents: -t.amountCents }],
+      });
     groups.set(key, group);
   }
   return [...groups].sort(([a], [b]) => a.localeCompare(b));
@@ -204,11 +226,11 @@ function paydayDates(rule: Rule, from: string, until: string): string[] {
 // it doesn't explain, and its paydays that had no paycheck. Stops early (null) once more
 // than `allowed` paychecks are off the schedule.
 function score(rule: Rule, deposits: number[], allowed: number) {
-  const expected = paydayDays(
-    rule,
-    deposits[0]! - PAYDAY_POSTING_DAYS,
-    deposits.at(-1)! + PAYDAY_POSTING_DAYS,
-  );
+  const first = deposits[0]! - PAYDAY_POSTING_DAYS;
+  const last = deposits.at(-1)! + PAYDAY_POSTING_DAYS;
+  // Paydays a weekend or holiday past the last paycheck can still match it, posted early; one that
+  // nothing posted early for is not a payday missed.
+  const expected = paydayDays(rule, first, last + DAYS_PER_WEEK);
   const open = new Set(expected);
   let exact = 0;
   let unmatched = 0;
@@ -218,11 +240,17 @@ function score(rule: Rule, deposits: number[], allowed: number) {
       continue;
     }
     let close = false;
-    for (let off = 1; off <= PAYDAY_POSTING_DAYS && !close; off += 1)
-      close = open.delete(day - off) || open.delete(day + off);
+    // A day or so either side by the calendar, or banking days early: the Friday before a Monday
+    // payday counts as it does where the forecast looks for the deposit (cameIn, below).
+    let early = day;
+    for (let off = 1; off <= PAYDAY_POSTING_DAYS && !close; off += 1) {
+      do early += 1;
+      while (!isBanking(early));
+      close = open.delete(day - off) || open.delete(day + off) || open.delete(early);
+    }
     if (!close && ++unmatched > allowed) return null;
   }
-  return { exact, unmatched, missing: open.size };
+  return { exact, unmatched, missing: [...open].filter((d) => d <= last).length };
 }
 
 const SHIFTS: readonly PayShift[] = ["before", "none", "after"];
@@ -322,6 +350,7 @@ export function paySchedules(input: DetectionInput): PaySchedule[] {
         accountId: last.accountId,
         ...rule,
         amountCents: last.amountCents,
+        shares: last.shares,
         lastDate: last.date,
         paychecks: deposits.length,
         active:
@@ -376,6 +405,7 @@ export function expectedPaydays(input: DetectionInput, until: string): Payday[] 
           employer: s.employer,
           amountCents: s.amountCents,
           accountId: s.accountId,
+          shares: s.shares,
         })),
     )
     .sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
@@ -404,6 +434,7 @@ export function missedPaydays(input: DetectionInput): Payday[] {
           employer: s.employer,
           amountCents: s.amountCents,
           accountId: s.accountId,
+          shares: s.shares,
         },
       ];
     })

@@ -16,6 +16,10 @@ export const REFUND_MAX_AGE_DAYS = 60;
 // A charge this many days or more after we cancelled the merchant is one they shouldn't
 // have taken. The grace covers charges that were already on their way.
 export const CHARGE_AFTER_CANCEL_GRACE_DAYS = 3;
+// A charge after we cancelled is the subscription's, not another purchase, when it is within this
+// many times of a price the subscription charged before (a price rise still counts). With no
+// charges before to compare with, nothing says it isn't.
+export const CHARGE_AFTER_CANCEL_PRICE_RATIO = 2;
 // A trial starts with a charge this small (in cents): $0 or a $1 card check...
 export const TRIAL_MAX_START_CENTS = 100;
 // ...and converts when a full charge of at least this much follows...

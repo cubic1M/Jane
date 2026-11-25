@@ -450,6 +450,8 @@ function switchedToYearly(main: Stream, charges: DetectionTransaction[]): Stream
   const plan = after[0]!;
   const months = plan.amountCents / main.lastAmountCents;
   const merchant = merchantOf(plan);
+  // A year of goods ("NIMBUS APPAREL" after a monthly plan) is a purchase, not the plan renewed.
+  if (isGoods(plan.description)) return null;
   if (!merchant || months < YEARLY_SWITCH_MIN_MONTHS || months > YEARLY_SWITCH_MAX_MONTHS) {
     return null;
   }
@@ -555,11 +557,18 @@ function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
   const runs: Stream[] = [];
   const byPrice = new Map<number, DetectionTransaction[]>();
   for (const c of charges) byPrice.set(c.amountCents, [...(byPrice.get(c.amountCents) ?? []), c]);
-  for (const [, same] of [...byPrice].sort(([a], [b]) => a - b)) {
+  const found = [...byPrice].flatMap(([, same]) => {
     const run = detectRun(same, asOf);
-    if (run)
-      runs.push(runs.length === 0 ? run : { ...run, key: `${run.key}@${run.lastAmountCents}` });
-  }
+    return run ? [run] : [];
+  });
+  // The plan that has been billed longest keeps the bare key, so a second plan that qualifies later
+  // never takes it from the first (the unchanged plan's findings keep their key).
+  found.sort(
+    (a, b) =>
+      a.charges[0]!.date.localeCompare(b.charges[0]!.date) || a.lastAmountCents - b.lastAmountCents,
+  );
+  for (const run of found)
+    runs.push(runs.length === 0 ? run : { ...run, key: `${run.key}@${run.lastAmountCents}` });
   return runs;
 }
 
@@ -661,11 +670,12 @@ function joinVariants(groups: Map<string, DetectionTransaction[]>) {
   // pair (a file of 3,000 different merchants took 80 seconds here, with other requests waiting).
   const words = new Map([...groups.keys()].map((key) => [key, key.split(" ")]));
   for (const short of [...groups.keys()].sort((a, b) => a.length - b.length)) {
-    const base = groups.get(short);
-    if (!base || merchantMatches(short, BILLING_PLATFORM_MERCHANTS)) continue;
+    if (!groups.has(short) || merchantMatches(short, BILLING_PLATFORM_MERCHANTS)) continue;
     const shortWords = words.get(short)!;
     for (const long of [...groups.keys()]) {
       if (long === short || !extends_(short, long, shortWords, words.get(long)!)) continue;
+      // Read each time: an earlier variant joined to this group is part of it now.
+      const base = groups.get(short)!;
       const rows = groups.get(long)!;
       const prices: Set<number> = new Set(base.map((r) => r.amountCents));
       const where = accounts(base);
@@ -759,6 +769,18 @@ export function buildStreams(input: DetectionInput): Stream[] {
     ...input,
     transactions: input.transactions.filter((t) => !covered.has(t.accountId)),
   });
-  const keys = new Set(fromPlaid.map((s) => s.key));
-  return [...fromPlaid, ...fallback.filter((s) => !keys.has(s.key))];
+  // The same plan seen twice (same key, same price and frequency) counts once; a different plan at
+  // the merchant, on another account, is kept under a key of its own.
+  const taken = new Set(fromPlaid.map((s) => s.key));
+  const kept = fallback.flatMap((s): Stream[] => {
+    const same = fromPlaid.find((p) => p.key === s.key);
+    if (same && same.lastAmountCents === s.lastAmountCents && same.frequency === s.frequency)
+      return [];
+    if (!taken.has(s.key)) return [s];
+    let key = `${s.key}@${s.lastAmountCents}`;
+    while (taken.has(key)) key += "+";
+    taken.add(key);
+    return [{ ...s, key }];
+  });
+  return [...fromPlaid, ...kept];
 }

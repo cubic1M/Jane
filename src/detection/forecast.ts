@@ -210,12 +210,15 @@ export function nextUnevenPayBy(
 // step 182, src/detection/paydays.ts), and other regular deposits such as interest from
 // their streams.
 export function expectedIncome(input: DetectionInput, until: string): Expected[] {
-  const paychecks = expectedPaydays(input, until).map((p) => ({
-    merchant: p.employer,
-    date: p.date,
-    amountCents: p.amountCents,
-    accountId: p.accountId,
-  }));
+  // Pay split between accounts lands in each as it split (a share to savings isn't in checking).
+  const paychecks = expectedPaydays(input, until).flatMap((p) =>
+    p.shares.map((share) => ({
+      merchant: p.employer,
+      date: p.date,
+      amountCents: share.amountCents,
+      accountId: share.accountId,
+    })),
+  );
   const payroll = (s: Stream) =>
     s.charges.some((c) => isPaycheck({ ...c, amountCents: -Math.abs(c.amountCents) }));
   const other = expand(
