@@ -292,29 +292,21 @@ const cardInterest: Detector = {
   detect({ profile, data }) {
     const { charges, seen, yearly, total, months, short } = cardInterestYear(data);
     if (total < R.interestMinCents) return null;
-    // Cash beyond a month's spending would clear it: card_from_cash says so with its steps. When
-    // that cash clears only part of what is owed, this card keeps the rest of the interest, so the
-    // two never count the same money twice.
-    const cash = cashClearsCard(data);
-    const covered = cash && cash.interestCents > 0 ? cash : null;
-    if (covered && covered.clearCents >= covered.owedCents) return null;
-    const left = covered
-      ? Math.round((total * (covered.owedCents - covered.clearCents)) / covered.owedCents)
-      : total;
-    if (left < R.interestMinCents) return null;
+    // Cash beyond a month's spending would clear it: card_from_cash says so with its steps.
+    if ((cashClearsCard(data)?.interestCents ?? 0) > 0) return null;
     return suggestion("debt", "card_interest", {
       title: "Pay down the card that is charging you interest",
-      headline: headlineOf("Pay down the card charging interest", left, "saves"),
+      headline: headlineOf("Pay down the card charging interest", total, "saves"),
       short:
         typeof yearly === "number"
           ? `Your cards cost you about ${formatCents(total)} a year in interest.`
           : `You paid ${formatCents(seen)} in card interest over ${months} months.`,
-      worthCents: left,
+      worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
       urgency: "soon",
       ...(profile.facts.debt_trouble.value === true
-        ? { rankCents: Math.round(left * D.troubleDiscount) }
+        ? { rankCents: Math.round(total * D.troubleDiscount) }
         : {}),
       why: `${
         typeof yearly === "number"
@@ -324,12 +316,12 @@ const cardInterest: Detector = {
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
           : "paying the balance off ends it"
-      }.${covered ? ` The cash you hold could clear part of the card (see the card about paying from cash); the rest still costs about ${formatCents(left)} a year.` : ""}`,
+      }.`,
       action: { label: "Cut your card interest", href: "/loans/interest" },
       watch: {
         kind: "fee_stops",
         pfcs: ["BANK_FEES_INTEREST_CHARGE"],
-        monthlyCents: Math.round(left / 12),
+        monthlyCents: Math.round(total / 12),
       },
     });
   },
