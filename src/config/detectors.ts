@@ -219,6 +219,8 @@ export const DETECTOR_RATES = {
     // Estimated payments keep up at this share of what was due by now (IRS Form 1040-ES: 90% of the
     // year's tax avoids the penalty).
     estimatedPaidEnoughShare: 0.9,
+    // Late estimated payments that caught up say so only when their penalty comes to this much.
+    estimatedLateMinPenaltyCents: 2_000,
     // Year-end 401(k) top-ups: never suggest more than this share of gross income.
     yearEndMaxIncomeShare: 0.1,
     // A shop's deposits are sales, not profit: assume this share is what's taxed
@@ -315,6 +317,8 @@ export const HEADLINE_VERBS: readonly string[] = [
 // it's a rhythm worth setting aside for; due within SOON_DAYS, it's soon.
 export const BUSINESS_LUMPS = {
   pattern: /\b(?:SALES|PAYROLL|USE|EXCISE) TAX\b/i,
+  // Which tax a payment is for, to keep one tax's payments apart from another's.
+  kind: /\b(SALES|PAYROLL|USE|EXCISE) TAX\b/i,
   minPayments: 2,
   soonDays: 30,
 } as const;

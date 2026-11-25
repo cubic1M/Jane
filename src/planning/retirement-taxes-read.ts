@@ -14,6 +14,7 @@ import {
   type Status,
   type TunedDraw,
 } from "./retirement-taxes";
+import { filingStatusOf } from "./student-tax";
 import { marginalRateOf } from "./tax-estimate";
 
 // Taxes on retirement income (spec step 271), read from a person's profile and the rows behind
@@ -58,8 +59,9 @@ const yearOf = (rows: readonly { amountCents: number }[]) =>
 export function readRetirementTaxes(profile: Profile, data: ProfileInput): RetirementTaxes {
   const f = profile.facts;
   const year = Number(profile.today.slice(0, 4));
-  const status: Status =
-    f.household.value === "couple" || f.household.value === "family" ? "married_joint" : "single";
+  // The status the person reported, as every other tax figure reads it (filingStatusOf); this
+  // reading knows only joint and single, so the others file as single.
+  const status: Status = filingStatusOf(f) === "married_joint" ? "married_joint" : "single";
   // The last 12 months back from where the data ends (gate C's calendar sweep, 11-16: from today,
   // a bank that hadn't synced lost a month of income each month and the taxable part of Social
   // Security fell by itself).

@@ -82,6 +82,11 @@ export const LIFELINE = {
 // most it takes off; AT&T Access prices by address, so it's left out until a price can be said.
 export const LOW_COST_INTERNET = {
   incomeShare: 2,
+  // The provider named is the one billed most recently, and the price said is from its last
+  // recentMonths calendar months of bills (a provider the person left is not offered).
+  recentMonths: 3,
+  // A bill whose words show TV in it: the internet part of the charge isn't known.
+  bundleWords: /\b(?:tv|video|bundle|(?:triple|double)[\s-]*play)\b/i,
   plans: [
     {
       isp: "Xfinity",

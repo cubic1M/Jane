@@ -30,6 +30,7 @@ import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
 import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
+import { filingStatusOf } from "@/planning/student-tax";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import { IP_PIN_TOOL_DOWN, ipPinToolOpen } from "@/planning/tax-identity";
@@ -49,13 +50,14 @@ const T = DETECTOR_RATES.tax;
 const annual = (monthly: unknown) => (typeof monthly === "number" ? monthly * 12 : 0);
 const month = (today: string) => Number(today.slice(5, 7));
 
-// A single or a joint return, from the household fact (a couple or a family files jointly).
-const statusOf = (household: unknown) =>
-  household === "couple" || household === "family" ? "married_joint" : "single";
+// The return they file: the filing status they reported, else a joint one for a couple or a family
+// (the household fact) and a single one for anyone else.
+type Facts = Parameters<typeof filingStatusOf>[0];
+const statusOf = (facts: Facts) => filingStatusOf(facts);
 
 // The top federal bracket a person's income reaches, from their take-home pay.
-function marginalRate(netAnnualCents: number, extraCents: number, household: unknown) {
-  const status = statusOf(household);
+function marginalRate(netAnnualCents: number, extraCents: number, facts: Facts) {
+  const status = statusOf(facts);
   const gross = Math.round(netAnnualCents * T.netToGross) + extraCents;
   return marginalRateOf(Math.max(0, gross - STANDARD_DEDUCTION[status]), FEDERAL_BRACKETS[status]);
 }
@@ -86,7 +88,7 @@ const bracketOf = (
   profile: Parameters<typeof grossIncome>[0],
   data: Parameters<typeof grossIncome>[1],
 ) => {
-  const status = statusOf(profile.facts.household.value);
+  const status = statusOf(profile.facts);
   return marginalRateOf(
     Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]),
     FEDERAL_BRACKETS[status],
@@ -116,7 +118,7 @@ function effectiveDue(isoDay: string): string {
 }
 
 // Every estimated-payment due date in the given calendar years, as effective dates.
-const estimatedDueDates = (years: readonly number[]) =>
+export const estimatedDueDates = (years: readonly number[]) =>
   years.flatMap((y) =>
     ESTIMATED_TAX_DATES.map((d) =>
       effectiveDue(
@@ -171,7 +173,7 @@ export function stockVestGap({ profile, data }: Parameters<Detector["detect"]>[0
   const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
   const rate = given
     ? given.marginalRate
-    : marginalRate(annual(income.value), vested, profile.facts.household.value);
+    : marginalRate(annual(income.value), vested, profile.facts);
   if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
   const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
   return { plan, income, stock, vested, rate, short, assumed: !given || given.assumed };
@@ -236,7 +238,7 @@ const rothConversion: Detector = {
     const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
     if (balance < T.rothMinBalanceCents) return null;
     const retired = stage.value === "retired";
-    const status = statusOf(profile.facts.household.value);
+    const status = statusOf(profile.facts);
     let convert = Math.round(balance * T.rothConvertShare);
     let nowRate: number = T.rothNowRate;
     let how: string;
@@ -291,14 +293,13 @@ const childcareTaxBreak: Detector = {
     const care = tx(data, (t) => t.pfc === "GENERAL_SERVICES_CHILDCARE" && t.amountCents > 0);
     const spent = care.reduce((s, t) => s + t.amountCents, 0);
     if (spent < T.childcareMinCents) return null;
-    const household = profile.facts.household.value;
     const fsa = Math.min(spent, CONTRIBUTION_LIMITS.dependentCareFsa);
     const rate = bracketOf(profile, data);
     const payroll = PAYROLL_TAX.socialSecurityRate + PAYROLL_TAX.medicareRate;
     const gross = Math.round(annual(income.value) * T.netToGross);
     const credit = Math.round(
       Math.min(spent, DEPENDENT_CARE_CREDIT.costLimit[1]) *
-        careShare(gross, statusOf(household) === "married_joint"),
+        careShare(gross, statusOf(profile.facts) === "married_joint"),
     );
     const saves = Math.round(fsa * (rate + payroll)) - credit;
     if (saves <= 0) return null;
@@ -522,10 +523,14 @@ const lossHarvest: Detector = {
           percent: evidence("seen", profile.months, losing.length, "holdings").percent,
           reason: `${formatCents(loss)} below cost in ${losing.length === 1 ? "one holding" : `${losing.length} holdings`} in a taxable account`,
         },
-        { percent: 80, reason: "the savings depend on your gains elsewhere, which I can't see" },
+        {
+          percent: 80,
+          reason:
+            "the savings depend on your gains elsewhere and on no purchase of the same holding within 30 days either side of the sale, which I can't see",
+        },
       ]),
       urgency: month(profile.today) >= 11 ? "soon" : "later",
-      why: `A taxable account holds ${formatCents(loss)} less than you paid for it. Selling at a loss offsets gains and up to ${formatCents(T.harvestOrdinaryOffsetCents)} of other income, about ${formatCents(saves)} off your tax. Don't buy the same thing back for 30 days (the wash-sale rule).`,
+      why: `A taxable account holds ${formatCents(loss)} less than you paid for it. Selling at a loss offsets gains and up to ${formatCents(T.harvestOrdinaryOffsetCents)} of other income, about ${formatCents(saves)} off your tax. That holds only if you haven't bought the same or a nearly identical holding in the 30 days before the sale, and don't in the 30 days after: under the wash-sale rule, a purchase on either side of the sale disallows the loss.`,
       action: { label: "See your investment taxes", href: "/taxes?focus=estimate:investments" },
     });
   },
@@ -595,10 +600,10 @@ function profitOf(profile: { facts: Record<string, { value: unknown }> }): numbe
       : T.freelanceProfitShare;
   return Math.round(annual(profile.facts.monthly_income.value) * share);
 }
-function soleInput(profit: number, household: unknown, year: number): EstimateInput {
+function soleInput(profit: number, facts: Facts, year: number): EstimateInput {
   return {
     year,
-    filingStatus: statusOf(household),
+    filingStatus: statusOf(facts),
     childrenUnder17: 0,
     otherDependants: 0,
     state: null,
@@ -616,8 +621,8 @@ function soleInput(profit: number, household: unknown, year: number): EstimateIn
 }
 // What a deduction saves a sole proprietor: income tax at their bracket plus the 15.3% on 92.35%
 // of it that self-employment tax takes.
-const deductionRate = (profit: number, household: unknown) => {
-  const status = statusOf(household);
+const deductionRate = (profit: number, facts: Facts) => {
+  const status = statusOf(facts);
   const bracket = marginalRateOf(
     Math.max(0, profit - STANDARD_DEDUCTION[status]),
     FEDERAL_BRACKETS[status],
@@ -641,7 +646,7 @@ const sCorpElection: Detector = {
     const income = profile.facts.monthly_income;
     if (!selfPaid(pattern.value)) return null;
     const profit = profitOf(profile);
-    const result = structureFor(soleInput(profit, profile.facts.household.value, 2026));
+    const result = structureFor(soleInput(profit, profile.facts, 2026));
     if (!result.sCorp.worthIt) return null;
     const business = pattern.value === "business";
     const md = profile.today.slice(5);
@@ -689,7 +694,7 @@ const homeOffice: Detector = {
     if (away.length > 0) return null;
     const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
     const profit = profitOf(profile);
-    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts));
     return suggestion("taxes", "home_office_deduction", {
       title: "Claim a home office if you work from home",
       headline: headlineOf("Claim a home office", saves, "saves"),
@@ -726,7 +731,7 @@ const vehicleDeduction: Detector = {
     if (gas.length < 6) return null;
     const deduction = Math.round(VEHICLE_ASSUMED_MILES * MILEAGE_RATE_CENTS);
     const profit = profitOf(profile);
-    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts));
     return suggestion("taxes", "vehicle_deduction", {
       title: "Keep a mileage log for the driving you do for your business",
       headline: headlineOf("Keep a mileage log", saves, "saves"),
@@ -774,8 +779,8 @@ function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
   const knownYear = typeof died.value === "number" ? died.value : null;
   const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
   const yearsLeft = emptyBy !== null ? Math.max(1, emptyBy - year + 1) : INHERITED_IRA_YEARS;
-  const status = statusOf(profile.facts.household.value);
-  const base = soleInput(0, profile.facts.household.value, year);
+  const status = statusOf(profile.facts);
+  const base = soleInput(0, profile.facts, year);
   const spread = spreadIra({
     balanceCents: taxableBalance,
     yearsLeft,
@@ -1022,6 +1027,26 @@ const medicalDeductionDetector: Detector = {
 const longDate = (day: string) => dayLabel(day, { year: true });
 const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+// What the casualty loss calculator applied, in words: a qualified disaster has the $500 floor and no
+// income floor, and counts without itemizing; any other federally declared one has the $100 and
+// 10%-of-income floors and counts when itemizing; one not federally declared isn't deductible.
+function casualtyWords(
+  r: { federallyDeclared: boolean; qualified: boolean },
+  loss: ReturnType<typeof casualtyLoss>,
+  saves: number,
+): string {
+  if (!r.federallyDeclared) {
+    return "A disaster that isn't federally declared doesn't give a deductible casualty loss.";
+  }
+  if (r.qualified) {
+    return loss.deductibleCents > 0
+      ? `This is a qualified disaster, so only a ${formatCents(loss.floorCents)} floor applies, with no income floor and no need to itemize: ${formatCents(loss.deductibleCents)} is deductible, worth up to about ${formatCents(saves)}.`
+      : `This is a qualified disaster, so only a ${formatCents(loss.floorCents)} floor applies, with no income floor and no need to itemize; the loss doesn't pass it, so none of it is deductible.`;
+  }
+  return loss.deductibleCents > 0
+    ? `After the ${formatCents(loss.floorCents)} and 10%-of-income (${formatCents(loss.incomeFloorCents)}) floors, ${formatCents(loss.deductibleCents)} is deductible if you itemize, worth up to about ${formatCents(saves)}.`
+    : `After the ${formatCents(loss.floorCents)} and 10%-of-income (${formatCents(loss.incomeFloorCents)}) floors none of it is deductible.`;
+}
 const disasterRelief: Detector = {
   capability: "taxes",
   topic: "disaster_relief",
@@ -1046,9 +1071,9 @@ const disasterRelief: Detector = {
     });
     const saves = Math.round(loss.deductibleCents * bracketOf(profile, data));
     const year = Number(profile.today.slice(0, 4));
-    const moved = computedMoves(r, [year - 1, year, year + 1]).filter(
-      (m) => m.from >= profile.today,
-    );
+    // A moved date stays on the card until its new deadline (the relief only comes back while
+    // postponedTo is still ahead); once the old date has passed, the new one drives the urgency.
+    const moved = computedMoves(r, [year - 1, year, year + 1]).filter((m) => m.to >= profile.today);
     const to = longDate(r.postponedTo);
     return suggestion("taxes", "disaster_relief", {
       title: `Use the IRS disaster postponement for ${county.value} County: your tax deadlines move to ${to}`,
@@ -1077,14 +1102,14 @@ const disasterRelief: Detector = {
             ]
           : []),
       ]),
-      urgency: moved.some((m) => daysBetween(profile.today, m.from) <= 45) ? "now" : "soon",
+      urgency: moved.some(
+        (m) => daysBetween(profile.today, m.from >= profile.today ? m.from : m.to) <= 45,
+      )
+        ? "now"
+        : "soon",
       why: `The IRS has postponed federal tax deadlines for ${county.value} County after ${r.title.replace(/ \(sample declaration\)$/, "").toLowerCase()} from ${longDate(r.incidentFrom)}: ${moved.map((m) => `${m.title} (${longDate(m.from)})`).join("; ")} move${moved.length === 1 ? "s" : ""} to ${to}. ${
         damage.repairsCents > 0
-          ? `You've paid ${formatCents(damage.repairsCents)} for repairs since, and ${formatCents(damage.reimbursedCents)} came back from insurance or assistance, so the loss is ${formatCents(loss.lossCents)}. ${
-              loss.deductibleCents > 0
-                ? `After the $100 and 10%-of-income floors, ${formatCents(loss.deductibleCents)} is deductible if you itemize, worth up to about ${formatCents(saves)}; keep the bills with your insurance claim, since what insurance pays changes it.`
-                : "After the $100 and 10%-of-income floors none of it is deductible; keep the bills with your insurance claim, since what insurance pays changes the loss."
-            }`
+          ? `You've paid ${formatCents(damage.repairsCents)} for repairs since, and ${formatCents(damage.reimbursedCents)} came back from insurance or assistance, so the loss is ${formatCents(loss.lossCents)}. ${casualtyWords(r, loss, saves)} Keep the bills with your insurance claim, since what insurance pays changes it.`
           : "If the disaster damaged your home or car, keep the repair bills and the insurance claim together."
       }${r.sample ? " (This is a sample declaration from Jane's stand-in feed.)" : ""}`,
       action: { label: "Update my deadline list", href: "/deadlines" },

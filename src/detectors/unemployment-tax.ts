@@ -13,6 +13,36 @@ import { datesLine } from "./student-taxes";
 // a laid-off first-jobber meets it in April. The federal tax on what's been paid so far, on top of the
 // year's other pay at its pace. A fact; pure.
 
+// Taxable income the student pay model doesn't read: pensions and retirement payouts, dividends and
+// interest, this year so far, paced to a year over the months the rows cover. They arrive gross.
+const OTHER_TAXABLE = new Set([
+  "INCOME_RETIREMENT_PENSION",
+  "INCOME_DIVIDENDS",
+  "INCOME_INTEREST_EARNED",
+]);
+const DAY_MS = 86_400_000;
+function otherTaxableYear(data: Parameters<Detector["detect"]>[0]["data"], today: string) {
+  const year = today.slice(0, 4);
+  const rows = data.transactions.filter(
+    (t) =>
+      t.amountCents < 0 &&
+      t.date.startsWith(`${year}-`) &&
+      t.date <= today &&
+      OTHER_TAXABLE.has(t.pfc ?? ""),
+  );
+  if (rows.length === 0) return 0;
+  const first = data.transactions.reduce((a, t) => (t.date < a ? t.date : a), today);
+  const from = first < `${year}-01-01` ? `${year}-01-01` : first;
+  // To the newest row on or before today, as studentYearOf does: months after the statements stop
+  // hold no rows, so pacing over them would shrink the year.
+  const last = data.transactions.reduce(
+    (a, t) => (t.date <= today && t.date > a ? t.date : a),
+    from,
+  );
+  const months = Math.max(1, (Date.parse(last) - Date.parse(from)) / DAY_MS / (365.25 / 12));
+  return Math.round((sumCents(rows) * 12) / months);
+}
+
 const unemploymentTax: Detector = {
   capability: "taxes",
   topic: "unemployment_tax",
@@ -33,7 +63,7 @@ const unemploymentTax: Detector = {
     const other = studentYearOf(data, facts, rateMonthsOf(profile));
     const status = filingStatusOf(facts);
     const dependent = dependentOf(facts) === "yes";
-    const base = other.agiCents;
+    const base = other.agiCents + otherTaxableYear(data, profile.today);
     const tax =
       federalTaxOf(base + paid, status, dependent, other.earnedCents) -
       federalTaxOf(base, status, dependent, other.earnedCents);
