@@ -38,8 +38,30 @@ export const perYear = (cents: number, months: number): number | null =>
 // once (an annual premium) or in some months only (a quarterly one) can't be put on a year from
 // the span of the history, so the answer is null (CodeRabbit sweep 1b, #2258).
 export function monthlyChargeYear(
-  rows: readonly { date: string; amountCents: number }[],
+  rows: readonly { date: string; amountCents: number; description?: string }[],
 ): number | null {
+  // Each payee's charges are judged on their own: an annual premium beside a monthly one makes
+  // four contiguous-looking months, and the annual one would be counted four times over (CodeRabbit
+  // sweep 1c, #2270). One stream that is not monthly withholds the whole figure.
+  const streams = new Map<string, { date: string; amountCents: number }[]>();
+  for (const t of rows) {
+    const key = (t.description ?? "")
+      .toUpperCase()
+      .replace(/[\d/#*-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    streams.set(key, [...(streams.get(key) ?? []), t]);
+  }
+  let year = 0;
+  for (const list of streams.values()) {
+    const one = oneStreamYear(list);
+    if (one === null) return null;
+    year += one;
+  }
+  return streams.size > 0 ? year : null;
+}
+
+function oneStreamYear(rows: readonly { date: string; amountCents: number }[]): number | null {
   const months = new Set(rows.map((t) => t.date.slice(0, 7)));
   if (months.size < 3) return null;
   const keys = [...months].sort();

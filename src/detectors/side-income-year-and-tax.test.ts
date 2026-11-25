@@ -15,7 +15,7 @@ const tx = (date: string, amountCents: number, description: string, pfc: string)
   accountId: "checking",
 });
 const monthly = (year: number, months: number[], day = 20) =>
-  months.map((m) => `${year}-${String(m).padStart(2, "0")}-${day}`);
+  months.map((m) => `${year}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
 const person = (today: string, rows: ReturnType<typeof tx>[]): ProfileInput => ({
   today,
   transactions: rows,

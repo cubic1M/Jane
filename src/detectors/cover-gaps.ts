@@ -120,7 +120,17 @@ const deductibleFit: Detector = {
       // deductible goes up. A kind whose premiums can't be told apart by name has no figure.
       const kind = found.input.policies.find((p) => p.id === need.policyId)?.kind;
       const pattern = kind === "auto" ? AUTO_ONLY : kind === "home" ? HOME_ONLY : null;
-      const yearly = pattern ? monthlyChargeYear(premiums(data, pattern)) : null;
+      // Two policies of one kind pay into one stream this detector can't split: no figure. A
+      // carrier's name alone (GEICO) beside an explicit home line is the home policy's premium.
+      const shared = found.input.policies.filter((p) => p.kind === kind).length > 1;
+      const yearly =
+        pattern && !shared
+          ? monthlyChargeYear(
+              premiums(data, pattern).filter(
+                (t) => kind !== "auto" || !HOME_ONLY.test(t.description),
+              ),
+            )
+          : null;
       if (yearly === null) return null;
       const saves = Math.round(yearly * SAVING_RATES.deductibleStepShare);
       if (saves <= 0) return null;

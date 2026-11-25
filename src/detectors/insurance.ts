@@ -562,7 +562,7 @@ const policyDocuments: Detector = {
         "the saving is typical, not quoted",
       ),
       urgency: "soon",
-      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(seen)} for insurance in ${plural(profile.months, "month")}, and a comparison can find up to a tenth of that.`,
+      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(seen)} for insurance in ${plural(profile.months, "month")}, about ${formatCents(yearly)} over a year at that pace, and a comparison can find up to a tenth of the year: ${formatCents(Math.round(yearly * R.insuranceShopShare))}.`,
       action: { label: "Check what I read", href: "/insurance" },
     });
   },

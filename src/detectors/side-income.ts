@@ -73,7 +73,11 @@ const sideIncomeTax: Detector = {
     const months = yearCoverageMonths(data, rateMonthsOf(profile));
     const seen = sumCents(counted);
     const pace = Math.round((seen * 12) / months);
-    const wagesYear = studentYearOf(data, facts, months).wagesCents;
+    const yearOf = studentYearOf(data, facts, months);
+    const wagesYear = yearOf.wagesCents;
+    // A fellowship's stipend is taxable income that uses the standard deduction first; it is not
+    // wages (no Social Security tax) and the side payouts are not in it (CodeRabbit sweep 1c, #2270).
+    const baseIncome = wagesYear + yearOf.stipendCents;
     const status = filingStatusOf(facts);
     const se = selfEmploymentTax(pace, wagesYear);
     const dependent = dependentOf(facts) === "yes";
@@ -81,13 +85,13 @@ const sideIncomeTax: Detector = {
     // return owes with it less what it owes without (a part of it may still fall inside the
     // standard deduction), not the top rate on all of it.
     const withSide = federalTaxOf(
-      wagesYear + pace - Math.round(se / 2),
+      baseIncome + pace - Math.round(se / 2),
       status,
       dependent,
       wagesYear + pace,
     );
-    const income = Math.max(0, withSide - federalTaxOf(wagesYear, status, dependent, wagesYear));
-    const rate = marginalRateFor(wagesYear + pace, status, dependent, wagesYear + pace);
+    const income = Math.max(0, withSide - federalTaxOf(baseIncome, status, dependent, wagesYear));
+    const rate = marginalRateFor(baseIncome + pace, status, dependent, wagesYear + pace);
     const tax = se + income;
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const payers = [...new Set(counted.map((t) => nice(t.description).split(" ")[0]))];

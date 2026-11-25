@@ -50,7 +50,8 @@ const rolloverClock: Detector = {
           t.amountCents < 0 &&
           t.date !== p.date &&
           words(t.description) === words(p.description) &&
-          Math.abs(t.amountCents - p.amountCents) <= Math.abs(p.amountCents) * 0.25,
+          Math.abs(t.amountCents - p.amountCents) <=
+            Math.max(Math.abs(t.amountCents), Math.abs(p.amountCents)) * 0.25,
       );
     const payout = payouts.find((p) => !regular(p));
     if (!payout) return null;

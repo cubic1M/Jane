@@ -115,7 +115,10 @@ const belongingsCover: Detector = {
 const OTHER_COVER =
   /\bHOME\b|HOMEOWNERS?|RENTERS?|\bCONDO\b|\bLIFE\b|UMBRELLA|\bFLOOD\b|\bHEALTH\b|\bPET\b/;
 const CAR_WORDS = /\bAUTO\b|\bCAR\b|VEHICLE|MOTOR/;
-export const isCarLine = (line: string): boolean => !OTHER_COVER.test(line) || CAR_WORDS.test(line);
+// "AUTO PAY" is how a bill is paid, not a car.
+const PAYS_BY = /\bAUTO[- ]?PAY(?:MENT)?S?\b/g;
+export const isCarLine = (line: string): boolean =>
+  !OTHER_COVER.test(line) || CAR_WORDS.test(line.replace(PAYS_BY, " "));
 
 // Car cover above the US average: what the person pays a year against the NAIC's average, as a
 // reason to get quotes themselves before it renews. Not a quote and not a pick.
@@ -145,7 +148,9 @@ const carCoverCost: Detector = {
     const perPolicy = (): number | null => {
       // The payee as it reads without the day or reference number a bank adds to each line.
       const keyOf = (t: (typeof paid)[number]) =>
-        lineOf(t)
+        // The description alone: a merchant name some lines carry and others don't is no part of the payee.
+        t.description
+          .toUpperCase()
           .replace(/[\d/#*-]+/g, " ")
           .replace(/\s+/g, " ")
           .trim();
