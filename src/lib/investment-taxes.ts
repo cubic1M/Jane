@@ -111,6 +111,7 @@ export async function loadInvestmentTaxes(
     soldOutSales: 0,
   };
   if (taxable.size === 0) return empty;
+  const countedRows = await onlyCountedRows(db);
   const [holdings, transactions] = await Promise.all([
     db.holdings.findMany({
       where: { accountId: { in: [...taxable] } },
@@ -125,7 +126,7 @@ export async function loadInvestmentTaxes(
       orderBy: [...HOLDINGS_ORDER],
     }),
     db.investmentTransactions.findMany({
-      where: { type: { in: ["buy", "sell"] }, ...(await onlyCountedRows(db)) },
+      where: { type: { in: ["buy", "sell"] }, ...countedRows },
       select: {
         accountId: true,
         securityId: true,

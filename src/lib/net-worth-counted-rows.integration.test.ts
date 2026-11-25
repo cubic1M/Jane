@@ -7,7 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { stubTestKeys } from "@/lib/__fixtures__/env";
-import { accountsNotCounted, onlyCountedRows } from "@/lib/account-copies";
+import { accountsNotCounted, liabilitiesOnCounted, onlyCountedRows } from "@/lib/account-copies";
 import { encrypt } from "@/lib/crypto";
 import { scopedFor } from "@/lib/db-scoped";
 import { lifeInput } from "@/lib/insurance/life";
@@ -104,6 +104,62 @@ describe.runIf(url)("what counts, against a real database", { timeout: 120_000 }
     await run(userId, a.id, "2026-10-31", new Date("2026-11-05T10:00:00Z"));
     await run(userId, b.id, "2026-10-31", new Date("2026-11-01T10:00:00Z"));
     expect(await leftOut(userId)).toEqual(new Map([[b.id, "older_upload"]]));
+  });
+
+  it("takes the tie-break time from the run that supplies the statement's end day", async () => {
+    const userId = await person();
+    const a = await upload(userId, "Chase checking");
+    const b = await upload(userId, "Chase checking");
+    // A's October statement was uploaded on 1 November; a September one was uploaded later, on the 5th.
+    // B's October statement was uploaded on the 3rd: B is the later upload of the same end day.
+    await run(userId, a.id, "2026-10-31", new Date("2026-11-01T10:00:00Z"));
+    await run(userId, a.id, "2026-09-30", new Date("2026-11-05T10:00:00Z"));
+    await run(userId, b.id, "2026-10-31", new Date("2026-11-03T10:00:00Z"));
+    expect(await leftOut(userId)).toEqual(new Map([[a.id, "older_upload"]]));
+  });
+
+  it("keeps the interest a copy's link reported when the loan counts once", async () => {
+    const userId = await person();
+    const item = async (plaidItemId: string) =>
+      (
+        await client.plaidItem.create({
+          data: {
+            userId,
+            plaidItemId,
+            accessTokenEncrypted: encrypt(`access-${plaidItemId}`),
+            institutionName: "Chase",
+            lastSyncedAt: NOW,
+          },
+        })
+      ).id;
+    const loan = async (itemId: string, plaidAccountId: string, interest: number | null) => {
+      const account = await client.account.create({
+        data: {
+          userId,
+          source: "plaid",
+          itemId,
+          plaidAccountId,
+          name: "Mortgage",
+          mask: "5555",
+          type: "loan",
+          subtype: "mortgage",
+          currentBalanceCents: 20_000_000,
+        } as never,
+      });
+      await client.liability.create({
+        data: { userId, accountId: account.id, kind: "mortgage", ytdInterestPaidCents: interest },
+      });
+      return account;
+    };
+    const first = await loan(await item("item-int-1"), "int-1", null);
+    await loan(await item("item-int-2"), "int-2", 123_400);
+    const db = scopedFor(userId, client);
+    const rows = await db.liabilities.findMany({
+      select: { accountId: true, ytdInterestPaidCents: true },
+    });
+    const counted = await liabilitiesOnCounted(db, rows);
+    expect(counted).toHaveLength(1);
+    expect(counted[0]).toEqual({ accountId: first.id, ytdInterestPaidCents: 123_400 });
   });
 
   it("reads a liability of the account counted, not of its copy", async () => {

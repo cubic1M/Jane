@@ -19,7 +19,7 @@ export function countingProblems(
     ids.add(a.id);
     const bank = bankOf(a);
     if (a.mask && bank) {
-      const key = `${bank}|${a.type}|${a.mask}`;
+      const key = `${bank}|${a.type}|${a.subtype ?? ""}|${a.mask}`;
       if (keys.has(key)) lines.push(`${key} is counted twice`);
       keys.add(key);
     }

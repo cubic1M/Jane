@@ -8,9 +8,11 @@ import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 // sentence, or null.
 export async function debtFirst(userId: string, client: PrismaClient): Promise<string | null> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [cash, costly] = await Promise.all([
     db.accounts.findMany({
-      where: { userId, type: "depository", ...(await onlyCounted(db)) },
+      where: { userId, type: "depository", ...countedWhere },
       select: { currentBalanceCents: true },
     }),
     db.liabilities.findMany({
@@ -18,7 +20,7 @@ export async function debtFirst(userId: string, client: PrismaClient): Promise<s
         userId,
         kind: { in: ["credit", "loan"] },
         aprBps: { gte: DEBT_FIRST_APR_BPS },
-        ...(await onlyCountedRows(db)),
+        ...countedRows,
       },
       select: { aprBps: true, account: { select: { currentBalanceCents: true } } },
     }),

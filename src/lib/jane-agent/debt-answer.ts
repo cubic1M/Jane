@@ -217,6 +217,7 @@ export async function answerDebt(
       return longGameReply(await loadStudentLongGame(userId, { client, now }));
     case "card_interest": {
       const db = scopedFor(userId, client);
+      const countedRows = await onlyCountedRows(db);
       const [data, loans] = await Promise.all([
         loadCardInterest(userId, { client, now }),
         // What each lender reports paid this year (cards are the finding's, above).
@@ -224,7 +225,7 @@ export async function answerDebt(
           where: {
             kind: { not: "credit" },
             ytdInterestPaidCents: { gt: 0 },
-            ...(await onlyCountedRows(db)),
+            ...countedRows,
           },
           select: { ytdInterestPaidCents: true, account: { select: { name: true } } },
         }),

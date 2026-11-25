@@ -88,6 +88,7 @@ async function loadProfileInputFrom(
   // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
   // the end of an old upload's statements, so its year doesn't shrink a day at a time.
   const since = profileHistoryStart(new Date(`${await dataReach(db, today, timezone)}T00:00:00Z`));
+  const countedRows = await onlyCountedRows(db);
   const [
     allTransactions,
     allAccounts,
@@ -140,7 +141,7 @@ async function loadProfileInputFrom(
       },
     }),
     db.liabilities.findMany({
-      where: await onlyCountedRows(db),
+      where: countedRows,
       select: {
         accountId: true,
         kind: true,
@@ -159,7 +160,7 @@ async function loadProfileInputFrom(
       },
     }),
     db.holdings.findMany({
-      where: await onlyCountedRows(db),
+      where: countedRows,
       select: {
         accountId: true,
         valueCents: true,

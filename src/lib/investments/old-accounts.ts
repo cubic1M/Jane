@@ -144,12 +144,13 @@ export async function loadOldAccounts(
   await syncPastEmployers(userId, { client });
   await settleRollovers(userId, { client, now });
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [advice, rows, demo, plans401k] = await Promise.all([
     adviceMode(userId, { client }),
     db.oldPlans.findMany({ orderBy: { createdAt: "asc" } }),
     hasDemoBank(userId, { client }),
     db.accounts.findMany({
-      where: { subtype: "401k", ...(await onlyCounted(db)) },
+      where: { subtype: "401k", ...countedWhere },
       select: { id: true, name: true, currentBalanceCents: true },
     }),
   ]);

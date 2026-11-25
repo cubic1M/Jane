@@ -330,13 +330,15 @@ export async function recordFindingDone(
 // What a person holds now, for the investing savings (src/planning/outcomes-holdings.ts).
 async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<HoldingsNow> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [accounts, holdings] = await Promise.all([
     db.accounts.findMany({
-      where: await onlyCounted(db),
+      where: countedWhere,
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
     }),
     db.holdings.findMany({
-      where: await onlyCountedRows(db),
+      where: countedRows,
       select: {
         accountId: true,
         valueCents: true,

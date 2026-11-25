@@ -41,18 +41,20 @@ const EMERGENCY_GOAL = "Emergency fund";
 
 async function planInputs(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [monthly, savings, cards, goals] = await Promise.all([
     loadCushionSpendCents(userId, { client, now }),
     db.accounts.findMany({
       where: {
         type: "depository",
         subtype: { in: ["savings", "money market", "cd"] },
-        ...(await onlyCounted(db)),
+        ...countedWhere,
       },
       select: { currentBalanceCents: true },
     }),
     db.liabilities.findMany({
-      where: { kind: "credit", ...(await onlyCountedRows(db)) },
+      where: { kind: "credit", ...countedRows },
       select: { aprBps: true, account: { select: { name: true, currentBalanceCents: true } } },
     }),
     listGoals(userId, { client, now }),

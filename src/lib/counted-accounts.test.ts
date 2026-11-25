@@ -10,7 +10,8 @@ import { describe, expect, it } from "vitest";
 // the usual leak, so a new one fails here.
 
 const ROOT = join(__dirname, "..");
-const COUNTED = /accountCopies|onlyCounted|withoutCopies|loadNetWorthInputs|input\.accounts/;
+const COUNTED =
+  /accountCopies|onlyCounted|liabilitiesOnCounted|withoutCopies|loadNetWorthInputs|input\.accounts/;
 const EXEMPT: Record<string, string> = {
   "lib/account-copies.ts": "the rule itself",
   "lib/accounts.ts": "lists every account for the person to manage, left-out ones marked",

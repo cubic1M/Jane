@@ -51,11 +51,12 @@ async function inputFor(
   { client, now, newBaby }: { client: PrismaClient; now: Date; newBaby: boolean },
 ) {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [policies, household, savings, owned] = await Promise.all([
     listPolicies(userId, { client }),
     loadHousehold(userId, { client, now }),
     db.accounts.findMany({
-      where: { type: "depository", subtype: "savings", ...(await onlyCounted(db)) },
+      where: { type: "depository", subtype: "savings", ...countedWhere },
       select: { currentBalanceCents: true },
     }),
     db.ownedAssets.findMany({ select: { kind: true, valueCents: true } }),

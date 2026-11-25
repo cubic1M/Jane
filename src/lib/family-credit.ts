@@ -71,9 +71,10 @@ export async function loadFamilyCredit(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<FamilyCredit> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [accounts, rows, advice, trouble, report] = await Promise.all([
     db.accounts.findMany({
-      where: { type: "credit", ...(await onlyCounted(db)) },
+      where: { type: "credit", ...countedWhere },
       select: { id: true, name: true, currentBalanceCents: true, availableBalanceCents: true },
     }),
     db.familyCredit.findMany({ orderBy: { createdAt: "asc" } }),

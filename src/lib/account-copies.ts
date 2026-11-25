@@ -50,15 +50,15 @@ async function readCounting(db: Db) {
         }),
   ]);
   // The day each upload's statement ends is the one it was uploaded with (the last day its files
-  // cover, import_runs.to_date), else its latest transaction; a tie goes to the one uploaded last.
+  // cover, import_runs.to_date), else its latest transaction; a tie goes to the one uploaded last,
+  // by the time of the very run that supplies that end day.
   const [runs, latest] =
     uploads.length < 2
       ? [[], []]
       : await Promise.all([
-          db.importRuns.groupBy({
-            by: ["accountId"],
-            where: { accountId: { in: uploads }, kind: "upload" },
-            _max: { toDate: true, createdAt: true },
+          db.importRuns.findMany({
+            where: { accountId: { in: uploads }, kind: "upload", toDate: { not: null } },
+            select: { accountId: true, toDate: true, createdAt: true },
           }),
           db.transactions.groupBy({
             by: ["accountId"],
@@ -69,14 +69,21 @@ async function readCounting(db: Db) {
   const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
   const endsOn = new Map<string, string>();
   for (const t of latest) if (day(t._max.date)) endsOn.set(t.accountId, day(t._max.date)!);
-  for (const r of runs)
-    if (r.accountId && day(r._max.toDate)) endsOn.set(r.accountId, day(r._max.toDate)!);
   const uploadedAt = new Map(
     accounts.filter(isUpload).map((a) => [a.id, a.createdAt.toISOString()] as const),
   );
-  for (const r of runs)
-    if (r.accountId && r._max.createdAt)
-      uploadedAt.set(r.accountId, r._max.createdAt.toISOString());
+  const supplied = new Map<string, { end: string; at: string }>();
+  for (const r of runs) {
+    if (!r.accountId || !r.toDate) continue;
+    const mine = { end: day(r.toDate)!, at: r.createdAt.toISOString() };
+    const known = supplied.get(r.accountId);
+    if (!known || mine.end > known.end || (mine.end === known.end && mine.at > known.at))
+      supplied.set(r.accountId, mine);
+  }
+  for (const [id, { end, at }] of supplied) {
+    endsOn.set(id, end);
+    uploadedAt.set(id, at);
+  }
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
   const left = accountsLeftOut(accounts, {
     bankOf: (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
@@ -115,6 +122,30 @@ export async function accountCopies(db: Db): Promise<Set<string>> {
 export async function onlyCounted(db: Db): Promise<{ id?: { notIn: string[] } }> {
   const copies = await accountCopies(db);
   return copies.size === 0 ? {} : { id: { notIn: [...copies] } };
+}
+
+// A loan linked twice counts once, with the interest the lender reported on either link (each
+// link stores its own figure, and one may have none): the rows on counted accounts, each carrying the
+// largest year-to-date interest of itself and its copies. Rows are every liability read, unfiltered.
+export async function liabilitiesOnCounted<
+  T extends { accountId: string; ytdInterestPaidCents: number | null },
+>(db: Db, rows: readonly T[]): Promise<T[]> {
+  const left = await accountsNotCounted(db);
+  if (left.size === 0) return [...rows];
+  const best = new Map<string, number>();
+  for (const r of rows) {
+    const gone = left.get(r.accountId);
+    const cents = r.ytdInterestPaidCents ?? 0;
+    if (gone && cents > (best.get(gone.sameAs.id) ?? 0)) best.set(gone.sameAs.id, cents);
+  }
+  return rows
+    .filter((r) => !left.has(r.accountId))
+    .map((r) => {
+      const more = best.get(r.accountId);
+      return more !== undefined && more > (r.ytdInterestPaidCents ?? 0)
+        ? { ...r, ytdInterestPaidCents: more }
+        : r;
+    });
 }
 
 // The same for a read of the rows kept by account (holdings, liabilities, investment transactions):

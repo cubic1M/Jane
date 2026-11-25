@@ -66,6 +66,7 @@ export const inDocumentSeason = (today: string) =>
 // Dividends seen in each taxable investment account, for its consolidated 1099.
 async function dividendsByAccount(userId: string, year: number, client: PrismaClient) {
   const db = scopedFor(userId, client);
+  const countedRows = await onlyCountedRows(db);
   const [accounts, cash] = await Promise.all([
     db.accounts.findMany({
       where: { type: "investment" },
@@ -73,7 +74,7 @@ async function dividendsByAccount(userId: string, year: number, client: PrismaCl
     }),
     db.investmentTransactions.findMany({
       where: {
-        ...(await onlyCountedRows(db)),
+        ...countedRows,
         type: "cash",
         amountCents: { lt: 0 },
         date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },

@@ -35,6 +35,7 @@ export async function currentProposals(
 ): Promise<Proposal[]> {
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
+  const countedWhere = await onlyCounted(db);
   const [transactions, budgets, goals, uncategorized, directory, irregular, cash] =
     await Promise.all([
       loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
@@ -50,7 +51,7 @@ export async function currentProposals(
         where: {
           type: "depository",
           currentBalanceCents: { not: null },
-          ...(await onlyCounted(db)),
+          ...countedWhere,
         },
         select: { currentBalanceCents: true },
       }),

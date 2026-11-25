@@ -79,6 +79,7 @@ export async function loadHealthYear(
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
   const year = asOf.slice(0, 4);
+  const countedWhere = await onlyCounted(db);
   const [policies, benefits, partner, txs, accounts] = await Promise.all([
     listPolicies(userId, { client }),
     listBenefits(userId, { client }),
@@ -103,7 +104,7 @@ export async function loadHealthYear(
       orderBy: { date: "asc" },
     }),
     db.accounts.findMany({
-      where: { subtype: "hsa", ...(await onlyCounted(db)) },
+      where: { subtype: "hsa", ...countedWhere },
       select: { name: true, currentBalanceCents: true },
     }),
   ]);

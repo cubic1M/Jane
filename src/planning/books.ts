@@ -93,17 +93,23 @@ export function reconcile(accountType: string, snaps: Snap[], txns: Tx[]): Misma
 // whichever came first: the link updates each day, the statement stopped on its last day. Kept by
 // age instead, an upload made before linking won, and net worth was the statement's old balance,
 // with the live one left out (the founder's Home, 11-23: "not my current net worth").
-export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Acct }[] {
-  const out: { keep: Acct; duplicate: Acct }[] = [];
-  const seen = new Map<string, Acct>();
-  const uploaded = (a: Acct) => (a.itemId === null ? 1 : 0);
+export function duplicateAccounts<T extends Acct & { source?: string | null }>(
+  accounts: T[],
+): { keep: T; duplicate: T }[] {
+  const out: { keep: T; duplicate: T }[] = [];
+  const seen = new Map<string, T>();
+  // Where an account comes from: a Plaid link by its item, any other read (SnapTrade, say, which has
+  // no item) by its source, and a statement the person gave Jane as an upload.
+  const origin = (a: T) =>
+    a.itemId ?? (a.source && a.source !== "csv" ? `source:${a.source}` : "upload");
+  const uploaded = (a: T) => (origin(a) === "upload" ? 1 : 0);
   for (const a of [...accounts].sort(
     (x, y) => uploaded(x) - uploaded(y) || x.id.localeCompare(y.id),
   )) {
     if (!a.mask) continue;
     const key = `${a.mask}|${a.type}|${a.subtype ?? ""}`;
     const first = seen.get(key);
-    if (first && first.itemId !== a.itemId) out.push({ keep: first, duplicate: a });
+    if (first && origin(first) !== origin(a)) out.push({ keep: first, duplicate: a });
     else if (!first) seen.set(key, a);
   }
   return out;

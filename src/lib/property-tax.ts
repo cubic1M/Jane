@@ -82,11 +82,12 @@ export async function loadPropertyTax(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
   const today = await todayOf(userId, { client, now });
+  const countedRows = await onlyCountedRows(db);
   const [advice, home, loans, profile, appeal, partner] = await Promise.all([
     loaded ? loaded.advice : adviceMode(userId, { client }),
     loaded?.home ?? loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
     db.liabilities.findMany({
-      where: { kind: "mortgage", ...(await onlyCountedRows(db)) },
+      where: { kind: "mortgage", ...countedRows },
       select: { account: { select: { currentBalanceCents: true } } },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),

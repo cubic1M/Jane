@@ -41,12 +41,13 @@ async function work(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxSetAsideView> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [view, advice, savings, goals] = await Promise.all([
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
     // Not checking: Safe to spend already starts from checking, so money there isn't apart.
     db.accounts.findMany({
-      where: { type: "depository", NOT: { subtype: "checking" }, ...(await onlyCounted(db)) },
+      where: { type: "depository", NOT: { subtype: "checking" }, ...countedWhere },
       select: { id: true, name: true, currentBalanceCents: true },
     }),
     db.savingsGoals.findMany({ select: { name: true, accountId: true, manualSavedCents: true } }),

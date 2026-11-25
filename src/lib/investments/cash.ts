@@ -56,6 +56,7 @@ export async function loadCash(
   }: Options & { investments?: Investments } = {},
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [advice, accounts, investments, monthlySpendingCents, goals, moved, detection] =
     await Promise.all([
       adviceMode(userId, { client }),
@@ -63,7 +64,7 @@ export async function loadCash(
         where: {
           type: "depository",
           subtype: { in: ["checking", "savings"] },
-          ...(await onlyCounted(db)),
+          ...countedWhere,
         },
         select: { id: true, name: true, subtype: true, currentBalanceCents: true },
         orderBy: { name: "asc" },

@@ -72,12 +72,13 @@ export async function loadRetirementAccounts(
   const db = scopedFor(userId, client);
   // The person's own day and year (src/lib/today.ts), not UTC's.
   const today = await todayOf(userId, { client, now });
+  const countedWhere = await onlyCounted(db);
   const [advice, answers, plan, accounts, estimate, change, demoItem] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
     employerPlanFor(userId, client),
     db.accounts.findMany({
-      where: { type: "investment", ...(await onlyCounted(db)) },
+      where: { type: "investment", ...countedWhere },
       select: { id: true, name: true, subtype: true },
     }),
     loadTaxEstimate(userId, { client, now }).catch(() => null),

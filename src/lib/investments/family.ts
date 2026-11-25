@@ -55,6 +55,7 @@ export async function loadFamily(
 ): Promise<FamilyView> {
   const db = scopedFor(userId, client);
   const year = now.getUTCFullYear();
+  const countedWhere = await onlyCounted(db);
   const [advice, kids, plans, goals, links, accounts, demo] = await Promise.all([
     adviceMode(userId, { client }),
     db.familyChildren.findMany({ orderBy: { createdAt: "asc" } }),
@@ -72,7 +73,7 @@ export async function loadFamily(
       where: {
         type: "investment",
         subtype: { in: ["custodial", "child roth"] },
-        ...(await onlyCounted(db)),
+        ...countedWhere,
       },
       select: { id: true, name: true, subtype: true, currentBalanceCents: true },
     }),

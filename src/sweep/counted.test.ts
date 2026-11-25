@@ -93,4 +93,18 @@ describe("what net worth counts holds each account once", () => {
       countingProblems(nowCounts(pair, new Set([mine.id])), bankOf, new Set([mine.id])),
     ).toEqual([]);
   });
+
+  it("does not report a checking and a savings account that share a last four", () => {
+    const checking = {
+      id: "c",
+      itemId: "i1",
+      name: "Checking",
+      mask: "1234",
+      type: "depository",
+      subtype: "checking",
+      source: "plaid",
+    };
+    const savings = { ...checking, id: "s", name: "Savings", subtype: "savings", itemId: "i1" };
+    expect(countingProblems([checking, savings], () => "Chase")).toEqual([]);
+  });
 });

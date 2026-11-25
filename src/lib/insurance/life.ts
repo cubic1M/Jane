@@ -105,6 +105,8 @@ export async function lifeInput(
 ): Promise<Omit<LifeNeedInput, "dependants"> & { dependants: number | null }> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - LIFE_PAY_LOOKBACK_DAYS * DAY);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [household, income, accounts, mortgages, policies, facts] = await Promise.all([
     loadHousehold(userId, { client, now }),
     db.transactions.aggregate({
@@ -112,11 +114,11 @@ export async function lifeInput(
       _sum: { amountCents: true },
     }),
     db.accounts.findMany({
-      where: await onlyCounted(db),
+      where: countedWhere,
       select: { type: true, subtype: true, currentBalanceCents: true },
     }),
     db.liabilities.findMany({
-      where: { kind: "mortgage", ...(await onlyCountedRows(db)) },
+      where: { kind: "mortgage", ...countedRows },
       select: { payoffDate: true },
     }),
     listPolicies(userId, { client }),

@@ -85,6 +85,7 @@ export async function coverEvents(
 ): Promise<CoverEventFound[]> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - COVER_EVENT_WINDOW_DAYS * DAY);
+  const countedRows = await onlyCountedRows(db);
   const [lifeEvents, cars, carLoans] = await Promise.all([
     db.lifeEvents.findMany({
       where: { startedOn: { gte: since } },
@@ -99,7 +100,7 @@ export async function coverEvents(
         kind: "loan",
         originationDate: { gte: since },
         account: { subtype: "auto" },
-        ...(await onlyCountedRows(db)),
+        ...countedRows,
       },
       select: { accountId: true, account: { select: { name: true } } },
     }),

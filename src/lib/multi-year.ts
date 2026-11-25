@@ -82,10 +82,11 @@ export async function loadMultiYear(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [advice, accounts, investments, profile, events, answers] = await Promise.all([
     loaded ? loaded.advice : adviceMode(userId, { client }),
     db.accounts.findMany({
-      where: { type: "investment", ...(await onlyCounted(db)) },
+      where: { type: "investment", ...countedWhere },
       select: { subtype: true, currentBalanceCents: true },
     }),
     loadInvestmentTaxes(userId, year, { client, now }),
