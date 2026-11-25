@@ -20,12 +20,12 @@ export function booksFix(issue: Issue): BooksFix {
   if (importEnded(issue)) return { label: "Import a newer file", href: "/import" };
   if (issue.kind === "broken") return { label: "Reconnect", href: "/connect" };
   if (issue.kind === "transfer") return { label: "Add that account", href: "/connect" };
-  // Left out of net worth for want of proof it is another account: the person says it is, or
-  // removes it, on the import page; a second link is removed in Settings.
+  // Left out of net worth by Jane as a likely copy: a quiet look at it (the import page, where one
+  // tap says it is another account; a second link is in Settings), never a chore.
   if (issue.kind === "maybe_same")
     return issue.uploaded
-      ? { label: "Keep or remove it", href: "/import" }
-      : { label: "Remove one", href: "/settings#banks" };
+      ? { label: "See it", href: "/import" }
+      : { label: "See it", href: "/settings#banks" };
   // An uploaded account has no bank to check: its files are on the import page (overnight
   // upload QA: a balance that didn't add up said "Check my linked banks").
   if (issue.uploaded) return { label: "Check my uploads", href: "/import" };

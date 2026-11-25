@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { monthsBetweenLines } from "@/detection/units";
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -279,6 +280,7 @@ async function loadTaxEstimateFrom(
     db.accounts.findMany({ where: { type: "investment" }, select: { id: true, subtype: true } }),
     db.investmentTransactions.findMany({
       where: {
+        ...(await onlyCountedRows(db)),
         type: "cash",
         date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
       },
@@ -287,6 +289,7 @@ async function loadTaxEstimateFrom(
     // Banks report loan interest for the year they're read in: yearInterest keeps the readings of the
     // year asked (December's for last year's estimate in January).
     db.liabilities.findMany({
+      where: await onlyCountedRows(db),
       select: {
         kind: true,
         ytdInterestPaidCents: true,

@@ -1,3 +1,4 @@
+import { onlyCounted } from "@/lib/account-copies";
 import { randomUUID } from "node:crypto";
 import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
 import {
@@ -76,7 +77,7 @@ export async function loadRetirementAccounts(
     profileOf(userId, { client }),
     employerPlanFor(userId, client),
     db.accounts.findMany({
-      where: { type: "investment" },
+      where: { type: "investment", ...(await onlyCounted(db)) },
       select: { id: true, name: true, subtype: true },
     }),
     loadTaxEstimate(userId, { client, now }).catch(() => null),

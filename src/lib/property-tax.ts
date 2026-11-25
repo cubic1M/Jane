@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { COMPARABLES_WANTED, type Exemption } from "@/config/property-tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -85,7 +86,7 @@ export async function loadPropertyTax(
     loaded ? loaded.advice : adviceMode(userId, { client }),
     loaded?.home ?? loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
     db.liabilities.findMany({
-      where: { kind: "mortgage" },
+      where: { kind: "mortgage", ...(await onlyCountedRows(db)) },
       select: { account: { select: { currentBalanceCents: true } } },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),

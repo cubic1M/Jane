@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -15,8 +16,13 @@ export async function loadMonthFacts(
   const [y, m] = month.split("-").map(Number);
   const start = new Date(Date.UTC(y, m - 2, 1));
   const end = new Date(Date.UTC(y, m - 1, 1));
-  const rows = await scopedFor(userId, client).investmentTransactions.findMany({
-    where: { subtype: { in: ["contribution", "deposit"] }, date: { gte: start, lt: end } },
+  const db = scopedFor(userId, client);
+  const rows = await db.investmentTransactions.findMany({
+    where: {
+      subtype: { in: ["contribution", "deposit"] },
+      date: { gte: start, lt: end },
+      ...(await onlyCountedRows(db)),
+    },
     select: { amountCents: true },
   });
   // Month ends, oldest first, ending this month: the month before last ended a month ago.

@@ -13,7 +13,7 @@ import { nextLifeQuestion, type LifeAnswers, type LifeDecision } from "./life-un
 import { actingPartnerFor, partnerFor, type InsurancePartner, type QuoteCarrier } from "./partner";
 import { listPolicies } from "./policies";
 import { DAY_MS as DAY, isoDay as day } from "@/lib/dates";
-import { onlyCounted } from "@/lib/account-copies";
+import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 
 // Life insurance, sized and bought (spec step 153). Demo advice only. Jane works out how
 // much cover the person needs and for how long, from their own accounts, shows the method,
@@ -115,7 +115,10 @@ export async function lifeInput(
       where: await onlyCounted(db),
       select: { type: true, subtype: true, currentBalanceCents: true },
     }),
-    db.liabilities.findMany({ where: { kind: "mortgage" }, select: { payoffDate: true } }),
+    db.liabilities.findMany({
+      where: { kind: "mortgage", ...(await onlyCountedRows(db)) },
+      select: { payoffDate: true },
+    }),
     listPolicies(userId, { client }),
     profileFacts(userId, { client, now }),
   ]);

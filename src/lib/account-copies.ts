@@ -14,48 +14,75 @@ import { accountsLeftOut, duplicateAccounts, isUpload, type LeftOut } from "@/pl
 // (the "This is a different account" tap on /import).
 export const SEPARATE_ACCOUNT = { kind: "separate", keyPrefix: "account:" } as const;
 
-type Db = Pick<ScopedDb, "accounts" | "plaidItems" | "janePreferences" | "transactions">;
+type Db = Pick<
+  ScopedDb,
+  "accounts" | "plaidItems" | "janePreferences" | "transactions" | "importRuns"
+>;
 
 async function readCounting(db: Db) {
-  const [accounts, items, said] = await Promise.all([
-    db.accounts.findMany({
-      select: {
-        id: true,
-        itemId: true,
-        name: true,
-        mask: true,
-        type: true,
-        subtype: true,
-        source: true,
-        currentBalanceCents: true,
-      },
-    }),
-    db.plaidItems.findMany({ select: { id: true, institutionName: true } }),
-    db.janePreferences.findMany({
-      where: { kind: SEPARATE_ACCOUNT.kind },
-      select: { key: true },
-    }),
-  ]);
+  const accounts = await db.accounts.findMany({
+    select: {
+      id: true,
+      itemId: true,
+      name: true,
+      mask: true,
+      type: true,
+      subtype: true,
+      source: true,
+      currentBalanceCents: true,
+      createdAt: true,
+    },
+  });
   // Nothing to compare: no two accounts.
   if (accounts.length < 2) return { accounts, left: new Map<string, LeftOut>() };
   const uploads = accounts.filter(isUpload).map((a) => a.id);
-  const latest =
-    uploads.length < 2
+  // Only what is needed is read: the banks' names when something is linked, and what the person
+  // said (and when each file ends) when something is uploaded.
+  const [items, said] = await Promise.all([
+    accounts.some((a) => a.itemId !== null)
+      ? db.plaidItems.findMany({ select: { id: true, institutionName: true } })
+      : [],
+    uploads.length === 0
       ? []
-      : await db.transactions.groupBy({
-          by: ["accountId"],
-          where: { accountId: { in: uploads } },
-          _max: { date: true },
-        });
+      : db.janePreferences.findMany({
+          where: { kind: SEPARATE_ACCOUNT.kind },
+          select: { key: true },
+        }),
+  ]);
+  // The day each upload's statement ends is the one it was uploaded with (the last day its files
+  // cover, import_runs.to_date), else its latest transaction; a tie goes to the one uploaded last.
+  const [runs, latest] =
+    uploads.length < 2
+      ? [[], []]
+      : await Promise.all([
+          db.importRuns.groupBy({
+            by: ["accountId"],
+            where: { accountId: { in: uploads }, kind: "upload" },
+            _max: { toDate: true, createdAt: true },
+          }),
+          db.transactions.groupBy({
+            by: ["accountId"],
+            where: { accountId: { in: uploads } },
+            _max: { date: true },
+          }),
+        ]);
+  const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+  const endsOn = new Map<string, string>();
+  for (const t of latest) if (day(t._max.date)) endsOn.set(t.accountId, day(t._max.date)!);
+  for (const r of runs)
+    if (r.accountId && day(r._max.toDate)) endsOn.set(r.accountId, day(r._max.toDate)!);
+  const uploadedAt = new Map(
+    accounts.filter(isUpload).map((a) => [a.id, a.createdAt.toISOString()] as const),
+  );
+  for (const r of runs)
+    if (r.accountId && r._max.createdAt)
+      uploadedAt.set(r.accountId, r._max.createdAt.toISOString());
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
   const left = accountsLeftOut(accounts, {
     bankOf: (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
     separate: new Set(said.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length))),
-    endsOn: new Map(
-      latest.flatMap((t) =>
-        t._max.date ? [[t.accountId, t._max.date.toISOString().slice(0, 10)]] : [],
-      ),
-    ),
+    endsOn,
+    uploadedAt,
   });
   return { accounts, left };
 }
@@ -88,6 +115,14 @@ export async function accountCopies(db: Db): Promise<Set<string>> {
 export async function onlyCounted(db: Db): Promise<{ id?: { notIn: string[] } }> {
   const copies = await accountCopies(db);
   return copies.size === 0 ? {} : { id: { notIn: [...copies] } };
+}
+
+// The same for a read of the rows kept by account (holdings, liabilities, investment transactions):
+// only the ones on a counted account, so an account linked twice, or uploaded and linked, is not
+// added twice in a total or a suggestion.
+export async function onlyCountedRows(db: Db): Promise<{ accountId?: { notIn: string[] } }> {
+  const copies = await accountCopies(db);
+  return copies.size === 0 ? {} : { accountId: { notIn: [...copies] } };
 }
 
 // The rows that aren't on a copy, by the account id each names.

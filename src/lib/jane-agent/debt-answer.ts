@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
@@ -220,7 +221,11 @@ export async function answerDebt(
         loadCardInterest(userId, { client, now }),
         // What each lender reports paid this year (cards are the finding's, above).
         db.liabilities.findMany({
-          where: { kind: { not: "credit" }, ytdInterestPaidCents: { gt: 0 } },
+          where: {
+            kind: { not: "credit" },
+            ytdInterestPaidCents: { gt: 0 },
+            ...(await onlyCountedRows(db)),
+          },
           select: { ytdInterestPaidCents: true, account: { select: { name: true } } },
         }),
       ]);

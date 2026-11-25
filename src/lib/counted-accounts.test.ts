@@ -61,4 +61,38 @@ describe("every read of accounts with their balances counts each account once", 
       .map(([file]) => file);
     expect(loose).toEqual([]);
   });
+
+  // The tables kept by account (holdings, liabilities, investment transactions) have the same leak: a
+  // total or a suggestion that reads them all adds an account linked twice, or uploaded and linked,
+  // twice (CodeRabbit on #2259: the taxable gains, the life term). They read through onlyCountedRows
+  // or the accounts that were, or are listed here with why they may read every row.
+  const ROWS_EXEMPT: Record<string, string> = {
+    "lib/data-export.ts": "Download my data: every row, left out or not",
+    "lib/plaid/sync.ts": "writes what the bank sent, account by account",
+    "lib/tax-docs/demo.ts": "writes the demo bank's own tax documents",
+    "lib/student-long-game.ts": "one account's own plan and status, by the id of a counted debt",
+    "lib/mortgage.ts": "one account's own escrow and PMI, by the id of a counted debt",
+    "lib/card-interest.ts": "the statement dates of cards already counted in the debts book",
+    "lib/credit-building.ts": "one card's statement date, by the id of a counted debt",
+    "lib/investments/retirement.ts": "reads the accounts loadInvestments counted",
+    "lib/investments/hsa.ts": "reads the accounts loadInvestments counted",
+    "lib/investments/returns.ts": "reads the accounts loadInvestments counted",
+    "lib/investments/company-stock.ts": "reads the accounts loadInvestments counted",
+    "lib/investments/family.ts": "one custodial or child account's own deposits",
+  };
+  it("reads holdings, liabilities and investment transactions of counted accounts only", () => {
+    const loose = sources(ROOT)
+      .map((path) => [path.slice(ROOT.length + 1), readFileSync(path, "utf8")] as const)
+      .filter(
+        ([file, text]) =>
+          /\.(holdings|liabilities|investmentTransactions)\.(findMany|aggregate|groupBy)\(/.test(
+            text,
+          ) &&
+          !COUNTED.test(text) &&
+          !(file in ROWS_EXEMPT) &&
+          !(file in EXEMPT),
+      )
+      .map(([file]) => file);
+    expect(loose).toEqual([]);
+  });
 });

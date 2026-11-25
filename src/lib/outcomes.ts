@@ -25,7 +25,7 @@ import {
 } from "@/planning/outcomes-holdings";
 import { addDays, DAY_MS, isoDay as isoDate } from "@/lib/dates";
 import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
-import { accountCopies, onlyCounted, withoutCopies } from "@/lib/account-copies";
+import { accountCopies, onlyCounted, withoutCopies, onlyCountedRows } from "@/lib/account-copies";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
 // opened, answered, marked done) and what their later transactions showed. A saving counts as
@@ -336,6 +336,7 @@ async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<Ho
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
     }),
     db.holdings.findMany({
+      where: await onlyCountedRows(db),
       select: {
         accountId: true,
         valueCents: true,

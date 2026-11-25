@@ -6,7 +6,7 @@ import { monthsEnding, type InsightTransaction } from "./spending";
 // month, as stored, an account linked twice counted once. One loader, so the two pages (and
 // over-budget alerts) always agree.
 export async function loadInsightTransactions(
-  db: Pick<ScopedDb, "transactions" | "accounts" | "plaidItems" | "janePreferences">,
+  db: Pick<ScopedDb, "transactions" | "accounts" | "plaidItems" | "janePreferences" | "importRuns">,
   asOf: string,
   monthCount: number,
 ): Promise<InsightTransaction[]> {
@@ -15,7 +15,7 @@ export async function loadInsightTransactions(
 }
 
 async function transactionsSince(
-  db: Pick<ScopedDb, "transactions" | "accounts" | "plaidItems" | "janePreferences">,
+  db: Pick<ScopedDb, "transactions" | "accounts" | "plaidItems" | "janePreferences" | "importRuns">,
   since: Date,
 ): Promise<InsightTransaction[]> {
   const [rows, copies] = await Promise.all([

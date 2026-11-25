@@ -88,16 +88,16 @@ describe.runIf(url)(
       const said = await loadMaybeSame(userId!, { client });
       expect(said?.href).toBe("/import");
       expect(said?.words).toBe(
-        "Wells Fargo checking (uploaded) may be the same account as Everyday Checking (linked), so net worth leaves it out. If it is a different account, say so on the import page; if it is a copy, remove it there.",
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
       );
       expect(said?.short).toBe(
-        "Wells Fargo checking (uploaded) may be the same account as Everyday Checking (linked), so net worth leaves it out.",
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
       );
       const books = await runBooksCheck(userId!, { client, now: NOW });
       const issue = books.open.find((i) => i.kind === "maybe_same")!;
       expect(issue.words).toBe(said?.words);
       expect(booksFix({ ...issue } as never)).toEqual({
-        label: "Keep or remove it",
+        label: "See it",
         href: "/import",
       });
     });

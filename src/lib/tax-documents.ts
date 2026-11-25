@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import {
   TAXABLE_INVESTMENT_SUBTYPES,
   TAX_DOCUMENTS,
@@ -72,6 +73,7 @@ async function dividendsByAccount(userId: string, year: number, client: PrismaCl
     }),
     db.investmentTransactions.findMany({
       where: {
+        ...(await onlyCountedRows(db)),
         type: "cash",
         amountCents: { lt: 0 },
         date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },

@@ -6,7 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { dataReach } from "@/lib/data-reach";
 import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
-import { accountCopies } from "@/lib/account-copies";
+import { accountCopies, onlyCountedRows } from "@/lib/account-copies";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
@@ -140,6 +140,7 @@ async function loadProfileInputFrom(
       },
     }),
     db.liabilities.findMany({
+      where: await onlyCountedRows(db),
       select: {
         accountId: true,
         kind: true,
@@ -158,6 +159,7 @@ async function loadProfileInputFrom(
       },
     }),
     db.holdings.findMany({
+      where: await onlyCountedRows(db),
       select: {
         accountId: true,
         valueCents: true,

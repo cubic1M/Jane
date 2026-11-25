@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { INTEREST_LOAN_KINDS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -42,7 +43,7 @@ export async function loadTaxPack(
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     db.liabilities.findMany({
-      where: { kind: { in: [...INTEREST_LOAN_KINDS] } },
+      where: { kind: { in: [...INTEREST_LOAN_KINDS] }, ...(await onlyCountedRows(db)) },
       select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),

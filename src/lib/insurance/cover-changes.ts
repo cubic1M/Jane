@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import {
   CARRIER_CHANGES,
   COVER_CHANGES_DAILY_LIMIT,
@@ -94,7 +95,12 @@ export async function coverEvents(
       select: { id: true, name: true, loanAccountId: true },
     }),
     db.liabilities.findMany({
-      where: { kind: "loan", originationDate: { gte: since }, account: { subtype: "auto" } },
+      where: {
+        kind: "loan",
+        originationDate: { gte: since },
+        account: { subtype: "auto" },
+        ...(await onlyCountedRows(db)),
+      },
       select: { accountId: true, account: { select: { name: true } } },
     }),
   ]);

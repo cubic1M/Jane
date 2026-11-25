@@ -87,20 +87,25 @@ describe("accounts that may be one account counted twice", () => {
     ).toEqual([]);
   });
 
-  it("says where it is settled: an upload on the import page, a second link in Settings", () => {
+  it("says where to look: an upload on the import page, a second link in Settings", () => {
     const up = { reason: "maybe_same" as const, left: { name: "A" }, with: { name: "B" } };
     const link = { ...up, reason: "linked_twice" as const };
     expect([maybeSameHref([up]), maybeSameHref([link])]).toEqual(["/import", "/settings#banks"]);
   });
 
-  it("says each account left out by name, and what the person can do", () => {
+  it("says what Jane did, with no chore for the person", () => {
     const left = { left: { name: "Chase checking" }, with: { name: "TOTAL CHECKING" } };
     expect(maybeSameWords([{ ...left, reason: "maybe_same" }])).toBe(
-      "Chase checking (uploaded) may be the same account as TOTAL CHECKING (linked), so net worth leaves it out. If it is a different account, say so on the import page; if it is a copy, remove it there.",
+      "Chase checking (uploaded) looks like a copy of TOTAL CHECKING (linked), so Jane left it out of net worth.",
     );
     expect(maybeSameWords([{ ...left, reason: "older_upload" }])).toBe(
-      "Chase checking (uploaded) looks like an earlier upload of TOTAL CHECKING, so net worth counts the later one only.",
+      "Chase checking (uploaded) looks like an earlier upload of TOTAL CHECKING, so Jane counted the later one only.",
+    );
+    const three = [1, 2, 3].map(() => ({ ...left, reason: "maybe_same" as const }));
+    expect(maybeSameWords(three)).toBe(
+      "3 uploaded statements look like copies of your linked accounts, so they are left out of net worth.",
     );
     expect(maybeSameWords([])).toBeNull();
+    expect(maybeSameWords(three)).not.toMatch(/remove|say so|if it is/i);
   });
 });

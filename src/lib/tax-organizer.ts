@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { accountKindOf } from "@/data-sources/types";
 import { cache } from "react";
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
@@ -293,6 +294,7 @@ async function loadTaxFormsFrom(
     }),
     // Banks report loan interest for the current year only; for a past year it's unknown.
     db.liabilities.findMany({
+      where: await onlyCountedRows(db),
       select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),

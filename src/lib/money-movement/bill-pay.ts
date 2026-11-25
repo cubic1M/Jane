@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { BILL_PAY_HORIZON_DAYS, BILL_PAYMENT_CATEGORIES } from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/input";
@@ -63,8 +64,10 @@ async function dueBills(
   client: PrismaClient,
 ): Promise<DueBill[]> {
   const until = addDays(input.asOf, BILL_PAY_HORIZON_DAYS);
-  const liabilities = await scopedFor(userId, client).liabilities.findMany({
+  const db = scopedFor(userId, client);
+  const liabilities = await db.liabilities.findMany({
     where: {
+      ...(await onlyCountedRows(db)),
       minimumPaymentCents: { gt: 0 },
       nextPaymentDueDate: {
         gte: new Date(`${input.asOf}T00:00:00Z`),

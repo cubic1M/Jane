@@ -175,7 +175,7 @@ export const copiesToLeaveOut = (
 //                (its closing balance is the later one), a tie going to the newer;
 //   linked_twice one account linked at two banks' logins with the same last four, named another way.
 // `bankOf` is a link's bank, or null for an upload (which goes by its own name); `separate` holds the
-// uploads the person said are accounts of their own; `endsOn` is each upload's last statement day.
+// uploads the person said are accounts of their own; `endsOn` is each upload's statement end day and `uploadedAt` when it was uploaded (the tie-break).
 export type LeftOutReason = "copy" | "maybe_same" | "older_upload" | "linked_twice";
 export type LeftOut = { reason: LeftOutReason; sameAs: Acct };
 export type CountAcct = Acct & { source?: string | null };
@@ -183,6 +183,7 @@ export type CountContext = {
   bankOf?: (a: CountAcct) => string | null;
   separate?: ReadonlySet<string>;
   endsOn?: ReadonlyMap<string, string>;
+  uploadedAt?: ReadonlyMap<string, string>;
 };
 
 // An upload is a statement the person gave Jane; anything else was read from a bank or broker.
@@ -191,7 +192,12 @@ export const isUpload = (a: Pick<CountAcct, "source" | "itemId">) =>
 
 export function accountsLeftOut(
   accounts: readonly CountAcct[],
-  { bankOf = () => null, separate = new Set(), endsOn = new Map() }: CountContext = {},
+  {
+    bankOf = () => null,
+    separate = new Set(),
+    endsOn = new Map(),
+    uploadedAt = new Map(),
+  }: CountContext = {},
 ): Map<string, LeftOut> {
   const out = new Map<string, LeftOut>();
   for (const { keep, duplicate } of duplicateAccounts([...accounts])) {
@@ -223,21 +229,34 @@ export function accountsLeftOut(
         pairs.push({ a, b });
     }
   });
-  const ends = (a: CountAcct) => endsOn.get(a.id) ?? "";
+  // Links against uploads first, so what an upload is held back for never depends on the order of
+  // ids: then uploads against uploads, where the earlier statement is the earlier upload whether or
+  // not it was also held back as a maybe-copy of a link (three accounts, A and B uploaded and L
+  // linked, say the same in any id order: L counts, B is held back for L, A for B).
   for (const { a, b } of pairs) {
-    if (out.has(a.id) || out.has(b.id)) continue;
     if (isUpload(a) !== isUpload(b)) {
       const [upload, link] = isUpload(a) ? [a, b] : [b, a];
-      if (!separate.has(upload.id)) out.set(upload.id, { reason: "maybe_same", sameAs: link });
-    } else if (isUpload(a)) {
-      // Two uploads: the later statement counts, the newer on a tie.
-      const [older, later] =
-        ends(a) < ends(b) || (ends(a) === ends(b) && a.id < b.id) ? [a, b] : [b, a];
-      if (!separate.has(older.id)) out.set(older.id, { reason: "older_upload", sameAs: later });
-    } else if (a.mask && b.mask) {
+      if (!out.has(upload.id) && !separate.has(upload.id))
+        out.set(upload.id, { reason: "maybe_same", sameAs: link });
+    } else if (!isUpload(a) && a.mask && b.mask && !out.has(a.id) && !out.has(b.id)) {
       // Linked twice and named differently: the older link counts.
       out.set(b.id, { reason: "linked_twice", sameAs: a });
     }
+  }
+  // The later statement counts; a tie goes to the one uploaded last, then the newer id.
+  const later = (a: CountAcct, b: CountAcct) => {
+    const [x, y] = [endsOn.get(a.id) ?? "", endsOn.get(b.id) ?? ""];
+    const [u, v] = [uploadedAt.get(a.id) ?? "", uploadedAt.get(b.id) ?? ""];
+    return x !== y ? x > y : u !== v ? u > v : a.id > b.id;
+  };
+  for (const { a, b } of pairs) {
+    if (!isUpload(a) || !isUpload(b)) continue;
+    const [older, newer] = later(a, b) ? [b, a] : [a, b];
+    if (separate.has(older.id)) continue;
+    const held = out.get(older.id);
+    // Behind the latest one of them: A is the earlier of B and C, said as C's earlier upload.
+    if (held?.reason === "older_upload" && later(held.sameAs, newer)) continue;
+    out.set(older.id, { reason: "older_upload", sameAs: newer });
   }
   return out;
 }

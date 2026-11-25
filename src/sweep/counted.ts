@@ -4,7 +4,7 @@ import { isUpload, maybeSameAccounts, type CountAcct } from "@/planning/books";
 // statements"): what net worth counts holds each account once. In what is counted, no account id and
 // no (bank, type, last four) appears twice, and no upload sits beside a linked account it can't be
 // told from (same bank and kind, no last four to tell them apart, or the same last four under
-// another subtype), unless the person said it is an account of its own. Pure: a person's counted
+// another subtype), unless the person said an upload in the pair is an account of its own. Pure: a person's counted
 // accounts in, the lines that break it out. `bankOf` is a link's bank, null for an upload.
 export function countingProblems(
   counted: readonly CountAcct[],
@@ -31,6 +31,8 @@ export function countingProblems(
     for (const b of uploads.slice(i + 1)) {
       const [m, n] = [plain(a.name), plain(b.name)];
       if (
+        !separate.has(a.id) &&
+        !separate.has(b.id) &&
         a.mask &&
         a.mask === b.mask &&
         a.type === b.type &&
@@ -47,7 +49,7 @@ export function countingProblems(
     // Two links with no last four can't be told apart or merged: not asked of them.
     if (bothLinked && !(a.mask && b.mask)) continue;
     const mine = [a, b].filter((x) => uploads.includes(x));
-    if (mine.length > 0 && mine.every((x) => separate.has(x.id))) continue;
+    if (mine.some((x) => separate.has(x.id))) continue;
     lines.push(
       `${a.name} (${isUpload(a) ? "upload" : "link"}) and ${b.name} (${isUpload(b) ? "upload" : "link"}) may be one account, both counted`,
     );
