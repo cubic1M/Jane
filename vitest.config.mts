@@ -19,6 +19,7 @@ export default defineConfig({
       "src/test-setup/no-anthropic.ts",
       "src/test-setup/sync-snapshots.ts",
       "src/test-setup/no-bypass.ts",
+      "src/test-setup/payee-mask-stub.ts",
     ],
     globalSetup: ["src/test-setup/sync-snapshots-dir.ts", "src/test-setup/no-bypass-global.ts"],
     // The integration tests run against a real database on shared CI runners; with dozens of

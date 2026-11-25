@@ -11,7 +11,14 @@ import { startTrial } from "@/lib/trial";
 import { wholePictureReply } from "./whole-picture";
 import { rankedFor } from "./priorities";
 import { loadSnapshot } from "./snapshot";
-import { loadSnapshotFast, markSnapshotStale, reviveDates } from "./snapshot-store";
+import {
+  beginBuild,
+  loadSnapshotFast,
+  markSnapshotStale,
+  mayPublish,
+  reviveDates,
+  saveSnapshot,
+} from "./snapshot-store";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Jane's snapshot, saved after the first scan and read back in one query by the agenda and the
@@ -28,6 +35,22 @@ describe("reviving dates", () => {
     expect(reviveDates("title", iso)).toBe(iso);
     expect(reviveDates("date", "2026-10-18")).toBe("2026-10-18");
     expect(reviveDates("createdAt", "not a date")).toBe("not a date");
+  });
+});
+
+// CodeRabbit part 2: an older build that finishes after a newer one has published must not write
+// the older snapshot back over it.
+describe("overlapping builds", () => {
+  it("lets the newer build's snapshot stand when the older one finishes last", () => {
+    const older = beginBuild("overlap-user");
+    const newer = beginBuild("overlap-user");
+    expect(mayPublish("overlap-user", newer)).toBe(true);
+    expect(mayPublish("overlap-user", older)).toBe(false);
+  });
+  it("lets an older build publish while no newer one has", () => {
+    const older = beginBuild("overlap-user-2");
+    beginBuild("overlap-user-2");
+    expect(mayPublish("overlap-user-2", older)).toBe(true);
   });
 });
 
@@ -93,5 +116,16 @@ describe.runIf(url)("the saved snapshot", { timeout: 120_000 }, () => {
     const tomorrow = new Date(NOW.getTime() + 24 * 3_600_000);
     const built = await loadSnapshotFast(userId, { client, now: tomorrow });
     expect(built!.asOf).toBe(tomorrow.toISOString().slice(0, 10));
+  });
+
+  // CodeRabbit part 2: the stamp saved is the one read before the build, not whatever the data is
+  // by the time it is saved.
+  it("saves the stamp the caller read before building, not a newer one", async () => {
+    const built = await loadSnapshot(userId, { client, now: NOW });
+    await saveSnapshot(userId, built, { client, now: NOW, stamp: "read-before-the-build" });
+    const row = await client.janePreference.findFirstOrThrow({
+      where: { userId, kind: "system", key: "snapshot" },
+    });
+    expect((row.value as { stamp: string }).stamp).toBe("read-before-the-build");
   });
 });

@@ -56,6 +56,27 @@ describe("runJaneAgentForAll", () => {
     expect(run.mock.calls.map(([id]) => id)).toEqual(["never", "older"]);
   });
 
+  // CodeRabbit part 2: a person the run looks at but posts nothing to keeps their old last message,
+  // so with a cap of one they were picked every day and the next person never was.
+  it("puts someone the run looked at yesterday behind the people it has not looked at", async () => {
+    const looked = {
+      id: "looked",
+      janeMessages: [{ createdAt: new Date("2026-10-01T10:00:00Z") }],
+      janePreferences: [{ value: { at: "2026-10-19T09:00:00.000Z" } }],
+    };
+    const waiting = {
+      id: "waiting",
+      janeMessages: [{ createdAt: new Date("2026-10-10T10:00:00Z") }],
+      janePreferences: [],
+    };
+    const two = {
+      user: { findMany: vi.fn(async () => [looked, waiting]) },
+    } as unknown as PrismaClient;
+    const run = vi.fn<typeof runJaneAgent>(async () => ({ posted: 0 }));
+    await runJaneAgentForAll({ client: two, limit: 1, run });
+    expect(run.mock.calls.map(([id]) => id)).toEqual(["waiting"]);
+  });
+
   it("carries on past one person's failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const run = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValue({ posted: 1 });

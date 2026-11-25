@@ -6,13 +6,13 @@ import {
   CHAT_SOURCE_MONTHLY_LIMITS,
   CHAT_TYPING_PAUSE_MINUTES,
 } from "@/config/agent-chat";
-import { localTime } from "./quiet-hours";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDetectionInput } from "@/detection/input";
 import { policiesFromPayments } from "@/lib/found-policies";
+import { dataStamp } from "@/lib/data-stamp";
 import { log } from "@/lib/log";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { settleTransfers } from "@/lib/money-movement/transfers";
@@ -32,7 +32,7 @@ import { gather, plan, type BrainSettings } from "./brain";
 import { freshStartAfter } from "./fresh-start";
 import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
-import { inQuietHours, personIsThere } from "./quiet-hours";
+import { inQuietHours, localMonthStart, personIsThere } from "./quiet-hours";
 import { listPreferences, postingOf } from "./preferences";
 import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
@@ -149,11 +149,15 @@ async function runJaneAgentWork(
   if ((await scopedFor(userId, client).janeMessages.count()) === 0) {
     await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
   }
+  // The stamp from before the build: a change during it makes the saved copy old at once.
+  const stamp = await dataStamp(userId, client);
   const snapshot = await loadSnapshot(userId, { client, now, input, light: early });
   // Kept for the chat: its first question reads this instead of building it. Never the early
   // run's light one: the scan's last run keeps the whole thing.
   if (!early)
-    await safely("Saving the snapshot", () => saveSnapshot(userId, snapshot, { client, now }));
+    await safely("Saving the snapshot", () =>
+      saveSnapshot(userId, snapshot, { client, now, stamp }),
+    );
   if (!snapshot) return { posted: 0 };
   // Spec step 265: the day's brief leads with suggestions, so the first run of a first scan
   // (`early`, before the suggestions are in) posts nothing until there are some: never the old
@@ -173,7 +177,7 @@ async function runJaneAgentWork(
   const db = scopedFor(userId, client);
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
   // Spec step 273: what each monthly-limited source posted since the first of this month.
-  const monthStart = new Date(`${localTime(now, snapshot.timezone).date.slice(0, 7)}-01T00:00:00Z`);
+  const monthStart = localMonthStart(now, snapshot.timezone);
   // What Jane said before the last bank or file was removed was about data that's gone: it
   // neither uses up the day nor counts as said (./fresh-start.ts).
   const freshStart = await freshStartAfter(db);
@@ -260,6 +264,22 @@ export async function runJaneAgentSafely(userId: string, options: Options = {}):
   }
 }
 
+const CRON_RUN_KEY = "cron_run";
+
+// Notes that the daily job has looked at this person (never fails the run).
+async function markLooked(userId: string, client: PrismaClient, now: Date): Promise<void> {
+  try {
+    const value = { at: now.toISOString() };
+    await scopedFor(userId, client).janePreferences.upsert({
+      where: { userId_kind_key: { userId, kind: "system", key: CRON_RUN_KEY } },
+      create: { userId, kind: "system", key: CRON_RUN_KEY, value, label: "Daily run" },
+      update: { value },
+    });
+  } catch {
+    // Only the order of tomorrow's run depends on it.
+  }
+}
+
 // The daily job: everyone with accounts, the longest since Jane last posted to them first,
 // at most CHAT_CRON_LIMIT a run. Quiet hours are left to runJaneAgent.
 export async function runJaneAgentForAll({
@@ -295,10 +315,22 @@ export async function runJaneAgentForAll({
     select: {
       id: true,
       janeMessages: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      // When this run last looked at them, whether or not it posted.
+      janePreferences: {
+        where: { kind: "system", key: CRON_RUN_KEY },
+        select: { value: true },
+        take: 1,
+      },
     },
     orderBy: { id: "asc" },
   });
-  const last = (u: (typeof users)[number]) => u.janeMessages[0]?.createdAt.getTime() ?? 0;
+  // A run that posts nothing leaves the last message where it was, so ordering by it alone would
+  // pick the same people first every day and never reach the rest: the later of the two counts.
+  const last = (u: (typeof users)[number]) =>
+    Math.max(
+      u.janeMessages[0]?.createdAt.getTime() ?? 0,
+      Date.parse(String((u.janePreferences?.[0]?.value as { at?: string } | undefined)?.at)) || 0,
+    );
   const batch = [...users].sort((a, b) => last(a) - last(b)).slice(0, limit);
 
   const run = { people: 0, posted: 0, failed: 0 };
@@ -312,6 +344,7 @@ export async function runJaneAgentForAll({
       run.failed += 1;
       log.error("Jane's daily chat run failed", { userId: user.id, error: String(error) });
     }
+    await markLooked(user.id, client, now);
   }
   return run;
 }
@@ -325,9 +358,11 @@ export async function keepFullSnapshot(
 ): Promise<void> {
   try {
     const input = await loadDetectionInput(userId, { client, now });
+    const stamp = await dataStamp(userId, client);
     await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input }), {
       client,
       now,
+      stamp,
     });
   } catch (error) {
     log.error("Saving the snapshot failed", { userId, error: String(error) });

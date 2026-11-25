@@ -113,7 +113,13 @@ export async function claudeLimit(userId: string, options: Options = {}): Promis
     if (!statementTrialEnabled()) return "budget";
     // The day's allowance for everyone first: an answer it refuses isn't counted against them.
     if (!(await reserveStatementTrialAnswer(options))) return "budget";
-    if (!(await hit("claudeStatementTrial", userId, options)).ok) {
+    // The day's hold goes back if the person's own count fails too, or it would stay on the shared
+    // day until it rolls over and turn other people's answers away.
+    const own = await hit("claudeStatementTrial", userId, options).catch(async (error: unknown) => {
+      await releaseStatementTrialAnswer(options).catch(() => {});
+      throw error;
+    });
+    if (!own.ok) {
       await releaseStatementTrialAnswer(options);
       return { text: STATEMENT_TRIAL_CAP_TEXT };
     }
@@ -121,7 +127,11 @@ export async function claudeLimit(userId: string, options: Options = {}): Promis
   }
   if (isTrialUser(userId)) {
     if (!(await reserveSampleAnswer(options))) return "budget";
-    if (!(await hit("claudeTrial", userId, options)).ok) {
+    const own = await hit("claudeTrial", userId, options).catch(async (error: unknown) => {
+      await releaseSampleAnswer(options).catch(() => {});
+      throw error;
+    });
+    if (!own.ok) {
       await releaseSampleAnswer(options);
       return { text: TRIAL_CAP_TEXT };
     }

@@ -40,8 +40,10 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
               ),
             ),
         }),
-        timezoneOf(user.id),
-        conciergeMode(user.id),
+        // Only the tap itself may fail it: it has committed by the time these two are read, and a
+        // failure here would show the buttons again and lose the agent's first step.
+        timezoneOf(user.id).catch(() => null),
+        conciergeMode(user.id).catch(() => true),
       ]);
     // The agent's first step, after the response (src/lib/agent/run.ts).
     after(() => runAgentNow(agentJobIds));

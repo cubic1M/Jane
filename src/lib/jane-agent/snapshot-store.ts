@@ -74,19 +74,40 @@ async function write(
 export async function saveSnapshot(
   userId: string,
   snapshot: Snapshot | null,
-  options: Options,
+  options: Options & { stamp?: string | null },
 ): Promise<void> {
-  await write(userId, snapshot, await dataStamp(userId, options.client), options);
+  // The stamp read before the snapshot was built (when the caller has it): read now, it could
+  // belong to newer data than the snapshot holds.
+  const stamp =
+    options.stamp !== undefined ? options.stamp : await dataStamp(userId, options.client);
+  await write(userId, snapshot, stamp, options);
+}
+
+// Which build began last for each person, and which has published: a build that began before
+// another one that has already published must not write over it (an older, slower build finishing
+// last would put the older snapshot back).
+const began = new Map<string, number>();
+const published = new Map<string, number>();
+export function beginBuild(userId: string): number {
+  const seq = (began.get(userId) ?? 0) + 1;
+  began.set(userId, seq);
+  return seq;
+}
+export function mayPublish(userId: string, seq: number): boolean {
+  if (seq < (published.get(userId) ?? 0)) return false;
+  published.set(userId, seq);
+  return true;
 }
 
 // Builds a fresh snapshot and saves it. After a sync, a scan or a correction.
 export async function refreshSnapshot(userId: string, options: Options): Promise<Snapshot | null> {
+  const seq = beginBuild(userId);
   // Loaded late: building a snapshot reaches this file again (through the profile's primer).
   const { loadSnapshot } = await import("./snapshot");
   // The stamp from before the build: a change during it makes the saved copy old at once.
   const stamp = await dataStamp(userId, options.client);
   const snapshot = await loadSnapshot(userId, options);
-  await write(userId, snapshot, stamp, options);
+  if (mayPublish(userId, seq)) await write(userId, snapshot, stamp, options);
   return snapshot;
 }
 
