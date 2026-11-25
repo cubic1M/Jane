@@ -71,7 +71,8 @@ describe.runIf(url)("what net worth counts holds each account once", { timeout: 
     return countingProblems(
       accounts.map((a) => ({ ...a, source: source.get(a.id) ?? null })),
       (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
-      new Set([...said.map((p) => p.key.replace("account:", "")), ...cleared]),
+      new Set(said.map((p) => p.key.replace("account:", ""))),
+      cleared,
     );
   }
 

@@ -49,6 +49,7 @@ export async function loadTaxPack(
         accountId: true,
         kind: true,
         ytdInterestPaidCents: true,
+        updatedAt: true,
         account: { select: { name: true } },
       },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
@@ -60,7 +61,7 @@ export async function loadTaxPack(
     loadSideIncome(userId, { client, now }),
   ]);
   // A loan linked twice counts once, with the interest either link reported.
-  const loans = reconcileLiabilities(counting, loansAll);
+  const loans = reconcileLiabilities(counting, loansAll, { readingYear: year });
   const rental = side.year === year ? side.rental : null;
   return buildTaxPack({
     year,

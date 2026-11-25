@@ -104,8 +104,9 @@ async function readCounting(db: Db) {
   if (candidates.length > 0) {
     const ids = [...new Set(candidates.flatMap(([u, l]) => [u.id, l.id]))];
     const [rows, readings] = await Promise.all([
+      // Posted lines only: a pending charge isn't on a statement (a tip changes its amount).
       db.transactions.findMany({
-        where: { accountId: { in: ids } },
+        where: { accountId: { in: ids }, pending: false },
         select: { accountId: true, date: true, amountCents: true },
       }),
       db.balanceSnapshots.findMany({
@@ -240,19 +241,29 @@ const READING = ["ytdInterestPaidCents", "lastPaymentDate", "updatedAt"] as cons
 export function reconcileLiabilities<T extends { accountId: string }>(
   counting: Counting,
   rows: readonly T[],
+  // For a figure said for one year (the tax pack, the organizer, home taxes): only a reading taken in
+  // that year (`updatedAt`) can supply the interest, the account's own or a copy's, and with none the
+  // interest is left unknown rather than taken from another year's reading.
+  { readingYear }: { readingYear?: number } = {},
 ): T[] {
-  if (counting.copies.size === 0) return [...rows];
+  if (counting.copies.size === 0 && readingYear === undefined) return [...rows];
   const copiesOf = new Map<string, T[]>();
   for (const r of [...rows].sort((a, b) => a.accountId.localeCompare(b.accountId))) {
     if (!counting.copies.has(r.accountId)) continue;
     const rep = counting.representativeOf(r.accountId);
     copiesOf.set(rep, [...(copiesOf.get(rep) ?? []), r]);
   }
+  const readIn = (r: unknown) => {
+    const at = (r as Record<string, unknown>).updatedAt;
+    return at instanceof Date ? at.getUTCFullYear() : null;
+  };
+  const cents = (r: unknown) =>
+    ((r as Record<string, unknown>).ytdInterestPaidCents ?? 0) as number;
   return rows
     .filter((r) => !counting.copies.has(r.accountId))
     .map((row) => {
-      const copies = copiesOf.get(row.accountId);
-      if (!copies) return row;
+      const copies = copiesOf.get(row.accountId) ?? [];
+      if (copies.length === 0 && readingYear === undefined) return row;
       const out: Record<string, unknown> = { ...row };
       const own = row as Record<string, unknown>;
       for (const key of Object.keys(own)) {
@@ -268,13 +279,19 @@ export function reconcileLiabilities<T extends { accountId: string }>(
         }
       }
       if ("ytdInterestPaidCents" in own) {
-        const cents = (r: unknown) =>
-          ((r as Record<string, unknown>).ytdInterestPaidCents ?? 0) as number;
-        const best = copies.reduce((m, c) => (cents(c) > cents(m) ? c : m), copies[0]);
-        if (cents(best) > cents(row)) {
+        // The reading to take: the largest figure among the account's own and its copies', and for a
+        // year only among the ones read in it (the account's own wins a tie).
+        const pool = [row, ...copies].filter(
+          (r) => readingYear === undefined || (readIn(r) === readingYear && cents(r) > 0),
+        );
+        const best = pool.reduce<T | null>(
+          (m, c) => (m === null || cents(c) > cents(m) ? c : m),
+          null,
+        );
+        if (best === null) out.ytdInterestPaidCents = null;
+        else if (best !== row)
           for (const key of READING)
             if (key in own) out[key] = (best as Record<string, unknown>)[key];
-        }
       }
       return out as T;
     });
@@ -282,28 +299,30 @@ export function reconcileLiabilities<T extends { accountId: string }>(
 
 // Lines (investment transactions, say) of the counted accounts, with the lines only a left-out copy
 // has: an upload of an IRA left out for the link carries the contributions made before the link began,
-// and they count toward the year's room once. A line on a copy is attributed to the counted account it
-// ends on and kept unless that account (or another copy before it) already has one of the same day and
-// amount, one to one; the lines the two share are the link's own. Nothing is added twice, and no
-// balance comes with them.
+// and they count toward the year's room once. Every line is attributed to the counted account its
+// account ends on; for each account, day and amount, the most that any one of the accounts that end on
+// it shows is kept (the account's own, or one copy's): the lines they share are one line, and a
+// repeated line on one account stays repeated. Nothing is added twice, and no balance comes with it.
 export function foldCopiesInto<T extends { accountId: string; amountCents: number; date: Date }>(
   counting: Counting,
   rows: readonly T[],
 ): T[] {
-  const key = (r: T) => `${r.accountId}|${r.date.toISOString().slice(0, 10)}|${r.amountCents}`;
-  const kept: T[] = [];
-  const have = new Map<string, number>();
+  const groups = new Map<string, { rep: string; bySource: Map<string, T[]> }>();
   for (const r of rows) {
-    if (counting.copies.has(r.accountId)) continue;
-    kept.push(r);
-    have.set(key(r), (have.get(key(r)) ?? 0) + 1);
+    const rep = counting.representativeOf(r.accountId);
+    const key = `${rep}|${r.date.toISOString().slice(0, 10)}|${r.amountCents}`;
+    const group = groups.get(key) ?? { rep, bySource: new Map() };
+    group.bySource.set(r.accountId, [...(group.bySource.get(r.accountId) ?? []), r]);
+    groups.set(key, group);
   }
-  for (const r of [...rows].sort((a, b) => a.accountId.localeCompare(b.accountId))) {
-    if (!counting.copies.has(r.accountId)) continue;
-    const mine = { ...r, accountId: counting.representativeOf(r.accountId) };
-    const at = have.get(key(mine)) ?? 0;
-    if (at > 0) have.set(key(mine), at - 1);
-    else kept.push(mine);
+  const kept: T[] = [];
+  for (const { rep, bySource } of groups.values()) {
+    const sources = [...bySource].sort(
+      ([a, x], [b, y]) =>
+        y.length - x.length || Number(b === rep) - Number(a === rep) || a.localeCompare(b),
+    );
+    const [source, lines] = sources[0];
+    for (const line of lines) kept.push(source === rep ? line : { ...line, accountId: rep });
   }
   return kept;
 }

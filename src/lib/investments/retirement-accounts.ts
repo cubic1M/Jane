@@ -131,9 +131,15 @@ export async function loadRetirementAccounts(
     plan && employeeYtd >= 0
       ? matchPaceGap(plan, employeeYtd, {
           today,
+          // The newest data across the same accounts the contributions were counted from.
           through: await dataThrough(
             db,
-            workplace.map((a) => a.id),
+            [
+              ...workplace.map((a) => a.id),
+              ...[...counting.copies].filter((c) =>
+                workplace.some((a) => a.id === counting.representativeOf(c)),
+              ),
+            ],
             today,
           ),
         })

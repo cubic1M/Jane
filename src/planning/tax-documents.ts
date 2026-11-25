@@ -47,7 +47,7 @@ export type ExpectedForm = {
   mayNotSend: boolean;
 };
 
-const slug = (text: string) =>
+export const slug = (text: string) =>
   text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

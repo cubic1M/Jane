@@ -90,7 +90,7 @@ describe("comparing an upload with a link", () => {
   it("matches one to one, so one line on the link can't vouch for two on the upload", () => {
     const upload: Line[] = [1, 2, 3].map(() => ({ date: "2026-09-01", amountCents: 500 }));
     const link: Line[] = [{ date: "2026-09-01", amountCents: 500 }];
-    expect(matchLines(upload, link)).toEqual({ matched: 1, compared: 1 });
+    expect(matchLines(upload, link)).toMatchObject({ matched: 1, compared: 1 });
   });
 
   it("reads the link's balance on a day only if its history reaches it", () => {
@@ -105,5 +105,58 @@ describe("comparing an upload with a link", () => {
 
   it("keeps the thresholds in the config, with a gap between same and different", () => {
     expect(DIFFERENT_ACCOUNT_MAX_RATIO).toBeLessThan(SAME_ACCOUNT_MATCH_RATIO);
+  });
+
+  it("finds the most matches, not the first: a nearest-day pick can take a line a later one needs", () => {
+    const d = (n: number) => `2026-09-0${n}`;
+    const upload: Line[] = [
+      { date: d(1), amountCents: 101 },
+      { date: d(3), amountCents: 500 },
+      { date: d(5), amountCents: 500 },
+      { date: d(6), amountCents: 102 },
+      { date: d(7), amountCents: 103 },
+    ];
+    const link: Line[] = [
+      { date: d(1), amountCents: 500 },
+      { date: d(3), amountCents: 500 },
+      { date: d(4), amountCents: 201 },
+      { date: d(6), amountCents: 202 },
+      { date: d(7), amountCents: 203 },
+    ];
+    expect(matchLines(upload, link)).toMatchObject({ matched: 2, compared: 5 });
+    // Two of five is not "almost none": nothing is said, and the upload is left out.
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
+      "unknown",
+    );
+  });
+
+  it("is unknown, never different, when the two share only a few days", () => {
+    // The statement ends on the 3rd of the link's history: six lines each, none alike, in three days.
+    const upload: Line[] = [11, 12, 13, 14, 15, 16].map((n) => ({
+      date: `2026-09-0${(n % 3) + 1}`,
+      amountCents: n,
+    }));
+    const link: Line[] = [21, 22, 23, 24, 25, 26].map((n) => ({
+      date: `2026-09-0${(n % 3) + 1}`,
+      amountCents: n,
+    }));
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none })).toMatchObject({
+      verdict: "unknown",
+    });
+  });
+
+  it("matches a transfer the bank reports as two legs to the one line the statement has", () => {
+    const upload = lines(AMOUNTS);
+    const link: Line[] = lines(AMOUNTS).flatMap((l, i) =>
+      i % 3 === 0
+        ? [
+            { date: l.date, amountCents: l.amountCents - 100 },
+            { date: l.date, amountCents: 100 },
+          ]
+        : [l],
+    );
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
+      "same",
+    );
   });
 });

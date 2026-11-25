@@ -114,15 +114,78 @@ describe("lines only a copy has count once", () => {
       ["link", -50_000],
     ]);
   });
-  it("counts two like lines on the link as two, and a third on the copy as one more", () => {
+  it("counts a line the link and two copies all show once, not once per copy", () => {
+    const counting = chain([
+      ["copy1", "link", "copy"],
+      ["copy2", "link", "copy"],
+    ]);
+    const folded = foldCopiesInto(counting, [
+      line("link", "2026-03-01", -50_000),
+      line("copy1", "2026-03-01", -50_000),
+      line("copy2", "2026-03-01", -50_000),
+    ]);
+    expect(folded).toHaveLength(1);
+  });
+  it("counts an earlier line two copies both show, with the link having none, once", () => {
+    const counting = chain([
+      ["copy1", "link", "copy"],
+      ["copy2", "link", "copy"],
+    ]);
+    const folded = foldCopiesInto(counting, [
+      line("copy1", "2026-01-10", -300_000),
+      line("copy2", "2026-01-10", -300_000),
+    ]);
+    expect(folded).toEqual([line("link", "2026-01-10", -300_000)]);
+  });
+  it("keeps a line repeated on one account as repeated", () => {
     const counting = chain([["upload", "link", "copy"]]);
     const folded = foldCopiesInto(counting, [
       line("link", "2026-03-01", -50_000),
       line("link", "2026-03-01", -50_000),
       line("upload", "2026-03-01", -50_000),
-      line("upload", "2026-03-01", -50_000),
-      line("upload", "2026-03-01", -50_000),
     ]);
-    expect(folded).toHaveLength(3);
+    expect(folded).toHaveLength(2);
+  });
+});
+
+describe("interest said for a year comes from a reading taken in it", () => {
+  const row = (accountId: string, ytd: number | null, readOn: string) => ({
+    accountId,
+    ytdInterestPaidCents: ytd,
+    lastPaymentDate: null as Date | null,
+    updatedAt: day(readOn),
+  });
+  const counting = chain([["copy", "link", "copy"]]);
+  it("ignores a copy's larger reading from another year", () => {
+    const [kept] = reconcileLiabilities(
+      counting,
+      [row("link", 100_000, "2026-11-02"), row("copy", 900_000, "2025-12-31")],
+      { readingYear: 2026 },
+    );
+    expect(kept.ytdInterestPaidCents).toBe(100_000);
+  });
+  it("takes a copy's reading from that year when the account's own is from another", () => {
+    const [kept] = reconcileLiabilities(
+      counting,
+      [row("link", 100_000, "2025-12-02"), row("copy", 40_000, "2026-10-01")],
+      { readingYear: 2026 },
+    );
+    expect(kept).toMatchObject({ ytdInterestPaidCents: 40_000, updatedAt: day("2026-10-01") });
+  });
+  it("leaves the interest unknown when no reading is from that year", () => {
+    const [kept] = reconcileLiabilities(
+      counting,
+      [row("link", 100_000, "2025-12-02"), row("copy", 900_000, "2025-12-31")],
+      { readingYear: 2026 },
+    );
+    expect(kept.ytdInterestPaidCents).toBeNull();
+  });
+  it("keeps the larger of the year's own readings, the account's own on a tie", () => {
+    const [a] = reconcileLiabilities(
+      counting,
+      [row("link", 100_000, "2026-11-02"), row("copy", 150_000, "2026-11-20")],
+      { readingYear: 2026 },
+    );
+    expect(a).toMatchObject({ ytdInterestPaidCents: 150_000, updatedAt: day("2026-11-20") });
   });
 });

@@ -302,6 +302,7 @@ async function loadTaxFormsFrom(
         accountId: true,
         kind: true,
         ytdInterestPaidCents: true,
+        updatedAt: true,
         account: { select: { name: true } },
       },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
@@ -309,7 +310,7 @@ async function loadTaxFormsFrom(
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
   ]);
   // A loan linked twice counts once, with the interest either link reported.
-  const loans = reconcileLiabilities(counting, loansAll);
+  const loans = reconcileLiabilities(counting, loansAll, { readingYear: year });
   const got = new Set(received.map((r) => r.key));
   const forms = expectedForms({
     year,

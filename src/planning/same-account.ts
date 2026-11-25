@@ -1,5 +1,6 @@
 import {
   DIFFERENT_ACCOUNT_MAX_RATIO,
+  DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS,
   SAME_ACCOUNT_BALANCE_SLACK_CENTS,
   SAME_ACCOUNT_DAY_SLACK,
   SAME_ACCOUNT_MATCH_RATIO,
@@ -35,33 +36,71 @@ export type CompareInput = {
 
 const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000;
 
-// Lines in the days both cover, matched one to one by amount and day (within the slack).
+// Lines in the days both cover, matched one to one by amount and day (within the slack): the most
+// that can be matched, not the first that are found (a nearest-day pick can take the line a later one
+// needs). A line the bank reports as two legs (a transfer, a split) is matched to the one line whose
+// amount they add up to, on days within the slack. Returns what was matched, what was compared, and
+// the days the two have in common.
 export function matchLines(upload: readonly Line[], link: readonly Line[]) {
-  if (upload.length === 0 || link.length === 0) return { matched: 0, compared: 0 };
+  const none = { matched: 0, compared: 0, overlapDays: 0 };
+  if (upload.length === 0 || link.length === 0) return none;
   const first = [upload, link].map((l) => l.reduce((m, x) => (x.date < m ? x.date : m), l[0].date));
   const last = [upload, link].map((l) => l.reduce((m, x) => (x.date > m ? x.date : m), l[0].date));
   const from = first[0] > first[1] ? first[0] : first[1];
   const to = last[0] < last[1] ? last[0] : last[1];
-  if (from > to) return { matched: 0, compared: 0 };
+  if (from > to) return none;
   const inside = (l: readonly Line[]) =>
     l.filter((x) => x.date >= from && x.date <= to).sort((a, b) => a.date.localeCompare(b.date));
   const [u, k] = [inside(upload), inside(link)];
-  const used = new Set<number>();
-  let matched = 0;
-  for (const line of u) {
-    let best = -1;
-    let bestGap = Infinity;
-    k.forEach((other, i) => {
-      if (used.has(i) || other.amountCents !== line.amountCents) return;
-      const gap = days(line.date, other.date);
-      if (gap <= SAME_ACCOUNT_DAY_SLACK && gap < bestGap) [best, bestGap] = [i, gap];
-    });
-    if (best >= 0) {
-      used.add(best);
+  const near = (a: Line, b: Line) => days(a.date, b.date) <= SAME_ACCOUNT_DAY_SLACK;
+  // The most one-to-one pairs of equal amount within the slack (augmenting paths, per amount).
+  const takenBy = new Map<number, number>();
+  const augment = (i: number, seen: Set<number>): boolean => {
+    for (let j = 0; j < k.length; j += 1) {
+      if (seen.has(j) || k[j].amountCents !== u[i].amountCents || !near(u[i], k[j])) continue;
+      seen.add(j);
+      const holder = takenBy.get(j);
+      if (holder === undefined || augment(holder, seen)) {
+        takenBy.set(j, i);
+        return true;
+      }
+    }
+    return false;
+  };
+  for (let i = 0; i < u.length; i += 1) augment(i, new Set());
+  let matched = takenBy.size;
+  // What is left: a line on one side that is two lines on the other, the same day within the slack.
+  const usedU = new Set(takenBy.values());
+  const usedK = new Set(takenBy.keys());
+  const legs = (single: Line, others: readonly Line[], used: Set<number>) => {
+    for (let a = 0; a < others.length; a += 1)
+      for (let b = a + 1; b < others.length; b += 1) {
+        if (used.has(a) || used.has(b)) continue;
+        if (others[a].amountCents + others[b].amountCents !== single.amountCents) continue;
+        if (!near(single, others[a]) || !near(single, others[b])) continue;
+        used.add(a);
+        used.add(b);
+        return true;
+      }
+    return false;
+  };
+  u.forEach((line, i) => {
+    if (!usedU.has(i) && legs(line, k, usedK)) {
+      usedU.add(i);
       matched += 1;
     }
-  }
-  return { matched, compared: Math.min(u.length, k.length) };
+  });
+  k.forEach((line, j) => {
+    if (!usedK.has(j) && legs(line, u, usedU)) {
+      usedK.add(j);
+      matched += 1;
+    }
+  });
+  return {
+    matched,
+    compared: Math.min(u.length, k.length),
+    overlapDays: days(from, to) + 1,
+  };
 }
 
 export function compareAccounts({
@@ -70,12 +109,13 @@ export function compareAccounts({
   closing,
   linkBalanceOn,
 }: CompareInput): Comparison {
-  const { matched, compared } = matchLines(upload, link);
+  const { matched: found, compared, overlapDays } = matchLines(upload, link);
+  const matched = Math.min(found, compared);
   if (compared >= SAME_ACCOUNT_MIN_LINES) {
     const ratio = matched / compared;
     if (ratio >= SAME_ACCOUNT_MATCH_RATIO)
       return { verdict: "same", by: "lines", matched, compared };
-    if (ratio <= DIFFERENT_ACCOUNT_MAX_RATIO)
+    if (ratio <= DIFFERENT_ACCOUNT_MAX_RATIO && overlapDays >= DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS)
       return { verdict: "different", by: "lines", matched, compared };
   }
   // The lines can't say. A closing balance equal to the link's on that day can.

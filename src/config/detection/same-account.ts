@@ -14,3 +14,6 @@ export const SAME_ACCOUNT_DAY_SLACK = 2;
 // reading no more than this many days before it.
 export const SAME_ACCOUNT_BALANCE_SLACK_CENTS = 100;
 export const SAME_ACCOUNT_BALANCE_SLACK_DAYS = 3;
+// "Different" needs the two to share at least this many days: an upload that ends just after the
+// link's history begins has too few days in common to say they are another account.
+export const DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS = 14;

@@ -28,7 +28,13 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
   let client: PrismaClient;
   const users: string[] = [];
 
-  async function shape(upload: { amounts: number[]; shiftDays?: number; balance?: number }) {
+  async function shape(upload: {
+    amounts: number[];
+    shiftDays?: number;
+    balance?: number;
+    // The link's lines are still pending, each a tip above what the statement will say.
+    linkPending?: boolean;
+  }) {
     const user = await client.user.create({
       data: { email: `evidence-${crypto.randomUUID()}@example.com`, timezone: "UTC" },
     });
@@ -72,8 +78,9 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
         accountId: link.id,
         source: "plaid" as const,
         plaidTransactionId: `pt-${crypto.randomUUID()}`,
+        pending: upload.linkPending ?? false,
         date: day(dateOf(i)),
-        amountCents,
+        amountCents: upload.linkPending ? amountCents + 300 : amountCents,
         description: `LINE ${i}`,
         categorySource: "rule" as const,
       })),
@@ -155,6 +162,18 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
     const { userId, upload } = await shape({ amounts: AMOUNTS.slice(0, 3), balance: 120_000 });
     const left = await accountsNotCounted(scopedFor(userId, client));
     expect(left.get(upload.id)?.reason).toBe("same_account");
+    expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000);
+  });
+
+  it("pending charges on the link don't make a different account of the same one", async () => {
+    const { userId, upload } = await shape({
+      amounts: AMOUNTS,
+      linkPending: true,
+      balance: 50_000,
+    });
+    const left = await accountsNotCounted(scopedFor(userId, client));
+    // Nothing posted to compare yet: left out as not compared, never counted.
+    expect(left.get(upload.id)?.reason).toBe("maybe_same");
     expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000);
   });
 });

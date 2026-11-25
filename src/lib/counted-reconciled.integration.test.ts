@@ -15,6 +15,7 @@ import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { answerDebt } from "@/lib/jane-agent/debt-answer";
 import { loadProfileInput } from "@/lib/profile";
+import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxForms } from "@/lib/tax-organizer";
 import { loadTaxSetAside } from "@/lib/tax-set-aside";
 
@@ -38,7 +39,7 @@ describe.runIf(url)("a copy's facts reach the account that counts", { timeout: 1
   };
   // The same account linked at two banks: which one counts is the rule's call, so the fact goes on
   // the one that doesn't.
-  async function linkedTwice(userId: string, data: object) {
+  async function linkedTwice(userId: string, data: object, names?: [string, string]) {
     const mk = async (n: number) => {
       const item = await client.plaidItem.create({
         data: {
@@ -58,6 +59,7 @@ describe.runIf(url)("a copy's facts reach the account that counts", { timeout: 1
           mask: "7777",
           name: "Account",
           ...data,
+          ...(names ? { name: names[n - 1] } : {}),
         } as never,
       });
     };
@@ -237,6 +239,93 @@ describe.runIf(url)("a copy's facts reach the account that counts", { timeout: 1
         targetDate: new Date("2027-12-31T00:00:00Z"),
       },
     });
+    const view = await loadTaxSetAside(userId, { client, now: NOW });
+    expect(view.keptApartCents).toBe(400_000);
+  });
+
+  it("tax documents: a form received under the copy's name stays on the list", async () => {
+    const userId = await person();
+    const { kept, copy } = await linkedTwice(
+      userId,
+      { type: "investment", subtype: "brokerage", currentBalanceCents: 1_000_000 },
+      ["Brokerage", "Brokerage Account"],
+    );
+    const copyName = copy.name;
+    const keptName = kept.name;
+    await client.taxDocument.create({
+      data: {
+        userId,
+        year: 2026,
+        key: `brokerage:${copyName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        formKey: "brokerage",
+        payer: copyName,
+        partner: "stand-in",
+        boxes: {},
+        fetchedAt: NOW,
+      },
+    });
+    const view = await loadTaxDocuments(userId, 2026, { client, now: NOW });
+    const form = view.forms.find((f) => f.formKey === "brokerage" && f.from === keptName);
+    expect(view.forms.filter((f) => f.formKey === "brokerage")).toHaveLength(1);
+    expect(form?.document).not.toBeNull();
+  });
+
+  it("the tax set-aside: two goals that resolve to one account count it once", async () => {
+    const userId = await person();
+    const { kept, copy } = await linkedTwice(userId, {
+      type: "depository",
+      subtype: "savings",
+      name: "Savings",
+      currentBalanceCents: 400_000,
+    });
+    const checking = await client.account.create({
+      data: {
+        userId,
+        source: "csv",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+        currentBalanceCents: 6_000_000,
+      },
+    });
+    await client.taxProfile.create({
+      data: {
+        userId,
+        filingStatus: "single",
+        state: "TX",
+        childrenUnder17: 0,
+        otherDependants: 0,
+        answered: ["filingStatus", "state", "dependants"],
+      },
+    });
+    await client.transaction.createMany({
+      data: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"].map((m) => ({
+        userId,
+        accountId: checking.id,
+        source: "csv" as const,
+        dedupeKey: crypto.randomUUID(),
+        date: new Date(`2026-${m}-15T00:00:00Z`),
+        amountCents: -500_000,
+        description: "BRIGHTLEAF MEDIA",
+        merchantName: "BRIGHTLEAF MEDIA",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_CONTRACTOR",
+        categorySource: "rule" as const,
+      })),
+    });
+    for (const [name, accountId] of [
+      ["Taxes April", copy.id],
+      ["Taxes September", kept.id],
+    ] as const)
+      await client.savingsGoal.create({
+        data: {
+          userId,
+          name,
+          accountId,
+          targetCents: 1_000_000,
+          targetDate: new Date("2027-12-31T00:00:00Z"),
+        },
+      });
     const view = await loadTaxSetAside(userId, { client, now: NOW });
     expect(view.keptApartCents).toBe(400_000);
   });

@@ -76,6 +76,8 @@ async function work(
     view.year + 1,
   );
 
+  // An account counts once, whichever goals point at it (or at its copies).
+  const goalAccounts = new Set<string>();
   const kept = [
     ...savings.flatMap((a) =>
       TAX_KEPT_NAME.test(a.name) && (a.currentBalanceCents ?? 0) > 0
@@ -89,6 +91,8 @@ async function work(
       );
       // An account already counted by its own name isn't counted again through its goal.
       if (!TAX_KEPT_NAME.test(g.name) || (account && TAX_KEPT_NAME.test(account.name))) return [];
+      if (account && goalAccounts.has(account.id)) return [];
+      if (account) goalAccounts.add(account.id);
       const cents = account ? (account.currentBalanceCents ?? 0) : (g.manualSavedCents ?? 0);
       return cents > 0 ? [{ name: `your goal ${g.name}`, cents }] : [];
     }),
