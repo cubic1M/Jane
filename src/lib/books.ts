@@ -333,6 +333,8 @@ export async function runBooksCheck(
   // Accounts left out because they may be one already counted, which nothing can prove: said, never
   // merged, with where the person settles it (src/lib/account-copies.ts).
   for (const note of await leftOutNotes(db)) {
+    // Proven the same by what each shows: left out, said under net worth, nothing asked.
+    if (note.reason === "same_account") continue;
     found.push({
       kind: "maybe_same",
       key: `same:${note.id}`,
