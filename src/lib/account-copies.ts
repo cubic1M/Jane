@@ -146,7 +146,12 @@ async function readCounting(db: Db) {
         upload.currentBalanceCents,
         endsOn.get(upload.id) ?? null,
       ]);
-    const missing = candidates.filter((c) => !verdicts.has(keyOf(c)));
+    // What this call needs is kept in this call (evidence), whatever the shared memory later drops.
+    for (const c of candidates) {
+      const known = verdicts.get(keyOf(c));
+      if (known) evidence.set(`${c[0].id}|${c[1].id}`, known);
+    }
+    const missing = candidates.filter((c) => !evidence.has(`${c[0].id}|${c[1].id}`));
     if (missing.length > 0) {
       const need = [...new Set(missing.flatMap(([u, l]) => [u.id, l.id]))];
       const [rows, readings] = await Promise.all([

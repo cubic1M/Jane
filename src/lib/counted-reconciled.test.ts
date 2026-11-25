@@ -220,4 +220,20 @@ describe("a known zero reading, and a contribution's label", () => {
     );
     expect(folded).toHaveLength(2);
   });
+
+  it("folds an IRA contribution a copy names another way into the account's line", () => {
+    const line = (accountId: string, name: string) => ({
+      accountId,
+      name,
+      date: day("2026-03-01"),
+      amountCents: -50_000,
+    });
+    // An IRA has no employer: the class is the same for both, whatever the names say.
+    const folded = foldCopiesInto(
+      counting,
+      [line("link", "Employer match"), line("copy", "Contribution")],
+      () => "",
+    );
+    expect(folded).toHaveLength(1);
+  });
 });

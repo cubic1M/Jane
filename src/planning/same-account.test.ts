@@ -237,25 +237,89 @@ describe("comparing an upload with a link", () => {
   });
 
   it("says unknown, not different, when the work runs past its budget", () => {
-    // Every line the same amount on one day: the search has nowhere to go but through them all.
-    const same = (n: number): Line[] =>
-      Array.from({ length: n }, (_, i) => ({
-        date: addDays("2025-01-01", i % 60),
+    // Fifteen hundred alike lines a side with every one a candidate for every other: the search
+    // spends its steps, and what is left is unknown, never a verdict from half a search.
+    const alike = (): Line[] =>
+      Array.from({ length: 1500 }, (_, i) => ({
+        date: addDays("2025-01-01", 3 + (i % 3)),
         amountCents: 500,
       }));
+    const edges: Line[] = [
+      { date: "2025-01-01", amountCents: 1 },
+      { date: "2025-01-12", amountCents: 2 },
+    ];
+    const upload = [...alike(), ...edges].slice(0, 1500);
+    const link = [...alike(), ...edges].slice(0, 1500);
+    const found = matchLines(upload, link);
+    expect(found.exhausted).toBe(true);
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
+      "unknown",
+    );
+  });
+
+  it("says unknown, not different, past the limit of lines", () => {
+    const over = (amount: number): Line[] =>
+      Array.from({ length: 1501 }, (_, i) => ({
+        date: addDays("2025-01-01", i % 100),
+        amountCents: amount + i,
+      }));
     const got = compareAccounts({
-      upload: same(1500),
-      link: Array.from({ length: 1500 }, (_, i) => ({
-        date: addDays("2025-01-01", i % 60),
-        amountCents: 700,
-      })),
+      upload: over(1),
+      link: over(100_000),
       closing: null,
       linkBalanceOn: none,
     });
-    expect(got.verdict).not.toBe("same");
-    expect(same(10)).toHaveLength(10);
+    expect(got.verdict).toBe("unknown");
   });
 
+  it("counts a pair from the side whose line is inside the shared days", () => {
+    // Five charges on 1 September on the upload, a day later on the link; the shared days start on
+    // 1 September for the upload and the link's history starts on the 2nd; five others inside.
+    const upload: Line[] = [
+      ...[11, 12, 13, 14, 15].map((a) => ({ date: "2026-09-02", amountCents: a })),
+      ...[21, 22, 23, 24, 25].map((a) => ({ date: "2026-09-10", amountCents: a })),
+      { date: "2026-09-20", amountCents: 999 },
+    ];
+    const link: Line[] = [
+      { date: "2026-09-01", amountCents: 998 },
+      ...[11, 12, 13, 14, 15].map((a) => ({ date: "2026-09-03", amountCents: a })),
+      ...[31, 32, 33, 34, 35].map((a) => ({ date: "2026-09-10", amountCents: a })),
+      { date: "2026-09-20", amountCents: 999 },
+    ];
+    const got = compareAccounts({ upload, link, closing: null, linkBalanceOn: none });
+    expect(got.verdict).not.toBe("different");
+  });
+
+  it("does not reuse two legs to explain five lines as the same account", () => {
+    const anchors: Line[] = [
+      { date: "2026-09-01", amountCents: 999 },
+      { date: "2026-09-20", amountCents: 998 },
+    ];
+    const upload: Line[] = [
+      ...anchors,
+      ...[1, 2, 3, 4, 5].map(() => ({ date: "2026-09-10", amountCents: 1000 })),
+    ];
+    const link: Line[] = [
+      ...anchors,
+      ...[400, 600, 5000, 5000, 5000].map((a) => ({ date: "2026-09-10", amountCents: a })),
+    ];
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).not.toBe(
+      "same",
+    );
+  });
+
+  it("lets a closing balance settle lines that look like the same account with signs turned", () => {
+    const link = lines(AMOUNTS);
+    const upload = lines(AMOUNTS).map((l) => ({ ...l, amountCents: -l.amountCents }));
+    expect(
+      compareAccounts({
+        upload,
+        link,
+        closing: { date: "2026-10-31", cents: 120_000 },
+        linkBalanceOn: () => 120_000,
+      }),
+    ).toMatchObject({ verdict: "same", by: "balance" });
+  });
   it("never calls two accounts different when one is the other with its signs turned", () => {
     const link = lines(AMOUNTS);
     const upload = lines(AMOUNTS).map((l) => ({ ...l, amountCents: -l.amountCents }));

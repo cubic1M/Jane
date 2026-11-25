@@ -54,12 +54,16 @@ export function matchLines(
   link: readonly Line[],
   slack: number = SAME_ACCOUNT_DAY_SLACK,
 ) {
-  const none = { matched: 0, compared: 0, overlapDays: 0, exhausted: false };
+  const none = { matched: 0, matchedStrict: 0, compared: 0, overlapDays: 0, exhausted: false };
   if (upload.length === 0 || link.length === 0) return none;
+  // Past the limit the newest are looked at, and the answer is not to be trusted either way.
+  const overLimit = upload.length > SAME_ACCOUNT_MAX_LINES || link.length > SAME_ACCOUNT_MAX_LINES;
   const newest = (l: readonly Line[]) =>
     l.length <= SAME_ACCOUNT_MAX_LINES
       ? l
-      : [...l].sort((a, b) => b.date.localeCompare(a.date)).slice(0, SAME_ACCOUNT_MAX_LINES);
+      : [...l]
+          .sort((a, b) => b.date.localeCompare(a.date) || b.amountCents - a.amountCents)
+          .slice(0, SAME_ACCOUNT_MAX_LINES);
   const [mine, theirs] = [newest(upload), newest(link)];
   const first = [mine, theirs].map((l) => l.reduce((m, x) => (x.date < m ? x.date : m), l[0].date));
   const last = [mine, theirs].map((l) => l.reduce((m, x) => (x.date > m ? x.date : m), l[0].date));
@@ -100,44 +104,78 @@ export function matchLines(
   for (let i = 0; i < u.length && steps <= SAME_ACCOUNT_MAX_STEPS; i += 1) augment(i, new Set());
   const usedU = new Set(takenBy.values());
   const usedK = new Set(takenBy.keys());
-  let matched = [...usedU].filter((i) => inCore(u[i])).length;
-  // A left-over line that two left-over lines on the other side, within the slack, add up to: only
-  // the other side's lines in its day window are looked at (they are sorted by day).
-  const split = (line: Line, others: readonly Line[], used: ReadonlySet<number>) => {
+  // Pairs are counted from each side's own lines in the days both cover: a pair whose partner is
+  // outside them still covers the line that is inside. The most of the two counts is the coverage.
+  const exactU = [...usedU].filter((i) => inCore(u[i])).length;
+  const exactK = [...takenBy.keys()].filter((j) => inCore(k[j])).length;
+  // Two left-over lines on the other side, within the slack, that add up to a line: found among the
+  // lines in its day window only (they are sorted by day), the complement looked up by amount, and
+  // every visit charged to the budget. `taken` are legs already given to another line.
+  const legsFor = (
+    line: Line,
+    others: readonly Line[],
+    used: ReadonlySet<number>,
+    taken: ReadonlySet<number>,
+  ): [number, number] | null => {
+    const [low, high] = [addDays(line.date, -slack), addDays(line.date, slack)];
     let lo = 0;
     let hi = others.length;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if (others[mid].date < addDays(line.date, -slack)) lo = mid + 1;
+      if (others[mid].date < low) lo = mid + 1;
       else hi = mid;
     }
-    const counts = new Map<number, number>();
+    const at = new Map<number, number[]>();
     const window: number[] = [];
-    for (
-      let idx = lo;
-      idx < others.length && others[idx].date <= addDays(line.date, slack);
-      idx += 1
-    ) {
-      if (used.has(idx) || spent()) continue;
-      window.push(others[idx].amountCents);
-      counts.set(others[idx].amountCents, (counts.get(others[idx].amountCents) ?? 0) + 1);
+    for (let idx = lo; idx < others.length && others[idx].date <= high; idx += 1) {
+      if (spent()) break;
+      if (used.has(idx) || taken.has(idx)) continue;
+      window.push(idx);
+      at.set(others[idx].amountCents, [...(at.get(others[idx].amountCents) ?? []), idx]);
     }
-    return window.some((c) => {
-      const need = line.amountCents - c;
-      return (counts.get(need) ?? 0) > (need === c ? 1 : 0);
-    });
+    for (const a of window) {
+      const partner = (at.get(line.amountCents - others[a].amountCents) ?? []).find((b) => b !== a);
+      if (partner !== undefined) return [a, partner];
+    }
+    return null;
   };
+  // A line "could be" two legs if any two of the other side's would do (asked of each line alone,
+  // using none up, so no order decides: this can only stop "different"). It "is" two legs for
+  // "same" only if the legs are its own: each line takes legs no other line has taken.
+  let possible = 0;
+  let proven = 0;
+  const noneTaken: ReadonlySet<number> = new Set();
+  const takenK = new Set<number>();
+  const takenU = new Set<number>();
   u.forEach((line, i) => {
-    if (!usedU.has(i) && inCore(line) && !spent() && split(line, k, usedK)) matched += 1;
+    if (usedU.has(i) || !inCore(line) || steps > SAME_ACCOUNT_MAX_STEPS) return;
+    if (legsFor(line, k, usedK, noneTaken)) possible += 1;
+    const own = legsFor(line, k, usedK, takenK);
+    if (own) {
+      proven += 1;
+      own.forEach((j) => takenK.add(j));
+    }
   });
   k.forEach((line, j) => {
-    if (!usedK.has(j) && inCore(line) && !spent() && split(line, u, usedU)) matched += 1;
+    if (usedK.has(j) || !inCore(line) || steps > SAME_ACCOUNT_MAX_STEPS) return;
+    if (legsFor(line, u, usedU, noneTaken)) possible += 1;
+    const own = legsFor(line, u, usedU, takenU);
+    if (own) {
+      proven += 1;
+      own.forEach((i) => takenU.add(i));
+    }
   });
+  const coreU = u.filter(inCore).length;
+  const coreK = k.filter(inCore).length;
+  const exact = Math.max(exactU, exactK);
   return {
-    matched,
-    compared: Math.min(u.filter(inCore).length, k.filter(inCore).length),
+    // The most that could match: stops "different".
+    matched: exact + possible,
+    // What matches with nothing used twice: what "same" is built on.
+    matchedStrict: exact + proven,
+    compared: Math.min(coreU, coreK),
     overlapDays: days(from, to) + 1,
-    exhausted: steps > SAME_ACCOUNT_MAX_STEPS,
+    exhausted: steps > SAME_ACCOUNT_MAX_STEPS || overLimit,
   };
 }
 
@@ -151,33 +189,31 @@ export function compareAccounts({
   linkBalanceOn,
 }: CompareInput): Comparison {
   const tight = matchLines(upload, link);
-  const matched = Math.min(tight.matched, tight.compared);
   const { compared, overlapDays } = tight;
+  const matched = Math.min(tight.matched, compared);
+  const strict = Math.min(tight.matchedStrict, compared);
   if (!tight.exhausted && compared >= SAME_ACCOUNT_MIN_LINES) {
-    const ratio = matched / compared;
-    if (ratio >= SAME_ACCOUNT_MATCH_RATIO)
-      return { verdict: "same", by: "lines", matched, compared };
-    if (ratio <= DIFFERENT_ACCOUNT_MAX_RATIO && overlapDays >= DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS) {
+    if (strict / compared >= SAME_ACCOUNT_MATCH_RATIO)
+      return { verdict: "same", by: "lines", matched: strict, compared };
+    if (
+      matched / compared <= DIFFERENT_ACCOUNT_MAX_RATIO &&
+      overlapDays >= DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS
+    ) {
       const loose = matchLines(upload, link, DIFFERENT_ACCOUNT_DAY_SLACK);
       // The same lines with their signs turned (money out on one side is money in on the other):
-      // that is one account written two ways, never two.
+      // one account written two ways, never two.
       const flipped = matchLines(
         upload.map((l) => ({ ...l, amountCents: -l.amountCents })),
         link,
         DIFFERENT_ACCOUNT_DAY_SLACK,
       );
-      if (
-        flipped.exhausted ||
-        flipped.matched / (flipped.compared || 1) > DIFFERENT_ACCOUNT_MAX_RATIO
-      )
-        return { verdict: "unknown", by: "none", matched, compared };
-      const looseCompared = Math.min(loose.matched, loose.compared);
-      if (
+      const clean =
         !loose.exhausted &&
+        !flipped.exhausted &&
         loose.compared >= SAME_ACCOUNT_MIN_LINES &&
-        looseCompared / loose.compared <= DIFFERENT_ACCOUNT_MAX_RATIO
-      )
-        return { verdict: "different", by: "lines", matched, compared };
+        Math.min(loose.matched, loose.compared) / loose.compared <= DIFFERENT_ACCOUNT_MAX_RATIO &&
+        flipped.matched / (flipped.compared || 1) <= DIFFERENT_ACCOUNT_MAX_RATIO;
+      if (clean) return { verdict: "different", by: "lines", matched, compared };
     }
   }
   // The lines can't say. A closing balance equal to the link's on that day can.

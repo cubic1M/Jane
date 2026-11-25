@@ -110,8 +110,12 @@ export async function loadRetirementAccounts(
             },
             select: { accountId: true, name: true, amountCents: true, date: true },
           }),
-          // The employer's contribution and the person's own, on one day for one amount, are two.
-          (t) => String(EMPLOYER_CONTRIBUTION.test(t.name)),
+          // At work, the employer's contribution and the person's own, on one day for one amount, are
+          // two. An IRA has no employer's: the same line under two names is one.
+          (t) =>
+            workplace.some((a) => a.id === counting.representativeOf(t.accountId))
+              ? String(EMPLOYER_CONTRIBUTION.test(t.name))
+              : "",
         );
   // Money in is negative in Plaid's sign.
   const paidIn = (accts: { id: string }[], employer: boolean | null) =>
