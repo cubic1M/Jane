@@ -137,8 +137,17 @@ describe.runIf(url)("a copy's facts reach the account that counts", { timeout: 1
       name: "Home loan",
       currentBalanceCents: 30_000_000,
     });
-    await liability(userId, kept.id, { kind: "mortgage", ytdInterestPaidCents: null });
-    await liability(userId, copy.id, { kind: "mortgage", ytdInterestPaidCents: 987_000 });
+    // Read this year, as of the test's day (a reading dated by the clock would age out of 2026).
+    await liability(userId, kept.id, {
+      kind: "mortgage",
+      ytdInterestPaidCents: null,
+      updatedAt: NOW,
+    });
+    await liability(userId, copy.id, {
+      kind: "mortgage",
+      ytdInterestPaidCents: 987_000,
+      updatedAt: NOW,
+    });
     const view = await loadHomeTaxes(userId, { client, now: NOW });
     expect(view.mortgageInterest?.cents).toBe(987_000);
   });
@@ -267,7 +276,9 @@ describe.runIf(url)("a copy's facts reach the account that counts", { timeout: 1
     const view = await loadTaxDocuments(userId, 2026, { client, now: NOW });
     const form = view.forms.find((f) => f.formKey === "brokerage" && f.from === keptName);
     expect(view.forms.filter((f) => f.formKey === "brokerage")).toHaveLength(1);
+    expect(form).toBeDefined();
     expect(form?.document).not.toBeNull();
+    expect(form?.document).toBeTruthy();
   });
 
   it("the tax set-aside: two goals that resolve to one account count it once", async () => {

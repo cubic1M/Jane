@@ -176,4 +176,25 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
     expect(left.get(upload.id)?.reason).toBe("maybe_same");
     expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000);
   });
+
+  it("is worked out again when either side's lines change", async () => {
+    const { userId, upload } = await shape({ amounts: [], balance: 50_000 });
+    const db = scopedFor(userId, client);
+    expect((await accountsNotCounted(db)).get(upload.id)?.reason).toBe("maybe_same");
+    // Asked again with nothing changed: the same answer.
+    expect((await accountsNotCounted(db)).get(upload.id)?.reason).toBe("maybe_same");
+    await client.transaction.createMany({
+      data: AMOUNTS.map((amountCents, i) => ({
+        userId,
+        accountId: upload.id,
+        source: "csv" as const,
+        dedupeKey: crypto.randomUUID(),
+        date: day(dateOf(i)),
+        amountCents,
+        description: `ROW ${i}`,
+        categorySource: "rule" as const,
+      })),
+    });
+    expect((await accountsNotCounted(db)).get(upload.id)?.reason).toBe("same_account");
+  });
 });

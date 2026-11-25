@@ -110,6 +110,8 @@ export async function loadRetirementAccounts(
             },
             select: { accountId: true, name: true, amountCents: true, date: true },
           }),
+          // The employer's contribution and the person's own, on one day for one amount, are two.
+          (t) => String(EMPLOYER_CONTRIBUTION.test(t.name)),
         );
   // Money in is negative in Plaid's sign.
   const paidIn = (accts: { id: string }[], employer: boolean | null) =>

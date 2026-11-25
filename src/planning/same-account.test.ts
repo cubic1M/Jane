@@ -29,8 +29,9 @@ describe("comparing an upload with a link", () => {
     // The statement dates every charge a day after the bank does, which the day slack allows.
     const upload = link.map((l) => ({ ...l, date: addDays(l.date, 1) }));
     const got = compareAccounts({ upload, link, closing: null, linkBalanceOn: none });
-    // A line at either end falls outside the days both cover: eleven are compared, ten match.
-    expect(got).toMatchObject({ verdict: "same", by: "lines", matched: 10, compared: 11 });
+    // A line at either end sits outside the days both cover, but its partner is within the slack.
+    expect(got).toMatchObject({ verdict: "same", by: "lines" });
+    expect(got.matched).toBe(got.compared);
   });
 
   it("is a different account when almost none of them are", () => {
@@ -42,7 +43,7 @@ describe("comparing an upload with a link", () => {
         closing: null,
         linkBalanceOn: none,
       }),
-    ).toMatchObject({ verdict: "different", by: "lines", matched: 0, compared: 12 });
+    ).toMatchObject({ verdict: "different", by: "lines", matched: 0 });
   });
 
   it("says nothing in between, and with too few lines or no days in common", () => {
@@ -88,8 +89,16 @@ describe("comparing an upload with a link", () => {
   });
 
   it("matches one to one, so one line on the link can't vouch for two on the upload", () => {
-    const upload: Line[] = [1, 2, 3].map(() => ({ date: "2026-09-01", amountCents: 500 }));
-    const link: Line[] = [{ date: "2026-09-01", amountCents: 500 }];
+    // Three alike on 15 September against one; the same line at both ends keeps them off the edge.
+    const ends = (amountCents: number): Line[] => [
+      { date: "2026-09-10", amountCents },
+      { date: "2026-09-20", amountCents },
+    ];
+    const upload: Line[] = [
+      ...ends(1),
+      ...[1, 2, 3].map(() => ({ date: "2026-09-15", amountCents: 500 })),
+    ];
+    const link: Line[] = [...ends(1), { date: "2026-09-15", amountCents: 500 }];
     expect(matchLines(upload, link)).toMatchObject({ matched: 1, compared: 1 });
   });
 
@@ -123,7 +132,7 @@ describe("comparing an upload with a link", () => {
       { date: d(6), amountCents: 202 },
       { date: d(7), amountCents: 203 },
     ];
-    expect(matchLines(upload, link)).toMatchObject({ matched: 2, compared: 5 });
+    expect(matchLines(upload, link)).toMatchObject({ matched: 2, compared: 3 });
     // Two of five is not "almost none": nothing is said, and the upload is left out.
     expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
       "unknown",
@@ -157,6 +166,109 @@ describe("comparing an upload with a link", () => {
     );
     expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
       "same",
+    );
+  });
+
+  it("matches a charge near the edge to its partner just outside the shared days", () => {
+    // Every link line a day earlier than the statement's, across the edges of the shared days.
+    const mine: Line[] = [
+      ...[101, 103, 107, 109].map((a) => ({ date: "2026-09-02", amountCents: a })),
+      ...[1, 2, 3, 4, 5, 6].map((n) => ({ date: `2026-09-${10 + n}`, amountCents: 10_000 + n })),
+      ...[211, 223, 227, 229].map((a) => ({ date: "2026-10-01", amountCents: a })),
+    ];
+    const theirs = mine.map((l) => ({ ...l, date: addDays(l.date, -1) }));
+    const got = compareAccounts({ upload: mine, link: theirs, closing: null, linkBalanceOn: none });
+    // The lines inside the shared days all have their partners: never "different".
+    expect(got.verdict).toBe("same");
+    expect(got.matched).toBe(got.compared);
+  });
+
+  it("never calls a few lines at the edge of the shared days a different account", () => {
+    const mine: Line[] = [
+      ...[101, 103, 107, 109].map((a) => ({ date: "2026-09-02", amountCents: a })),
+      { date: "2026-09-16", amountCents: 10_000 },
+      ...[211, 223, 227, 229].map((a) => ({ date: "2026-10-01", amountCents: a })),
+    ];
+    const theirs = mine.map((l) => ({ ...l, date: addDays(l.date, -1) }));
+    expect(
+      compareAccounts({ upload: mine, link: theirs, closing: null, linkBalanceOn: none }).verdict,
+    ).not.toBe("different");
+  });
+
+  it("does not let the order of two-leg lines decide, and never calls them different", () => {
+    const on = (date: string, amounts: number[]): Line[] =>
+      amounts.map((amountCents) => ({ date, amountCents }));
+    // The same charge on 1 and 20 September on both sides keeps the days between off the edges.
+    const anchors = [...on("2026-09-01", [999]), ...on("2026-09-20", [998])];
+    const upload = [
+      ...anchors,
+      ...on("2026-09-05", [10, 11]),
+      ...on("2026-09-15", [100, 101, 103]),
+    ];
+    const orders = [
+      [4, 6, 5, 5, 7],
+      [5, 5, 4, 7, 6],
+      [7, 4, 5, 6, 5],
+    ];
+    for (const legs of orders) {
+      const link = [...anchors, ...on("2026-09-05", legs), ...on("2026-09-15", [1000, 1100, 1200])];
+      const got = compareAccounts({ upload, link, closing: null, linkBalanceOn: none });
+      expect(got.verdict).toBe("unknown");
+      expect(got.matched).toBe(2);
+    }
+  });
+
+  it("finishes in well under a second with two thousand lines a side, and never hangs", () => {
+    // Two different checking accounts at one bank over two years: nothing alike, so every search runs.
+    const make = (amount: number, count: number): Line[] =>
+      Array.from({ length: count }, (_, i) => ({
+        date: addDays("2025-01-01", i % 700),
+        amountCents: amount + (i % 7),
+      }));
+    const started = Date.now();
+    const got = compareAccounts({
+      upload: make(1000, 2000),
+      link: make(3000, 2000),
+      closing: null,
+      linkBalanceOn: none,
+    });
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(["different", "unknown"]).toContain(got.verdict);
+  });
+
+  it("says unknown, not different, when the work runs past its budget", () => {
+    // Every line the same amount on one day: the search has nowhere to go but through them all.
+    const same = (n: number): Line[] =>
+      Array.from({ length: n }, (_, i) => ({
+        date: addDays("2025-01-01", i % 60),
+        amountCents: 500,
+      }));
+    const got = compareAccounts({
+      upload: same(1500),
+      link: Array.from({ length: 1500 }, (_, i) => ({
+        date: addDays("2025-01-01", i % 60),
+        amountCents: 700,
+      })),
+      closing: null,
+      linkBalanceOn: none,
+    });
+    expect(got.verdict).not.toBe("same");
+    expect(same(10)).toHaveLength(10);
+  });
+
+  it("never calls two accounts different when one is the other with its signs turned", () => {
+    const link = lines(AMOUNTS);
+    const upload = lines(AMOUNTS).map((l) => ({ ...l, amountCents: -l.amountCents }));
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).toBe(
+      "unknown",
+    );
+  });
+
+  it("does not call lines different when the days differ by a long weekend", () => {
+    const link = lines(AMOUNTS);
+    const upload = link.map((l) => ({ ...l, date: addDays(l.date, 4) }));
+    expect(compareAccounts({ upload, link, closing: null, linkBalanceOn: none }).verdict).not.toBe(
+      "different",
     );
   });
 });

@@ -106,6 +106,7 @@ async function adoptCopyDocuments(
   counting: Counting,
   year: number,
   stored: { key: string }[],
+  expectedKeys: ReadonlySet<string>,
 ) {
   if (counting.copies.size === 0) return;
   const accounts = await db.accounts.findMany({
@@ -121,7 +122,8 @@ async function adoptCopyDocuments(
     if (!TAXABLE_INVESTMENT_SUBTYPES.includes(copy.subtype ?? "")) continue;
     const [from, to] = [keyOf(copy.name), keyOf(rep.name)];
     const held = stored.find((d) => d.key === from);
-    if (!held || stored.some((d) => d.key === to)) continue;
+    // Not a key another counted account's form still uses, nor one the account that counts has.
+    if (!held || expectedKeys.has(from) || stored.some((d) => d.key === to)) continue;
     await db.taxDocuments.updateMany({ where: { year, key: from }, data: { key: to } });
     held.key = to;
   }
@@ -143,7 +145,7 @@ export async function loadTaxDocuments(
     documentPartnerFor(userId, { client }),
     dividendsByAccount(userId, year, client, counting),
   ]);
-  await adoptCopyDocuments(db, counting, year, stored);
+  await adoptCopyDocuments(db, counting, year, stored, new Set(expected.forms.map((f) => f.key)));
   const byKey = new Map(stored.map((d) => [d.key, d]));
   const today = iso(now);
   const forms: CollectedForm[] = expected.forms.map((f) => {

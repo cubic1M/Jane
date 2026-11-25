@@ -189,3 +189,35 @@ describe("interest said for a year comes from a reading taken in it", () => {
     expect(a).toMatchObject({ ytdInterestPaidCents: 150_000, updatedAt: day("2026-11-20") });
   });
 });
+
+describe("a known zero reading, and a contribution's label", () => {
+  const counting = chain([["copy", "link", "copy"]]);
+  it("keeps a zero reading from the year: the interest is known to be nothing", () => {
+    const row = (accountId: string, ytd: number | null, readOn: string) => ({
+      accountId,
+      ytdInterestPaidCents: ytd,
+      lastPaymentDate: null as Date | null,
+      updatedAt: day(readOn),
+    });
+    const [kept] = reconcileLiabilities(
+      counting,
+      [row("link", 0, "2026-11-02"), row("copy", null, "2026-11-02")],
+      { readingYear: 2026 },
+    );
+    expect(kept.ytdInterestPaidCents).toBe(0);
+  });
+  it("keeps the person's own contribution beside an employer's of the same day and amount", () => {
+    const line = (accountId: string, name: string) => ({
+      accountId,
+      name,
+      date: day("2026-03-01"),
+      amountCents: -50_000,
+    });
+    const folded = foldCopiesInto(
+      counting,
+      [line("link", "Employer match"), line("copy", "Employee deferral")],
+      (t) => String(/employer/i.test(t.name)),
+    );
+    expect(folded).toHaveLength(2);
+  });
+});
