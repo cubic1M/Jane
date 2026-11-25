@@ -24,10 +24,19 @@ export function firstShortfall(days: readonly Day[]): Shortfall | null {
     : null;
 }
 
+// A word matches where a word starts ("ACME RENT PAYMENT", "PowerSchool"), never inside another
+// word ("Parent Teacher Store", "Torrent", "Waterstones" don't count).
+const startsWord = (text: string, word: string) => {
+  for (let i = text.indexOf(word); i !== -1; i = text.indexOf(word, i + 1)) {
+    if (i === 0 || !/[a-z0-9]/.test(text[i - 1])) return true;
+  }
+  return false;
+};
+
 export function essentialGroup(payee: string): EssentialGroup | null {
   const text = payee.toLowerCase();
   for (const [group, words] of Object.entries(ESSENTIAL_WORDS)) {
-    if (words.some((w) => text.includes(w))) return group as EssentialGroup;
+    if (words.some((w) => startsWord(text, w))) return group as EssentialGroup;
   }
   return null;
 }

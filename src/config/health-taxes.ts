@@ -46,6 +46,14 @@ export const REPAYMENT_CAPS: Readonly<
   2026: [],
 };
 
+// From this tax year there is no cap at all (OBBBA 71305), so an empty row is the law, not a gap.
+// Before it, a year REPAYMENT_CAPS doesn't list has caps nobody has put here: no repayment is said.
+// FOR REVIEW at IRS Form 8962 instructions (Table 5, repayment limitation): the 2025 rows above
+// are $375/$750, $950/$1,900 and $1,575/$3,150 here; a CodeRabbit finding (sweep 1c, cfg-01 #1)
+// says they are $975/$1,950 (200-299% of the poverty line) and $1,625/$3,250 (300-399%). Not
+// changed until someone has read the table for the year.
+export const NO_REPAYMENT_CAP_FROM = 2026;
+
 // The benchmark (second-cheapest silver) plan's monthly premium, used only when the person
 // hasn't told Jane theirs: about the 2026 national average for a 40-year-old (KFF, "Marketplace
 // average benchmark premiums"). Rough; each extra person adds about the same again, less for

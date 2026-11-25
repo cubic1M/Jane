@@ -89,16 +89,20 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
       action: "oldplan.rollover",
     });
   }
-  items.push(
-    i.rebalance && i.rebalance.orders > 0
-      ? {
-          key: "rebalance",
-          status: "tap",
-          line: `Your mix has drifted. ${i.rebalance.summary}`,
-          action: "invest.rebalance",
-        }
-      : { key: "rebalance", status: "ok", line: "Your mix is on target." },
-  );
+  // No plan computed (demo advice off, or the investor profile isn't complete): nothing was
+  // assessed, so no "on target" either. Only a computed plan with no orders is on target.
+  if (i.rebalance) {
+    items.push(
+      i.rebalance.orders > 0
+        ? {
+            key: "rebalance",
+            status: "tap",
+            line: `Your mix has drifted. ${i.rebalance.summary}`,
+            action: "invest.rebalance",
+          }
+        : { key: "rebalance", status: "ok", line: "Your mix is on target." },
+    );
+  }
   if (i.harvest && i.harvest.count > 0) {
     items.push({
       key: "harvest",

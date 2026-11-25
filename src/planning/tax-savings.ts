@@ -98,9 +98,10 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   const saved = (change: (i: EstimateInput) => EstimateInput) =>
     before - total(estimateTaxes(change(base)));
   // Payroll tax saved on pre-tax payroll deductions, under the Social Security wage base.
+  // Only on wages that exist: a $3,000 FSA on $2,000 of pay saves payroll tax on $2,000.
   const payroll = (cents: number) =>
     Math.round(
-      cents *
+      Math.min(cents, Math.max(0, base.income.wagesCents)) *
         (PAYROLL_TAX.medicareRate +
           (base.income.socialSecurityWagesCents < SELF_EMPLOYMENT_TAX.wageBase
             ? PAYROLL_TAX.socialSecurityRate
@@ -108,7 +109,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     );
   const lessWages = (cents: number) => (i: EstimateInput) => ({
     ...i,
-    income: { ...i.income, wagesCents: i.income.wagesCents - cents },
+    income: { ...i.income, wagesCents: Math.max(0, i.income.wagesCents - cents) },
   });
   const jointly = base.filingStatus === "married_joint";
   const out: TaxSaving[] = [];
@@ -142,11 +143,13 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   } else {
     // No workplace plan: a traditional IRA is deductible in full (the phase-out only
     // applies to people covered by one, or whose spouse is).
-    const room = CONTRIBUTION_LIMITS.ira;
+    // A contribution is limited to taxable compensation: wages and self-employment income.
+    const earned = base.income.wagesCents + base.income.selfEmploymentCents;
+    const room = Math.min(CONTRIBUTION_LIMITS.ira, earned);
     if (room > 0) {
       out.push({
         key: "ira",
-        title: `Put up to ${formatWholeDollars(CONTRIBUTION_LIMITS.ira)} in a traditional IRA for ${s.year}`,
+        title: `Put up to ${formatWholeDollars(room)} in a traditional IRA for ${s.year}`,
         why: `With no workplace plan, a traditional IRA contribution comes off your income. You have until the April filing deadline to make one for ${s.year}.`,
         estimateCents: saved((i) => ({
           ...i,
@@ -155,7 +158,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
         action: {
           kind: "goal",
           name: `IRA for ${s.year}`,
-          targetCents: CONTRIBUTION_LIMITS.ira,
+          targetCents: room,
           targetDate: `${s.year + 1}-04-01`,
         },
       });

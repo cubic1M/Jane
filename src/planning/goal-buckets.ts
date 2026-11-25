@@ -6,7 +6,6 @@ import {
   TARGET_MIXES,
   type RiskLevel,
 } from "@/config/investing";
-import { DAY_MS } from "@/lib/dates";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Every goal invested for its timeline (spec step 157, demo advice). Pure. Each goal gets a
@@ -35,15 +34,27 @@ export type Bucket = {
   why: string;
 };
 
-export const yearsUntil = (asOf: string, date: string) =>
-  Math.max(
-    0,
-    (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / DAY_MS / 365.25,
-  );
+// Years from asOf to date, counted in calendar years and the part of the next one, so a leap day
+// in the span never tips a goal due in exactly three calendar years over the boundary.
+export const yearsUntil = (asOf: string, date: string) => {
+  const from = Date.parse(`${asOf}T00:00:00Z`);
+  const to = Date.parse(`${date}T00:00:00Z`);
+  if (!(to > from)) return 0;
+  const [y, m, d] = asOf.split("-").map(Number);
+  const anniversary = (n: number) => Date.UTC(y + n, m - 1, d);
+  let whole = Number(date.slice(0, 4)) - y;
+  while (whole > 0 && anniversary(whole) > to) whole -= 1;
+  const start = anniversary(whole);
+  return whole + (to - start) / (anniversary(whole + 1) - start);
+};
 
 // The mix for money needed in `years`, capped at the risk level's stocks.
 export function glideMix(years: number, riskLevel: RiskLevel): Mix {
-  const step = GLIDE_PATH.find((g) => years >= g.fromYears) ?? GLIDE_PATH[GLIDE_PATH.length - 1];
+  // Money needed within NEAR_TERM_YEARS, the date three calendar years out included, stays in cash.
+  const step =
+    years <= NEAR_TERM_YEARS
+      ? GLIDE_PATH[GLIDE_PATH.length - 1]
+      : (GLIDE_PATH.find((g) => years >= g.fromYears) ?? GLIDE_PATH[GLIDE_PATH.length - 1]);
   if (step.stocks === 0) return { us_stocks: 0, intl_stocks: 0, bonds: 0, cash: 1 };
   const t = TARGET_MIXES[riskLevel];
   const cap = t.us_stocks + t.intl_stocks;
@@ -67,7 +78,7 @@ export function goalBuckets(goals: GoalInputs[], asOf: string, riskLevel: RiskLe
   return goals.map((g) => {
     const yearsLeft = yearsUntil(asOf, g.targetDate);
     const mix = glideMix(yearsLeft, riskLevel);
-    const nearTerm = yearsLeft < NEAR_TERM_YEARS;
+    const nearTerm = yearsLeft <= NEAR_TERM_YEARS;
     const stocks = mix.us_stocks + mix.intl_stocks;
     return {
       id: g.id,

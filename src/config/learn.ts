@@ -69,7 +69,7 @@ export const EXPLAINERS: readonly Explainer[] = [
     summary:
       "Traditional accounts take the tax off now and tax the money when it comes out; Roth accounts tax it now and let it come out tax-free.",
     paragraphs: [
-      "With a traditional 401(k) or IRA, what you put in lowers this year's taxable income, and you pay income tax when you take it out in retirement.",
+      "With a traditional 401(k), what you put in comes out of this year's taxable pay. A traditional IRA contribution may be deductible, depending on your income and whether a workplace plan covers you. Either way, you pay income tax when you take it out in retirement.",
       "With a Roth, you pay the tax now, and the money (including what it grew to) comes out tax-free in retirement, if you follow the rules on age and how long the account has been open.",
       "Which comes out ahead depends mostly on your tax rate now compared with later. A lower rate now tends to favour Roth; a higher rate now tends to favour traditional. Many people use both.",
       `IRAs have their own yearly limit: ${dollars(CONTRIBUTION_LIMITS.ira)} in ${TAX_RATES_YEAR}, with more from age 50. Roth IRAs have income limits.`,

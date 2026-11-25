@@ -21,7 +21,10 @@ export const LINKING_FULL_CODE = "linking_full";
 // the Trial plan's limit, so a typo can never mean "no limit".
 function limitFromEnv(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();
-  return raw && /^\d+$/.test(raw) ? Number(raw) : fallback;
+  if (!raw || !/^\d+$/.test(raw)) return fallback;
+  // 309 digits parse to Infinity: only a safe whole number counts, or the limit would be none.
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : fallback;
 }
 
 export const plaidItemLimit = () => limitFromEnv("PLAID_TRIAL_ITEM_LIMIT", PLAID_TRIAL_ITEM_LIMIT);
