@@ -273,6 +273,10 @@ export const SAVERS_MATCH = {
 
 // Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over
 // this (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026).
+// FOR REVIEW at IRS Notice 2026-66 (the wage threshold is indexed each year): a finding (CodeRabbit
+// sweep 1c, cfg-03 #3) says $150,000 is the figure for 2026 catch-ups and $155,000 for 2027 ones,
+// so $150,000 may be low for 2027. Nothing in the app reads this yet (catchUpMustBeRoth is
+// tested only); an existing test pins $150,000 for 2027, so the figure is left until it is checked.
 export const ROTH_CATCH_UP = {
   priorYearFicaWagesOver: $(150_000),
   requiredFrom: 2027,
@@ -364,6 +368,12 @@ export const ENERGY_CREDITS_END = { home: "2025-12-31", vehicle: "2025-09-30" } 
 // Some later sources report a mid-year rise to 76 cents from July 1, 2026: ESTIMATE TO
 // VERIFY; Jane uses 72.5.
 export const MILEAGE_RATE_CENTS = 72.5;
+// FOR REVIEW at irs.gov (standard mileage rates, 2026): a finding (CodeRabbit sweep 1c, cfg-03 #5)
+// says the rate is 76 cents for business expenses paid or incurred on or after July 1, 2026, and
+// 72.5 cents before. The miles Jane holds are a year's total with no dates, so it can't split
+// them: every mile is counted at 72.5, and this says so wherever the figure shows.
+export const MILEAGE_RATE_NOTE =
+  "Every mile is counted at one rate; if the IRS changes its rate partway through the year, miles after the change are worth a little more than this shows.";
 
 // Home office, simplified method: $5 a square foot, up to 300 square feet.
 export const HOME_OFFICE_SIMPLIFIED = { perSquareFoot: $(5), maxSquareFeet: 300 } as const;
@@ -389,10 +399,11 @@ export type StateTax =
   | { kind: "approximate"; rate: number; source: string };
 
 const NONE = (source: string): StateTax => ({ kind: "none", source });
-const FLAT = (rate: number, source: string, estimate?: true): StateTax => ({
+// `deduction` is the part of income taxed at nothing (Mississippi's first $10,000), taken off first.
+const FLAT = (rate: number, source: string, estimate?: true, deduction = 0): StateTax => ({
   kind: "flat",
   rate,
-  deduction: 0,
+  deduction,
   source,
   ...(estimate ? { estimate } : {}),
 });
@@ -485,7 +496,14 @@ export const STATE_TAX: Readonly<Record<string, StateTax>> = {
   LA: FLAT(0.03, "Louisiana flat rate, 3%."),
   MA: FLAT(0.05, "Massachusetts 5% (plus 4% on income over about $1 million)."),
   MI: FLAT(0.0425, "Michigan flat rate, 4.25% (city taxes not included)."),
-  MS: FLAT(0.04, "Mississippi 4% for 2026 on income over $10,000.", true),
+  // The first $10,000 isn't taxed (the zero band, as this entry has always said); Mississippi's own
+  // standard deduction and exemptions are not counted, so this is an estimate.
+  MS: FLAT(
+    0.04,
+    "Mississippi 4% for 2026 on income over $10,000 (its own standard deduction and exemptions aren't counted).",
+    true,
+    $(10_000),
+  ),
   NC: FLAT(0.0399, "North Carolina flat rate, 3.99% for 2026."),
   PA: FLAT(0.0307, "Pennsylvania flat rate, 3.07% (local taxes not included)."),
   UT: FLAT(0.045, "Utah flat rate, 4.5%.", true),
@@ -515,6 +533,10 @@ export const STATE_TAX: Readonly<Record<string, StateTax>> = {
   },
   NY: {
     kind: "brackets",
+    // FOR REVIEW at the NY IT-201 instructions (2025 tax rate schedule): head of household has its
+    // own schedule (a finding, CodeRabbit sweep 1c cfg-03 #2, says it's 5.25% at $20,000 taxable,
+    // where the single one is 5.5%). It isn't entered, so head of household uses the single
+    // schedule and the source below says so.
     brackets: {
       single: NY_SINGLE,
       married_separate: NY_SINGLE,
@@ -530,7 +552,7 @@ export const STATE_TAX: Readonly<Record<string, StateTax>> = {
     personalCredit: { single: 0, married_separate: 0, married_joint: 0, head_of_household: 0 },
     dependantCredit: 0,
     source:
-      "New York State Department of Taxation and Finance, 2025 figures (city taxes not included).",
+      "New York State Department of Taxation and Finance, 2025 figures (city taxes not included; head of household is worked out on the single schedule, which can be a little high).",
     estimate: true,
   },
   AL: ROUGH(0.045),

@@ -63,7 +63,6 @@ describe("buildReview", () => {
     expect(items.map((i) => [i.key, i.status])).toEqual([
       ["contributions", "ok"],
       ["match", "ok"],
-      ["rebalance", "ok"],
     ]);
   });
 

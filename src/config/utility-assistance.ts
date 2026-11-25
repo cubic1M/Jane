@@ -39,6 +39,9 @@ export const CA_CARE_FERA = {
       $(139_300),
     ],
     eachExtra: $(14_200),
+    // FOR REVIEW at cpuc.ca.gov/care (CodeRabbit sweep 1c, cfg-04 #1 says one- and two-person
+    // households with income from the CARE limit to the FERA limit qualify, so 1): until a person
+    // has checked, 1-2 person households in that band get no FERA hint, as before.
     minPeople: 3,
     lowestDiscount: 0.18,
     url: "https://www.cpuc.ca.gov/consumer-support/financial-assistance-savings-and-discounts/fera",
@@ -100,6 +103,11 @@ export const LOW_COST_INTERNET = {
       match: /\b(?:spectrum|charter)\b/i,
       plan: "Spectrum Internet Assist, $15 a month for 50 Mbps",
       priceCents: 1_500,
+      // FOR REVIEW at spectrum.com/internet/spectrum-internet-assist: the page lists the plan at
+      // $25 a month and a further discount that may bring it to $15 (CodeRabbit sweep 1c, cfg-04
+      // #2). Until that is checked, the saving is said to depend on it, not promised.
+      priceNote:
+        "The $15 price may need an additional discount on top of the plan's ordinary price, so the saving could be smaller; Spectrum's page says which applies.",
       url: "https://www.spectrum.com/internet/spectrum-internet-assist",
     },
     {

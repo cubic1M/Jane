@@ -316,14 +316,14 @@ export const TAX_FORMS = {
   da: { form: "1099-DA", what: "crypto sales", by: "02-15" },
 } as const;
 export type TaxFormKey = keyof typeof TAX_FORMS;
-// For review: 1099-NEC/MISC, by the year the money was paid.
+// For review: 1099-NEC/MISC, by the year the money was paid. Only the years listed are known:
+// a year not here has no threshold (null), never the nearest year's, so a form isn't called
+// "may not be sent" on a number that isn't that year's.
 const NEC_THRESHOLD_CENTS: Readonly<Record<number, number>> = {
   2025: 60_000,
   2026: 200_000,
 };
-export const necThreshold = (year: number) =>
-  NEC_THRESHOLD_CENTS[year] ??
-  NEC_THRESHOLD_CENTS[Math.max(...Object.keys(NEC_THRESHOLD_CENTS).map(Number))];
+export const necThreshold = (year: number): number | null => NEC_THRESHOLD_CENTS[year] ?? null;
 // For review: 1099-INT at $10 of interest; 1098-E at $600 of student loan interest; 1098 at
 // $600 of mortgage interest.
 export const INT_THRESHOLD_CENTS = 1_000;

@@ -22,7 +22,13 @@ export type PlanFacts = {
   today: string;
   // Demo advice mode: recommendations (contributions, sales, gifts) are included.
   advice: boolean;
-  savings: { key: SavingKey; title: string; estimateCents: number }[];
+  // action.kind "link" on dependent_care is the credit, not an FSA (findTaxSavings).
+  savings: {
+    key: SavingKey;
+    title: string;
+    estimateCents: number;
+    action?: { kind: string };
+  }[];
   // Federal estimated payments still to make, by due date.
   estimated: { date: string; cents: number }[];
   harvest: { name: string; lossCents: number } | null;
@@ -112,7 +118,10 @@ export function taxPlan(f: PlanFacts): PlanMove[] {
       null,
     );
   }
-  const fsa = saving("health_fsa") ?? saving("dependent_care");
+  // Only an FSA feeds the sign-up move: the child and dependent care credit isn't one.
+  const careSaving = saving("dependent_care");
+  const careFsa = careSaving?.action?.kind === "link" ? undefined : careSaving;
+  const fsa = saving("health_fsa") ?? careFsa;
   if (fsa) add("fsa_enroll", `${fsa.title}.${saves(fsa.estimateCents)}`, null);
 
   // Each estimated payment by its due date (the four dates in TAX_PLAN).

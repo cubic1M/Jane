@@ -18,6 +18,7 @@ import {
   FEDERAL_BRACKETS,
   HOME_OFFICE_SIMPLIFIED,
   MILEAGE_RATE_CENTS,
+  MILEAGE_RATE_NOTE,
   PAYROLL_TAX,
   SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
@@ -745,7 +746,7 @@ const vehicleDeduction: Detector = {
         { percent: 45, reason: "I can't see how much of your driving is for the business" },
       ]),
       urgency: "later",
-      why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons.`,
+      why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons. ${MILEAGE_RATE_NOTE}`,
       action: { label: "Log your miles", href: "/taxes/profile" },
     });
   },

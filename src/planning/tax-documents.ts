@@ -167,7 +167,8 @@ export function expectedForms(input: {
         ssaCents += cents;
         continue;
       }
-      const mayNotSend = formKey === "nec" && cents < necThreshold(input.year);
+      const threshold = formKey === "nec" ? necThreshold(input.year) : null;
+      const mayNotSend = threshold !== null && cents < threshold;
       forms.push(make(formKey, from, cents, mayNotSend));
     }
     if (ssaCents > 0) forms.push(make("ssa", "Social Security", ssaCents));
