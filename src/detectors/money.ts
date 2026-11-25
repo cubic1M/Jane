@@ -56,8 +56,10 @@ const subscriptions: Detector = {
     let yearly: number;
     let count: number;
     let n: number;
-    // The charges themselves, for what to watch afterwards (each one that stops is a saving).
-    const named = new Map<string, number[]>();
+    // The charges themselves, for what to watch afterwards (each one that stops is a saving). A
+    // subscription is the same charge in at least R.subscriptionMinCharges different months: three
+    // purchases in one month is shopping, not a subscription.
+    const named = new Map<string, { date: string; cents: number }[]>();
     for (const t of tx(
       data,
       (x) =>
@@ -65,41 +67,30 @@ const subscriptions: Detector = {
         x.amountCents < R.subscriptionMaxCents &&
         SUBSCRIPTION_CATEGORIES.has(x.pfc ?? ""),
     ))
-      named.set(t.description, [...(named.get(t.description) ?? []), t.amountCents]);
-    const payees = [...named.entries()]
-      .filter(([, list]) => list.length >= R.subscriptionMinCharges)
-      .map(([description, list]) => ({
-        description,
-        amountCents: Math.round(list.reduce((a, b) => a + b, 0) / list.length),
-        perYear: 12,
-      }));
+      named.set(t.description, [
+        ...(named.get(t.description) ?? []),
+        { date: t.date, cents: t.amountCents },
+      ]);
+    const regular = [...named.entries()].filter(
+      ([, list]) => new Set(list.map((c) => c.date.slice(0, 7))).size >= R.subscriptionMinCharges,
+    );
+    const average = (list: { cents: number }[]) =>
+      list.reduce((a, c) => a + c.cents, 0) / list.length;
+    const payees = regular.map(([description, list]) => ({
+      description,
+      amountCents: Math.round(average(list)),
+      perYear: 12,
+    }));
     if (given !== undefined) {
       if (given === null || given.count < R.subscriptionsMin) return null;
       yearly = given.yearlyCents;
       count = given.count;
       n = given.count;
     } else {
-      const charges = tx(
-        data,
-        (t) =>
-          t.amountCents > 0 &&
-          t.amountCents < R.subscriptionMaxCents &&
-          SUBSCRIPTION_CATEGORIES.has(t.pfc ?? ""),
-      );
-      const byName = new Map<string, number[]>();
-      for (const t of charges)
-        byName.set(t.description, [...(byName.get(t.description) ?? []), t.amountCents]);
-      // A subscription is the same charge in at least three different months.
-      const regular = [...byName.values()].filter(
-        (list) => list.length >= R.subscriptionMinCharges,
-      );
       if (regular.length < R.subscriptionsMin) return null;
-      yearly = regular.reduce(
-        (s, list) => s + (list.reduce((a, b) => a + b, 0) / list.length) * 12,
-        0,
-      );
+      yearly = regular.reduce((s, [, list]) => s + average(list) * 12, 0);
       count = regular.length;
-      n = regular.reduce((s, list) => s + list.length, 0);
+      n = regular.reduce((s, [, list]) => s + list.length, 0);
     }
     return suggestion("subscriptions", "subscriptions", {
       title: "Go through your subscriptions and cancel the ones you don't use",
@@ -255,61 +246,75 @@ const lateFees: Detector = {
   },
 };
 
+// A year of card interest: from the cards' balances and rates when known (the loans page and the
+// chat's figure); otherwise the interest charges seen, counted as the report counts them. Shared by
+// the card-interest card and the debt plan, so neither quotes a raw sum as a year.
+function cardInterestYear(data: Parameters<Detector["detect"]>[0]["data"]) {
+  // The interest charges seen are counted as the report counts them: the last LOOKBACK_MONTHS, at a year's pace when the history is short (debugger 10-30:
+  // $141 in four months is the report's "$423 a year", but compared as $141 against a yearly
+  // minimum it was no suggestion at all).
+  // The same year the pace and the report count: ending where the data does (gate C's calendar
+  // sweep, 11-16: from today, "10 interest charges" became 9 as weeks passed with no sync).
+  const cutoff = monthsBefore(lookbackEnd(data.transactions, data.today), LOOKBACK_MONTHS);
+  const charges = tx(
+    data,
+    (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.date > cutoff && t.date <= data.today,
+  );
+  const known = data.extras?.cardInterestYearCents;
+  const unknown = new Set(data.extras?.cardInterestUnknownCards ?? []);
+  // Each card's charges at the pace of its own months, as the report's finding on it (debug 3,
+  // 11-16: a card's were spread over months only another account's statement covered).
+  const history = { transactions: data.transactions, asOf: data.today };
+  const pace = (list: typeof charges) =>
+    [...new Set(list.map((c) => c.accountId))].reduce((sum, card) => {
+      const own = paceOf(history, [card]);
+      const cents = outCents(list.filter((c) => c.accountId === card));
+      return sum + (own.short ? Math.round((cents * 12) / own.months) : cents);
+    }, 0);
+  // In words: the months the cards charging it cover.
+  const { short, months } = paceOf(history, new Set(charges.map((c) => c.accountId)));
+  // Known cards from their balances and rates, plus the unknown ones' charges at their pace
+  // (review 10-31: one unknown card made the known ones' $1,500 fall back to $490 seen).
+  const yearly =
+    typeof known === "number"
+      ? known + pace(charges.filter((c) => unknown.has(c.accountId)))
+      : null;
+  const seen = outCents(charges);
+  const total = yearly ?? pace(charges);
+  return { charges, seen, yearly, total, months, short };
+}
+
 const cardInterest: Detector = {
   covers: ["card_interest", "credit_cards"],
   capability: "debt",
   topic: "card_interest",
   needs: [],
   detect({ profile, data }) {
-    // A year of interest from the cards' balances and rates when known (the loans page and the
-    // chat's figure); otherwise the interest charges seen, counted as the report counts them:
-    // the last LOOKBACK_MONTHS, at a year's pace when the history is short (debugger 10-30:
-    // $141 in four months is the report's "$423 a year", but compared as $141 against a yearly
-    // minimum it was no suggestion at all).
-    // The same year the pace and the report count: ending where the data does (gate C's calendar
-    // sweep, 11-16: from today, "10 interest charges" became 9 as weeks passed with no sync).
-    const cutoff = monthsBefore(lookbackEnd(data.transactions, data.today), LOOKBACK_MONTHS);
-    const charges = tx(
-      data,
-      (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.date > cutoff && t.date <= data.today,
-    );
-    const known = data.extras?.cardInterestYearCents;
-    const unknown = new Set(data.extras?.cardInterestUnknownCards ?? []);
-    // Each card's charges at the pace of its own months, as the report's finding on it (debug 3,
-    // 11-16: a card's were spread over months only another account's statement covered).
-    const history = { transactions: data.transactions, asOf: data.today };
-    const pace = (list: typeof charges) =>
-      [...new Set(list.map((c) => c.accountId))].reduce((sum, card) => {
-        const own = paceOf(history, [card]);
-        const cents = outCents(list.filter((c) => c.accountId === card));
-        return sum + (own.short ? Math.round((cents * 12) / own.months) : cents);
-      }, 0);
-    // In words: the months the cards charging it cover.
-    const { short, months } = paceOf(history, new Set(charges.map((c) => c.accountId)));
-    // Known cards from their balances and rates, plus the unknown ones' charges at their pace
-    // (review 10-31: one unknown card made the known ones' $1,500 fall back to $490 seen).
-    const yearly =
-      typeof known === "number"
-        ? known + pace(charges.filter((c) => unknown.has(c.accountId)))
-        : null;
-    const seen = outCents(charges);
-    const total = yearly ?? pace(charges);
+    const { charges, seen, yearly, total, months, short } = cardInterestYear(data);
     if (total < R.interestMinCents) return null;
-    // Cash beyond a month's spending would clear it: card_from_cash says so with its steps.
-    if ((cashClearsCard(data)?.interestCents ?? 0) > 0) return null;
+    // Cash beyond a month's spending would clear it: card_from_cash says so with its steps. When
+    // that cash clears only part of what is owed, this card keeps the rest of the interest, so the
+    // two never count the same money twice.
+    const cash = cashClearsCard(data);
+    const covered = cash && cash.interestCents > 0 ? cash : null;
+    if (covered && covered.clearCents >= covered.owedCents) return null;
+    const left = covered
+      ? Math.round((total * (covered.owedCents - covered.clearCents)) / covered.owedCents)
+      : total;
+    if (left < R.interestMinCents) return null;
     return suggestion("debt", "card_interest", {
       title: "Pay down the card that is charging you interest",
-      headline: headlineOf("Pay down the card charging interest", total, "saves"),
+      headline: headlineOf("Pay down the card charging interest", left, "saves"),
       short:
         typeof yearly === "number"
           ? `Your cards cost you about ${formatCents(total)} a year in interest.`
           : `You paid ${formatCents(seen)} in card interest over ${months} months.`,
-      worthCents: total,
+      worthCents: left,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
       urgency: "soon",
       ...(profile.facts.debt_trouble.value === true
-        ? { rankCents: Math.round(total * D.troubleDiscount) }
+        ? { rankCents: Math.round(left * D.troubleDiscount) }
         : {}),
       why: `${
         typeof yearly === "number"
@@ -319,12 +324,12 @@ const cardInterest: Detector = {
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
           : "paying the balance off ends it"
-      }.`,
+      }.${covered ? ` The cash you hold could clear part of the card (see the card about paying from cash); the rest still costs about ${formatCents(left)} a year.` : ""}`,
       action: { label: "Cut your card interest", href: "/loans/interest" },
       watch: {
         kind: "fee_stops",
         pfcs: ["BANK_FEES_INTEREST_CHARGE"],
-        monthlyCents: Math.round(total / 12),
+        monthlyCents: Math.round(left / 12),
       },
     });
   },
@@ -534,10 +539,11 @@ const debtPlan: Detector = {
   detect({ profile, data }) {
     const trouble = profile.facts.debt_trouble;
     if (trouble.value !== true) return null;
-    const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
-    const interest = outCents(charges);
+    // A year of it, as the card-interest card counts it: the charges seen over two years, or over
+    // three months, are not a year's cost (CodeRabbit sweep 1c, det-02).
+    const { charges, total: interest } = cardInterestYear(data);
     // No interest in the accounts: nothing for "biggest interest first" to stand on.
-    if (interest === 0) return null;
+    if (interest <= 0) return null;
     // With no card linked the card debt isn't known (src/profile/build.ts), so the plan speaks of
     // the interest alone and doesn't rest on the unknown balance (QA: "Your cards hold $0.00").
     const card = profile.facts.card_debt_cents;

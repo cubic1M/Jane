@@ -7,16 +7,19 @@ import { plural } from "@/lib/plural";
 import { studentMoney, sumCents } from "@/planning/student-money";
 import {
   age25to64,
+  aotcRefundableAge,
   dependentOf,
   federalTaxOf,
   filingStatusOf,
   marginalRateFor,
   onStudentVisa,
   studentYearOf,
+  yearCoverageMonths,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
 import { yearInterest } from "@/planning/lender-interest";
 import { rateMonthsOf, type Profile } from "@/profile/build";
+import { stateMove } from "@/profile/home-state";
 import { type Confidence, type Detector, type Suggestion, suggestion } from "./contract";
 import { monthlyPaymentOf } from "./debt";
 import { evidence, factEvidence, headlineOf, incomeYearOf, nameOf, nice, weakest } from "./helpers";
@@ -58,8 +61,13 @@ const educationCredit: Detector = {
       status === "married_joint"
         ? EDUCATION_CREDITS.phaseOut.married_joint
         : EDUCATION_CREDITS.phaseOut.single;
-    const left = share(year.agiCents, range);
-    if (left === 0) return null;
+    // A dependent's credit goes on the return of whoever claims them, and their income and filing
+    // status set the phase-out, which Jane doesn't see: the student's own income says nothing of it.
+    const dependent = dependentOf(facts) === "yes";
+    // Their own income past the range still says nothing: that is no dependent's credit to show.
+    const own = share(year.agiCents, range);
+    if (own === 0) return null;
+    const left = dependent ? 1 : own;
     const enrollment = facts.enrollment.value;
     const undergrad = enrollment === "undergrad";
     const aotc = Math.round(
@@ -71,11 +79,10 @@ const educationCredit: Detector = {
     const llc = Math.round(
       Math.min(paid, EDUCATION_CREDITS.llcCostLimit) * EDUCATION_CREDITS.llcRate * left,
     );
-    const dependent = dependentOf(facts) === "yes";
     const tax = federalTaxOf(year.agiCents, status, dependent, year.earnedCents);
     // The refundable 40% isn't paid to a full-time student under 24 with a living parent (Form 8863
-    // line 7): only someone known to be 25 or older counts on it.
-    const refundable = age25to64(facts) === true;
+    // line 7): only someone known to be 24 or older counts on it (the credit has no upper age).
+    const refundable = aotcRefundableAge(facts) === true;
     const aotcHere = refundable
       ? Math.min(Math.round(aotc * (1 - AOTC_FORM.refundableShare)), tax) +
         Math.round(aotc * AOTC_FORM.refundableShare)
@@ -101,7 +108,9 @@ const educationCredit: Detector = {
       ? ""
       : ` If you're an undergraduate in your first four years, at least half time, the American opportunity credit is ${pct(1)} of the first ${formatWholeDollars(AOTC_FORM.firstCents)} and ${pct(AOTC_FORM.secondRate)} of the next ${formatWholeDollars(AOTC_FORM.secondCents)}: ${formatCents(aotc)} on what you paid.`;
     return suggestion("taxes", "education_credit", {
-      title: `The ${name} may come to about ${formatCents(worth)} on the tuition you paid`,
+      title: dependent
+        ? `The ${name} may come to up to ${formatCents(worth)} on the tuition you paid, on the return of whoever claims you`
+        : `The ${name} may come to about ${formatCents(worth)} on the tuition you paid`,
       headline: headlineOf("Check the education credit", worth, "earns", true),
       short: dependent
         ? `You paid ${formatCents(paid)} in tuition; the ${name} on it goes on the return you're a dependent on.`
@@ -116,6 +125,14 @@ const educationCredit: Detector = {
         dependentOf(facts) === null
           ? notSaid(55, "I don't know if someone claims you as a dependent")
           : factEvidence(facts.claimed_as_dependent),
+        ...(dependent
+          ? [
+              notSaid(
+                45,
+                "the credit's limit depends on the income of whoever claims you, which I can't see",
+              ),
+            ]
+          : []),
       ]),
       urgency: "later",
       why: `You paid ${formatCents(paid)} in tuition to ${nameOf(money.tuition[0]).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately or a nonresident alien (IRS Pub. 970); tuition a scholarship paid isn't in the figure. The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}`,
@@ -246,12 +263,27 @@ const earnedIncomeCreditCard: Detector = {
     if (status === "married_separate") return null;
     const year = studentYearOf(data, facts, rateMonthsOf(profile));
     if (year.earnedCents <= 0) return null;
+    // Interest seen this year, paced like the pay: it counts toward income and the credit's
+    // investment-income limit (studentYearOf leaves it out of income).
+    const interest = Math.round(
+      (data.transactions
+        .filter(
+          (t) =>
+            t.amountCents < 0 &&
+            t.pfc === "INCOME_INTEREST_EARNED" &&
+            t.date.startsWith(data.today.slice(0, 4)) &&
+            t.date <= data.today,
+        )
+        .reduce((n, t) => n - t.amountCents, 0) *
+        12) /
+        yearCoverageMonths(data, rateMonthsOf(profile)),
+    );
     const credit = earnedIncomeCredit({
       status,
       children: 0,
       earnedCents: year.earnedCents,
-      agiCents: year.agiCents,
-      investmentIncomeCents: 0,
+      agiCents: year.agiCents + interest,
+      investmentIncomeCents: interest,
       age: EITC.childlessMinAge,
     });
     if (credit <= 0) return null;
@@ -292,7 +324,13 @@ const caRentersCredit: Detector = {
     const { facts } = profile;
     if (facts.home_state.value !== "CA") return null;
     const money = studentMoney(data);
-    const rent = money.rent.filter((t) => !money.campusRent.includes(t));
+    // Rent paid before a move into California was paid somewhere else: only the months from the
+    // move count, never the months of another state's rent labelled California's.
+    const moved = stateMove(
+      data.transactions.filter((t) => t.date.startsWith(data.today.slice(0, 4))),
+    );
+    const sinceMove = moved?.to === "CA" ? `${moved.month}-01` : "";
+    const rent = money.rent.filter((t) => !money.campusRent.includes(t) && t.date >= sinceMove);
     if (rent.length === 0) return null;
     const status = filingStatusOf(facts);
     const year = studentYearOf(data, facts, rateMonthsOf(profile));

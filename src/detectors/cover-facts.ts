@@ -110,6 +110,13 @@ const belongingsCover: Detector = {
   },
 };
 
+// A carrier's name alone (State Farm, Allstate) sells homes and lives too: a line that names another
+// kind of cover and no car is that other cover, not car insurance.
+const OTHER_COVER =
+  /\bHOME\b|HOMEOWNERS?|RENTERS?|\bCONDO\b|\bLIFE\b|UMBRELLA|\bFLOOD\b|\bHEALTH\b|\bPET\b/;
+const CAR_WORDS = /\bAUTO\b|\bCAR\b|VEHICLE|MOTOR/;
+export const isCarLine = (line: string): boolean => !OTHER_COVER.test(line) || CAR_WORDS.test(line);
+
 // Car cover above the US average: what the person pays a year against the NAIC's average, as a
 // reason to get quotes themselves before it renews. Not a quote and not a pick.
 const carCoverCost: Detector = {
@@ -119,7 +126,11 @@ const carCoverCost: Detector = {
   needs: ["insurance_auto"],
   detect({ profile, data }) {
     const paid = data.transactions.filter(
-      (t) => t.amountCents > 0 && t.date <= data.today && AUTO_PREMIUM_WORDS.test(lineOf(t)),
+      (t) =>
+        t.amountCents > 0 &&
+        t.date <= data.today &&
+        AUTO_PREMIUM_WORDS.test(lineOf(t)) &&
+        isCarLine(lineOf(t)),
     );
     if (paid.length < 2) return null;
     // A year of it: the last 12 months summed when the data reaches back a year; else the latest
@@ -129,11 +140,32 @@ const carCoverCost: Detector = {
     const yearAgo = addDays(newestLine(data), -365);
     const sorted = [...paid].sort((a, b) => b.date.localeCompare(a.date));
     const first = data.transactions.reduce((m, t) => (t.date < m ? t.date : m), data.today);
-    const gap = daysBetween(sorted[1]!.date, sorted[0]!.date);
+    // With less than a year, each policy (one payee line) at its own rhythm: two policies paid the
+    // same day are two policies, not a premium with no gap between payments (CodeRabbit sweep 1c).
+    const perPolicy = (): number | null => {
+      // The payee as it reads without the day or reference number a bank adds to each line.
+      const keyOf = (t: (typeof paid)[number]) =>
+        lineOf(t)
+          .replace(/[\d/#*-]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      const byLine = new Map<string, typeof paid>();
+      for (const t of sorted) byLine.set(keyOf(t), [...(byLine.get(keyOf(t)) ?? []), t]);
+      let total = 0;
+      for (const list of byLine.values()) {
+        // A policy seen once (or only ever on one day) has no rhythm to scale: it adds nothing.
+        const days = [...new Set(list.map((t) => t.date))];
+        if (days.length < 2) continue;
+        const gap = daysBetween(days[1]!, days[0]!);
+        total += list[0]!.amountCents * (gap <= 45 ? 12 : gap <= 200 ? 2 : 1);
+      }
+      return total > 0 ? total : null;
+    };
     const yearly =
       first <= yearAgo
         ? sorted.filter((t) => t.date > yearAgo).reduce((s, t) => s + t.amountCents, 0)
-        : sorted[0]!.amountCents * (gap <= 45 ? 12 : gap <= 200 ? 2 : 1);
+        : perPolicy();
+    if (yearly === null) return null;
     const average = AUTO_AVERAGE.usCents;
     if (yearly < average * (1 + AUTO_AVERAGE.aboveShare)) return null;
     const above = yearly - average;
@@ -377,7 +409,9 @@ export function waivableFee(data: Parameters<Detector["detect"]>[0]["data"]): {
         .map((a) => a.id),
     );
     if (ids.size === 0) continue;
-    const fee = data.transactions
+    // The newest monthly fee on each account, newest first: the waiver is checked against the pay
+    // deposited into the account that was charged, never another account at the same bank.
+    const fees = data.transactions
       .filter(
         (t) =>
           ids.has(t.accountId) &&
@@ -387,24 +421,29 @@ export function waivableFee(data: Parameters<Detector["detect"]>[0]["data"]): {
           (t.pfc ?? "").startsWith("BANK_FEES") &&
           MONTHLY_FEE_WORDS.test(lineOf(t)),
       )
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
-    if (!fee) continue;
-    // Pay deposited into the same account in the month before the fee.
-    const from = addDays(fee.date, -31);
-    const pay = data.transactions.filter(
-      (t) =>
-        ids.has(t.accountId) &&
-        t.amountCents < 0 &&
-        t.date > from &&
-        t.date <= fee.date &&
-        ((t.pfc ?? "").startsWith("INCOME") || DIRECT_DEPOSIT_WORDS.test(lineOf(t))),
-    );
-    const total = pay.reduce((n, t) => n - t.amountCents, 0);
-    const biggest = pay.reduce((m, t) => Math.max(m, -t.amountCents), 0);
-    const met =
-      (w.singleCents !== null && biggest >= w.singleCents) ||
-      (w.totalCents !== null && total >= w.totalCents);
-    if (met) return { w, fee, accountIds: ids, total, paychecks: pay.length };
+      .sort((a, b) => b.date.localeCompare(a.date))
+      // The newest only, on each account.
+      .filter((t, i, all) => all.findIndex((o) => o.accountId === t.accountId) === i);
+    for (const fee of fees) {
+      // Pay deposited into the same account in the month before the fee.
+      const from = addDays(fee.date, -31);
+      const pay = data.transactions.filter(
+        (t) =>
+          t.accountId === fee.accountId &&
+          t.amountCents < 0 &&
+          t.date > from &&
+          t.date <= fee.date &&
+          ((t.pfc ?? "").startsWith("INCOME") || DIRECT_DEPOSIT_WORDS.test(lineOf(t))),
+      );
+      const total = pay.reduce((n, t) => n - t.amountCents, 0);
+      const biggest = pay.reduce((m, t) => Math.max(m, -t.amountCents), 0);
+      const met =
+        (w.singleCents !== null && biggest >= w.singleCents) ||
+        (w.totalCents !== null && total >= w.totalCents);
+      // Only the account that was charged: another account's fee is not the one this speaks for.
+      if (met)
+        return { w, fee, accountIds: new Set([fee.accountId]), total, paychecks: pay.length };
+    }
   }
   return null;
 }

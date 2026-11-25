@@ -79,6 +79,26 @@ export type StudentYear = {
   extraPayCents: number;
 };
 
+// The months of this year the data covers: the whole history's rate months when it starts this year,
+// else January 1 to the last line. What this year's rows are paced over (never the earlier months).
+export function yearCoverageMonths(
+  data: Pick<ProfileInput, "transactions" | "today">,
+  rateMonths: number,
+): number {
+  const year = Number(data.today.slice(0, 4));
+  const first = data.transactions.reduce((a, t) => (t.date < a ? t.date : a), data.today);
+  const last = data.transactions
+    .filter((t) => t.date <= data.today)
+    .reduce((a, t) => (t.date > a ? t.date : a), `${year}-01-01`);
+  return first < `${year}-01-01`
+    ? Math.max(
+        1,
+        ((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${year}-01-01T00:00:00Z`)) / DAY_MS + 1) /
+          (365.25 / 12),
+      )
+    : rateMonths;
+}
+
 export function studentYearOf(
   data: Pick<ProfileInput, "transactions" | "today">,
   facts: Facts,
@@ -93,14 +113,7 @@ export function studentYearOf(
   const last = data.transactions
     .filter((t) => t.date <= data.today)
     .reduce((a, t) => (t.date > a ? t.date : a), `${year}-01-01`);
-  const span =
-    first < `${year}-01-01`
-      ? Math.max(
-          1,
-          ((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${year}-01-01T00:00:00Z`)) / DAY_MS + 1) /
-            (365.25 / 12),
-        )
-      : rateMonths;
+  const span = yearCoverageMonths(data, rateMonths);
   const pace = (cents: number) => Math.round((cents * 12) / Math.max(1, span));
   // Pay as a month first, then a year grossed up: the order the profile's monthly income and the
   // other tax cards use, so the same pay is one figure on every card (debug 2, upload S5, 11-18).
@@ -169,6 +182,25 @@ export function marginalRateFor(
 ) {
   const taxable = agiCents - standardDeductionOf(status, dependent, earnedCents);
   return taxable <= 0 ? 0 : marginalRateOf(taxable, FEDERAL_BRACKETS[status]);
+}
+
+// Whether the American opportunity credit's refundable part can reach them by age: it is not paid to
+// a student under 24 at the year's end with a living parent (Form 8863 line 7), and has no upper
+// age, unlike the EITC's 25 to 64. True from 24 up (or the bands above it), false under; null when
+// the age isn't known.
+export function aotcRefundableAge(facts: Facts): boolean | null {
+  const age = facts.age?.value;
+  if (typeof age === "number") return age >= 24;
+  const band = facts.age_band?.value;
+  if (
+    band === "30_to_49" ||
+    band === "50_to_57" ||
+    band === "58_to_65" ||
+    band === "66_to_72" ||
+    band === "73_plus"
+  )
+    return true;
+  return facts.age_25_plus?.value === "yes" ? true : null;
 }
 
 // What the age facts say about being from 25 to 64 at the year's end: true, false, or null unknown.

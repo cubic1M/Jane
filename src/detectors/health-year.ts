@@ -25,7 +25,7 @@ function capped(c: Confidence, max: number, note: string): Confidence {
   return c.percent <= max ? c : { percent: max, reason: `${c.reason}; ${note}` };
 }
 
-// Medical bills this calendar year (and last, for a dispute), from the transactions.
+// Medical bills of the calendar years asked for, from the transactions.
 function billsOf(data: ProfileInput, years: readonly string[]): Bill[] {
   return data.transactions
     .filter(
@@ -126,11 +126,10 @@ const medicalBillDispute: Detector = {
   detect({ profile, data }) {
     const plan = data.healthPlan;
     if (!plan) return null;
-    const year = Number(thisYear(profile.today));
-    const found = [year - 1, year].flatMap((y) =>
-      disputes(plan, planBills(billsOf(data, [String(y)])), (b) =>
-        networkOf(b.provider, DEMO_NETWORK_DIRECTORY),
-      ),
+    // This year's bills only: the plan on file is the one in force now, and a renewal may have changed
+    // its deductible and coinsurance, so a last-year bill priced by it can look overpaid when it was not.
+    const found = disputes(plan, planBills(billsOf(data, [thisYear(profile.today)])), (b) =>
+      networkOf(b.provider, DEMO_NETWORK_DIRECTORY),
     );
     if (found.length === 0) return null;
     const top = found.reduce((a, b) => (b.overCents > a.overCents ? b : a));

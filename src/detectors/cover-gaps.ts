@@ -5,11 +5,15 @@ import { formatCents } from "@/lib/money";
 import { personalPay } from "@/profile/pay";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, monthlyChargeYear } from "./helpers";
-import { AUTO_HOME, CAPS, capped, combine, premiums } from "./insurance";
+import { CAPS, capped, combine, premiums } from "./insurance";
 
 // Perfect coverage (spec step 277): a detector for each gap the need calculators find
 // (src/lib/insurance/need), so the page, the chat and the nightly scan all work from the same
 // numbers. Each opens the option card for its gap. Pure; see ./contract.ts.
+
+// Premium lines by the cover they pay for: a carrier's name alone (State Farm) is both.
+const AUTO_ONLY = /\bAUTO\b|\bCAR\b|GEICO|PROGRESSIVE/i;
+const HOME_ONLY = /\bHOME\b|HOMEOWNERS?/i;
 
 const needsOf = (ctx: Parameters<Detector["detect"]>[0]) => {
   const input = needInputFromProfile(ctx.profile, ctx.data);
@@ -112,7 +116,11 @@ const deductibleFit: Detector = {
       // The premiums seen are not a year: put them on a year by the months they were charged in
       // (monthly premiums only), and say nothing of a yearly saving for an annual or a
       // quarterly premium or with under 3 months of them.
-      const yearly = monthlyChargeYear(premiums(data, AUTO_HOME));
+      // Of the policy whose deductible would change: a home premium does not fall when the car's
+      // deductible goes up. A kind whose premiums can't be told apart by name has no figure.
+      const kind = found.input.policies.find((p) => p.id === need.policyId)?.kind;
+      const pattern = kind === "auto" ? AUTO_ONLY : kind === "home" ? HOME_ONLY : null;
+      const yearly = pattern ? monthlyChargeYear(premiums(data, pattern)) : null;
       if (yearly === null) return null;
       const saves = Math.round(yearly * SAVING_RATES.deductibleStepShare);
       if (saves <= 0) return null;
