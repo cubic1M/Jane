@@ -7,7 +7,7 @@ import {
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
-import { track } from "@/lib/analytics";
+import { trackQuietly } from "@/lib/track-quietly";
 import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
@@ -163,13 +163,17 @@ export async function startDebtPlan(
     update: { ...data, startedOn: data.checkedOn },
     select: PLAN_SELECT,
   });
-  await track(userId, "debt_plan_started", { strategy: input.strategy, extra: extraCents > 0 });
+  // The plan is saved and active: a failed analytics write doesn't fail its start.
+  await trackQuietly(userId, "debt_plan_started", {
+    strategy: input.strategy,
+    extra: extraCents > 0,
+  });
   return toStored(row);
 }
 
 export async function stopDebtPlan(userId: string, { client = defaultClient }: Options = {}) {
   await scopedFor(userId, client).debtPlans.deleteMany({});
-  await track(userId, "debt_plan_stopped");
+  await trackQuietly(userId, "debt_plan_stopped");
 }
 
 export type PlanCheck = {
@@ -209,7 +213,7 @@ export async function refreshDebtPlan(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<(PlanCheck & { debtFreeMonth: string | null }) | null> {
   const db = scopedFor(userId, client);
-  const row = await db.debtPlans.findFirst({ select: PLAN_SELECT });
+  const row = await db.debtPlans.findFirst({ select: { ...PLAN_SELECT, updatedAt: true } });
   if (!row) return null;
   const days = (now.getTime() - row.checkedOn.getTime()) / DAY_MS;
   if (days < DEBT_PLAN_CHECK_DAYS) return null;
@@ -227,7 +231,10 @@ export async function refreshDebtPlan(
   const plan = summary[stored.strategy];
   const today = await todayOf(userId, { client, now });
   const debtFreeMonth = plan.ok ? monthAfter(today, plan.months) : null;
-  await db.debtPlans.updateMany({
+  // Only the plan as it was read: one restarted or stopped while balances loaded isn't written
+  // over with the old strategy's schedule, and no check is reported for a plan that isn't there.
+  const written = await db.debtPlans.updateMany({
+    where: { updatedAt: row.updatedAt },
     data: {
       checkedOn: new Date(`${today}T00:00:00Z`),
       expected: expectedBalances(summary.cards, plan) as Prisma.InputJsonArray,
@@ -238,7 +245,7 @@ export async function refreshDebtPlan(
       actualCents: check?.actualCents ?? null,
     },
   });
-  if (!check) return null;
-  await track(userId, "debt_plan_checked", { status: check.status });
+  if (written.count === 0 || !check) return null;
+  await trackQuietly(userId, "debt_plan_checked", { status: check.status });
   return { ...check, debtFreeMonth };
 }

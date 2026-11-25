@@ -6,7 +6,7 @@ import { upcomingBills } from "@/detection/forecast";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import { employers } from "@/insights/changes";
-import { track } from "@/lib/analytics";
+import { trackQuietly } from "@/lib/track-quietly";
 import { logAudit } from "@/lib/audit";
 import { loadChanges } from "@/lib/changes";
 import { db as defaultClient } from "@/lib/db";
@@ -103,10 +103,12 @@ export async function runLeanCheck(
     select: { id: true, status: true, dueOn: true },
   })) {
     if (!latest || latest <= row.dueOn) continue;
-    await db.leanPlans.updateMany({
-      where: { id: row.id },
+    // Only the plan as it was read: one the person said yes to meanwhile isn't declined here.
+    const moved = await db.leanPlans.updateMany({
+      where: { id: row.id, status: row.status },
       data: { status: row.status === "active" ? "ended" : "declined", endedAt: now },
     });
+    if (moved.count === 0) continue;
     if (row.status === "active") {
       await logAudit(
         { type: "user", id: userId },
@@ -132,8 +134,24 @@ export async function startLean(
     data: { status: "active", startedAt: now },
   });
   if (count === 0) throw new LeanError("That question was already answered.");
-  await logAudit({ type: "user", id: userId }, "lean_plan_started", { type: "lean_plan", id }, {});
-  await track(userId, "lean_plan_started", {});
+  try {
+    await logAudit(
+      { type: "user", id: userId },
+      "lean_plan_started",
+      { type: "lean_plan", id },
+      {},
+    );
+  } catch (error) {
+    // Without its audit row the start didn't happen: ask again rather than leave an active plan
+    // no retry can record.
+    await scopedFor(userId, client).leanPlans.updateMany({
+      where: { id, status: "active" },
+      data: { status: "proposed", startedAt: null },
+    });
+    throw error;
+  }
+  // The plan is active; a failed analytics write doesn't make the start a failure.
+  await trackQuietly(userId, "lean_plan_started", {});
 }
 
 export async function declineLean(

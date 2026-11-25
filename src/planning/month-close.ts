@@ -124,6 +124,33 @@ export function balancesAtMonthEnd<T extends { id: string; currentBalanceCents: 
   });
 }
 
+// Accounts that can have existed by the month's last day. One whose own balance history starts
+// after it, with no transaction on or before it and linked after it, is out of that month's net
+// worth. An account with no history at all keeps the balance it has, as balancesAtMonthEnd says.
+export function accountsOpenBy<T extends { id: string; createdAt: Date }>(
+  accounts: readonly T[],
+  snapshots: readonly { accountId: string; date: string }[],
+  withTxnByEnd: ReadonlySet<string>,
+  month: string,
+): T[] {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const first = new Map<string, string>();
+  for (const s of snapshots) {
+    const known = first.get(s.accountId);
+    if (!known || s.date < known) first.set(s.accountId, s.date);
+  }
+  return accounts.filter((a) => {
+    const began = first.get(a.id);
+    return (
+      began === undefined ||
+      began <= last ||
+      withTxnByEnd.has(a.id) ||
+      a.createdAt.toISOString().slice(0, 10) <= last
+    );
+  });
+}
+
 export function closeNetWorth(
   accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
   owned: { id: string; valueCents: number; valuedOn: string }[],

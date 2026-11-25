@@ -76,13 +76,22 @@ export async function healthInput(
     (min, t) => (min === null || t.date < min ? t.date : min),
     null,
   );
+  // Payments to cards Jane can't see, by month: built first, as a month with only such a payment
+  // is still a month (September $500, October a $300 card payment: $400 a month, not $500).
+  const toUnseenCards = new Map<string, number>();
+  for (const t of paymentsToUnseenCards(input.transactions, input.accounts)) {
+    const month = monthOf(t.date);
+    toUnseenCards.set(month, (toUnseenCards.get(month) ?? 0) + t.amountCents);
+  }
   const months = fullMonthsOnly(
     spendingInsights(spreadRareBills(typical, input.asOf), {
       asOf: lastFull,
       monthCount: HEALTH_MONTHS,
     }).months,
     firstDay,
-  ).filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
+  ).filter(
+    (m) => m.spendingCents > 0 || m.incomeCents > 0 || (toUnseenCards.get(m.month) ?? 0) > 0,
+  );
   const counted = new Set(months.map((m) => m.month));
   // Spending happens in checking or on a card: with neither on file (a savings account alone),
   // what's left after spending can't be seen, so no margin (night QA 10-30: a savings-only
@@ -92,11 +101,6 @@ export async function healthInput(
     months.length === 0 || !spends
       ? null
       : Math.round(months.reduce((s, m) => s + cents(m), 0) / months.length);
-  const toUnseenCards = new Map<string, number>();
-  for (const t of paymentsToUnseenCards(input.transactions, input.accounts)) {
-    const month = monthOf(t.date);
-    toUnseenCards.set(month, (toUnseenCards.get(month) ?? 0) + t.amountCents);
-  }
   const unseenCardPaymentsCents = average((m) => toUnseenCards.get(m.month) ?? 0) ?? 0;
   const since = addDays(input.asOf, -HEALTH_SLIP_DAYS);
   const [goals, prefs] = await Promise.all([
@@ -153,9 +157,15 @@ export async function healthFor(
   if (keep) {
     const kept = await db.healthScores.updateMany({ where: { month }, data });
     if (kept.count === 0) {
-      await db.healthScores
-        .create({ data: { userId, month, ...data } })
-        .catch(() => db.healthScores.updateMany({ where: { month }, data }));
+      try {
+        await db.healthScores.create({ data: { userId, month, ...data } });
+      } catch (error) {
+        // Only a row made meanwhile (a unique conflict) is recovered by updating it; and the
+        // update has to reach a row. Any other failure is a score that wasn't kept.
+        if ((error as { code?: string }).code !== "P2002") throw error;
+        const again = await db.healthScores.updateMany({ where: { month }, data });
+        if (again.count === 0) throw error;
+      }
     }
   }
   const before = await db.healthScores.findFirst({
