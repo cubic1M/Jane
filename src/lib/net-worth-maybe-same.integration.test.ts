@@ -88,10 +88,10 @@ describe.runIf(url)(
       const said = await loadMaybeSame(userId!, { client });
       expect(said?.href).toBe("/import");
       expect(said?.words).toBe(
-        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.",
       );
       expect(said?.short).toBe(
-        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.",
       );
       const books = await runBooksCheck(userId!, { client, now: NOW });
       const issue = books.open.find((i) => i.kind === "maybe_same")!;

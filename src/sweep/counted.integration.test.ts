@@ -20,6 +20,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { loadNetWorthHistory, loadNetWorthInputs } from "@/lib/net-worth-history";
+import { uploadsClearedByEvidence } from "@/lib/account-copies";
 import { EVERYONE, makePerson, type OwnRows } from "./__fixtures__/people";
 import { atLocal } from "./diff";
 import { countingProblems } from "./counted";
@@ -63,6 +64,7 @@ describe.runIf(url)("what net worth counts holds each account once", { timeout: 
       db.plaidItems.findMany({ select: { id: true, institutionName: true } }),
       db.janePreferences.findMany({ where: { kind: "separate" }, select: { key: true } }),
     ]);
+    const cleared = await uploadsClearedByEvidence(db);
     const all = await db.accounts.findMany({ select: { id: true, source: true } });
     const source = new Map(all.map((a) => [a.id, a.source]));
     const bank = new Map(items.map((i) => [i.id, i.institutionName]));
@@ -70,6 +72,7 @@ describe.runIf(url)("what net worth counts holds each account once", { timeout: 
       accounts.map((a) => ({ ...a, source: source.get(a.id) ?? null })),
       (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
       new Set(said.map((p) => p.key.replace("account:", ""))),
+      cleared,
     );
   }
 

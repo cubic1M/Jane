@@ -107,4 +107,23 @@ describe("what net worth counts holds each account once", () => {
     const savings = { ...checking, id: "s", name: "Savings", subtype: "savings", itemId: "i1" };
     expect(countingProblems([checking, savings], () => "Chase")).toEqual([]);
   });
+
+  it("still sees two uploads of one account when both differ from the link beside them", () => {
+    const up = (id: string) => ({
+      id,
+      itemId: null,
+      name: "Chase checking",
+      mask: "1234",
+      type: "depository",
+      subtype: "checking",
+      source: "csv",
+    });
+    const problems = countingProblems(
+      [up("a"), up("b")],
+      () => null,
+      new Set(),
+      new Set(["a", "b"]),
+    );
+    expect(problems.join(" ")).toMatch(/one upload, counted twice/);
+  });
 });
