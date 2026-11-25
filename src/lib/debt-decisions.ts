@@ -1,6 +1,6 @@
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
-import { forecastAccounts } from "@/detection/forecast";
+import { forecastAccounts, nextUnevenPayBy } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -33,6 +33,16 @@ import { onlyCounted } from "@/lib/account-copies";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+// The forecast days before the day uneven pay is likely to have come again; all of them when
+// there is no such day, or it leaves none.
+export function reliableDays<T extends { date: string }>(
+  days: readonly T[],
+  by: string | null,
+): T[] {
+  const before = by ? days.filter((d) => d.date < by) : [...days];
+  return before.length > 0 ? before : [...days];
+}
+
 export async function loadDecisionInput(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -42,7 +52,8 @@ export async function loadDecisionInput(
     adviceMode(userId, { client }),
     loadDebts(userId, { client, now }),
     loadTransfers(userId, { client, now }),
-    loadFit(userId, { need: "consolidation" }, { client, now }),
+    // A lender's check that fails costs only the consolidation offer, not every decision.
+    loadFit(userId, { need: "consolidation" }, { client, now }).catch(() => null),
     loadDetectionInput(userId, { client, now }),
     db.creditReports.findFirst({
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
@@ -63,7 +74,13 @@ export async function loadDecisionInput(
   // that one is empty for anyone without a plan (night QA 10-30: an overdrawn student heard "I
   // can't see a checking account to forecast").
   const checking = forecastAccounts(input, FORECAST_DAYS)[0] ?? null;
-  const days = bnplData.forecastDays.length > 0 ? bnplData.forecastDays : (checking?.days ?? []);
+  const allDays = bnplData.forecastDays.length > 0 ? bnplData.forecastDays : (checking?.days ?? []);
+  // Only the days before the next likely uneven payday are reliable: the forecast leaves that pay
+  // out, so a balance first below zero after it isn't an overdraft signal (as forecastAccounts).
+  const days = reliableDays(
+    allDays,
+    checking ? nextUnevenPayBy(input, [checking.accountId]) : null,
+  );
   const lowest = days.length
     ? days.reduce((a, b) => (b.balanceCents < a.balanceCents ? b : a))
     : null;
@@ -91,7 +108,7 @@ export async function loadDecisionInput(
   // The fit engine's pick for the cards as one personal loan (src/planning/fit.ts): the same
   // option the chat card, the tool and the suggestion show.
   // (Paying off from cash, or keeping the cards, isn't a loan.)
-  const fitted = fitView.options.find((o) => o.id !== "keep" && o.id !== "payoff");
+  const fitted = fitView?.options.find((o) => o.id !== "keep" && o.id !== "payoff");
   const personalLoan =
     fitted && (fitted.savesCents ?? 0) > 0
       ? {
@@ -159,14 +176,14 @@ export async function loadDecisionInput(
     student: toLoan(student),
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
-    ...(fitView.cushionCents != null ? { cushionCents: fitView.cushionCents } : {}),
+    ...(fitView?.cushionCents != null ? { cushionCents: fitView.cushionCents } : {}),
     consolidation,
     transferNeedsScore:
       transferBlocked && !consolidation ? { score: score!, minScore: TRANSFER_MIN_SCORE } : null,
     personalLoan,
     cashPayoffSavesCents:
-      fitView.pick === "payoff"
-        ? (fitView.options.find((o) => o.id === "payoff")?.savesCents ?? null)
+      fitView?.pick === "payoff"
+        ? (fitView?.options.find((o) => o.id === "payoff")?.savesCents ?? null)
         : null,
     incomeCents,
     savingCents:

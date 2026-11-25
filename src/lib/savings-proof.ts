@@ -41,7 +41,8 @@ export type Receipt = {
   cents: number;
   yearly: boolean;
   // The transaction that shows it (for a cancellation, the last charge before it stopped).
-  seen: { date: string; description: string; amountCents: number };
+  // The transaction's id: a receipt and a suggestion are one saving only when it's the same one.
+  seen: { id: string; date: string; description: string; amountCents: number };
   // One line on what the transaction shows.
   proof: string;
   // The ledger (src/planning/ledger.ts): the day the transactions showed it (Verified), and the
@@ -78,12 +79,23 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 const keyOf = (name: unknown) =>
   typeof name === "string" ? (normalizeMerchant(name)?.key ?? null) : null;
 const view = (t: DetectionTransaction) => ({
+  id: t.id,
   date: t.date,
   description: t.description,
   amountCents: t.amountCents,
 });
 const estimateOf = (snapshot: unknown) =>
   num((snapshot as { annualSavingsCents?: unknown } | null)?.annualSavingsCents) ?? 0;
+
+// Whether a credit can be this action's refund: its merchant (or, for bank fees, its account) is
+// the one the finding named. A finding that names neither can't bind it, so any credit may match.
+function creditIsOwn(evidence: Evidence & { accountId?: unknown }, t: DetectionTransaction) {
+  if (typeof evidence.accountId === "string" && t.accountId !== evidence.accountId) return false;
+  const want = keyOf(evidence.merchant);
+  if (!want) return true;
+  const got = normalizeMerchant(t.merchantName ?? t.description)?.key;
+  return Boolean(got && (got === want || got.startsWith(`${want} `)));
+}
 
 export async function provenSavings(
   userId: string,
@@ -161,9 +173,34 @@ export async function provenSavings(
     // A refund that came back in the person's own transactions (spec step 52).
     if (done && action.refundCents !== null && action.refundSeenAt) {
       const day = isoDate(action.refundSeenAt);
+      // The credit that is this action's own (its merchant, or its account for bank fees), not
+      // any credit of the same day and amount.
+      const own = (t: DetectionTransaction) => creditIsOwn(evidence, t);
       const back = input.transactions.find(
-        (t) => t.date === day && t.amountCents === -action.refundCents!,
+        (t) => t.date === day && t.amountCents === -action.refundCents! && own(t),
       );
+      // Seen once and now older than the transactions kept: the stored refund still stands.
+      const earliest = input.transactions.reduce(
+        (min, t) => (t.date < min ? t.date : min),
+        "9999-12-31",
+      );
+      if (!back && day < earliest) {
+        receipt({
+          kind: "refund",
+          cents: action.refundCents,
+          yearly: false,
+          seen: {
+            id: `refund:${action.id}`,
+            date: day,
+            description: title,
+            amountCents: -action.refundCents,
+          },
+          proof: `${formatCents(action.refundCents)} came back on ${dayLabel(day, { year: true })}.`,
+          verifiedOn: day,
+          heldOn: null,
+        });
+        continue;
+      }
       if (back) {
         const merchant = merchantOf(back)?.key ?? null;
         const takenBack = from(merchant).some(
@@ -242,7 +279,11 @@ export async function provenSavings(
       const history = from(keyOf(evidence.merchant));
       const last = history.filter((t) => t.date <= cancelled).at(-1);
       const after = history.some((t) => t.date > cancelled);
-      const due = last ? addDays(last.date, Math.round(365 / perYear)) : null;
+      const cycle = Math.round(365 / perYear);
+      let due = last ? addDays(last.date, cycle) : null;
+      // A charge due before the cancellation was due then, not after it: the next one that
+      // could have come is the first due day past it (last seen Jan 1, cancelled Apr 10).
+      while (due && due <= cancelled) due = addDays(due, cycle);
       // Only once a statement after the due day (and its grace) shows nothing.
       const seenTo = last ? reach(last.accountId) : "";
       if (last && due && !after && addDays(due, CANCEL_GRACE_DAYS) < seenTo) {
@@ -307,12 +348,8 @@ export async function verifiedSavings(
     provenSavings(userId, options),
     savingsRecord(userId, { client: options.client, now: options.now }),
   ]);
-  const seen = new Set(
-    actions.confirmed.map((r) => `${r.seen.date}|${r.seen.description}|${r.seen.amountCents}`),
-  );
-  const fresh = record.confirmed.filter(
-    (o) => !o.evidence.some((t) => seen.has(`${t.date}|${t.description}|${t.amountCents}`)),
-  );
+  const seen = new Set(actions.confirmed.map((r) => r.seen.id));
+  const fresh = record.confirmed.filter((o) => !o.evidence.some((t) => seen.has(t.id)));
   const suggestions: SavingsRecord = {
     ...record,
     confirmed: fresh,

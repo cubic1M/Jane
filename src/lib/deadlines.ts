@@ -25,7 +25,7 @@ import {
 } from "@/insights/deadlines";
 import { annualFeeDeadlines } from "@/insights/found-policies";
 import { raiseAlerts } from "@/lib/alerts";
-import { track } from "@/lib/analytics";
+import { trackQuietly } from "@/lib/track-quietly";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { documentDates } from "@/lib/documents/dates";
@@ -354,7 +354,7 @@ export async function addDeadline(
 ): Promise<void> {
   const data = checkedData(form, await todayOf(userId, { client, now }));
   await scopedFor(userId, client).deadlines.create({ data: { userId, ...data } });
-  await track(userId, "deadline_added", { kind: data.kind });
+  await trackQuietly(userId, "deadline_added", { kind: data.kind });
 }
 
 export async function markDeadlineDone(
@@ -366,7 +366,7 @@ export async function markDeadlineDone(
     where: { id: deadlineId, doneAt: null },
     data: { doneAt: now },
   });
-  if (count > 0) await track(userId, "deadline_done", {});
+  if (count > 0) await trackQuietly(userId, "deadline_done", {});
   return count > 0;
 }
 
@@ -378,6 +378,6 @@ export async function deleteDeadline(
   const { count } = await scopedFor(userId, client).deadlines.deleteMany({
     where: { id: deadlineId },
   });
-  if (count > 0) await track(userId, "deadline_deleted", {});
+  if (count > 0) await trackQuietly(userId, "deadline_deleted", {});
   return count > 0;
 }
