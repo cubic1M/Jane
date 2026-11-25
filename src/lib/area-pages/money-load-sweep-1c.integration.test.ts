@@ -118,6 +118,32 @@ describe.runIf(url)("the Spending & bills loader", { timeout: 120_000 }, () => {
     expect(area.statementsEnd).toBe("2026-03-10");
   });
 
+  // CodeRabbit on #2260: statements that reach November (income only) are not "ending in October".
+  it("counts a month with only income in it as covered", async () => {
+    const userId = await user();
+    const account = await client.account.create({
+      data: {
+        userId,
+        source: "csv",
+        name: "Income only checking",
+        type: "depository",
+        subtype: "checking",
+        currentBalanceCents: 100_000,
+      },
+    });
+    await client.transaction.create({ data: tx(userId, account.id, "2026-10-12", 1) });
+    await client.transaction.create({
+      data: {
+        ...tx(userId, account.id, "2026-11-10", 2),
+        amountCents: -300_000,
+        description: "PAYROLL",
+      },
+    });
+    const area = (await loadMoneyArea(userId, { client, now: NOW }))!;
+    expect(area.spending?.month).toBe("2026-10");
+    expect(area.spending?.current).toBe(true);
+  });
+
   // Finding 4.
   it("keeps each suggestion's own button and reason when two share a topic", async () => {
     const userId = await user();

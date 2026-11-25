@@ -173,7 +173,12 @@ export async function loadMoneyArea(
   // such, the same month the tile and the money hub show (gate B).
   const insights = spendingInsights(transactions, { asOf, monthCount: SPENDING_MONTHS });
   const latest = shownSpendingMonth(insights.months);
-  const current = latest === insights.months.at(-1);
+  // Statements that reach a later month than the one shown (November has only income, October has
+  // the spending) do cover this month: only a statement that stops there is "not in yet".
+  const newestMonth = newestStored._max.date?.toISOString().slice(0, 7) ?? null;
+  const current =
+    latest === insights.months.at(-1) ||
+    (latest != null && newestMonth !== null && newestMonth > latest.month);
   const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "money");
   const open = books.open.filter((o) => o.kind !== "transfer");
 

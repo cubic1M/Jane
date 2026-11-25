@@ -3,6 +3,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+// The loaders use the app's own client; here it's the test database's (as push.integration.test.ts).
+vi.mock("@/lib/db", async () => {
+  const { PrismaClient: Client } = await import("@/generated/prisma/client");
+  const { PrismaPg: Adapter } = await import("@prisma/adapter-pg");
+  return {
+    db: new Client({ adapter: new Adapter({ connectionString: process.env.TEST_DATABASE_URL }) }),
+  };
+});
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 // The real loaders, watched: which clock each is given.

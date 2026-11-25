@@ -17,4 +17,9 @@ describe("sentences with spaced initials", () => {
     expect(firstSentences(plain, 2)).toBe("You paid $40. It was late!");
     expect(laterSentences(plain, 2)).toBe("Was it a fee? Yes.");
   });
+  it("splits after a capital that ends a name (H&M.), not only after lowercase words", () => {
+    const text = "Your largest charge was H&M. The total was $40. Review the charge.";
+    expect(sentences(text)).toBe(3);
+    expect(laterSentences(text, 3)).toBe("");
+  });
 });
