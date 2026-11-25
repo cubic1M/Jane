@@ -18,6 +18,9 @@ import { withoutAchDetails, withoutAchEntry } from "@/data-sources/merchant";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { STALE_UPLOAD_DAYS } from "@/config/import";
 import { daysBetween } from "@/lib/dates";
+import { LOOKBACK_MONTHS } from "@/config/detection";
+import { lookbackEnd } from "@/detection/helpers";
+import { monthsBefore } from "@/detection/units";
 
 // What detectors share. Pure.
 
@@ -35,8 +38,30 @@ export const perYear = (cents: number, months: number): number | null =>
 // once (an annual premium) or in some months only (a quarterly one) can't be put on a year from
 // the span of the history, so the answer is null (CodeRabbit sweep 1b, #2258).
 export function monthlyChargeYear(
-  rows: readonly { date: string; amountCents: number }[],
+  rows: readonly { date: string; amountCents: number; description?: string }[],
 ): number | null {
+  // Each payee's charges are judged on their own: an annual premium beside a monthly one makes
+  // four contiguous-looking months, and the annual one would be counted four times over (CodeRabbit
+  // sweep 1c, #2270). One stream that is not monthly withholds the whole figure.
+  const streams = new Map<string, { date: string; amountCents: number }[]>();
+  for (const t of rows) {
+    const key = (t.description ?? "")
+      .toUpperCase()
+      .replace(/[\d/#*-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    streams.set(key, [...(streams.get(key) ?? []), t]);
+  }
+  let year = 0;
+  for (const list of streams.values()) {
+    const one = oneStreamYear(list);
+    if (one === null) return null;
+    year += one;
+  }
+  return streams.size > 0 ? year : null;
+}
+
+function oneStreamYear(rows: readonly { date: string; amountCents: number }[]): number | null {
   const months = new Set(rows.map((t) => t.date.slice(0, 7)));
   if (months.size < 3) return null;
   const keys = [...months].sort();
@@ -44,6 +69,28 @@ export function monthlyChargeYear(
   if (index(keys[keys.length - 1]!) - index(keys[0]!) + 1 !== months.size) return null;
   const total = rows.reduce((sum, t) => sum + t.amountCents, 0);
   return Math.round((total * 12) / months.size);
+}
+
+// The premiums (or any charges) of the last twelve months, as a year. With a year of history that is
+// the total; with less, only a charge seen every month of a run (monthlyChargeYear) can be put on a
+// year, and anything else is null: three months of premiums are not a year, and an annual premium
+// seen once cannot be scaled by the length of the history. The window ends where the data does, so
+// two years of rows are not counted as one (CodeRabbit sweep 1c, det-02).
+export function lastYearRows(
+  data: Pick<ProfileInput, "transactions" | "today">,
+  rows: readonly ProfileTx[],
+): ProfileTx[] {
+  const cutoff = monthsBefore(lookbackEnd(data.transactions, data.today), LOOKBACK_MONTHS);
+  return rows.filter((t) => t.amountCents > 0 && t.date > cutoff && t.date <= data.today);
+}
+export function premiumYear(
+  data: Pick<ProfileInput, "transactions" | "today">,
+  profile: Pick<Profile, "months" | "rateMonths">,
+  rows: readonly ProfileTx[],
+): number | null {
+  const inYear = lastYearRows(data, rows);
+  if (inYear.length === 0) return null;
+  return rateMonthsOf(profile) >= LOOKBACK_MONTHS ? outCents(inYear) : monthlyChargeYear(inYear);
 }
 
 // The rows and day a monthly spending figure is read from: a profile, or anything shaped like one.

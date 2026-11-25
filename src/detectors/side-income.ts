@@ -1,14 +1,16 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { SIDE_INCOME, SOURCES } from "@/config/student-taxes";
+import { ESTIMATED_TAX, SIDE_INCOME, SOURCES } from "@/config/student-taxes";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { sumCents } from "@/planning/student-money";
 import {
   dependentOf,
+  federalTaxOf,
   filingStatusOf,
   marginalRateFor,
   onStudentVisa,
   studentYearOf,
+  yearCoverageMonths,
 } from "@/planning/student-tax";
 import { selfEmploymentTax } from "@/planning/tax-estimate";
 import { rateMonthsOf, type ProfileTx } from "@/profile/build";
@@ -24,6 +26,14 @@ import { urgencyForEstimated } from "./taxes";
 // back, which isn't income: only the person can say (app_income). Facts; pure.
 
 const PLATFORM = new Set(["INCOME_CONTRACTOR", "INCOME_GIG_ECONOMY"]);
+
+// Whether estimated payments are required turns on what the whole return owes at filing, which
+// this card can't see (a paycheck's withholding may cover this, or fall short of it): under the
+// floor it says that, and not "nothing is required".
+const estimatedRule = (owedLastYear: unknown, taxCents: number): string =>
+  owedLastYear !== "no" && taxCents < ESTIMATED_TAX.requiredFromCents
+    ? `Whether estimated payments are required depends on what your whole ${ESTIMATED_TAX.taxYear} return owes at filing, with your paycheck's withholding counted (Pub. 505).`
+    : penaltyRule(owedLastYear, false, taxCents);
 
 const sideIncomeTax: Detector = {
   capability: "taxes",
@@ -58,19 +68,32 @@ const sideIncomeTax: Detector = {
     // too and the work share isn't known, so it stays out of the figure (and is said so).
     const counted = [...platform, ...(said === "work" ? apps : [])];
     if (counted.length === 0) return null;
-    const months = rateMonthsOf(profile);
+    // This year's payouts, paced over the months of this year the data covers: twelve months of
+    // history ending June 30 hold six months of this year's pay, not twelve.
+    const months = yearCoverageMonths(data, rateMonthsOf(profile));
     const seen = sumCents(counted);
     const pace = Math.round((seen * 12) / months);
-    const wagesYear = studentYearOf(data, facts, months).wagesCents;
+    const yearOf = studentYearOf(data, facts, months);
+    const wagesYear = yearOf.wagesCents;
+    // A fellowship's stipend is taxable income that uses the standard deduction first; it is not
+    // wages (no Social Security tax) and the side payouts are not in it (CodeRabbit sweep 1c, #2270).
+    const baseIncome = wagesYear + yearOf.stipendCents;
     const status = filingStatusOf(facts);
     const se = selfEmploymentTax(pace, wagesYear);
-    const rate = marginalRateFor(
-      wagesYear + pace,
+    const dependent = dependentOf(facts) === "yes";
+    // Half of the self-employment tax comes off income; the tax on the side money is what the
+    // return owes with it less what it owes without (a part of it may still fall inside the
+    // standard deduction), not the top rate on all of it.
+    // A dependent's standard deduction is limited by earned income, and a taxable fellowship is
+    // earned income: so the base counts it there too (CodeRabbit on #2270).
+    const withSide = federalTaxOf(
+      baseIncome + pace - Math.round(se / 2),
       status,
-      dependentOf(facts) === "yes",
-      wagesYear + pace,
+      dependent,
+      baseIncome + pace,
     );
-    const income = Math.round(pace * rate);
+    const income = Math.max(0, withSide - federalTaxOf(baseIncome, status, dependent, baseIncome));
+    const rate = marginalRateFor(baseIncome + pace, status, dependent, baseIncome + pace);
     const tax = se + income;
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const payers = [...new Set(counted.map((t) => nice(t.description).split(" ")[0]))];
@@ -100,7 +123,7 @@ const sideIncomeTax: Detector = {
             },
       ]),
       urgency: urgencyForEstimated(profile.today),
-      why: `You received ${formatCents(seen)} from ${payers.join(", ")} in ${span} besides your pay, about ${formatCents(pace)} a year at that pace, with nothing withheld.${appLine} Self-employment tax of ${Math.round(SIDE_INCOME.seRate * 1000) / 10}% (Social Security and Medicare) applies from ${formatWholeDollars(SIDE_INCOME.seFromCents)} of net earnings, and the earnings less their costs go into income: before costs, about ${formatCents(se)} and ${formatCents(income)} at your ${Math.round(rate * 100)}% rate. Payment apps send a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments, and the income counts either way (IRS). ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)}`,
+      why: `You received ${formatCents(seen)} from ${payers.join(", ")} in ${span} besides your pay, about ${formatCents(pace)} a year at that pace, with nothing withheld.${appLine} Self-employment tax of ${Math.round(SIDE_INCOME.seRate * 1000) / 10}% (Social Security and Medicare) applies from ${formatWholeDollars(SIDE_INCOME.seFromCents)} of net earnings, and the earnings less their costs go into income: before costs, about ${formatCents(se)} and ${formatCents(income)} of income tax (your top rate is ${Math.round(rate * 100)}%). Payment apps send a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments, and the income counts either way (IRS). ${estimatedRule(facts.owed_tax_last_year.value, tax)} ${datesLine(profile.today, facts.home_state.value)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [
         { label: "IRS: self-employment tax", href: SOURCES.seTax.url },

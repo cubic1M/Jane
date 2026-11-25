@@ -3,13 +3,22 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
-import { carSignCount, rateMonthsOf } from "@/profile/build";
+import { carSignCount } from "@/profile/build";
 import { computeNeeds } from "@/lib/insurance/need/calculators";
 import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { HEALTH_YEAR_DETECTORS } from "./health-year";
 import { type Detector, suggestion } from "./contract";
 import type { Confidence } from "./contract";
-import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helpers";
+import {
+  evidence,
+  factEvidence,
+  lastYearRows,
+  nice,
+  outCents,
+  premiumYear,
+  tx,
+  headlineOf,
+} from "./helpers";
 
 // Detectors for insurance (spec step 259), from what the profile knows: the covers whose
 // charges are seen, the home, the car, the people and the assets. Each says what it is worth
@@ -161,8 +170,10 @@ const insuranceShopping: Detector = {
   needs: ["insurance_auto", "insurance_home"],
   detect({ profile, data }) {
     const paid = premiums(data, AUTO_HOME);
-    // A year of what they pay, from the months of data when there are fewer than twelve.
-    const yearly = Math.round(outCents(paid) * (12 / Math.min(12, rateMonthsOf(profile))));
+    // A year of what they pay: the last twelve months, or a charge seen every month of a shorter
+    // history, as a year (premiumYear); an annual premium seen once is no year to scale.
+    const yearly = premiumYear(data, profile, paid);
+    if (yearly === null) return null;
     if (paid.length < R.insuranceShopMinCharges || yearly < R.insuranceShopMinCents) return null;
     // Real quotes, when Jane has reshopped: the saving the switch card and the chat show.
     const quoted = data.extras?.insuranceShopSavingCents ?? 0;
@@ -207,14 +218,16 @@ const healthInsurance: Detector = {
     const cover = profile.facts.insurance_health;
     if (pattern.value !== "uneven" && pattern.value !== "business") return null;
     const paid = premiums(data, HEALTH);
-    const yearly = outCents(paid);
+    const seen = outCents(lastYearRows(data, paid));
+    const yearly = premiumYear(data, profile, paid);
     const timely = enrollmentSoon(profile.today);
-    if (cover.value === true && paid.length > 0) {
+    // Three months of premiums are not a year: with no year to scale, the comparison waits.
+    if (cover.value === true && paid.length > 0 && yearly !== null) {
       const saves = Math.round(yearly * R.healthCompareShare);
       return suggestion("insurance", "health_insurance", {
         title: "Compare health plans at open enrollment",
         headline: headlineOf("Compare health plans", saves, "saves"),
-        short: `You paid ${formatCents(yearly)} for your own health plan in ${plural(profile.months, "month")}.`,
+        short: `You paid ${formatCents(seen)} for your own health plan in ${plural(profile.months, "month")}.`,
         worthCents: saves,
         worthKind: "saves",
         confidence: capped(
@@ -226,7 +239,7 @@ const healthInsurance: Detector = {
           "the saving is typical, and I can't see a partner's plan",
         ),
         urgency: timely ? "soon" : "later",
-        why: `You buy your own health plan and paid ${formatCents(yearly)} in ${plural(profile.months, "month")}. Comparing plans on what you'd really pay in a year, premium plus likely costs, can find up to ${formatCents(saves)} a year. Open enrollment runs Nov 1 to Jan 15.`,
+        why: `You buy your own health plan and paid ${formatCents(seen)} in ${plural(profile.months, "month")}. Comparing plans on what you'd really pay in a year, premium plus likely costs, can find up to ${formatCents(saves)} a year. Open enrollment runs Nov 1 to Jan 15.`,
         action: { label: "Compare plans", href: "/insurance" },
       });
     }
@@ -264,13 +277,14 @@ const medigap: Detector = {
     const cover = profile.facts.insurance_medigap;
     if (stage.value !== "retired" || cover.value !== true) return null;
     const paid = premiums(data, MEDIGAP);
-    const yearly = outCents(paid);
-    if (yearly <= 0) return null;
+    const seen = outCents(lastYearRows(data, paid));
+    const yearly = premiumYear(data, profile, paid);
+    if (yearly === null || yearly <= 0) return null;
     const saves = Math.round(yearly * R.medigapCompareShare);
     return suggestion("insurance", "medigap", {
       title: "Compare your Medicare supplement",
       headline: headlineOf("Compare your Medicare supplement", saves, "saves"),
-      short: `You paid ${formatCents(yearly)} for a Medicare supplement in ${plural(profile.months, "month")}.`,
+      short: `You paid ${formatCents(seen)} for a Medicare supplement in ${plural(profile.months, "month")}.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: capped(
@@ -282,7 +296,7 @@ const medigap: Detector = {
         "the saving is typical, not quoted",
       ),
       urgency: "later",
-      why: `You paid ${formatCents(yearly)} for a Medicare supplement over ${plural(profile.months, "month")}. The same standard plan costs different amounts at different insurers, and prices rise with age, so comparing can find up to ${formatCents(saves)} a year.`,
+      why: `You paid ${formatCents(seen)} for a Medicare supplement over ${plural(profile.months, "month")}. The same standard plan costs different amounts at different insurers, and prices rise with age, so comparing can find up to ${formatCents(saves)} a year.`,
       action: { label: "Compare supplements", href: "/insurance" },
     });
   },
@@ -453,7 +467,9 @@ const cardCover: Detector = {
     const plans = charges(data, PROTECTION);
     const fee = charges(data, PREMIUM_CARD);
     if (plans.length === 0 || fee.length === 0) return null;
-    const yearly = outCents(plans);
+    // What was paid in the last year, as the "over N months" it says (never two years as one).
+    const yearly = outCents(lastYearRows(data, plans));
+    if (yearly <= 0) return null;
     return suggestion("insurance", "card_cover", {
       title: "Check your card already covers this",
       headline: headlineOf("Cancel a plan your card covers", yearly, "saves"),
@@ -489,8 +505,8 @@ const employerBenefits: Detector = {
     const paid = charges(data, PRIVATE_PLAN).filter(
       (t) => t.pfc === "GENERAL_SERVICES_INSURANCE" || /LIFE|HEALTH/i.test(t.description),
     );
-    const yearly = outCents(paid);
-    if (paid.length === 0 || yearly <= 0) return null;
+    const yearly = premiumYear(data, profile, paid);
+    if (paid.length === 0 || yearly === null || yearly <= 0) return null;
     const saves = Math.round(yearly * R.employerPlanShare);
     return suggestion("insurance", "employer_benefits", {
       title: "Compare your private cover with your employer's",
@@ -524,8 +540,9 @@ const policyDocuments: Detector = {
     const waiting = data.unreadPolicyDocuments ?? 0;
     if (waiting <= 0) return null;
     const paid = charges(data, /./).filter((t) => t.pfc === "GENERAL_SERVICES_INSURANCE");
-    const yearly = outCents(paid);
-    if (yearly <= 0) return null;
+    const seen = outCents(lastYearRows(data, paid));
+    const yearly = premiumYear(data, profile, paid);
+    if (yearly === null || yearly <= 0) return null;
     return suggestion("insurance", "policy_documents", {
       title: "Confirm the policy I read from your document",
       headline: headlineOf(
@@ -545,7 +562,7 @@ const policyDocuments: Detector = {
         "the saving is typical, not quoted",
       ),
       urgency: "soon",
-      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(yearly)} for insurance in ${plural(profile.months, "month")}, and a comparison can find up to a tenth of that.`,
+      why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(seen)} for insurance in ${plural(profile.months, "month")}, about ${formatCents(yearly)} over a year at that pace, and a comparison can find up to a tenth of the year: ${formatCents(Math.round(yearly * R.insuranceShopShare))}.`,
       action: { label: "Check what I read", href: "/insurance" },
     });
   },

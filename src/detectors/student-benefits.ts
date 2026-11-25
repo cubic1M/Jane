@@ -71,6 +71,11 @@ const aidPriorityDate: Detector = {
   detect({ profile, data }) {
     const student = profile.facts.is_student;
     if (student.value !== true || !atStanford(data)) return null;
+    // The priority date is for continuing undergraduates: a graduate student or a part-time one
+    // who said so is not who it is for. Not said: the card says "if", and doesn't claim they are.
+    const enrolled = profile.facts.enrollment.value;
+    if (typeof enrolled === "string" && enrolled !== "undergrad") return null;
+    const undergrad = enrolled === "undergrad";
     const left = daysBetween(data.today, AID_PRIORITY.date);
     if (left < 0 || left > AID_PRIORITY.aheadDays) return null;
     const since = addDays(data.today, -400);
@@ -95,7 +100,7 @@ const aidPriorityDate: Detector = {
         evidence("seen", profile.months, aid.length, "aid payments from Stanford"),
       ]),
       urgency: left <= 21 ? "now" : "soon",
-      why: `Stanford sent you ${formatCents(got)} in ${aid.length} aid payment${aid.length === 1 ? "" : "s"} in the last year. For continuing undergraduates, Stanford's priority filing date for ${a.year} aid is ${dayLabel(a.date, { long: true, year: true })}: the CSS Profile (school code ${a.cssCode}), the FAFSA (school code ${a.fafsaCode}) and your parents' tax documents. Done by then, the aid notice comes in August. Both forms opened October 1.`,
+      why: `Stanford sent you ${formatCents(got)} in ${aid.length} aid payment${aid.length === 1 ? "" : "s"} in the last year. ${undergrad ? "For continuing undergraduates" : "If you're a continuing undergraduate (I don't know how you're enrolled)"}, Stanford's priority filing date for ${a.year} aid is ${dayLabel(a.date, { long: true, year: true })}: the CSS Profile (school code ${a.cssCode}), the FAFSA (school code ${a.fafsaCode}) and your parents' tax documents. Done by then, the aid notice comes in August. Both forms opened October 1.`,
       action: { label: "See Stanford's aid requirements", href: a.url },
     });
   },

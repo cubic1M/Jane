@@ -67,19 +67,19 @@ const monthClose: Detector = {
   detect({ profile, data }) {
     if (data.extras?.lastCloseStatus === "closed") return null;
     const month = previousMonth(profile.today);
-    const unsure = uncertainOf(
-      data.transactions.map((t, i) => ({
-        id: String(i),
-        date: t.date,
-        amountCents: t.amountCents,
-        description: t.description,
-        pfcPrimary: null,
-        pfcDetailed: t.pfc,
-        categorySource: null,
-      })),
-      month,
-    );
+    const rows = data.transactions.map((t, i) => ({
+      id: String(i),
+      date: t.date,
+      amountCents: t.amountCents,
+      description: t.description,
+      pfcPrimary: null,
+      pfcDetailed: t.pfc,
+      categorySource: null,
+    }));
+    const unsure = uncertainOf(rows, month);
     if (unsure.length === 0) return null;
+    // Every charge that holds the close, not just the few shown: the link's filter must keep them all.
+    const holding = uncertainOf(rows, month, Infinity);
     const total = unsure.reduce((s, t) => s + t.amountCents, 0);
     // The merchant's name where there is one, not the bank's line ("Debit Card Purchase - …").
     const names = unsure.map(
@@ -95,7 +95,7 @@ const monthClose: Detector = {
       confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charges"),
       urgency: "soon",
       why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} ${unsure.length === 1 ? "sits" : "sit"} in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
-      action: { label: "Confirm the charges", href: closeHref(month, unsure) },
+      action: { label: "Confirm the charges", href: closeHref(month, holding) },
     });
   },
 };

@@ -44,7 +44,11 @@ export type CloseFigures = {
 const inMonth = (t: CloseTx, month: string) => t.date.startsWith(month);
 
 // Charges in a catch-all category (or none) the person hasn't set, biggest first.
-export function uncertainOf(txns: readonly CloseTx[], month: string): CloseTx[] {
+export function uncertainOf(
+  txns: readonly CloseTx[],
+  month: string,
+  max = UNCERTAIN_MAX,
+): CloseTx[] {
   return txns
     .filter(
       (t) =>
@@ -54,7 +58,7 @@ export function uncertainOf(txns: readonly CloseTx[], month: string): CloseTx[] 
         (t.pfcDetailed === null || UNCERTAIN_CATEGORIES.includes(t.pfcDetailed)),
     )
     .sort((a, b) => b.amountCents - a.amountCents || a.id.localeCompare(b.id))
-    .slice(0, UNCERTAIN_MAX);
+    .slice(0, max);
 }
 
 // What the month came to, from its transactions, counted as the Money page, Insights and the
