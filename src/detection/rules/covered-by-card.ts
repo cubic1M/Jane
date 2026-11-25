@@ -31,12 +31,18 @@ const hasWord = (words: readonly string[], text: string, end: string) =>
   words.some((w) => new RegExp(`\\b${w}${end}`, "i").test(text));
 // Another kind of policy named in the charge rules it out before a phone word is looked for
 // ("ASSURANT MOBILE HOME INSURANCE"); a phone word starts a word ("cell" is "cellular").
-const saysPhone = (stream: Stream) =>
-  stream.charges.some(
-    (c) =>
-      !hasWord(COVER_NON_PHONE_WORDS, c.description, "\\b") &&
-      hasWord(COVER_PHONE_WORDS, c.description, ""),
+const saysPhone = (stream: Stream) => {
+  // The stream as it is billed now: its latest charge, not any past one (CodeRabbit on #2263).
+  const latest = stream.charges.reduce<(typeof stream.charges)[number] | null>(
+    (a, c) => (a === null || c.date > a.date ? c : a),
+    null,
   );
+  return (
+    latest !== null &&
+    !hasWord(COVER_NON_PHONE_WORDS, latest.description, "\\b") &&
+    hasWord(COVER_PHONE_WORDS, latest.description, "")
+  );
+};
 
 function planOf(stream: Stream) {
   const plan = COVER_PLANS.find((p) => merchantMatches(stream.merchantKey, p.merchants));
