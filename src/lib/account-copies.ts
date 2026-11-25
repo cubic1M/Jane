@@ -1,19 +1,6 @@
 import type { ScopedDb } from "@/lib/db-scoped";
 import type { MaybeSame } from "@/insights/net-worth";
-import { SAME_ACCOUNT_BALANCE_SLACK_DAYS, SAME_ACCOUNT_MAX_LINES } from "@/config/detection";
-import {
-  accountsLeftOut,
-  duplicateAccounts,
-  isUpload,
-  uploadLinkPairs,
-  type LeftOut,
-} from "@/planning/books";
-import {
-  balanceOnOrBefore,
-  compareAccounts,
-  type Line,
-  type Verdict,
-} from "@/planning/same-account";
+import { accountsLeftOut, duplicateAccounts, isUpload, type LeftOut } from "@/planning/books";
 
 // What every figure counts (src/planning/books.ts accountsLeftOut): the accounts a bank link reads
 // as they are, and an uploaded statement only when it can't be a copy of one of them, nor an earlier
@@ -29,7 +16,7 @@ export const SEPARATE_ACCOUNT = { kind: "separate", keyPrefix: "account:" } as c
 
 type Db = Pick<
   ScopedDb,
-  "accounts" | "plaidItems" | "janePreferences" | "transactions" | "importRuns" | "balanceSnapshots"
+  "accounts" | "plaidItems" | "janePreferences" | "transactions" | "importRuns"
 >;
 
 async function readCounting(db: Db) {
@@ -47,8 +34,7 @@ async function readCounting(db: Db) {
     },
   });
   // Nothing to compare: no two accounts.
-  if (accounts.length < 2)
-    return { accounts, left: new Map<string, LeftOut>(), cleared: new Set<string>() };
+  if (accounts.length < 2) return { accounts, left: new Map<string, LeftOut>() };
   const uploads = accounts.filter(isUpload).map((a) => a.id);
   // Only what is needed is read: the banks' names when something is linked, and what the person
   // said (and when each file ends) when something is uploaded.
@@ -66,13 +52,11 @@ async function readCounting(db: Db) {
   const bank = new Map(items.map((i) => [i.id, i.institutionName]));
   const bankOf = (a: { itemId: string | null }) => (a.itemId ? (bank.get(a.itemId) ?? null) : null);
   const separate = new Set(said.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length)));
-  // The upload and link pairs the copy rule can't settle: compared by what each shows below.
-  const candidates = uploadLinkPairs(accounts, bankOf).filter(([u]) => !separate.has(u.id));
   // The day each upload's statement ends is the one it was uploaded with (the last day its files
   // cover, import_runs.to_date), else its latest transaction; a tie goes to the one uploaded last,
   // by the time of the very run that supplies that end day.
   const [runs, latest] =
-    uploads.length < 2 && candidates.length === 0
+    uploads.length < 2
       ? [[], []]
       : await Promise.all([
           db.importRuns.findMany({
@@ -103,72 +87,13 @@ async function readCounting(db: Db) {
     endsOn.set(id, end);
     uploadedAt.set(id, at);
   }
-  // Compare each such upload with the link it sits beside, by their lines over the days both cover
-  // and the closing balance against the link's on that day (src/planning/same-account.ts). The
-  // newest SAME_ACCOUNT_MAX_LINES of each account are read, one more than that to know there were
-  // more, and a comparison that was cut short never says "different".
-  const evidence = new Map<string, Verdict>();
-  if (candidates.length > 0) {
-    const ids = [...new Set(candidates.flatMap(([u, l]) => [u.id, l.id]))];
-    const [perAccount, readings] = await Promise.all([
-      Promise.all(
-        ids.map(async (id) => ({
-          id,
-          // Posted lines only: a pending charge isn't on a statement (a tip changes its amount).
-          rows: await db.transactions.findMany({
-            where: { accountId: id, pending: false },
-            select: { date: true, amountCents: true },
-            orderBy: [{ date: "desc" }, { amountCents: "desc" }],
-            take: SAME_ACCOUNT_MAX_LINES + 1,
-          }),
-        })),
-      ),
-      db.balanceSnapshots.findMany({
-        where: { accountId: { in: candidates.map(([, l]) => l.id) } },
-        select: { accountId: true, date: true, balanceCents: true },
-      }),
-    ]);
-    const lines = new Map<string, { lines: Line[]; truncated: boolean }>();
-    for (const { id, rows } of perAccount)
-      lines.set(id, {
-        lines: rows
-          .slice(0, SAME_ACCOUNT_MAX_LINES)
-          .map((r) => ({ date: day(r.date)!, amountCents: r.amountCents })),
-        truncated: rows.length > SAME_ACCOUNT_MAX_LINES,
-      });
-    const readingsOf = new Map<string, { date: string; balanceCents: number }[]>();
-    for (const r of readings)
-      readingsOf.set(r.accountId, [
-        ...(readingsOf.get(r.accountId) ?? []),
-        { date: day(r.date)!, balanceCents: r.balanceCents },
-      ]);
-    for (const [upload, link] of candidates) {
-      const end = endsOn.get(upload.id);
-      const [mine, theirs] = [lines.get(upload.id), lines.get(link.id)];
-      const { verdict } = compareAccounts({
-        upload: mine?.lines ?? [],
-        link: theirs?.lines ?? [],
-        truncated: Boolean(mine?.truncated || theirs?.truncated),
-        closing:
-          end && upload.currentBalanceCents !== null
-            ? { date: end, cents: upload.currentBalanceCents }
-            : null,
-        linkBalanceOn: (date) =>
-          balanceOnOrBefore(readingsOf.get(link.id) ?? [], date, SAME_ACCOUNT_BALANCE_SLACK_DAYS),
-      });
-      evidence.set(`${upload.id}|${link.id}`, verdict);
-    }
-  }
-  const cleared = new Set<string>();
   const left = accountsLeftOut(accounts, {
     bankOf,
     separate,
     endsOn,
     uploadedAt,
-    evidence,
-    cleared,
   });
-  return { accounts, left, cleared };
+  return { accounts, left };
 }
 
 // The accounts left out of every figure, each with the account it may be and why.
@@ -204,13 +129,6 @@ export async function loadCounting(db: Db): Promise<Counting> {
   return countingOf(await accountsNotCounted(db));
 }
 const countingFrom = (from: Db | Counting) => (isCounting(from) ? from : loadCounting(from));
-
-// The uploads counted although they sit beside a linked account of the same bank and kind: what
-// each shows says they are another account (src/planning/same-account.ts). Said to the invariant,
-// which would otherwise ask why they are counted.
-export async function uploadsClearedByEvidence(db: Db): Promise<Set<string>> {
-  return (await readCounting(db)).cleared;
-}
 
 // What is left out for want of proof it is another account, in the words under net worth
 // (src/insights/net-worth.ts): not the certain copies, which the books check says, and only accounts

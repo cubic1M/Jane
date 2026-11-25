@@ -175,18 +175,14 @@ export const copiesToLeaveOut = (
 // are; an uploaded statement counts only when it can't be a copy of one of them, nor an earlier
 // upload of an account uploaded again. Left out, with the account it may be and why:
 //   copy         the same last four, type and subtype at another link or an upload (a certain copy);
-//   same_account an upload whose lines (or closing balance) match a linked account's: the same
-//                account, by what each shows (src/planning/same-account.ts); no question asked;
 //   maybe_same   an upload with no last four to tell it from a linked account at the same bank (or
-//                a re-link naming the subtype another way) that couldn't be compared with it (no
-//                days in common, too few lines), unless the person said it is another;
+//                a re-link naming the subtype another way), unless the person said it is another;
 //   older_upload an upload of an account uploaded again: the one whose statement ends later counts
 //                (its closing balance is the later one), a tie going to the newer;
 //   linked_twice one account linked at two banks' logins with the same last four, named another way.
 // `bankOf` is a link's bank, or null for an upload (which goes by its own name); `separate` holds the
 // uploads the person said are accounts of their own; `endsOn` is each upload's statement end day and `uploadedAt` when it was uploaded (the tie-break).
-export type LeftOutReason =
-  "copy" | "same_account" | "maybe_same" | "older_upload" | "linked_twice";
+export type LeftOutReason = "copy" | "maybe_same" | "older_upload" | "linked_twice";
 export type LeftOut = { reason: LeftOutReason; sameAs: Acct };
 export type CountAcct = Acct & { source?: string | null };
 export type CountContext = {
@@ -194,24 +190,7 @@ export type CountContext = {
   separate?: ReadonlySet<string>;
   endsOn?: ReadonlyMap<string, string>;
   uploadedAt?: ReadonlyMap<string, string>;
-  // What comparing an upload with a link said, by `${upload id}|${link id}`; a pair not in it is
-  // unknown. An upload every link it could be said is different counts, and is added to `cleared`.
-  evidence?: ReadonlyMap<string, "same" | "different" | "unknown">;
-  cleared?: Set<string>;
 };
-
-// The upload and link pairs the copy rule can't settle: what comparing them (src/planning/
-// same-account.ts) is asked of. A pair is [upload, link].
-export function uploadLinkPairs<T extends CountAcct>(
-  accounts: readonly T[],
-  bankOf: (a: T) => string | null,
-): [T, T][] {
-  const copies = new Set(duplicateAccounts([...accounts]).map((d) => d.duplicate.id));
-  const left = accounts.filter((a) => !copies.has(a.id));
-  return maybeSameAccounts(left, bankOf)
-    .filter(({ a, b }) => isUpload(a) !== isUpload(b))
-    .map(({ a, b }) => (isUpload(a) ? [a, b] : [b, a]));
-}
 
 // An upload is a statement the person gave Jane; anything else was read from a bank or broker.
 export const isUpload = (a: Pick<CountAcct, "source" | "itemId">) =>
@@ -224,8 +203,6 @@ export function accountsLeftOut(
     separate = new Set(),
     endsOn = new Map(),
     uploadedAt = new Map(),
-    evidence = new Map(),
-    cleared,
   }: CountContext = {},
 ): Map<string, LeftOut> {
   const out = new Map<string, LeftOut>();
@@ -261,31 +238,16 @@ export function accountsLeftOut(
   // Links against uploads first, so what an upload is held back for never depends on the order of
   // ids: then uploads against uploads, where the earlier statement is the earlier upload whether or
   // not it was also held back as a maybe-copy of a link (three accounts, A and B uploaded and L
-  // linked, say the same in any id order: L counts, B is held back for L, A for B). An upload beside
-  // links is compared with each by what they show: the same as one of them leaves it out, different
-  // from all of them counts it, and neither (nothing to compare) leaves it out as Plaid wins.
-  const beside = new Map<string, CountAcct[]>();
+  // linked, say the same in any id order: L counts, B is held back for L, A for B).
   for (const { a, b } of pairs) {
     if (isUpload(a) !== isUpload(b)) {
       const [upload, link] = isUpload(a) ? [a, b] : [b, a];
       if (!out.has(upload.id) && !separate.has(upload.id))
-        beside.set(upload.id, [...(beside.get(upload.id) ?? []), link]);
+        out.set(upload.id, { reason: "maybe_same", sameAs: link });
     } else if (!isUpload(a) && a.mask && b.mask && !out.has(a.id) && !out.has(b.id)) {
       // Linked twice and named differently: the older link counts.
       out.set(b.id, { reason: "linked_twice", sameAs: a });
     }
-  }
-  for (const [uploadId, links] of beside) {
-    const said = (l: CountAcct) => evidence.get(`${uploadId}|${l.id}`) ?? "unknown";
-    const sorted = [...links].sort((x, y) => x.id.localeCompare(y.id));
-    const same = sorted.find((l) => said(l) === "same");
-    if (same) out.set(uploadId, { reason: "same_account", sameAs: same });
-    else if (sorted.every((l) => said(l) === "different")) cleared?.add(uploadId);
-    else
-      out.set(uploadId, {
-        reason: "maybe_same",
-        sameAs: sorted.find((l) => said(l) === "unknown") ?? sorted[0],
-      });
   }
   // The later statement counts; a tie goes to the one uploaded last, then the newer id.
   const later = (a: CountAcct, b: CountAcct) => {

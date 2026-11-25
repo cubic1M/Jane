@@ -23,4 +23,3 @@ export * from "./detection/alerts";
 export * from "./detection/unusual";
 export * from "./detection/rent-to-a-person";
 export * from "./detection/live";
-export * from "./detection/same-account";

@@ -10,8 +10,6 @@ export function countingProblems(
   counted: readonly CountAcct[],
   bankOf: (a: CountAcct) => string | null,
   separate: ReadonlySet<string> = new Set(),
-  // Uploads counted because what they show differs from the link beside them (src/planning/same-account.ts).
-  cleared: ReadonlySet<string> = new Set(),
 ): string[] {
   const lines: string[] = [];
   const ids = new Set<string>();
@@ -51,7 +49,7 @@ export function countingProblems(
     // Two links with no last four can't be told apart or merged: not asked of them.
     if (bothLinked && !(a.mask && b.mask)) continue;
     const mine = [a, b].filter((x) => uploads.includes(x));
-    if (mine.some((x) => separate.has(x.id) || cleared.has(x.id))) continue;
+    if (mine.some((x) => separate.has(x.id))) continue;
     lines.push(
       `${a.name} (${isUpload(a) ? "upload" : "link"}) and ${b.name} (${isUpload(b) ? "upload" : "link"}) may be one account, both counted`,
     );

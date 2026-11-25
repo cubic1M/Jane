@@ -96,20 +96,14 @@ describe("accounts that may be one account counted twice", () => {
   it("says what Jane did, with no chore for the person", () => {
     const left = { left: { name: "Chase checking" }, with: { name: "TOTAL CHECKING" } };
     expect(maybeSameWords([{ ...left, reason: "maybe_same" }])).toBe(
-      "Chase checking (uploaded) looks like a copy of TOTAL CHECKING (linked), and there was nothing to compare it with, so Jane left it out of net worth.",
+      "Chase checking (uploaded) looks like a copy of TOTAL CHECKING (linked), so Jane left it out of net worth.",
     );
     expect(maybeSameWords([{ ...left, reason: "older_upload" }])).toBe(
       "Chase checking (uploaded) looks like an earlier upload of TOTAL CHECKING, so Jane counted the later one only.",
     );
-    expect(maybeSameWords([{ ...left, reason: "same_account" }])).toBe(
-      "Chase checking (uploaded) shows the same activity as TOTAL CHECKING (linked), so Jane left it out of net worth.",
-    );
-    const three = [1, 2, 3].map(() => ({ ...left, reason: "same_account" as const }));
+    const three = [1, 2, 3].map(() => ({ ...left, reason: "maybe_same" as const }));
     expect(maybeSameWords(three)).toBe(
       "3 uploaded statements look like copies of your linked accounts, so they are left out of net worth.",
-    );
-    expect(maybeSameWords([...three.slice(0, 2), { ...left, reason: "maybe_same" }])).toBe(
-      "3 uploaded statements look like copies of your linked accounts, so they are left out of net worth. Jane could not compare 1 of them with the bank's own lines.",
     );
     expect(maybeSameWords([])).toBeNull();
     expect(maybeSameWords(three)).not.toMatch(/remove|say so|if it is/i);
