@@ -6,7 +6,7 @@ import {
 } from "@/config/tight-money";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
-import { forecastAccounts, comingUpBills } from "@/detection/forecast";
+import { forecastAccounts, comingUpBills, nextUnevenPayBy } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -119,9 +119,28 @@ export async function loadTightMoney(
     }),
   ]);
   const requests = rows.map(view);
-  const forecast = forecastAccounts(input, FORECAST_DAYS)[0];
-  const shortfall = forecast ? firstShortfall(forecast.days) : null;
-  if (!shortfall) return { ...empty(asOf, true), requests };
+  // Every account's forecast, up to where its low point can be trusted (past the next likely
+  // deposit of uneven pay the series has bills and no pay, as the forecast itself says). The
+  // plan is for the earliest shortfall; on the same day, the deeper one.
+  let picked: {
+    forecast: ReturnType<typeof forecastAccounts>[number];
+    shortfall: Shortfall;
+  } | null = null;
+  for (const forecast of forecastAccounts(input, FORECAST_DAYS)) {
+    const by = nextUnevenPayBy(input, [forecast.accountId]);
+    const shortfall = firstShortfall(forecast.days.filter((day) => !by || day.date < by));
+    if (
+      shortfall &&
+      (!picked ||
+        shortfall.date < picked.shortfall.date ||
+        (shortfall.date === picked.shortfall.date &&
+          shortfall.shortCents > picked.shortfall.shortCents))
+    ) {
+      picked = { forecast, shortfall };
+    }
+  }
+  if (!picked) return { ...empty(asOf, true), requests };
+  const { forecast, shortfall } = picked;
   const payday = nextPayday(input, FORECAST_DAYS);
   // The bills to get through: from today to the shortfall or the next payday, whichever is later.
   const until = payday && payday.date > shortfall.date ? payday.date : shortfall.date;

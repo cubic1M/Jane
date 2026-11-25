@@ -12,7 +12,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { loadPayoff } from "@/lib/debt-plan";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { healthInput } from "@/lib/health-score";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
@@ -116,21 +116,27 @@ export async function adoptPlan(
   run: ScenarioRun,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string> {
-  const db = scopedFor(userId, client);
-  await db.whatIfPlans.updateMany({
-    where: { scenario: run.scenario, status: "adopted" },
-    data: { status: "dropped" },
-  });
-  const row = await db.whatIfPlans.create({
-    data: {
-      userId,
-      scenario: run.scenario,
-      params: run.params as unknown as Prisma.InputJsonObject,
-      changes: run.plan as unknown as Prisma.InputJsonArray,
-      createdAt: now,
+  // One transaction: if saving the new plan fails, the old one stays adopted.
+  const row = await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.whatIfPlan.updateMany({
+        where: { userId, scenario: run.scenario, status: "adopted" },
+        data: { status: "dropped" },
+      });
+      return tx.whatIfPlan.create({
+        data: {
+          userId,
+          scenario: run.scenario,
+          params: run.params as unknown as Prisma.InputJsonObject,
+          changes: run.plan as unknown as Prisma.InputJsonArray,
+          createdAt: now,
+        },
+        select: { id: true },
+      });
     },
-    select: { id: true },
-  });
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "what_if_adopted",

@@ -70,39 +70,47 @@ export async function loadYearPlan(
   const startMonth = inForce?.startMonth ?? currentMonth;
   const lastMonth = shiftMonth(startMonth, YEAR_PLAN_MONTHS - 1);
 
-  const [health, goals, payoff, auto, deadlines, transfers, runs, estimates] = await Promise.all([
-    healthInput(userId, input, { client, now }),
-    listGoals(userId, { client, now }),
-    loadPayoff(userId, { client, now }),
-    db.autoInvestPlans.findFirst({ where: { status: "active" }, select: { amountCents: true } }),
-    listDeadlines(userId, { client, now }),
-    db.moneyTransfers.findMany({
-      where: {
-        status: "completed",
-        runOn: {
-          gte: new Date(`${startMonth}-01T00:00:00Z`),
-          lt: new Date(`${currentMonth}-01T00:00:00Z`),
+  const [health, goals, payoff, auto, deadlines, farDeadlines, transfers, runs, estimates] =
+    await Promise.all([
+      healthInput(userId, input, { client, now }),
+      listGoals(userId, { client, now }),
+      loadPayoff(userId, { client, now }),
+      db.autoInvestPlans.findFirst({ where: { status: "active" }, select: { amountCents: true } }),
+      listDeadlines(userId, { client, now }),
+      // Hand-entered dates past the list's horizon but inside the twelve months: the two sets
+      // don't overlap (the default stops at the horizon, this starts after it).
+      listDeadlines(userId, { client, now, furtherOut: true }),
+      db.moneyTransfers.findMany({
+        where: {
+          status: "completed",
+          runOn: {
+            gte: new Date(`${startMonth}-01T00:00:00Z`),
+            lt: new Date(`${currentMonth}-01T00:00:00Z`),
+          },
         },
-      },
-      select: { runOn: true, amountCents: true, purpose: true },
-    }),
-    db.autoInvestRuns.findMany({
-      where: {
-        status: "invested",
-        paydayOn: {
-          gte: new Date(`${startMonth}-01T00:00:00Z`),
-          lt: new Date(`${currentMonth}-01T00:00:00Z`),
+        select: { runOn: true, amountCents: true, purpose: true, planKey: true },
+      }),
+      db.autoInvestRuns.findMany({
+        where: {
+          status: "invested",
+          paydayOn: {
+            gte: new Date(`${startMonth}-01T00:00:00Z`),
+            lt: new Date(`${currentMonth}-01T00:00:00Z`),
+          },
         },
-      },
-      select: { paydayOn: true, amountCents: true },
-    }),
-    // The estimated tax payments the tax calendar plans (spec step 223), as it says them: the
-    // taxes sector's amounts, not $0 because their reminders carry no amount
-    // (docs/feature-audit.md, cluster 12). A problem there leaves them out.
-    loadSelfEmployed(userId, { client, now })
-      .then((se) => (se.federal.needed ? se.federal.payments : []))
-      .catch(() => []),
-  ]);
+        select: { paydayOn: true, amountCents: true },
+      }),
+      // The estimated tax payments the tax calendar plans (spec step 223), as it says them: the
+      // taxes sector's amounts, not $0 because their reminders carry no amount
+      // (docs/feature-audit.md, cluster 12). A problem there leaves them out. The state's
+      // payments count too, when it says they're needed.
+      loadSelfEmployed(userId, { client, now })
+        .then((se) => [
+          ...(se.federal.needed ? se.federal.payments : []),
+          ...(se.state?.needed ? se.state.payments : []),
+        ])
+        .catch(() => []),
+    ]);
 
   const actuals: YearInput["actuals"] = {};
   const bump = (month: string, key: "saving" | "debt" | "investing", cents: number) => {
@@ -110,7 +118,9 @@ export async function loadYearPlan(
     actuals[month][key] += cents;
   };
   for (const t of transfers) {
-    if (t.purpose === "goal") bump(monthOf(t.runOn), "saving", t.amountCents);
+    // The steady paycheck is a withdrawal from the buffer into checking, not saving.
+    if (t.purpose === "goal" && !t.planKey?.startsWith("steady:"))
+      bump(monthOf(t.runOn), "saving", t.amountCents);
     if (t.purpose === "debt") bump(monthOf(t.runOn), "debt", t.amountCents);
   }
   for (const r of runs) bump(monthOf(r.paydayOn), "investing", r.amountCents);
@@ -135,7 +145,7 @@ export async function loadYearPlan(
           ? [{ month, sector: "taxes" as const, cents: p.cents }]
           : [];
       }),
-      ...deadlines.flatMap((d) => {
+      ...[...deadlines, ...farDeadlines].flatMap((d) => {
         const sector = sectorOf(d);
         const month = monthOf(d.date);
         return sector &&
@@ -156,9 +166,12 @@ export async function loadYearPlan(
     const data = { months: months as unknown as Prisma.InputJsonArray };
     const { count } = await db.yearPlans.updateMany({ where: { startMonth }, data });
     if (count === 0) {
-      await db.yearPlans
-        .create({ data: { userId, startMonth, ...data } })
-        .catch(() => db.yearPlans.updateMany({ where: { startMonth }, data }));
+      await db.yearPlans.create({ data: { userId, startMonth, ...data } }).catch(async (error) => {
+        // A concurrent insert of the same month is fine: the update then finds it. Any other
+        // failure that saved no plan is thrown, not returned as if it were kept.
+        const { count: updated } = await db.yearPlans.updateMany({ where: { startMonth }, data });
+        if (updated === 0) throw error;
+      });
     }
   }
   return { startMonth, currentMonth, months, totals: yearTotals(months) };
