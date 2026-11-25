@@ -1,3 +1,4 @@
+import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -90,7 +91,7 @@ export async function loadInvestmentTaxes(
   // sale fell out of the Taxes page's count while still inside its window (gate C, 11-15).
   const today = await todayOf(userId, { client, now });
   const accounts = await db.accounts.findMany({
-    where: { type: "investment" },
+    where: { type: "investment", ...(await onlyCounted(db)) },
     select: { id: true, subtype: true },
   });
   const taxable = new Set(
@@ -110,6 +111,7 @@ export async function loadInvestmentTaxes(
     soldOutSales: 0,
   };
   if (taxable.size === 0) return empty;
+  const countedRows = await onlyCountedRows(db);
   const [holdings, transactions] = await Promise.all([
     db.holdings.findMany({
       where: { accountId: { in: [...taxable] } },
@@ -124,7 +126,7 @@ export async function loadInvestmentTaxes(
       orderBy: [...HOLDINGS_ORDER],
     }),
     db.investmentTransactions.findMany({
-      where: { type: { in: ["buy", "sell"] } },
+      where: { type: { in: ["buy", "sell"] }, ...countedRows },
       select: {
         accountId: true,
         securityId: true,

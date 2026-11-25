@@ -19,6 +19,7 @@ import {
   type RefundPlanItem,
 } from "@/planning/tax-refund";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 
 // Tax refunds (spec step 125): spotted when they land, matched to the estimate for their
 // year, and (demo advice) a plan for where they could go. "Set it up" adds the goals and
@@ -40,14 +41,20 @@ const EMERGENCY_GOAL = "Emergency fund";
 
 async function planInputs(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [monthly, savings, cards, goals] = await Promise.all([
     loadCushionSpendCents(userId, { client, now }),
     db.accounts.findMany({
-      where: { type: "depository", subtype: { in: ["savings", "money market", "cd"] } },
+      where: {
+        type: "depository",
+        subtype: { in: ["savings", "money market", "cd"] },
+        ...countedWhere,
+      },
       select: { currentBalanceCents: true },
     }),
     db.liabilities.findMany({
-      where: { kind: "credit" },
+      where: { kind: "credit", ...countedRows },
       select: { aprBps: true, account: { select: { name: true, currentBalanceCents: true } } },
     }),
     listGoals(userId, { client, now }),

@@ -87,20 +87,25 @@ describe("accounts that may be one account counted twice", () => {
     ).toEqual([]);
   });
 
-  it("says where one is removed: an upload on the import page, links in Settings", () => {
-    const up = { a: { name: "A", itemId: null }, b: { name: "B", itemId: "i1" } };
-    const links = { a: { name: "A", itemId: "i1" }, b: { name: "B", itemId: "i2" } };
-    expect([maybeSameHref([up]), maybeSameHref([links])]).toEqual(["/import", "/settings#banks"]);
+  it("says where to look: an upload on the import page, a second link in Settings", () => {
+    const up = { reason: "maybe_same" as const, left: { name: "A" }, with: { name: "B" } };
+    const link = { ...up, reason: "linked_twice" as const };
+    expect([maybeSameHref([up]), maybeSameHref([link])]).toEqual(["/import", "/settings#banks"]);
   });
 
-  it("says each pair by name, both counted, and how to remove one", () => {
-    const [pair] = maybeSameAccounts(
-      [acct("a", null, "Chase checking", null), acct("b", "i1", "TOTAL CHECKING", "1234")],
-      bank,
+  it("says what Jane did, with no chore for the person", () => {
+    const left = { left: { name: "Chase checking" }, with: { name: "TOTAL CHECKING" } };
+    expect(maybeSameWords([{ ...left, reason: "maybe_same" }])).toBe(
+      "Chase checking (uploaded) looks like a copy of TOTAL CHECKING (linked), so Jane left it out of net worth.",
     );
-    expect(maybeSameWords([pair!])).toBe(
-      "Chase checking (uploaded) and TOTAL CHECKING (linked) may be the same account; net worth counts both. If they are the same, remove one.",
+    expect(maybeSameWords([{ ...left, reason: "older_upload" }])).toBe(
+      "Chase checking (uploaded) looks like an earlier upload of TOTAL CHECKING, so Jane counted the later one only.",
+    );
+    const three = [1, 2, 3].map(() => ({ ...left, reason: "maybe_same" as const }));
+    expect(maybeSameWords(three)).toBe(
+      "3 uploaded statements look like copies of your linked accounts, so they are left out of net worth.",
     );
     expect(maybeSameWords([])).toBeNull();
+    expect(maybeSameWords(three)).not.toMatch(/remove|say so|if it is/i);
   });
 });

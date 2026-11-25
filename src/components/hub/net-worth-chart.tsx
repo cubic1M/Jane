@@ -497,8 +497,8 @@ export function NetWorthChart({
       {maybeSame && (
         <p data-net-worth-maybe-same="" className="text-sm text-zinc-600 dark:text-zinc-400">
           {maybeSame}{" "}
-          <Link href={maybeSameHref} className="font-medium underline">
-            Remove one
+          <Link href={maybeSameHref} className="underline">
+            See them
           </Link>
         </p>
       )}

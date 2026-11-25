@@ -9,6 +9,7 @@ import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { todayOf } from "@/lib/today";
 import { taxPaymentsFor } from "@/planning/tax-income";
 import { workOutSetAside, type TaxSetAside } from "@/planning/tax-set-aside";
+import { onlyCounted } from "@/lib/account-copies";
 
 // The tax left to cover (src/planning/tax-set-aside.ts), from the person's own estimate: the one
 // figure the card, Safe to spend, the chat and the Taxes page all use.
@@ -40,12 +41,13 @@ async function work(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxSetAsideView> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [view, advice, savings, goals] = await Promise.all([
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
     // Not checking: Safe to spend already starts from checking, so money there isn't apart.
     db.accounts.findMany({
-      where: { type: "depository", NOT: { subtype: "checking" } },
+      where: { type: "depository", NOT: { subtype: "checking" }, ...countedWhere },
       select: { id: true, name: true, currentBalanceCents: true },
     }),
     db.savingsGoals.findMany({ select: { name: true, accountId: true, manualSavedCents: true } }),

@@ -10,12 +10,13 @@ import { stubTestKeys } from "@/lib/__fixtures__/env";
 import { runBooksCheck } from "@/lib/books";
 import { booksFix } from "@/lib/books-fix";
 import { encrypt } from "@/lib/crypto";
+import { scopedFor } from "@/lib/db-scoped";
+import { keepAccountSeparate, undoKeepSeparate } from "@/lib/import/separate";
 import { loadMaybeSame, loadNetWorthInputs } from "@/lib/net-worth-history";
 
-// Gate B, 11-24: a Wells Fargo-style upload has no last four, so it can't be matched to the same
-// account once linked, and net worth counted both (twice the truth). Both are still counted, and
-// the person is told where they look: under net worth, and on the books notice, with where to
-// remove one.
+// The founder's rule, 11-24: net worth matches what Plaid sends. A Wells Fargo-style upload has no
+// last four, so it can't be told from the same account once linked; it is left out, and the person
+// is told under net worth and on the books notice, with one tap to say it is another account.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-24T18:00:00Z");
@@ -80,22 +81,40 @@ describe.runIf(url)(
       vi.unstubAllEnvs();
     });
 
-    it("counts both, as today, and says so under net worth and on the books notice", async () => {
+    it("leaves the upload out, says why under net worth and on the books notice", async () => {
       const { worth } = await loadNetWorthInputs(userId!, { client });
-      expect(worth.netCents).toBe(8_000_000 * 2 + 100_000);
+      // The link's balance and the savings upload that can't be a copy of it; not the checking upload.
+      expect(worth.netCents).toBe(8_000_000 + 100_000);
       const said = await loadMaybeSame(userId!, { client });
-      const words = said?.words;
       expect(said?.href).toBe("/import");
-      expect(words).toBe(
-        "Wells Fargo checking (uploaded) and Everyday Checking (linked) may be the same account; net worth counts both. If they are the same, remove one.",
+      expect(said?.words).toBe(
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
+      );
+      expect(said?.short).toBe(
+        "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), so Jane left it out of net worth.",
       );
       const books = await runBooksCheck(userId!, { client, now: NOW });
       const issue = books.open.find((i) => i.kind === "maybe_same")!;
-      expect(issue.words).toBe(words);
-      expect(booksFix({ ...issue } as never)).toEqual({ label: "Remove one", href: "/import" });
-      expect(said?.short).toBe(
-        "Wells Fargo checking (uploaded) and Everyday Checking (linked) may be the same account; net worth counts both.",
-      );
+      expect(issue.words).toBe(said?.words);
+      expect(booksFix({ ...issue } as never)).toEqual({
+        label: "See it",
+        href: "/import",
+      });
+    });
+
+    it("counts it, and says nothing, once the person says it is a different account", async () => {
+      const upload = await client.account.findFirstOrThrow({
+        where: { userId, name: "Wells Fargo checking" },
+      });
+      expect(await keepAccountSeparate(scopedFor(userId!, client), upload.id)).toBe(true);
+      const { worth } = await loadNetWorthInputs(userId!, { client });
+      expect(worth.netCents).toBe(8_000_000 * 2 + 100_000);
+      expect(await loadMaybeSame(userId!, { client })).toBeNull();
+      const books = await runBooksCheck(userId!, { client, now: NOW });
+      expect(books.open.map((i) => i.kind)).not.toContain("maybe_same");
+      // Taken back, it is left out again.
+      expect(await undoKeepSeparate(scopedFor(userId!, client), upload.id)).toBe(true);
+      expect((await loadNetWorthInputs(userId!, { client })).worth.netCents).toBe(8_100_000);
     });
 
     it("says nothing when the upload has no balance: only the linked one is counted", async () => {

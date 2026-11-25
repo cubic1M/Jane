@@ -9,6 +9,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { actingPartnerFor, partnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
 import { findSavings, type SavingCandidate, type SavingPolicy } from "./saving-rules";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Paying less for the same cover (spec step 196). Jane finds the cheaper ways to pay for the
 // cover the person keeps (pay in full, autopay, paperless, one carrier for car and home, a
@@ -51,8 +52,9 @@ const toRule = (p: Policy): SavingPolicy => p;
 
 // What the person has in the bank to pay a year at once or cover a higher deductible.
 async function cashOf(userId: string, client: PrismaClient): Promise<number> {
-  const accounts = await scopedFor(userId, client).accounts.findMany({
-    where: { type: "depository" },
+  const db = scopedFor(userId, client);
+  const accounts = await db.accounts.findMany({
+    where: { type: "depository", ...(await onlyCounted(db)) },
     select: { currentBalanceCents: true },
   });
   return accounts.reduce((sum, a) => sum + Math.max(0, a.currentBalanceCents ?? 0), 0);

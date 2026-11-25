@@ -31,6 +31,7 @@ import {
   trialUploadRefusal,
   uploadFailed,
 } from "@/lib/import/upload";
+import { keepAccountSeparate, undoKeepSeparate } from "@/lib/import/separate";
 import { requireUser } from "@/lib/session";
 
 // The /import form: adding an account, the preview, and the import, which saves the rows and
@@ -188,4 +189,28 @@ export async function startOverAction(): Promise<ActionResult> {
   if (!db) return { ok: false, error: NOT_ALLOWED };
   if (!(await mayRescan(db.userId, "trialRemovals"))) return { ok: false, error: TOO_MANY_RESCANS };
   return afterRemoval(await startOver(db));
+}
+
+// "This is a different account" on an upload net worth left out as a possible copy of a linked
+// account (src/lib/import/separate.ts): it counts from now on, and the figures follow at once.
+export async function keepSeparateAction(accountId: string): Promise<ActionResult> {
+  return setSeparate(accountId, keepAccountSeparate);
+}
+
+export async function undoSeparateAction(accountId: string): Promise<ActionResult> {
+  return setSeparate(accountId, undoKeepSeparate);
+}
+
+async function setSeparate(
+  accountId: string,
+  change: (db: ScopedDb, accountId: string) => Promise<boolean>,
+): Promise<ActionResult> {
+  if (!isId(accountId)) return { ok: false, error: NOT_ALLOWED };
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  if (!(await change(db, accountId)))
+    return { ok: false, error: "That account isn't here any more." };
+  // Every page that shows a total: the cached pages come back from the browser's memory otherwise.
+  for (const path of ["/import", "/home", "/net-worth", "/settings"]) revalidatePath(path);
+  return { ok: true };
 }

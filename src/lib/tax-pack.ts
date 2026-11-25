@@ -1,3 +1,4 @@
+import { liabilitiesOnCounted } from "@/lib/account-copies";
 import { INTEREST_LOAN_KINDS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -19,7 +20,7 @@ export async function loadTaxPack(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<TaxPack> {
   const db = scopedFor(userId, client);
-  const [transactions, loans, overrides, forms, profile, residency, side] = await Promise.all([
+  const [transactions, loansAll, overrides, forms, profile, residency, side] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -43,7 +44,12 @@ export async function loadTaxPack(
     }),
     db.liabilities.findMany({
       where: { kind: { in: [...INTEREST_LOAN_KINDS] } },
-      select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+      select: {
+        accountId: true,
+        kind: true,
+        ytdInterestPaidCents: true,
+        account: { select: { name: true } },
+      },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),
     loadOverrides(userId, { client }),
@@ -52,6 +58,8 @@ export async function loadTaxPack(
     loadResidency(userId, year, { client }),
     loadSideIncome(userId, { client, now }),
   ]);
+  // A loan linked twice counts once, with the interest either link reported.
+  const loans = await liabilitiesOnCounted(db, loansAll);
   const rental = side.year === year ? side.rental : null;
   return buildTaxPack({
     year,

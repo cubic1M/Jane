@@ -13,6 +13,7 @@ import { nextLifeQuestion, type LifeAnswers, type LifeDecision } from "./life-un
 import { actingPartnerFor, partnerFor, type InsurancePartner, type QuoteCarrier } from "./partner";
 import { listPolicies } from "./policies";
 import { DAY_MS as DAY, isoDay as day } from "@/lib/dates";
+import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 
 // Life insurance, sized and bought (spec step 153). Demo advice only. Jane works out how
 // much cover the person needs and for how long, from their own accounts, shows the method,
@@ -104,6 +105,8 @@ export async function lifeInput(
 ): Promise<Omit<LifeNeedInput, "dependants"> & { dependants: number | null }> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - LIFE_PAY_LOOKBACK_DAYS * DAY);
+  const countedWhere = await onlyCounted(db);
+  const countedRows = await onlyCountedRows(db);
   const [household, income, accounts, mortgages, policies, facts] = await Promise.all([
     loadHousehold(userId, { client, now }),
     db.transactions.aggregate({
@@ -111,9 +114,13 @@ export async function lifeInput(
       _sum: { amountCents: true },
     }),
     db.accounts.findMany({
+      where: countedWhere,
       select: { type: true, subtype: true, currentBalanceCents: true },
     }),
-    db.liabilities.findMany({ where: { kind: "mortgage" }, select: { payoffDate: true } }),
+    db.liabilities.findMany({
+      where: { kind: "mortgage", ...countedRows },
+      select: { payoffDate: true },
+    }),
     listPolicies(userId, { client }),
     profileFacts(userId, { client, now }),
   ]);

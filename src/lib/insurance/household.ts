@@ -24,6 +24,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { timezoneOf, todayOf } from "@/lib/today";
 import { runsBusiness, type SelfEmployment } from "./business-rules";
 import { partnerFor } from "./partner";
+import { onlyCounted } from "@/lib/account-copies";
 
 // The household facts that matter for cover (spec step 102): whether the person owns or
 // rents, and how many cars, dependants and pets. What they typed wins; until they do,
@@ -153,6 +154,7 @@ async function loadHouseholdFrom(
   const reach = Date.parse(`${await dataReach(db, today, timezone)}T00:00:00Z`);
   const days = (n: number) => new Date(reach - n * 86_400_000);
   const since = days(RENT_LOOKBACK_DAYS);
+  const countedWhere = await onlyCounted(db);
   const [
     saved,
     loans,
@@ -190,7 +192,7 @@ async function loadHouseholdFrom(
       },
     }),
     db.accounts.findMany({
-      where: { type: { in: ["depository", "investment"] } },
+      where: { type: { in: ["depository", "investment"] }, ...countedWhere },
       select: { currentBalanceCents: true },
     }),
     db.transactions.aggregate({

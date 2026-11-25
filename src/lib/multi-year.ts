@@ -27,6 +27,7 @@ import {
 } from "@/planning/multi-year";
 import { isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Tax moves over several years (spec step 220), loaded from the person's own plan: the
 // year's estimate (step 120), the pay and the retirement accounts Jane sees, what they told
@@ -81,10 +82,11 @@ export async function loadMultiYear(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [advice, accounts, investments, profile, events, answers] = await Promise.all([
     loaded ? loaded.advice : adviceMode(userId, { client }),
     db.accounts.findMany({
-      where: { type: "investment" },
+      where: { type: "investment", ...countedWhere },
       select: { subtype: true, currentBalanceCents: true },
     }),
     loadInvestmentTaxes(userId, year, { client, now }),

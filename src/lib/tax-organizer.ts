@@ -1,3 +1,4 @@
+import { liabilitiesOnCounted } from "@/lib/account-copies";
 import { accountKindOf } from "@/data-sources/types";
 import { cache } from "react";
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
@@ -261,7 +262,7 @@ async function loadTaxFormsFrom(
 ): Promise<TaxFormsView> {
   const db = scopedFor(userId, client);
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);
-  const [transactions, accounts, loans, received] = await Promise.all([
+  const [transactions, accounts, loansAll, received] = await Promise.all([
     db.transactions.findMany({
       // Income, and payments on loans, whose lenders send a 1098 or 1098-E (debugger 11-02).
       where: {
@@ -293,11 +294,18 @@ async function loadTaxFormsFrom(
     }),
     // Banks report loan interest for the current year only; for a past year it's unknown.
     db.liabilities.findMany({
-      select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+      select: {
+        accountId: true,
+        kind: true,
+        ytdInterestPaidCents: true,
+        account: { select: { name: true } },
+      },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
   ]);
+  // A loan linked twice counts once, with the interest either link reported.
+  const loans = await liabilitiesOnCounted(db, loansAll);
   const got = new Set(received.map((r) => r.key));
   const forms = expectedForms({
     year,

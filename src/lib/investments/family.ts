@@ -17,6 +17,7 @@ import { addDemoExtra } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { childRothRoom, giftOk, percentFunded } from "@/planning/family";
 import { systemDb, systemTransaction } from "@/lib/system-db";
+import { onlyCounted } from "@/lib/account-copies";
 
 const WHY = "A link's token is the key: nobody is signed in";
 
@@ -54,6 +55,7 @@ export async function loadFamily(
 ): Promise<FamilyView> {
   const db = scopedFor(userId, client);
   const year = now.getUTCFullYear();
+  const countedWhere = await onlyCounted(db);
   const [advice, kids, plans, goals, links, accounts, demo] = await Promise.all([
     adviceMode(userId, { client }),
     db.familyChildren.findMany({ orderBy: { createdAt: "asc" } }),
@@ -68,7 +70,11 @@ export async function loadFamily(
       },
     }),
     db.accounts.findMany({
-      where: { type: "investment", subtype: { in: ["custodial", "child roth"] } },
+      where: {
+        type: "investment",
+        subtype: { in: ["custodial", "child roth"] },
+        ...countedWhere,
+      },
       select: { id: true, name: true, subtype: true, currentBalanceCents: true },
     }),
     db.plaidItems.findFirst({

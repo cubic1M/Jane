@@ -4,7 +4,10 @@ import Link from "next/link";
 import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
 import { accountKindOf } from "@/data-sources/types";
+import { LeftOutAccount } from "./left-out";
 import { UploadHistory } from "./upload-history";
+import { maybeSamePair } from "@/insights/net-worth";
+import { leftOutNotes, SEPARATE_ACCOUNT } from "@/lib/account-copies";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
@@ -31,7 +34,17 @@ async function ImportContent({
   const { columns } = await searchParams;
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
-  const [accounts, history, totals, uploaded, asks, linkedRows, timezone] = await Promise.all([
+  const [
+    accounts,
+    history,
+    totals,
+    uploaded,
+    asks,
+    linkedRows,
+    timezone,
+    notCounted,
+    separateRows,
+  ] = await Promise.all([
     listAccountSummaries(db),
     listUploads(db),
     uploadedTotals(db),
@@ -50,6 +63,11 @@ async function ImportContent({
       },
     }),
     timezoneOf(user.id),
+    leftOutNotes(db),
+    db.janePreferences.findMany({
+      where: { kind: SEPARATE_ACCOUNT.kind },
+      select: { key: true },
+    }),
   ]);
   const linked = linkedRows.map((a) => ({
     name: a.name,
@@ -58,6 +76,11 @@ async function ImportContent({
     kind: accountKindOf(a.type, a.subtype),
   }));
   const uploadedIds = new Set(uploaded.map((a) => a.id));
+  // Uploads net worth leaves out as possible copies, and the ones the person said are their own.
+  const separateIds = new Set(
+    separateRows.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length)),
+  );
+  const ownAccounts = accounts.filter((a) => separateIds.has(a.id) && uploadedIds.has(a.id));
 
   return (
     <>
@@ -125,6 +148,36 @@ async function ImportContent({
           </Link>{" "}
           from Fidelity, Schwab, Vanguard or Robinhood.
         </p>
+      )}
+
+      {(notCounted.some((n) => n.reason !== "linked_twice") || ownAccounts.length > 0) && (
+        <section data-left-out-section="" className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Left out of your net worth</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Net worth counts what your banks send. An upload it can&apos;t tell from a linked
+            account, or from an earlier upload, is left out so nothing is counted twice.
+          </p>
+          <ul className="flex flex-col gap-4">
+            {notCounted
+              .filter((n) => n.reason !== "linked_twice")
+              .map((n) => (
+                <LeftOutAccount
+                  key={n.id}
+                  accountId={n.id}
+                  words={maybeSamePair(n)}
+                  separate={false}
+                />
+              ))}
+            {ownAccounts.map((a) => (
+              <LeftOutAccount
+                key={a.id}
+                accountId={a.id}
+                words={`${a.name} is counted as an account of its own.`}
+                separate
+              />
+            ))}
+          </ul>
+        </section>
       )}
 
       <UploadHistory

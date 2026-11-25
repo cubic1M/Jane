@@ -1,3 +1,4 @@
+import { onlyCounted } from "@/lib/account-copies";
 import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
 import { CONTRIBUTION_TX_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -18,7 +19,7 @@ export async function loadMatchPace(
   if (!plan) return null;
   const db = scopedFor(userId, client);
   const workplace = await db.accounts.findMany({
-    where: { type: "investment" },
+    where: { type: "investment", ...(await onlyCounted(db)) },
     select: { id: true, subtype: true },
   });
   const ids = workplace

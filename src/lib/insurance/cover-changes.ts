@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import {
   CARRIER_CHANGES,
   COVER_CHANGES_DAILY_LIMIT,
@@ -84,6 +85,7 @@ export async function coverEvents(
 ): Promise<CoverEventFound[]> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - COVER_EVENT_WINDOW_DAYS * DAY);
+  const countedRows = await onlyCountedRows(db);
   const [lifeEvents, cars, carLoans] = await Promise.all([
     db.lifeEvents.findMany({
       where: { startedOn: { gte: since } },
@@ -94,7 +96,12 @@ export async function coverEvents(
       select: { id: true, name: true, loanAccountId: true },
     }),
     db.liabilities.findMany({
-      where: { kind: "loan", originationDate: { gte: since }, account: { subtype: "auto" } },
+      where: {
+        kind: "loan",
+        originationDate: { gte: since },
+        account: { subtype: "auto" },
+        ...countedRows,
+      },
       select: { accountId: true, account: { select: { name: true } } },
     }),
   ]);

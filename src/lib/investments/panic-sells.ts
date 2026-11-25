@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import { PANIC_HISTORY_DAYS } from "@/config/panic-sells";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { onlyDemoBank } from "@/lib/only-demo-bank";
@@ -23,8 +24,14 @@ export async function loadPanicSells(
   }: { client?: PrismaClient; now?: Date; feed?: MarketData } = {},
 ): Promise<PanicResult> {
   const since = new Date(now.getTime() - PANIC_HISTORY_DAYS * DAY_MS);
-  const rows = await scopedFor(userId, client).investmentTransactions.findMany({
-    where: { type: "sell", date: { gte: since }, security: { is: { ticker: { not: null } } } },
+  const db = scopedFor(userId, client);
+  const rows = await db.investmentTransactions.findMany({
+    where: {
+      type: "sell",
+      date: { gte: since },
+      security: { is: { ticker: { not: null } } },
+      ...(await onlyCountedRows(db)),
+    },
     select: {
       date: true,
       quantity: true,

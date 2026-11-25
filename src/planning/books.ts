@@ -93,17 +93,23 @@ export function reconcile(accountType: string, snaps: Snap[], txns: Tx[]): Misma
 // whichever came first: the link updates each day, the statement stopped on its last day. Kept by
 // age instead, an upload made before linking won, and net worth was the statement's old balance,
 // with the live one left out (the founder's Home, 11-23: "not my current net worth").
-export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Acct }[] {
-  const out: { keep: Acct; duplicate: Acct }[] = [];
-  const seen = new Map<string, Acct>();
-  const uploaded = (a: Acct) => (a.itemId === null ? 1 : 0);
+export function duplicateAccounts<T extends Acct & { source?: string | null }>(
+  accounts: T[],
+): { keep: T; duplicate: T }[] {
+  const out: { keep: T; duplicate: T }[] = [];
+  const seen = new Map<string, T>();
+  // Where an account comes from: a Plaid link by its item, any other read (SnapTrade, say, which has
+  // no item) by its source, and a statement the person gave Jane as an upload.
+  const origin = (a: T) =>
+    a.itemId ?? (a.source && a.source !== "csv" ? `source:${a.source}` : "upload");
+  const uploaded = (a: T) => (origin(a) === "upload" ? 1 : 0);
   for (const a of [...accounts].sort(
     (x, y) => uploaded(x) - uploaded(y) || x.id.localeCompare(y.id),
   )) {
     if (!a.mask) continue;
     const key = `${a.mask}|${a.type}|${a.subtype ?? ""}`;
     const first = seen.get(key);
-    if (first && first.itemId !== a.itemId) out.push({ keep: first, duplicate: a });
+    if (first && origin(first) !== origin(a)) out.push({ keep: first, duplicate: a });
     else if (!first) seen.set(key, a);
   }
   return out;
@@ -116,12 +122,12 @@ export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Ac
 // fours differ, nor an account with another subtype of the same bank (checking and savings), nor
 // two accounts of one link. `bankOf` is the bank's name, or null for an upload, which then goes by
 // its own name ("Chase checking" is Chase's). Pure.
-export function maybeSameAccounts(
-  accounts: readonly Acct[],
-  bankOf: (a: Acct) => string | null,
-): { a: Acct; b: Acct }[] {
+export function maybeSameAccounts<T extends Acct>(
+  accounts: readonly T[],
+  bankOf: (a: T) => string | null,
+): { a: T; b: T }[] {
   const plain = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const sameBank = (a: Acct, b: Acct) => {
+  const sameBank = (a: T, b: T) => {
     const [x, y] = [bankOf(a), bankOf(b)];
     if (x && y) return plain(x) === plain(y);
     if (x || y) return plain((x ? b : a).name).includes(plain((x ?? y)!));
@@ -136,9 +142,9 @@ export function maybeSameAccounts(
       : subtype === "money market"
         ? "savings"
         : subtype;
-  const kindsAgree = (a: Acct, b: Acct) =>
+  const kindsAgree = (a: T, b: T) =>
     !a.subtype || !b.subtype || family(a.subtype) === family(b.subtype);
-  const out: { a: Acct; b: Acct }[] = [];
+  const out: { a: T; b: T }[] = [];
   const list = [...accounts].sort((x, y) => x.id.localeCompare(y.id));
   list.forEach((a, i) => {
     for (const b of list.slice(i + 1)) {
@@ -163,6 +169,103 @@ export const copiesToLeaveOut = (
   accounts: Pick<Acct, "id" | "itemId" | "mask" | "type" | "subtype">[],
 ): Set<string> =>
   new Set(duplicateAccounts(accounts.map((a) => ({ ...a, name: "" }))).map((d) => d.duplicate.id));
+
+// What net worth and every figure beside it counts (the founder's rule, 11-24: "it should always
+// match the data of Plaid and show no duplicate statements"). Plaid-linked accounts count as they
+// are; an uploaded statement counts only when it can't be a copy of one of them, nor an earlier
+// upload of an account uploaded again. Left out, with the account it may be and why:
+//   copy         the same last four, type and subtype at another link or an upload (a certain copy);
+//   maybe_same   an upload with no last four to tell it from a linked account at the same bank (or
+//                a re-link naming the subtype another way), unless the person said it is another;
+//   older_upload an upload of an account uploaded again: the one whose statement ends later counts
+//                (its closing balance is the later one), a tie going to the newer;
+//   linked_twice one account linked at two banks' logins with the same last four, named another way.
+// `bankOf` is a link's bank, or null for an upload (which goes by its own name); `separate` holds the
+// uploads the person said are accounts of their own; `endsOn` is each upload's statement end day and `uploadedAt` when it was uploaded (the tie-break).
+export type LeftOutReason = "copy" | "maybe_same" | "older_upload" | "linked_twice";
+export type LeftOut = { reason: LeftOutReason; sameAs: Acct };
+export type CountAcct = Acct & { source?: string | null };
+export type CountContext = {
+  bankOf?: (a: CountAcct) => string | null;
+  separate?: ReadonlySet<string>;
+  endsOn?: ReadonlyMap<string, string>;
+  uploadedAt?: ReadonlyMap<string, string>;
+};
+
+// An upload is a statement the person gave Jane; anything else was read from a bank or broker.
+export const isUpload = (a: Pick<CountAcct, "source" | "itemId">) =>
+  a.source ? a.source === "csv" : a.itemId === null;
+
+export function accountsLeftOut(
+  accounts: readonly CountAcct[],
+  {
+    bankOf = () => null,
+    separate = new Set(),
+    endsOn = new Map(),
+    uploadedAt = new Map(),
+  }: CountContext = {},
+): Map<string, LeftOut> {
+  const out = new Map<string, LeftOut>();
+  for (const { keep, duplicate } of duplicateAccounts([...accounts])) {
+    out.set(duplicate.id, { reason: "copy", sameAs: keep });
+  }
+  const left = accounts.filter((a) => !out.has(a.id));
+  const plain = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const related = (a: CountAcct, b: CountAcct) => {
+    const [m, n] = [plain(a.name), plain(b.name)];
+    return m.length >= 4 && n.length >= 4 && (m.includes(n) || n.includes(m));
+  };
+  // The pairs the copy rule can't settle, and two uploads of one last four and kind, which it
+  // doesn't look at (both are "no link").
+  const pairs = maybeSameAccounts(left, bankOf);
+  const seen = new Set(pairs.map(({ a, b }) => `${a.id}|${b.id}`));
+  const sorted = [...left].sort((x, y) => x.id.localeCompare(y.id));
+  sorted.forEach((a, i) => {
+    for (const b of sorted.slice(i + 1)) {
+      if (
+        isUpload(a) &&
+        isUpload(b) &&
+        a.mask &&
+        a.mask === b.mask &&
+        a.type === b.type &&
+        a.subtype === b.subtype &&
+        related(a, b) &&
+        !seen.has(`${a.id}|${b.id}`)
+      )
+        pairs.push({ a, b });
+    }
+  });
+  // Links against uploads first, so what an upload is held back for never depends on the order of
+  // ids: then uploads against uploads, where the earlier statement is the earlier upload whether or
+  // not it was also held back as a maybe-copy of a link (three accounts, A and B uploaded and L
+  // linked, say the same in any id order: L counts, B is held back for L, A for B).
+  for (const { a, b } of pairs) {
+    if (isUpload(a) !== isUpload(b)) {
+      const [upload, link] = isUpload(a) ? [a, b] : [b, a];
+      if (!out.has(upload.id) && !separate.has(upload.id))
+        out.set(upload.id, { reason: "maybe_same", sameAs: link });
+    } else if (!isUpload(a) && a.mask && b.mask && !out.has(a.id) && !out.has(b.id)) {
+      // Linked twice and named differently: the older link counts.
+      out.set(b.id, { reason: "linked_twice", sameAs: a });
+    }
+  }
+  // The later statement counts; a tie goes to the one uploaded last, then the newer id.
+  const later = (a: CountAcct, b: CountAcct) => {
+    const [x, y] = [endsOn.get(a.id) ?? "", endsOn.get(b.id) ?? ""];
+    const [u, v] = [uploadedAt.get(a.id) ?? "", uploadedAt.get(b.id) ?? ""];
+    return x !== y ? x > y : u !== v ? u > v : a.id > b.id;
+  };
+  for (const { a, b } of pairs) {
+    if (!isUpload(a) || !isUpload(b)) continue;
+    const [older, newer] = later(a, b) ? [b, a] : [a, b];
+    if (separate.has(older.id)) continue;
+    const held = out.get(older.id);
+    // Behind the latest one of them: A is the earlier of B and C, said as C's earlier upload.
+    if (held?.reason === "older_upload" && later(held.sameAs, newer)) continue;
+    out.set(older.id, { reason: "older_upload", sameAs: newer });
+  }
+  return out;
+}
 
 const same = (a: Tx, b: Tx) =>
   a.date === b.date &&

@@ -6,9 +6,7 @@ import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import {
   duplicateAccounts,
-  copiesToLeaveOut,
   importsEnded,
-  maybeSameAccounts,
   linkProblems,
   matchTransfers,
   unmatchedToSay,
@@ -18,7 +16,8 @@ import {
 } from "@/planning/books";
 import { addDays, isoDay as iso } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
-import { maybeSamePair } from "@/insights/net-worth";
+import { maybeSameWords } from "@/insights/net-worth";
+import { accountCopies, leftOutNotes } from "@/lib/account-copies";
 
 // Books that balance (spec step 238): every day Jane checks that balances agree with their
 // transactions, finds the same account linked twice (and merges it, only when both copies are
@@ -290,7 +289,7 @@ export async function runBooksCheck(
   }
   // An imported account's data ends where its file did: said plainly, with a fresh import.
   // Not a copy left out of the figures (a statement kept beside its link): it can't be an old import.
-  const copies = copiesToLeaveOut(accounts);
+  const copies = await accountCopies(db);
   const imported = accounts.filter((a) => a.source === "csv" && !copies.has(a.id));
   const newest =
     imported.length === 0
@@ -331,18 +330,15 @@ export async function runBooksCheck(
       words: `${a.name}'s file ends on ${a.lastDate ? dayLabel(a.lastDate, { year: true }) : "an earlier day"}. Import a newer one and I'll pick up from there.`,
     });
   }
-  // Accounts that may be one account counted twice, which nothing can prove: said, never merged.
-  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-  for (const { a, b } of maybeSameAccounts(
-    accounts.filter((x) => !copies.has(x.id) && x.currentBalanceCents !== null),
-    (x) => (x.itemId ? (bank.get(x.itemId) ?? null) : null),
-  )) {
+  // Accounts left out because they may be one already counted, which nothing can prove: said, never
+  // merged, with where the person settles it (src/lib/account-copies.ts).
+  for (const note of await leftOutNotes(db)) {
     found.push({
       kind: "maybe_same",
-      key: `same:${a.id}:${b.id}`,
-      accountId: (a.itemId === null ? a : b).id,
-      detail: { with: (a.itemId === null ? b : a).id },
-      words: maybeSamePair({ a, b }),
+      key: `same:${note.id}`,
+      accountId: note.id,
+      detail: { reason: note.reason },
+      words: maybeSameWords([note]) ?? "",
     });
   }
   // A copy left out of the figures is left out of transfer matching too: its spare lines would

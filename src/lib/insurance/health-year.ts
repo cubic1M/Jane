@@ -26,6 +26,7 @@ import {
 } from "./health-year-rules";
 import { partnerFor } from "./partner";
 import { listPolicies, type Policy } from "./policies";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Health cover all year (spec step 200): the person's health plan's year so far, from the
 // plan's terms and their medical spending; the FSA and HSA money, the plan's network for the
@@ -78,6 +79,7 @@ export async function loadHealthYear(
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
   const year = asOf.slice(0, 4);
+  const countedWhere = await onlyCounted(db);
   const [policies, benefits, partner, txs, accounts] = await Promise.all([
     listPolicies(userId, { client }),
     listBenefits(userId, { client }),
@@ -102,7 +104,7 @@ export async function loadHealthYear(
       orderBy: { date: "asc" },
     }),
     db.accounts.findMany({
-      where: { subtype: "hsa" },
+      where: { subtype: "hsa", ...countedWhere },
       select: { name: true, currentBalanceCents: true },
     }),
   ]);

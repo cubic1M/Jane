@@ -1,3 +1,4 @@
+import { onlyCountedRows } from "@/lib/account-copies";
 import {
   IMPROVEMENT_CATEGORIES,
   IMPROVEMENT_MIN_CENTS,
@@ -44,9 +45,10 @@ export async function loadHomeTaxes(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
+  const countedRows = await onlyCountedRows(db);
   const [loans, spending, documents, profile] = await Promise.all([
     db.liabilities.findMany({
-      where: { kind: "mortgage" },
+      where: { kind: "mortgage", ...countedRows },
       select: {
         ytdInterestPaidCents: true,
         account: { select: { name: true, currentBalanceCents: true } },

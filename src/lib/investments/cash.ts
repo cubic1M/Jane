@@ -25,6 +25,7 @@ import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { todayOf } from "@/lib/today";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Cash done right (spec step 162), for its page, Jane's answers, its buttons and tools.
 // Cash in checking, savings and the brokerage's sweep, at stand-in rates; the plan from
@@ -55,11 +56,16 @@ export async function loadCash(
   }: Options & { investments?: Investments } = {},
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
+  const countedWhere = await onlyCounted(db);
   const [advice, accounts, investments, monthlySpendingCents, goals, moved, detection] =
     await Promise.all([
       adviceMode(userId, { client }),
       db.accounts.findMany({
-        where: { type: "depository", subtype: { in: ["checking", "savings"] } },
+        where: {
+          type: "depository",
+          subtype: { in: ["checking", "savings"] },
+          ...countedWhere,
+        },
         select: { id: true, name: true, subtype: true, currentBalanceCents: true },
         orderBy: { name: "asc" },
       }),

@@ -108,6 +108,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   positions_imported: own,
   upload_removed: own,
   uploaded_account_removed: own,
+  uploaded_account_kept_separate: own,
+  uploaded_account_separate_undone: own,
   uploads_reset: own,
   uploaded_balance_set: own,
   problem_reported: own,
