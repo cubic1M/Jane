@@ -79,7 +79,7 @@ export async function loadYearPlan(
       listDeadlines(userId, { client, now }),
       // Hand-entered dates past the list's horizon but inside the twelve months: the two sets
       // don't overlap (the default stops at the horizon, this starts after it).
-      listDeadlines(userId, { client, now, furtherOut: true }),
+      listDeadlines(userId, { client, now, furtherOut: true }).catch(() => []),
       db.moneyTransfers.findMany({
         where: {
           status: "completed",

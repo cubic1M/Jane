@@ -27,4 +27,8 @@ describe("sentences with spaced initials", () => {
     expect(sentences(text)).toBe(2);
     expect(firstSentences(text, 1)).toBe("J.P. Morgan was your biggest category.");
   });
+  it("still ends a sentence after an abbreviation like U.S.", () => {
+    const text = "Your bank is in the U.S. Your balance is $40. Review the charge.";
+    expect(sentences(text)).toBe(3);
+  });
 });

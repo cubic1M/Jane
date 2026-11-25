@@ -47,6 +47,10 @@ describe.runIf(url)("adopting a what-if plan", () => {
   });
 
   it("replaces the plan for a scenario with the new one", async () => {
+    await client.whatIfPlan.deleteMany({ where: { userId } });
+    await client.whatIfPlan.create({
+      data: { userId, scenario: "job_loss", params: {}, changes: [], createdAt: NOW },
+    });
     const run = { scenario: "job_loss", params: { months: 3 }, plan: [] } as unknown as ScenarioRun;
     await adoptPlan(userId, run, { client, now: NOW });
     expect(await adoptedPlans(userId, { client })).toHaveLength(1);

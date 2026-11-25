@@ -1,4 +1,9 @@
-import { MIN_STEADY_MOVE_CENTS, STEADY_MONTHS, UNEVEN_INCOME_FACT } from "@/config/steady-pay";
+import {
+  MIN_STEADY_MOVE_CENTS,
+  STEADY_MONTHS,
+  TAX_PAYMENT_SYNC_LAG_DAYS,
+  UNEVEN_INCOME_FACT,
+} from "@/config/steady-pay";
 import { SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/input";
@@ -131,8 +136,12 @@ export async function loadSteady(
   const setAsideRate = selfEmployed?.setAsideRate ?? 0;
   // The tax share sits in the same account as the buffer: it isn't spendable, so it is left
   // out of what the paycheck can draw on, less what the person has already paid in.
+  // A payment entered in the last few days may not have left the balance yet: not counted yet.
+  const syncedBy = new Date(now.getTime() - TAX_PAYMENT_SYNC_LAG_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   const paidIn = (selfEmployed?.payments ?? [])
-    .filter((p) => p.date.startsWith(month.slice(0, 4)))
+    .filter((p) => p.date.startsWith(month.slice(0, 4)) && p.date <= syncedBy)
     .reduce((sum, p) => sum + p.cents, 0);
   const taxReserveCents = Math.max(0, setAside.reduce((sum, t) => sum + t.amountCents, 0) - paidIn);
   return {
@@ -167,11 +176,21 @@ async function handleDeposits(
   let moved = 0;
   for (const deposit of selfEmployed.recent) {
     const key = `deposit:${deposit.id}`;
-    const net = deposit.cents - deposit.setAsideCents;
+    // A part already moved keeps its amount; the other is what is left of the deposit, so a
+    // changed estimate can't move more than the deposit in all (CodeRabbit on #2261).
+    const moved0 = await db.moneyTransfers.findMany({
+      where: { planKey: { in: [`${key}:tax`, `${key}:buffer`] } },
+      select: { planKey: true, amountCents: true },
+    });
+    const done = (suffix: string) => moved0.find((t) => t.planKey === `${key}:${suffix}`);
+    const taxCents = done("buffer")
+      ? deposit.cents - done("buffer")!.amountCents
+      : deposit.setAsideCents;
+    const net = done("tax") ? deposit.cents - done("tax")!.amountCents : deposit.cents - taxCents;
     const parts = [
       {
         suffix: "tax",
-        cents: deposit.setAsideCents,
+        cents: taxCents,
         sector: "taxes" as const,
         label: "Taxes set aside",
         goalId: goal?.id ?? null,

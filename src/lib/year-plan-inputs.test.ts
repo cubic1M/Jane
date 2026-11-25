@@ -10,6 +10,7 @@ const stubs = vi.hoisted(() => ({
   transfers: [] as { runOn: Date; amountCents: number; purpose: string; planKey: string | null }[],
   updateMany: vi.fn(),
   create: vi.fn(),
+  stored: [] as { startMonth: string; months: unknown; endsAt?: Date | null }[],
 }));
 
 vi.mock("@/planning/year-plan", async (orig) => {
@@ -26,12 +27,20 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedFor: () => ({
     yearPlans: {
-      findMany: async () => [],
+      findMany: async () => stubs.stored,
       updateMany: stubs.updateMany,
       create: stubs.create,
     },
     autoInvestPlans: { findFirst: async () => null },
-    moneyTransfers: { findMany: async () => stubs.transfers },
+    // Applies the query's own `runOn` bounds, so a window that misses a row can fail a test.
+    moneyTransfers: {
+      findMany: async (q?: { where?: { runOn?: { gte?: Date; lt?: Date } } }) =>
+        stubs.transfers.filter(
+          (t) =>
+            (!q?.where?.runOn?.gte || t.runOn >= q.where.runOn.gte) &&
+            (!q?.where?.runOn?.lt || t.runOn < q.where.runOn.lt),
+        ),
+    },
     autoInvestRuns: { findMany: async () => [] },
   }),
 }));
@@ -52,6 +61,7 @@ const fixedOf = () => planner.seen!.fixed as { month: string; sector: string; ce
 beforeEach(() => {
   planner.seen = null;
   stubs.transfers = [];
+  stubs.stored = [];
   stubs.updateMany.mockReset().mockResolvedValue({ count: 0 });
   stubs.create.mockReset().mockResolvedValue({});
   stubs.selfEmployed.mockReset().mockResolvedValue({
@@ -104,6 +114,8 @@ describe("the year plan's fixed amounts", () => {
 
 describe("the year plan's saving actuals", () => {
   it("leaves the steady paycheck's withdrawal from the buffer out of saving", async () => {
+    // A plan in force from October, so the transfer window reaches October's rows.
+    stubs.stored = [{ startMonth: "2026-10", months: [] }];
     stubs.transfers = [
       {
         runOn: new Date("2026-10-05T00:00:00Z"),

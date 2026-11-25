@@ -21,3 +21,7 @@ export const MIN_STEADY_MONTHS = 3;
 export const MIN_STEADY_MOVE_CENTS = 5_000;
 // The person saying their income is uneven (a remembered fact with this key).
 export const UNEVEN_INCOME_FACT = "uneven_income";
+
+// A tax payment the person entered in the last few days may not be in the buffer account's
+// balance yet (the balance comes from the last sync): until it is, the tax reserve keeps it.
+export const TAX_PAYMENT_SYNC_LAG_DAYS = 3;

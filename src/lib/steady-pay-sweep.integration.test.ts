@@ -121,6 +121,29 @@ describe.runIf(url)("the steady paycheck: sweep 1c fixes", { timeout: 120_000 },
     expect(await keys()).toEqual(["buffer", "tax"]);
   });
 
+  it("moves only what is left of the deposit when the estimate changed between the two parts (#2261)", async () => {
+    const userId = await freelancer("steady-split", 100_000);
+    await runSteadyPay(userId, { client, now: NOW });
+    // The tax part went out under an earlier, smaller estimate.
+    const tax = (
+      await client.moneyTransfer.findMany({
+        where: { userId, planKey: { startsWith: "deposit:" } },
+      })
+    )[0]!;
+    await client.moneyTransfer.update({ where: { id: tax.id }, data: { amountCents: 60_000 } });
+    await setSectorAutopilot(
+      userId,
+      "goals",
+      { level: "safe", actionCapCents: 2_000_000, monthlyCapCents: 5_000_000 },
+      { client, now: NOW },
+    );
+    await runSteadyPay(userId, { client, now: NOW });
+    const parts = await client.moneyTransfer.findMany({
+      where: { userId, planKey: { startsWith: "deposit:" } },
+    });
+    expect(parts.reduce((sum, t) => sum + t.amountCents, 0)).toBe(450_000);
+  });
+
   it("counts a paycheck that still waits for the partner as this month's", async () => {
     const userId = await freelancer("steady-await");
     const view = (await loadSteady(userId, { client, now: NOW }))!;

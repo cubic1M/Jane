@@ -53,10 +53,21 @@ export function shortLabel(text: string, max = LABEL_MAX_WORDS): string {
   while (kept.length > 1 && LEADS_ON.has(kept[kept.length - 1]!.toLowerCase())) kept.pop();
   return kept.join(" ");
 }
-// One splitter for the count, the summary and "More". A single capital before its period is an
-// initial ("J. P. Morgan"), not the end of a sentence.
-const splitSentences = (text: string) =>
-  text.trim().split(/(?<=[.!?])(?<!(?:^|\s)(?:[A-Z]\.)+)\s+(?=[A-Z0-9$"“])/);
+// One splitter for the count, the summary and "More". Initials ("J. P. Morgan", "J.P. Morgan") don't
+// end a sentence; a word that is only an abbreviation ("the U.S.") can.
+const ENDS_A_SENTENCE = new Set(["U.S.", "U.K.", "E.U.", "D.C.", "U.N."]);
+const splitSentences = (text: string): string[] => {
+  const pieces = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);
+  const out: string[] = [];
+  for (const piece of pieces) {
+    const last = out[out.length - 1];
+    const tail = last?.match(/(?:^|\s)((?:[A-Z]\.)+)$/)?.[1];
+    if (last !== undefined && tail && !ENDS_A_SENTENCE.has(tail))
+      out[out.length - 1] = `${last} ${piece}`;
+    else out.push(piece);
+  }
+  return out;
+};
 export const sentences = (text: string) => splitSentences(text).filter(Boolean).length;
 
 // A tree's line when something is urgent: "2 urgent · 3 to look at", or "1 urgent" alone, not
