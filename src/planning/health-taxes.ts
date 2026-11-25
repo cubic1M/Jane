@@ -7,6 +7,7 @@ import {
   HSA_EXCESS_EXCISE,
   PTC_CLIFF,
   RECENT_MONTHS,
+  NO_REPAYMENT_CAP_FROM,
   REPAYMENT_CAPS,
   fplFor,
 } from "@/config/health-taxes";
@@ -96,6 +97,9 @@ export type PtcCheck = {
   repayCents: number;
   // The limit on repayment for the year, null when there is none (over the cliff, or from 2026).
   capCents: number | null;
+  // False for a year before 2026 that REPAYMENT_CAPS doesn't list: the cap isn't known there, so
+  // all of the excess would be shown as owed; nothing is said to be repaid (repayCents is 0).
+  repayKnown: boolean;
 };
 
 export function ptcCheck(input: {
@@ -111,6 +115,7 @@ export function ptcCheck(input: {
   const overCliff = share > PTC_CLIFF;
   const allowed = creditAt(input.incomeCents, input.householdSize, input.benchmarkYearCents);
   const excess = Math.max(0, input.advanceYearCents - allowed);
+  const known = input.year >= NO_REPAYMENT_CAP_FROM || input.year in REPAYMENT_CAPS;
   const caps = REPAYMENT_CAPS[input.year] ?? [];
   const row = overCliff ? undefined : caps.find((c) => share < c.under);
   const cap = row ? (input.householdSize <= 1 ? row.single : row.other) : null;
@@ -119,8 +124,9 @@ export function ptcCheck(input: {
     overCliff,
     allowedCents: allowed,
     advanceCents: input.advanceYearCents,
-    repayCents: cap === null ? excess : Math.min(excess, cap),
+    repayCents: !known ? 0 : cap === null ? excess : Math.min(excess, cap),
     capCents: cap,
+    repayKnown: known,
   };
 }
 

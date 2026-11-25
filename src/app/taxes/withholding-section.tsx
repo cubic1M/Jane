@@ -38,7 +38,9 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {check.why === "no_pay"
             ? "Jane can't see regular paychecks, so there's nothing to check."
-            : "Jane can see your paychecks but not what's withheld. Add your pay stub figures on your tax profile."}
+            : check.why === "no_rate"
+              ? "More is being withheld than your tax, but at your tax rate a W-4 deduction wouldn't change what's withheld, so there's no W-4 amount to size."
+              : "Jane can see your paychecks but not what's withheld. Add your pay stub figures on your tax profile."}
         </p>
       )}
       {check.status === "on_track" && !estimate.w4 && (

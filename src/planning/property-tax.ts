@@ -95,9 +95,12 @@ export function appealWindow(state: string | null, today: string, noticeOn: stri
   const year = Number(today.slice(0, 4));
   let opensOn: string | null = null;
   let closesOn: string | null = null;
+  // This year's fixed deadline has passed, so the one shown is next year's.
+  let rolled = false;
   if (w.closes) {
     const thisYear = iso(year, w.closes);
-    closesOn = thisYear >= today ? thisYear : iso(year + 1, w.closes);
+    rolled = thisYear < today;
+    closesOn = rolled ? iso(year + 1, w.closes) : thisYear;
     const closeYear = Number(closesOn.slice(0, 4));
     opensOn = w.opens ? iso(closeYear, w.opens) : null;
   }
@@ -107,6 +110,7 @@ export function appealWindow(state: string | null, today: string, noticeOn: stri
     const fixed = w.closes ? iso(Number(noticeOn.slice(0, 4)), w.closes) : null;
     closesOn = fixed && fixed > byNotice ? fixed : byNotice;
     opensOn = noticeOn;
+    rolled = false;
   }
   if (!closesOn) {
     return {
@@ -119,13 +123,22 @@ export function appealWindow(state: string | null, today: string, noticeOn: stri
     };
   }
   const status: Window["status"] =
-    closesOn < today ? "closed" : opensOn && opensOn > today ? "upcoming" : "open";
+    closesOn < today
+      ? "closed"
+      : opensOn && opensOn > today
+        ? "upcoming"
+        : // A deadline rolled into next year, with no opening date to go by, isn't known to be open.
+          rolled && !opensOn
+          ? "upcoming"
+          : "open";
   const text =
     status === "closed"
       ? `The window to appeal to ${board} closed on ${words(closesOn)}. The next one is after your next assessment notice.`
-      : status === "upcoming"
-        ? `Appeals to ${board} open on ${words(opensOn!)} and close on ${words(closesOn)}.`
-        : `You can appeal to ${board} until ${words(closesOn)}.`;
+      : status === "upcoming" && !opensOn
+        ? `The next window to appeal to ${board} closes on ${words(closesOn)}; the opening date isn't set yet, so this is a date to watch for, not an open window.`
+        : status === "upcoming"
+          ? `Appeals to ${board} open on ${words(opensOn!)} and close on ${words(closesOn)}.`
+          : `You can appeal to ${board} until ${words(closesOn)}.`;
   return { board, status, opensOn, closesOn, text, source: w.source };
 }
 
@@ -190,6 +203,10 @@ export function draftAppeal(input: {
   assessedCents: number;
   comps: readonly Comparable[];
 }): string {
+  // No comparable sales means no value to ask for: nothing is drafted.
+  if (input.comps.length === 0) {
+    throw new Error("An appeal needs comparable sales to support the value it asks for.");
+  }
   const value = indicatedValue(input.comps);
   const rows = input.comps
     .map(

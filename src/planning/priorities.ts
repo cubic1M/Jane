@@ -107,7 +107,10 @@ export function rankPriorities(items: PriorityItem[], asOf: string): Ranked[] {
     const { score, urgency } = scoreOf(item, asOf);
     return { ...item, score, urgencyScore: urgency, why: "" };
   });
-  scored.sort(
+  // The scan's suggestions lead in the order given; the rest are ranked by score.
+  const lead = scored.filter((x) => x.kind === "suggestion");
+  const rest = scored.filter((x) => x.kind !== "suggestion");
+  rest.sort(
     (a, b) =>
       b.score - a.score ||
       (b.valueCents ?? 0) - (a.valueCents ?? 0) ||
@@ -115,8 +118,9 @@ export function rankPriorities(items: PriorityItem[], asOf: string): Ranked[] {
       a.title.localeCompare(b.title) ||
       a.key.localeCompare(b.key),
   );
-  return scored.map((item, i) => {
-    const reason = reasonFor(item, scored, asOf);
+  const ordered = [...lead, ...rest];
+  return ordered.map((item, i) => {
+    const reason = reasonFor(item, ordered, asOf);
     return { ...item, why: i === 0 ? `First because ${reason}.` : `Because ${reason}.` };
   });
 }

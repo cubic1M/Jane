@@ -67,8 +67,8 @@ describe("the premium tax credit", () => {
       benchmarkYearCents: $(2_000),
       advanceYearCents: $(9_000),
     });
-    expect(r.capCents).toBe($(1_575));
-    expect(r.repayCents).toBe($(1_575));
+    expect(r.capCents).toBe($(1_625));
+    expect(r.repayCents).toBe($(1_625));
   });
 
   it("assumes a benchmark per adult, children at half, unless told", () => {

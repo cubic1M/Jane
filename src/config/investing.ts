@@ -211,7 +211,8 @@ export const GLIDE_PATH_SOURCE =
   "Like target-date funds' glide paths; money needed within 3 years kept in cash (SEC Investor.gov, FINRA)";
 // Of the stocks, this share goes outside the US (as in TARGET_MIXES).
 export const INTL_SHARE_OF_STOCKS = 1 / 3;
-// Goals this close count as near-term: never in stocks.
+// Goals this close count as near-term: never in stocks. A goal due exactly this many calendar
+// years out is near-term too (the glide path's 3-year row is for goals further than that).
 export const NEAR_TERM_YEARS = 3;
 
 // Where an investment account with no linked bank says its numbers came from: a positions

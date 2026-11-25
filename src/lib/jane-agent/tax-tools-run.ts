@@ -784,7 +784,7 @@ export async function runTaxTool(
                 creditAllowed: c ? money(c.allowedCents) : null,
                 advanceCredit: money(v.marketplace.advanceYearCents),
                 advanceCreditToldByPerson: v.marketplace.told,
-                wouldBeRepaid: c ? money(c.repayCents) : money(0),
+                wouldBeRepaid: c ? (c.repayKnown ? money(c.repayCents) : null) : money(0),
                 repaymentCap: c?.capCents == null ? null : money(c.capCents),
               },
         hsa: {

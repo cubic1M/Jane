@@ -23,7 +23,9 @@ export type W4Change = {
 };
 
 export type WithholdingCheck =
-  | { status: "unknown"; why: "no_pay" | "no_withholding" }
+  // no_rate: a big refund at a 0% top rate (credits, not tax, make it): a Step 4(b) deduction
+  // takes nothing off the withholding, so it can't be sized.
+  | { status: "unknown"; why: "no_pay" | "no_withholding" | "no_rate" }
   | { status: "on_track"; refundCents: number }
   | {
       status: "big_refund" | "bill_coming";
@@ -50,6 +52,9 @@ export function perPaycheckEffect(
   return step === "4c" ? amountCents : -Math.round((amountCents * marginalRate) / perYear);
 }
 
+// The top rate Step 4(b) is sized and predicted with: one rate for both, never two.
+const step4bRate = (marginalRate: number) => Math.max(marginalRate, 0.1);
+
 function change(
   gapCents: number,
   paychecks: number,
@@ -68,7 +73,7 @@ function change(
     };
   }
   const reduction = -gapCents;
-  const rate = Math.max(marginalRate, 0.1);
+  const rate = step4bRate(marginalRate);
   const amount = floorTo(
     (reduction * perYear) / (paychecks * rate),
     WITHHOLDING.roundDeductionCents,
@@ -107,24 +112,36 @@ export function withholdingCheck(input: {
   const bill = refundCents < -WITHHOLDING.billCents;
   if (!big && !bill) return { status: "on_track", refundCents };
 
+  // Never ask for less withheld than a paycheck has, this year or from January.
+  const limited = (c: W4Change, paychecks: number): W4Change => {
+    if (c.perPaycheckCents >= -input.withheldPerPaycheckCents) return c;
+    const rate = step4bRate(input.marginalRate);
+    const amount = floorTo(
+      (input.withheldPerPaycheckCents * perYear) / rate,
+      WITHHOLDING.roundDeductionCents,
+    );
+    const per = perPaycheckEffect("4b", amount, rate, perYear);
+    return {
+      step: "4b",
+      amountCents: amount,
+      perPaycheckCents: per,
+      refundAfterCents: refundCents + per * paychecks,
+    };
+  };
   const gap = target - refundCents;
+  // A 0% top rate: Step 4(b) would be sized from nothing, and would change nothing.
+  if (gap < 0 && !(input.marginalRate > 0)) return { status: "unknown", why: "no_rate" };
+  // A refund with nothing withheld per paycheck (overpaid estimated payments): there is no
+  // withholding to take less of, and a zero-dollar W-4 change can't be made.
+  if (gap < 0 && !(input.withheldPerPaycheckCents > 0)) {
+    return { status: "unknown", why: "no_withholding" };
+  }
   let thisYear: W4Change | null = null;
   if (input.paychecksLeft > 0) {
-    thisYear = change(gap, input.paychecksLeft, perYear, input.marginalRate, refundCents);
-    // Never ask for less withheld than a paycheck has.
-    if (thisYear.perPaycheckCents < -input.withheldPerPaycheckCents) {
-      const amount = floorTo(
-        (input.withheldPerPaycheckCents * perYear) / Math.max(input.marginalRate, 0.1),
-        WITHHOLDING.roundDeductionCents,
-      );
-      const per = perPaycheckEffect("4b", amount, input.marginalRate, perYear);
-      thisYear = {
-        step: "4b",
-        amountCents: amount,
-        perPaycheckCents: per,
-        refundAfterCents: refundCents + per * input.paychecksLeft,
-      };
-    }
+    thisYear = limited(
+      change(gap, input.paychecksLeft, perYear, input.marginalRate, refundCents),
+      input.paychecksLeft,
+    );
   }
   // Taxes QA: late in the year, handing back a big refund through a few paychecks can take
   // Step 4(b) deductions larger than the year's wages; then only the January change is offered.
@@ -136,7 +153,10 @@ export function withholdingCheck(input: {
     thisYear = null;
   }
   // A full year with the same pay: the whole year's gap spread over every paycheck.
-  const fromJanuary = change(gap, perYear, perYear, input.marginalRate, refundCents);
+  const fromJanuary = limited(
+    change(gap, perYear, perYear, input.marginalRate, refundCents),
+    perYear,
+  );
   return {
     status: big ? "big_refund" : "bill_coming",
     refundCents,

@@ -115,7 +115,15 @@ export function themeExits(
     const price = prices[ticker];
     if (!p || p.quantity <= 0 || !price) continue;
     const buy = trades
-      .filter((t) => t.ticker === ticker && t.side === "buy" && (t.quantity ?? 0) > 0)
+      // The buy that opened the slice: a later buy of the fund under another rule (the generic
+      // autopilot buy) must not restart the hold clock or move the stop's cost basis.
+      .filter(
+        (t) =>
+          t.ticker === ticker &&
+          t.side === "buy" &&
+          t.rule === "theme_idea" &&
+          (t.quantity ?? 0) > 0,
+      )
       .sort((a, b) => (a.placedAt < b.placedAt ? 1 : -1))[0];
     if (!buy) continue;
     const bought = buy.placedAt.slice(0, 10);

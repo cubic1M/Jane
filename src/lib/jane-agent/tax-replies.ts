@@ -302,8 +302,11 @@ export function withholdingReply(view: WithholdingView): Reply {
         body:
           check.why === "no_pay"
             ? "I can't see regular paychecks in your accounts, so I can't check your withholding."
-            : "I can see your paychecks but not what's withheld from them. Add the figures from your latest pay stub and I'll check.",
-        actions: [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)],
+            : check.why === "no_rate"
+              ? "More is being withheld than your tax, but at your tax rate a W-4 deduction wouldn't change what's withheld, so there's no W-4 amount to size."
+              : "I can see your paychecks but not what's withheld from them. Add the figures from your latest pay stub and I'll check.",
+        actions:
+          check.why === "no_rate" ? [] : [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)],
         refs: {},
       };
     }
