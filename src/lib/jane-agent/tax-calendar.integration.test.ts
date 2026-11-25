@@ -183,7 +183,13 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     const january = se.federal.payments.find((p) => p.date === "2027-01-15")!;
     expect(january.cents).toBeGreaterThan(0);
     const plan = (await loadYearPlan(userId, { client, now }))!;
-    expect(plan.months.find((m) => m.month === "2027-01")?.targets.taxes).toBe(january.cents);
+    // Federal and, when the state needs estimates too, the state's (CodeRabbit sweep 1c).
+    const stateJanuary = se.state?.needed
+      ? (se.state.payments.find((p) => p.date === "2027-01-15")?.cents ?? 0)
+      : 0;
+    expect(plan.months.find((m) => m.month === "2027-01")?.targets.taxes).toBe(
+      january.cents + stateJanuary,
+    );
   });
 
   it("asks for a tap above the cap, at the ask-first level and over the monthly cap, and pays nothing", async () => {

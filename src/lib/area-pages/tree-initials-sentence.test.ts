@@ -22,4 +22,19 @@ describe("sentences with spaced initials", () => {
     expect(sentences(text)).toBe(3);
     expect(laterSentences(text, 3)).toBe("");
   });
+  it("keeps compact initials (J.P.) in their sentence", () => {
+    const text = "J.P. Morgan was your biggest category. The total was $40.";
+    expect(sentences(text)).toBe(2);
+    expect(firstSentences(text, 1)).toBe("J.P. Morgan was your biggest category.");
+  });
+  it("still ends a sentence after an abbreviation like U.S.", () => {
+    const text = "Your bank is in the U.S. Your balance is $40. Review the charge.";
+    expect(sentences(text)).toBe(3);
+  });
+  it("keeps U.S. Bank together but still ends a sentence at the U.S.", () => {
+    expect(sentences("You paid U.S. Bank yesterday. The total was $40.")).toBe(2);
+    expect(firstSentences("You paid U.S. Bank yesterday. The total was $40.", 1)).toBe(
+      "You paid U.S. Bank yesterday.",
+    );
+  });
 });

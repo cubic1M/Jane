@@ -1,4 +1,9 @@
-import { MIN_STEADY_MOVE_CENTS, STEADY_MONTHS, UNEVEN_INCOME_FACT } from "@/config/steady-pay";
+import {
+  MIN_STEADY_MOVE_CENTS,
+  STEADY_MONTHS,
+  TAX_PAYMENT_SYNC_LAG_DAYS,
+  UNEVEN_INCOME_FACT,
+} from "@/config/steady-pay";
 import { SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/input";
@@ -40,6 +45,8 @@ export type SteadyView = {
   checkingAccountId: string | null;
   bufferAccountId: string | null;
   bufferCents: number;
+  // Tax money set aside into the buffer account this year and not yet paid: not spendable.
+  taxReserveCents: number;
 };
 
 // Uneven income: contracting or gig deposits in the last year, or the person said so.
@@ -79,6 +86,7 @@ export async function loadSteady(
     checkingAccountId: checking?.id ?? null,
     bufferAccountId: buffer?.id ?? null,
     bufferCents: buffer?.currentBalanceCents ?? 0,
+    taxReserveCents: 0,
   };
   if (!uneven || !checking || !buffer) return { ...base, plan: null };
 
@@ -96,7 +104,10 @@ export async function loadSteady(
     }),
     healthInput(userId, input, { client, now }),
     db.moneyTransfers.findFirst({
-      where: { planKey: `steady:${month}`, status: { in: ["pending", "completed"] } },
+      where: {
+        planKey: `steady:${month}`,
+        status: { in: ["pending", "completed", "awaiting_partner"] },
+      },
       select: { amountCents: true, runOn: true, by: true },
     }),
   ]);
@@ -112,14 +123,43 @@ export async function loadSteady(
   const seen = start === -1 ? [] : months.slice(start);
   const selfEmployed = await loadSelfEmployed(userId, { client, now }).catch(() => null);
   const setAsideRate = selfEmployed?.setAsideRate ?? 0;
+  // The tax year runs from February 1 to January 31 (src/lib/tax-estimate.ts): what the tax part
+  // of each deposit put into the buffer account in it, and the payments entered for it.
+  const taxYear = selfEmployed?.year ?? Number(month.slice(0, 4));
+  const setAside = await db.moneyTransfers.findMany({
+    where: {
+      sector: "taxes",
+      toAccountId: buffer.id,
+      status: "completed",
+      planKey: { startsWith: "deposit:" },
+      runOn: {
+        gte: new Date(`${taxYear}-02-01T00:00:00Z`),
+        lt: new Date(`${taxYear + 1}-02-01T00:00:00Z`),
+      },
+    },
+    select: { amountCents: true },
+  });
+  // The tax share sits in the same account as the buffer: it isn't spendable, so it is left
+  // out of what the paycheck can draw on, less what the person has already paid in.
+  // A payment entered in the last few days may not have left the balance yet: not counted yet.
+  const syncedBy = new Date(now.getTime() - TAX_PAYMENT_SYNC_LAG_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const paidIn = (selfEmployed?.payments ?? [])
+    .filter(
+      (p) => p.date >= `${taxYear}-02-01` && p.date <= `${taxYear + 1}-01-31` && p.date <= syncedBy,
+    )
+    .reduce((sum, p) => sum + p.cents, 0);
+  const taxReserveCents = Math.max(0, setAside.reduce((sum, t) => sum + t.amountCents, 0) - paidIn);
   return {
     ...base,
     setAsideRate,
+    taxReserveCents,
     sent: sent && { amountCents: sent.amountCents, runOn: iso(sent.runOn), by: sent.by },
     plan: steadyPlan({
       monthlyDepositsCents: seen,
       setAsideRate,
-      bufferCents: base.bufferCents,
+      bufferCents: Math.max(0, base.bufferCents - taxReserveCents),
       monthlySpendingCents: health.monthlySpendingCents ?? 0,
     }),
   };
@@ -143,19 +183,21 @@ async function handleDeposits(
   let moved = 0;
   for (const deposit of selfEmployed.recent) {
     const key = `deposit:${deposit.id}`;
-    if (
-      await db.moneyTransfers.findFirst({
-        where: { planKey: { startsWith: key } },
-        select: { id: true },
-      })
-    ) {
-      continue;
-    }
-    const net = deposit.cents - deposit.setAsideCents;
+    // A part already moved keeps its amount; the other is what is left of the deposit, so a
+    // changed estimate can't move more than the deposit in all (CodeRabbit on #2261).
+    const moved0 = await db.moneyTransfers.findMany({
+      where: { planKey: { in: [`${key}:tax`, `${key}:buffer`] } },
+      select: { planKey: true, amountCents: true },
+    });
+    const done = (suffix: string) => moved0.find((t) => t.planKey === `${key}:${suffix}`);
+    const taxCents = done("buffer")
+      ? deposit.cents - done("buffer")!.amountCents
+      : deposit.setAsideCents;
+    const net = done("tax") ? deposit.cents - done("tax")!.amountCents : deposit.cents - taxCents;
     const parts = [
       {
         suffix: "tax",
-        cents: deposit.setAsideCents,
+        cents: taxCents,
         sector: "taxes" as const,
         label: "Taxes set aside",
         goalId: goal?.id ?? null,
@@ -164,6 +206,13 @@ async function handleDeposits(
     ];
     for (const part of parts) {
       if (part.cents < MIN_STEADY_MOVE_CENTS) continue;
+      // Each part has its own planKey: one the caps held back is tried again next time.
+      const partKey = `${key}:${part.suffix}`;
+      if (
+        await db.moneyTransfers.findFirst({ where: { planKey: partKey }, select: { id: true } })
+      ) {
+        continue;
+      }
       const allowed = await mayAct(
         userId,
         part.sector,
@@ -182,7 +231,7 @@ async function handleDeposits(
             purpose: "goal",
             sector: part.sector,
             goalId: part.goalId,
-            planKey: `${key}:${part.suffix}`,
+            planKey: partKey,
           },
           "autopilot",
           { client, now, partner },
@@ -229,8 +278,20 @@ export async function runSteadyPay(
     { client, now },
   );
   if (!allowed.ok) return { deposits, paycheck: "asked" };
-  await payNow(userId, "autopilot", { ...options, partner: movement });
-  await recordAct(userId, "goals", plan.paycheckCents, "Paid the steady paycheck from the buffer", {
+  // The amount the caps allowed is the amount sent: if the figures moved in between, nothing
+  // is sent and the paycheck waits.
+  let sentCents: number;
+  try {
+    ({ amountCents: sentCents } = await payNow(userId, "autopilot", {
+      ...options,
+      partner: movement,
+      authorizedCents: plan.paycheckCents,
+    }));
+  } catch (error) {
+    if (error instanceof SteadyError) return { deposits, paycheck: "none" };
+    throw error;
+  }
+  await recordAct(userId, "goals", sentCents, "Paid the steady paycheck from the buffer", {
     client,
     now,
   });
@@ -242,7 +303,7 @@ export async function runSteadyPay(
 export async function payNow(
   userId: string,
   by: "autopilot" | "person",
-  options: Options = {},
+  options: Options & { authorizedCents?: number } = {},
 ): Promise<{ amountCents: number; runOn: string }> {
   const { client = defaultClient, now = new Date(), partner } = options;
   const view = await loadSteady(userId, options);
@@ -252,6 +313,14 @@ export async function payNow(
   if (view.sent) throw new SteadyError("This month's paycheck was already sent.");
   if (view.plan.status !== "ready" || view.plan.paycheckCents < MIN_STEADY_MOVE_CENTS) {
     throw new SteadyError(view.plan.reason);
+  }
+  if (
+    options.authorizedCents !== undefined &&
+    view.plan.paycheckCents !== options.authorizedCents
+  ) {
+    throw new SteadyError(
+      "The paycheck changed since it was checked, so it waits for the next look.",
+    );
   }
   try {
     const { runOn } = await scheduleTransfer(
