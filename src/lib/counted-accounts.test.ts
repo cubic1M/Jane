@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..");
 const COUNTED =
-  /accountCopies|onlyCounted|liabilitiesOnCounted|withoutCopies|loadNetWorthInputs|input\.accounts/;
+  /accountCopies|onlyCounted|reconcileLiabilities|loadCounting|withoutCopies|loadNetWorthInputs|input\.accounts/;
 const EXEMPT: Record<string, string> = {
   "lib/account-copies.ts": "the rule itself",
   "lib/accounts.ts": "lists every account for the person to manage, left-out ones marked",
@@ -95,5 +95,29 @@ describe("every read of accounts with their balances counts each account once", 
       )
       .map(([file]) => file);
     expect(loose).toEqual([]);
+  });
+
+  // A load that counts with more than one set can disagree with itself when something is saved between
+  // the reads (CodeRabbit on #2259: profile, outcomes): it reads the set once, as `counting`, and
+  // passes that down.
+  it("reads the counted set once in a load that uses it for more than one thing", () => {
+    const READ_ONCE = [
+      "lib/profile.ts",
+      "lib/outcomes.ts",
+      "lib/tax-estimate.ts",
+      "lib/tax-documents.ts",
+      "lib/tax-organizer.ts",
+      "lib/investments/retirement-accounts.ts",
+      "lib/debt-first.ts",
+    ];
+    const reads = READ_ONCE.map((file) => [
+      file,
+      (
+        readFileSync(join(ROOT, file), "utf8").match(
+          /\b(?:accountCopies|accountsNotCounted|onlyCounted|onlyCountedRows|loadCounting)\(db\)/g,
+        ) ?? []
+      ).length,
+    ]);
+    expect(reads.filter(([, n]) => (n as number) > 1)).toEqual([]);
   });
 });

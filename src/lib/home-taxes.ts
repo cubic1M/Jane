@@ -1,4 +1,4 @@
-import { onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, reconcileLiabilities } from "@/lib/account-copies";
 import {
   IMPROVEMENT_CATEGORIES,
   IMPROVEMENT_MIN_CENTS,
@@ -45,12 +45,14 @@ export async function loadHomeTaxes(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
-  const countedRows = await onlyCountedRows(db);
-  const [loans, spending, documents, profile] = await Promise.all([
+  const counting = await loadCounting(db);
+  const [loansAll, spending, documents, profile] = await Promise.all([
     db.liabilities.findMany({
-      where: { kind: "mortgage", ...countedRows },
+      where: { kind: "mortgage" },
       select: {
+        accountId: true,
         ytdInterestPaidCents: true,
+        updatedAt: true,
         account: { select: { name: true, currentBalanceCents: true } },
       },
       orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
@@ -92,6 +94,8 @@ export async function loadHomeTaxes(
       },
     }),
   ]);
+  // A mortgage linked twice counts once, with the interest either link reported.
+  const loans = reconcileLiabilities(counting, loansAll, { readingYear: year });
   const rows = spending.map((t) => ({ ...t, date: iso(t.date), payee: payeeOf(t) }));
   const inYear = rows.filter((t) => t.date.startsWith(String(year)));
   const mortgage = loans[0] ?? null;

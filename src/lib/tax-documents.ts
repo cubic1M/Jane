@@ -1,4 +1,4 @@
-import { onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCounted, onlyCountedRows, type Counting } from "@/lib/account-copies";
 import {
   TAXABLE_INVESTMENT_SUBTYPES,
   TAX_DOCUMENTS,
@@ -19,7 +19,7 @@ import {
   type DocumentBoxes,
   type DocumentCheck,
 } from "@/planning/tax-document-check";
-import type { ExpectedForm } from "@/planning/tax-documents";
+import { slug, type ExpectedForm } from "@/planning/tax-documents";
 import { DIVIDENDS } from "@/planning/tax-income";
 import { addDays, isoDay as iso } from "@/lib/dates";
 
@@ -64,12 +64,17 @@ export const inDocumentSeason = (today: string) =>
   today.slice(5) >= TAX_DOCUMENTS.from && today.slice(5) <= TAX_DOCUMENTS.until;
 
 // Dividends seen in each taxable investment account, for its consolidated 1099.
-async function dividendsByAccount(userId: string, year: number, client: PrismaClient) {
+async function dividendsByAccount(
+  userId: string,
+  year: number,
+  client: PrismaClient,
+  counting: Counting,
+) {
   const db = scopedFor(userId, client);
-  const countedRows = await onlyCountedRows(db);
+  const countedRows = await onlyCountedRows(counting);
   const [accounts, cash] = await Promise.all([
     db.accounts.findMany({
-      where: { type: "investment" },
+      where: { type: "investment", ...(await onlyCounted(counting)) },
       select: { id: true, name: true, subtype: true },
     }),
     db.investmentTransactions.findMany({
@@ -93,12 +98,44 @@ async function dividendsByAccount(userId: string, year: number, client: PrismaCl
   return out;
 }
 
+// A brokerage form comes from the account that counts, under its name. A document already received
+// under the name of a copy of it (the copy has another name) is moved to the form that is expected, so
+// it stays in the list and is checked against the account that counts (CodeRabbit on #2264).
+async function adoptCopyDocuments(
+  db: ReturnType<typeof scopedFor>,
+  counting: Counting,
+  year: number,
+  stored: { key: string }[],
+  expectedKeys: ReadonlySet<string>,
+) {
+  if (counting.copies.size === 0) return;
+  const accounts = await db.accounts.findMany({
+    where: { type: "investment" },
+    select: { id: true, name: true, subtype: true },
+  });
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const keyOf = (name: string) => `brokerage:${slug(name)}`;
+  for (const copyId of counting.copies) {
+    const copy = byId.get(copyId);
+    const rep = byId.get(counting.representativeOf(copyId));
+    if (!copy || !rep || copy.name === rep.name) continue;
+    if (!TAXABLE_INVESTMENT_SUBTYPES.includes(copy.subtype ?? "")) continue;
+    const [from, to] = [keyOf(copy.name), keyOf(rep.name)];
+    const held = stored.find((d) => d.key === from);
+    // Not a key another counted account's form still uses, nor one the account that counts has.
+    if (!held || expectedKeys.has(from) || stored.some((d) => d.key === to)) continue;
+    await db.taxDocuments.updateMany({ where: { year, key: from }, data: { key: to } });
+    held.key = to;
+  }
+}
+
 export async function loadTaxDocuments(
   userId: string,
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<TaxDocumentsView> {
   const db = scopedFor(userId, client);
+  const counting = await loadCounting(db);
   const [expected, stored, partner, dividends] = await Promise.all([
     loadTaxForms(userId, year, { client, now }),
     db.taxDocuments.findMany({
@@ -106,8 +143,9 @@ export async function loadTaxDocuments(
       select: { key: true, boxes: true, partner: true, fetchedAt: true, decision: true },
     }),
     documentPartnerFor(userId, { client }),
-    dividendsByAccount(userId, year, client),
+    dividendsByAccount(userId, year, client, counting),
   ]);
+  await adoptCopyDocuments(db, counting, year, stored, new Set(expected.forms.map((f) => f.key)));
   const byKey = new Map(stored.map((d) => [d.key, d]));
   const today = iso(now);
   const forms: CollectedForm[] = expected.forms.map((f) => {

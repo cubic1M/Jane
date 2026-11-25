@@ -1,30 +1,33 @@
 import { DEBT_FIRST_APR_BPS, DEBT_FIRST_MIN_CENTS } from "@/config/tax-decisions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
-import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCounted, reconcileLiabilities } from "@/lib/account-copies";
 
 // Whether paying debt down comes before a new tax-favoured contribution: the person is
 // overdrawn or carries a card or loan at or above DEBT_FIRST_APR_BPS. Returns the reason in a
 // sentence, or null.
 export async function debtFirst(userId: string, client: PrismaClient): Promise<string | null> {
   const db = scopedFor(userId, client);
-  const countedWhere = await onlyCounted(db);
-  const countedRows = await onlyCountedRows(db);
-  const [cash, costly] = await Promise.all([
+  const counting = await loadCounting(db);
+  const countedWhere = await onlyCounted(counting);
+  const [cash, rows] = await Promise.all([
     db.accounts.findMany({
       where: { userId, type: "depository", ...countedWhere },
       select: { currentBalanceCents: true },
     }),
     db.liabilities.findMany({
-      where: {
-        userId,
-        kind: { in: ["credit", "loan"] },
-        aprBps: { gte: DEBT_FIRST_APR_BPS },
-        ...countedRows,
+      where: { userId, kind: { in: ["credit", "loan"] } },
+      select: {
+        accountId: true,
+        aprBps: true,
+        account: { select: { currentBalanceCents: true } },
       },
-      select: { aprBps: true, account: { select: { currentBalanceCents: true } } },
     }),
   ]);
+  // The rate the lender reported on either link of a loan linked twice, then the costly ones.
+  const costly = reconcileLiabilities(counting, rows).filter(
+    (l) => (l.aprBps ?? 0) >= DEBT_FIRST_APR_BPS,
+  );
   // A card in credit has a negative balance: it owes nothing, whatever the size of the credit.
   const owed = (l: (typeof costly)[number]) => Math.max(0, l.account.currentBalanceCents ?? 0);
   const carried = costly.filter((l) => owed(l) >= DEBT_FIRST_MIN_CENTS);

@@ -1,4 +1,4 @@
-import { liabilitiesOnCounted, onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCountedRows, reconcileLiabilities } from "@/lib/account-copies";
 import { monthsBetweenLines } from "@/detection/units";
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -243,7 +243,8 @@ async function loadTaxEstimateFrom(
   const jointAccounts = await db.accounts.count({
     where: { name: { contains: "joint", mode: "insensitive" } },
   });
-  const countedRows = await onlyCountedRows(db);
+  const counting = await loadCounting(db);
+  const countedRows = await onlyCountedRows(counting);
   const [
     { view, profile },
     demo,
@@ -331,7 +332,7 @@ async function loadTaxEstimateFrom(
     }),
   ]);
   // A loan linked twice counts once, with the interest either link reported.
-  const loans = await liabilitiesOnCounted(db, loansAll);
+  const loans = reconcileLiabilities(counting, loansAll);
 
   const fixes = fixesFrom(corrections);
   // "That isn't income": the payer's deposits are left out, today's and later ones.

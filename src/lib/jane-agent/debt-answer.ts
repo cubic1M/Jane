@@ -1,4 +1,4 @@
-import { onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, reconcileLiabilities } from "@/lib/account-copies";
 import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
@@ -217,19 +217,23 @@ export async function answerDebt(
       return longGameReply(await loadStudentLongGame(userId, { client, now }));
     case "card_interest": {
       const db = scopedFor(userId, client);
-      const countedRows = await onlyCountedRows(db);
-      const [data, loans] = await Promise.all([
+      const counting = await loadCounting(db);
+      const [data, loanRows] = await Promise.all([
         loadCardInterest(userId, { client, now }),
         // What each lender reports paid this year (cards are the finding's, above).
         db.liabilities.findMany({
-          where: {
-            kind: { not: "credit" },
-            ytdInterestPaidCents: { gt: 0 },
-            ...countedRows,
+          where: { kind: { not: "credit" } },
+          select: {
+            accountId: true,
+            ytdInterestPaidCents: true,
+            account: { select: { name: true } },
           },
-          select: { ytdInterestPaidCents: true, account: { select: { name: true } } },
         }),
       ]);
+      // A loan linked twice counts once, with the interest either link reported.
+      const loans = reconcileLiabilities(counting, loanRows).filter(
+        (l) => (l.ytdInterestPaidCents ?? 0) > 0,
+      );
       const finding = data.available
         ? null
         : await db.findings.findFirst({

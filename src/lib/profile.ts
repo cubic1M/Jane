@@ -6,7 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { dataReach } from "@/lib/data-reach";
 import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
-import { accountCopies, onlyCountedRows } from "@/lib/account-copies";
+import { loadCounting, onlyCountedRows, reconcileLiabilities } from "@/lib/account-copies";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
@@ -88,11 +88,13 @@ async function loadProfileInputFrom(
   // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
   // the end of an old upload's statements, so its year doesn't shrink a day at a time.
   const since = profileHistoryStart(new Date(`${await dataReach(db, today, timezone)}T00:00:00Z`));
-  const countedRows = await onlyCountedRows(db);
+  // One counted set for the whole load: the accounts, their lines, holdings and liabilities all agree.
+  const counting = await loadCounting(db);
+  const countedRows = await onlyCountedRows(counting);
   const [
     allTransactions,
     allAccounts,
-    liabilities,
+    liabilityRows,
     holdings,
     prefs,
     tax,
@@ -141,7 +143,6 @@ async function loadProfileInputFrom(
       },
     }),
     db.liabilities.findMany({
-      where: countedRows,
       select: {
         accountId: true,
         kind: true,
@@ -216,7 +217,9 @@ async function loadProfileInputFrom(
     }),
   ]);
   // Books QA: an account linked twice (through two logins) counts once.
-  const copies = await accountCopies(db);
+  const copies = counting.copies;
+  // What the lender reported on either link of a loan linked twice (rate, interest paid).
+  const liabilities = reconcileLiabilities(counting, liabilityRows);
   const accounts = allAccounts.filter((a) => !copies.has(a.id));
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   // Other people in their household in Jane (spec step 264), not counting them.

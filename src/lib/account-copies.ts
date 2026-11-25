@@ -49,6 +49,9 @@ async function readCounting(db: Db) {
           select: { key: true },
         }),
   ]);
+  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
+  const bankOf = (a: { itemId: string | null }) => (a.itemId ? (bank.get(a.itemId) ?? null) : null);
+  const separate = new Set(said.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length)));
   // The day each upload's statement ends is the one it was uploaded with (the last day its files
   // cover, import_runs.to_date), else its latest transaction; a tie goes to the one uploaded last,
   // by the time of the very run that supplies that end day.
@@ -84,10 +87,9 @@ async function readCounting(db: Db) {
     endsOn.set(id, end);
     uploadedAt.set(id, at);
   }
-  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
   const left = accountsLeftOut(accounts, {
-    bankOf: (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
-    separate: new Set(said.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length))),
+    bankOf,
+    separate,
     endsOn,
     uploadedAt,
   });
@@ -98,6 +100,35 @@ async function readCounting(db: Db) {
 export async function accountsNotCounted(db: Db): Promise<Map<string, LeftOut>> {
   return (await readCounting(db)).left;
 }
+
+// What is counted, read once for a load: the accounts left out, and for each the counted account it
+// ends on (an upload left out for a later upload that is left out for a link ends on the link).
+// Readers that need more than the ids (what a left-out copy knows that the account kept doesn't:
+// reconcileLiabilities, representativeOf) read it once and pass it down, so one load never counts
+// with two different sets.
+export type Counting = {
+  left: ReadonlyMap<string, LeftOut>;
+  copies: ReadonlySet<string>;
+  representativeOf: (accountId: string) => string;
+};
+const isCounting = (x: Db | Counting): x is Counting => "representativeOf" in x;
+
+export function countingOf(left: ReadonlyMap<string, LeftOut>): Counting {
+  const representativeOf = (accountId: string) => {
+    const seen = new Set<string>();
+    let at = accountId;
+    while (left.has(at) && !seen.has(at)) {
+      seen.add(at);
+      at = left.get(at)!.sameAs.id;
+    }
+    return at;
+  };
+  return { left, copies: new Set(left.keys()), representativeOf };
+}
+export async function loadCounting(db: Db): Promise<Counting> {
+  return countingOf(await accountsNotCounted(db));
+}
+const countingFrom = (from: Db | Counting) => (isCounting(from) ? from : loadCounting(from));
 
 // What is left out for want of proof it is another account, in the words under net worth
 // (src/insights/net-worth.ts): not the certain copies, which the books check says, and only accounts
@@ -114,46 +145,128 @@ export async function leftOutNotes(db: Db): Promise<(MaybeSame & { id: string })
 }
 
 // The ids of the accounts to leave out.
-export async function accountCopies(db: Db): Promise<Set<string>> {
-  return new Set((await accountsNotCounted(db)).keys());
+export async function accountCopies(from: Db | Counting): Promise<Set<string>> {
+  return new Set((await countingFrom(from)).copies);
 }
 
 // The `where` for a read of accounts that adds or reads their balances itself: only the ones counted.
-export async function onlyCounted(db: Db): Promise<{ id?: { notIn: string[] } }> {
-  const copies = await accountCopies(db);
+export async function onlyCounted(from: Db | Counting): Promise<{ id?: { notIn: string[] } }> {
+  const copies = await accountCopies(from);
   return copies.size === 0 ? {} : { id: { notIn: [...copies] } };
-}
-
-// A loan linked twice counts once, with the interest the lender reported on either link (each
-// link stores its own figure, and one may have none): the rows on counted accounts, each carrying the
-// largest year-to-date interest of itself and its copies. Rows are every liability read, unfiltered.
-export async function liabilitiesOnCounted<
-  T extends { accountId: string; ytdInterestPaidCents: number | null },
->(db: Db, rows: readonly T[]): Promise<T[]> {
-  const left = await accountsNotCounted(db);
-  if (left.size === 0) return [...rows];
-  const best = new Map<string, number>();
-  for (const r of rows) {
-    const gone = left.get(r.accountId);
-    const cents = r.ytdInterestPaidCents ?? 0;
-    if (gone && cents > (best.get(gone.sameAs.id) ?? 0)) best.set(gone.sameAs.id, cents);
-  }
-  return rows
-    .filter((r) => !left.has(r.accountId))
-    .map((r) => {
-      const more = best.get(r.accountId);
-      return more !== undefined && more > (r.ytdInterestPaidCents ?? 0)
-        ? { ...r, ytdInterestPaidCents: more }
-        : r;
-    });
 }
 
 // The same for a read of the rows kept by account (holdings, liabilities, investment transactions):
 // only the ones on a counted account, so an account linked twice, or uploaded and linked, is not
 // added twice in a total or a suggestion.
-export async function onlyCountedRows(db: Db): Promise<{ accountId?: { notIn: string[] } }> {
-  const copies = await accountCopies(db);
+export async function onlyCountedRows(
+  from: Db | Counting,
+): Promise<{ accountId?: { notIn: string[] } }> {
+  const copies = await accountCopies(from);
   return copies.size === 0 ? {} : { accountId: { notIn: [...copies] } };
+}
+
+// The facts of a liability (rate, what the lender reported paid) a counted account may lack and a
+// left-out copy of it carries: leaving the copy out of the figures must not throw them away
+// (CodeRabbit on #2259, ten times over). Rows are every liability read, unfiltered by account; the
+// result is the rows on counted accounts, each filled in from the copies that end on it, following
+// the chain (an upload left out for an upload left out for a link). A field the counted row has is
+// never replaced, and no balance is ever added: balances sit on the account, which stays as it is.
+// The lender's interest travels with the date it was read on (`lastPaymentDate`, `updatedAt`), so
+// the year and the annualising still go by the reading that gave the figure.
+const READING = ["ytdInterestPaidCents", "lastPaymentDate", "updatedAt"] as const;
+export function reconcileLiabilities<T extends { accountId: string }>(
+  counting: Counting,
+  rows: readonly T[],
+  // For a figure said for one year (the tax pack, the organizer, home taxes): only a reading taken in
+  // that year (`updatedAt`) can supply the interest, the account's own or a copy's, and with none the
+  // interest is left unknown rather than taken from another year's reading.
+  { readingYear }: { readingYear?: number } = {},
+): T[] {
+  if (counting.copies.size === 0 && readingYear === undefined) return [...rows];
+  const copiesOf = new Map<string, T[]>();
+  for (const r of [...rows].sort((a, b) => a.accountId.localeCompare(b.accountId))) {
+    if (!counting.copies.has(r.accountId)) continue;
+    const rep = counting.representativeOf(r.accountId);
+    copiesOf.set(rep, [...(copiesOf.get(rep) ?? []), r]);
+  }
+  const readIn = (r: unknown) => {
+    const at = (r as Record<string, unknown>).updatedAt;
+    return at instanceof Date ? at.getUTCFullYear() : null;
+  };
+  const cents = (r: unknown) =>
+    ((r as Record<string, unknown>).ytdInterestPaidCents ?? 0) as number;
+  return rows
+    .filter((r) => !counting.copies.has(r.accountId))
+    .map((row) => {
+      const copies = copiesOf.get(row.accountId) ?? [];
+      if (copies.length === 0 && readingYear === undefined) return row;
+      const out: Record<string, unknown> = { ...row };
+      const own = row as Record<string, unknown>;
+      for (const key of Object.keys(own)) {
+        if (
+          key === "accountId" ||
+          key === "account" ||
+          (READING as readonly string[]).includes(key)
+        )
+          continue;
+        if (own[key] === null || own[key] === undefined) {
+          const from = copies.find((c) => (c as Record<string, unknown>)[key] != null);
+          if (from) out[key] = (from as Record<string, unknown>)[key];
+        }
+      }
+      if ("ytdInterestPaidCents" in own) {
+        // The reading to take: the largest figure among the account's own and its copies', and for a
+        // year only among the ones read in it (the account's own wins a tie).
+        const pool = [row, ...copies].filter(
+          (r) =>
+            readingYear === undefined ||
+            (readIn(r) === readingYear &&
+              (r as Record<string, unknown>).ytdInterestPaidCents != null),
+        );
+        const best = pool.reduce<T | null>(
+          (m, c) => (m === null || cents(c) > cents(m) ? c : m),
+          null,
+        );
+        if (best === null) out.ytdInterestPaidCents = null;
+        else if (best !== row)
+          for (const key of READING)
+            if (key in own) out[key] = (best as Record<string, unknown>)[key];
+      }
+      return out as T;
+    });
+}
+
+// Lines (investment transactions, say) of the counted accounts, with the lines only a left-out copy
+// has: an upload of an IRA left out for the link carries the contributions made before the link began,
+// and they count toward the year's room once. Every line is attributed to the counted account its
+// account ends on; for each account, day and amount, the most that any one of the accounts that end on
+// it shows is kept (the account's own, or one copy's): the lines they share are one line, and a
+// repeated line on one account stays repeated. Nothing is added twice, and no balance comes with it.
+export function foldCopiesInto<T extends { accountId: string; amountCents: number; date: Date }>(
+  counting: Counting,
+  rows: readonly T[],
+  // A label that makes two lines of one day and amount two lines when it differs (an employer's
+  // contribution against the person's own): a line is the same one only if its class is too.
+  classOf: (row: T) => string = () => "",
+): T[] {
+  const groups = new Map<string, { rep: string; bySource: Map<string, T[]> }>();
+  for (const r of rows) {
+    const rep = counting.representativeOf(r.accountId);
+    const key = `${rep}|${r.date.toISOString().slice(0, 10)}|${r.amountCents}|${classOf(r)}`;
+    const group = groups.get(key) ?? { rep, bySource: new Map() };
+    group.bySource.set(r.accountId, [...(group.bySource.get(r.accountId) ?? []), r]);
+    groups.set(key, group);
+  }
+  const kept: T[] = [];
+  for (const { rep, bySource } of groups.values()) {
+    const sources = [...bySource].sort(
+      ([a, x], [b, y]) =>
+        y.length - x.length || Number(b === rep) - Number(a === rep) || a.localeCompare(b),
+    );
+    const [source, lines] = sources[0];
+    for (const line of lines) kept.push(source === rep ? line : { ...line, accountId: rep });
+  }
+  return kept;
 }
 
 // The rows that aren't on a copy, by the account id each names.

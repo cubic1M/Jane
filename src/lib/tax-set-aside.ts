@@ -9,7 +9,7 @@ import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { todayOf } from "@/lib/today";
 import { taxPaymentsFor } from "@/planning/tax-income";
 import { workOutSetAside, type TaxSetAside } from "@/planning/tax-set-aside";
-import { onlyCounted } from "@/lib/account-copies";
+import { loadCounting, onlyCounted } from "@/lib/account-copies";
 
 // The tax left to cover (src/planning/tax-set-aside.ts), from the person's own estimate: the one
 // figure the card, Safe to spend, the chat and the Taxes page all use.
@@ -41,7 +41,8 @@ async function work(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxSetAsideView> {
   const db = scopedFor(userId, client);
-  const countedWhere = await onlyCounted(db);
+  const counting = await loadCounting(db);
+  const countedWhere = await onlyCounted(counting);
   const [view, advice, savings, goals] = await Promise.all([
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
@@ -75,6 +76,8 @@ async function work(
     view.year + 1,
   );
 
+  // An account counts once, whichever goals point at it (or at its copies).
+  const goalAccounts = new Set<string>();
   const kept = [
     ...savings.flatMap((a) =>
       TAX_KEPT_NAME.test(a.name) && (a.currentBalanceCents ?? 0) > 0
@@ -82,9 +85,14 @@ async function work(
         : [],
     ),
     ...goals.flatMap((g) => {
-      const account = savings.find((a) => a.id === g.accountId);
+      // A goal that points at an account left out as a copy points at the one that counts.
+      const account = savings.find(
+        (a) => a.id === (g.accountId ? counting.representativeOf(g.accountId) : g.accountId),
+      );
       // An account already counted by its own name isn't counted again through its goal.
       if (!TAX_KEPT_NAME.test(g.name) || (account && TAX_KEPT_NAME.test(account.name))) return [];
+      if (account && goalAccounts.has(account.id)) return [];
+      if (account) goalAccounts.add(account.id);
       const cents = account ? (account.currentBalanceCents ?? 0) : (g.manualSavedCents ?? 0);
       return cents > 0 ? [{ name: `your goal ${g.name}`, cents }] : [];
     }),
