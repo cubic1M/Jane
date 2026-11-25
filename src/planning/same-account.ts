@@ -5,8 +5,6 @@ import {
   SAME_ACCOUNT_BALANCE_SLACK_CENTS,
   SAME_ACCOUNT_DAY_SLACK,
   SAME_ACCOUNT_EDGE_DAYS,
-  SAME_ACCOUNT_MAX_LINES,
-  SAME_ACCOUNT_MAX_STEPS,
   SAME_ACCOUNT_MATCH_RATIO,
   SAME_ACCOUNT_MIN_LINES,
 } from "@/config/detection";
@@ -36,191 +34,127 @@ export type CompareInput = {
   // (null when its history doesn't reach that day).
   closing: { date: string; cents: number } | null;
   linkBalanceOn: (date: string) => number | null;
+  // Either side had more lines than were read: what was read is not all there is.
+  truncated?: boolean;
 };
 
 const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000;
 
-// Lines in the days both cover, matched one to one by amount and day (within the slack): the most
-// that can be matched, not the first that are found (a nearest-day pick can take a line a later one
-// needs). A line near the edge of those days is matched to its partner just outside them: the slack
-// reaches past the edge on both sides. A line the bank reports as two legs (a transfer, a split)
-// counts as matched when two of the other side's left-over lines within the slack add up to it; that
-// is asked of each line on its own and uses none up, so no order of the lines decides it. Compared
-// are the lines in the days both cover, less the first and last day (a history may start partway
-// through its first day), on the side with fewer. At most SAME_ACCOUNT_MAX_LINES of each side, the
-// newest, are looked at and at most SAME_ACCOUNT_MAX_STEPS steps taken: past that, `exhausted`.
+// Lines in the days both cover, matched exactly and one to one: the same amount (and sign), on days
+// within the slack. A line near the edge of those days is matched to its partner just outside them.
+// Per amount, both sides sorted by day, each line takes the earliest unused partner in its window:
+// that is the most that can be matched, and the work is the sorting. Coverage is counted on each
+// side's own lines in the days both cover, less the first and last day (a history may start partway
+// through its first day): of the lines there, how many have a partner, and how many there are.
 export function matchLines(
   upload: readonly Line[],
   link: readonly Line[],
   slack: number = SAME_ACCOUNT_DAY_SLACK,
 ) {
-  const none = { matched: 0, matchedStrict: 0, compared: 0, overlapDays: 0, exhausted: false };
+  const zero = { matched: 0, lines: 0 };
+  const none = { upload: zero, link: zero, fullUpload: zero, fullLink: zero, overlapDays: 0 };
   if (upload.length === 0 || link.length === 0) return none;
-  // Past the limit the newest are looked at, and the answer is not to be trusted either way.
-  const overLimit = upload.length > SAME_ACCOUNT_MAX_LINES || link.length > SAME_ACCOUNT_MAX_LINES;
-  const newest = (l: readonly Line[]) =>
-    l.length <= SAME_ACCOUNT_MAX_LINES
-      ? l
-      : [...l]
-          .sort((a, b) => b.date.localeCompare(a.date) || b.amountCents - a.amountCents)
-          .slice(0, SAME_ACCOUNT_MAX_LINES);
-  const [mine, theirs] = [newest(upload), newest(link)];
-  const first = [mine, theirs].map((l) => l.reduce((m, x) => (x.date < m ? x.date : m), l[0].date));
-  const last = [mine, theirs].map((l) => l.reduce((m, x) => (x.date > m ? x.date : m), l[0].date));
+  const first = [upload, link].map((l) => l.reduce((m, x) => (x.date < m ? x.date : m), l[0].date));
+  const last = [upload, link].map((l) => l.reduce((m, x) => (x.date > m ? x.date : m), l[0].date));
   const from = first[0] > first[1] ? first[0] : first[1];
   const to = last[0] < last[1] ? last[0] : last[1];
   if (from > to) return none;
   const coreFrom = addDays(from, SAME_ACCOUNT_EDGE_DAYS);
   const coreTo = addDays(to, -SAME_ACCOUNT_EDGE_DAYS);
-  const within = (l: readonly Line[], a: string, b: string) =>
-    l.filter((x) => x.date >= a && x.date <= b).sort((x, y) => x.date.localeCompare(y.date));
-  const [u, k] = [
-    within(mine, addDays(from, -slack), addDays(to, slack)),
-    within(theirs, addDays(from, -slack), addDays(to, slack)),
-  ];
   const inCore = (line: Line) => line.date >= coreFrom && line.date <= coreTo;
-  const near = (a: Line, b: Line) => days(a.date, b.date) <= slack;
-  let steps = 0;
-  const spent = () => (steps += 1) > SAME_ACCOUNT_MAX_STEPS;
-  // The most one-to-one pairs of equal amount within the slack (augmenting paths, per amount).
-  const byAmount = new Map<number, number[]>();
-  k.forEach((line, j) =>
-    byAmount.set(line.amountCents, [...(byAmount.get(line.amountCents) ?? []), j]),
-  );
-  const takenBy = new Map<number, number>();
-  const augment = (i: number, seen: Set<number>): boolean => {
-    for (const j of byAmount.get(u[i].amountCents) ?? []) {
-      if (spent()) return false;
-      if (seen.has(j) || !near(u[i], k[j])) continue;
-      seen.add(j);
-      const holder = takenBy.get(j);
-      if (holder === undefined || augment(holder, seen)) {
-        takenBy.set(j, i);
-        return true;
+  // Also counted whole, edge days and all: a match across the first or last shared day shows there.
+  const inFull = (line: Line) => line.date >= from && line.date <= to;
+  const byAmount = (lines: readonly Line[]) => {
+    const out = new Map<number, Line[]>();
+    for (const l of lines) out.set(l.amountCents, [...(out.get(l.amountCents) ?? []), l]);
+    for (const list of out.values()) list.sort((a, b) => a.date.localeCompare(b.date));
+    return out;
+  };
+  const [mine, theirs] = [byAmount(upload), byAmount(link)];
+  let [matchedU, matchedK, fullU, fullK] = [0, 0, 0, 0];
+  for (const [amount, ours] of mine) {
+    const others = theirs.get(amount);
+    if (!others) continue;
+    let j = 0;
+    for (const line of ours) {
+      while (
+        j < others.length &&
+        days(others[j].date, line.date) > slack &&
+        others[j].date < line.date
+      )
+        j += 1;
+      if (j < others.length && days(others[j].date, line.date) <= slack) {
+        if (inCore(line)) matchedU += 1;
+        if (inCore(others[j])) matchedK += 1;
+        if (inFull(line)) fullU += 1;
+        if (inFull(others[j])) fullK += 1;
+        j += 1;
       }
     }
-    return false;
-  };
-  for (let i = 0; i < u.length && steps <= SAME_ACCOUNT_MAX_STEPS; i += 1) augment(i, new Set());
-  const usedU = new Set(takenBy.values());
-  const usedK = new Set(takenBy.keys());
-  // Pairs are counted from each side's own lines in the days both cover: a pair whose partner is
-  // outside them still covers the line that is inside. The most of the two counts is the coverage.
-  const exactU = [...usedU].filter((i) => inCore(u[i])).length;
-  const exactK = [...takenBy.keys()].filter((j) => inCore(k[j])).length;
-  // Two left-over lines on the other side, within the slack, that add up to a line: found among the
-  // lines in its day window only (they are sorted by day), the complement looked up by amount, and
-  // every visit charged to the budget. `taken` are legs already given to another line.
-  const legsFor = (
-    line: Line,
-    others: readonly Line[],
-    used: ReadonlySet<number>,
-    taken: ReadonlySet<number>,
-  ): [number, number] | null => {
-    const [low, high] = [addDays(line.date, -slack), addDays(line.date, slack)];
-    let lo = 0;
-    let hi = others.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (others[mid].date < low) lo = mid + 1;
-      else hi = mid;
-    }
-    const at = new Map<number, number[]>();
-    const window: number[] = [];
-    for (let idx = lo; idx < others.length && others[idx].date <= high; idx += 1) {
-      if (spent()) break;
-      if (used.has(idx) || taken.has(idx)) continue;
-      window.push(idx);
-      at.set(others[idx].amountCents, [...(at.get(others[idx].amountCents) ?? []), idx]);
-    }
-    for (const a of window) {
-      const partner = (at.get(line.amountCents - others[a].amountCents) ?? []).find((b) => b !== a);
-      if (partner !== undefined) return [a, partner];
-    }
-    return null;
-  };
-  // A line "could be" two legs if any two of the other side's would do (asked of each line alone,
-  // using none up, so no order decides: this can only stop "different"). It "is" two legs for
-  // "same" only if the legs are its own: each line takes legs no other line has taken.
-  let possible = 0;
-  let proven = 0;
-  const noneTaken: ReadonlySet<number> = new Set();
-  const takenK = new Set<number>();
-  const takenU = new Set<number>();
-  u.forEach((line, i) => {
-    if (usedU.has(i) || !inCore(line) || steps > SAME_ACCOUNT_MAX_STEPS) return;
-    if (legsFor(line, k, usedK, noneTaken)) possible += 1;
-    const own = legsFor(line, k, usedK, takenK);
-    if (own) {
-      proven += 1;
-      own.forEach((j) => takenK.add(j));
-    }
-  });
-  k.forEach((line, j) => {
-    if (usedK.has(j) || !inCore(line) || steps > SAME_ACCOUNT_MAX_STEPS) return;
-    if (legsFor(line, u, usedU, noneTaken)) possible += 1;
-    const own = legsFor(line, u, usedU, takenU);
-    if (own) {
-      proven += 1;
-      own.forEach((i) => takenU.add(i));
-    }
-  });
-  const coreU = u.filter(inCore).length;
-  const coreK = k.filter(inCore).length;
-  const exact = Math.max(exactU, exactK);
+  }
   return {
-    // The most that could match: stops "different".
-    matched: exact + possible,
-    // What matches with nothing used twice: what "same" is built on.
-    matchedStrict: exact + proven,
-    compared: Math.min(coreU, coreK),
+    upload: { matched: matchedU, lines: upload.filter(inCore).length },
+    link: { matched: matchedK, lines: link.filter(inCore).length },
+    fullUpload: { matched: fullU, lines: upload.filter(inFull).length },
+    fullLink: { matched: fullK, lines: link.filter(inFull).length },
     overlapDays: days(from, to) + 1,
-    exhausted: steps > SAME_ACCOUNT_MAX_STEPS || overLimit,
   };
 }
 
-// "Same" when most of what they both show is on both sides. "Different" only when it is clean: enough
-// lines, enough days in common, almost none alike even with a wider day slack, and the work within
-// its budget. Everything else the lines can't say is "unknown", which leaves the upload out.
+// "Same": most of what one side shows in the days both cover is on the other (an upload that is
+// only part of the account is still the same account), or the closing balance equals the link's.
+// "Different": clean evidence only: enough shared days, enough lines on BOTH sides in them, almost
+// none alike on either side, even with a wider day slack and with the signs turned, nothing cut
+// short, and a closing balance that is not the link's when that is known. Everything else is
+// "unknown", which leaves the upload out and says so.
 export function compareAccounts({
   upload,
   link,
   closing,
   linkBalanceOn,
+  truncated = false,
 }: CompareInput): Comparison {
   const tight = matchLines(upload, link);
-  const { compared, overlapDays } = tight;
-  const matched = Math.min(tight.matched, compared);
-  const strict = Math.min(tight.matchedStrict, compared);
-  if (!tight.exhausted && compared >= SAME_ACCOUNT_MIN_LINES) {
-    if (strict / compared >= SAME_ACCOUNT_MATCH_RATIO)
-      return { verdict: "same", by: "lines", matched: strict, compared };
+  const rate = (side: { matched: number; lines: number }) =>
+    side.lines >= SAME_ACCOUNT_MIN_LINES ? side.matched / side.lines : 0;
+  const best = Math.max(rate(tight.upload), rate(tight.link));
+  const [matched, compared] =
+    rate(tight.upload) >= rate(tight.link)
+      ? [tight.upload.matched, tight.upload.lines]
+      : [tight.link.matched, tight.link.lines];
+  if (best >= SAME_ACCOUNT_MATCH_RATIO) return { verdict: "same", by: "lines", matched, compared };
+  // A closing balance equal to the link's on that day says the same.
+  const theirsOn = closing ? linkBalanceOn(closing.date) : null;
+  if (
+    closing &&
+    theirsOn !== null &&
+    Math.abs(theirsOn - closing.cents) <= SAME_ACCOUNT_BALANCE_SLACK_CENTS
+  )
+    return { verdict: "same", by: "balance", matched, compared };
+  const low = (side: { matched: number; lines: number }) =>
+    side.lines >= SAME_ACCOUNT_MIN_LINES &&
+    side.matched / side.lines <= DIFFERENT_ACCOUNT_MAX_RATIO;
+  if (
+    !truncated &&
+    tight.overlapDays >= DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS &&
+    low(tight.upload) &&
+    low(tight.link) &&
+    low(tight.fullUpload) &&
+    low(tight.fullLink)
+  ) {
+    const wide = matchLines(upload, link, DIFFERENT_ACCOUNT_DAY_SLACK);
+    const flipped = matchLines(
+      upload.map((l) => ({ ...l, amountCents: -l.amountCents })),
+      link,
+      DIFFERENT_ACCOUNT_DAY_SLACK,
+    );
     if (
-      matched / compared <= DIFFERENT_ACCOUNT_MAX_RATIO &&
-      overlapDays >= DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS
-    ) {
-      const loose = matchLines(upload, link, DIFFERENT_ACCOUNT_DAY_SLACK);
-      // The same lines with their signs turned (money out on one side is money in on the other):
-      // one account written two ways, never two.
-      const flipped = matchLines(
-        upload.map((l) => ({ ...l, amountCents: -l.amountCents })),
-        link,
-        DIFFERENT_ACCOUNT_DAY_SLACK,
-      );
-      const clean =
-        !loose.exhausted &&
-        !flipped.exhausted &&
-        loose.compared >= SAME_ACCOUNT_MIN_LINES &&
-        Math.min(loose.matched, loose.compared) / loose.compared <= DIFFERENT_ACCOUNT_MAX_RATIO &&
-        flipped.matched / (flipped.compared || 1) <= DIFFERENT_ACCOUNT_MAX_RATIO;
-      if (clean) return { verdict: "different", by: "lines", matched, compared };
-    }
-  }
-  // The lines can't say. A closing balance equal to the link's on that day can.
-  if (closing) {
-    const theirsOn = linkBalanceOn(closing.date);
-    if (theirsOn !== null && Math.abs(theirsOn - closing.cents) <= SAME_ACCOUNT_BALANCE_SLACK_CENTS)
-      return { verdict: "same", by: "balance", matched, compared };
+      low(wide.upload) &&
+      low(wide.link) &&
+      flipped.upload.matched === 0 &&
+      flipped.link.matched === 0
+    )
+      return { verdict: "different", by: "lines", matched, compared };
   }
   return { verdict: "unknown", by: "none", matched, compared };
 }

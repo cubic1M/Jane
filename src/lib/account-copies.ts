@@ -1,6 +1,6 @@
 import type { ScopedDb } from "@/lib/db-scoped";
 import type { MaybeSame } from "@/insights/net-worth";
-import { SAME_ACCOUNT_BALANCE_SLACK_DAYS } from "@/config/detection";
+import { SAME_ACCOUNT_BALANCE_SLACK_DAYS, SAME_ACCOUNT_MAX_LINES } from "@/config/detection";
 import {
   accountsLeftOut,
   duplicateAccounts,
@@ -31,11 +31,6 @@ type Db = Pick<
   ScopedDb,
   "accounts" | "plaidItems" | "janePreferences" | "transactions" | "importRuns" | "balanceSnapshots"
 >;
-
-// The verdicts already worked out, by the state they were worked out from (this server's memory;
-// a restart only means they are worked out again).
-const VERDICTS_KEPT = 2000;
-const verdicts = new Map<string, Verdict>();
 
 async function readCounting(db: Db) {
   const accounts = await db.accounts.findMany({
@@ -110,92 +105,59 @@ async function readCounting(db: Db) {
   }
   // Compare each such upload with the link it sits beside, by their lines over the days both cover
   // and the closing balance against the link's on that day (src/planning/same-account.ts). The
-  // verdict for a pair is worked out once per change to either side's lines or readings: a counted
-  // set is asked for many times a page, the lines are read only for a pair not seen in this state.
+  // newest SAME_ACCOUNT_MAX_LINES of each account are read, one more than that to know there were
+  // more, and a comparison that was cut short never says "different".
   const evidence = new Map<string, Verdict>();
   if (candidates.length > 0) {
     const ids = [...new Set(candidates.flatMap(([u, l]) => [u.id, l.id]))];
-    const linkIds = [...new Set(candidates.map(([, l]) => l.id))];
-    const [shape, readingShape] = await Promise.all([
-      db.transactions.groupBy({
-        by: ["accountId"],
-        where: { accountId: { in: ids }, pending: false },
-        _count: { _all: true },
-        _sum: { amountCents: true },
-        _max: { date: true, updatedAt: true },
-      }),
-      db.balanceSnapshots.groupBy({
-        by: ["accountId"],
-        where: { accountId: { in: linkIds } },
-        _count: { _all: true },
-        _sum: { balanceCents: true },
-        _max: { date: true },
+    const [perAccount, readings] = await Promise.all([
+      Promise.all(
+        ids.map(async (id) => ({
+          id,
+          // Posted lines only: a pending charge isn't on a statement (a tip changes its amount).
+          rows: await db.transactions.findMany({
+            where: { accountId: id, pending: false },
+            select: { date: true, amountCents: true },
+            orderBy: [{ date: "desc" }, { amountCents: "desc" }],
+            take: SAME_ACCOUNT_MAX_LINES + 1,
+          }),
+        })),
+      ),
+      db.balanceSnapshots.findMany({
+        where: { accountId: { in: candidates.map(([, l]) => l.id) } },
+        select: { accountId: true, date: true, balanceCents: true },
       }),
     ]);
-    const stateOf = (id: string) =>
-      JSON.stringify([
-        shape.find((x) => x.accountId === id),
-        readingShape.find((x) => x.accountId === id),
+    const lines = new Map<string, { lines: Line[]; truncated: boolean }>();
+    for (const { id, rows } of perAccount)
+      lines.set(id, {
+        lines: rows
+          .slice(0, SAME_ACCOUNT_MAX_LINES)
+          .map((r) => ({ date: day(r.date)!, amountCents: r.amountCents })),
+        truncated: rows.length > SAME_ACCOUNT_MAX_LINES,
+      });
+    const readingsOf = new Map<string, { date: string; balanceCents: number }[]>();
+    for (const r of readings)
+      readingsOf.set(r.accountId, [
+        ...(readingsOf.get(r.accountId) ?? []),
+        { date: day(r.date)!, balanceCents: r.balanceCents },
       ]);
-    const keyOf = ([upload, link]: (typeof candidates)[number]) =>
-      JSON.stringify([
-        upload.id,
-        link.id,
-        stateOf(upload.id),
-        stateOf(link.id),
-        upload.currentBalanceCents,
-        endsOn.get(upload.id) ?? null,
-      ]);
-    // What this call needs is kept in this call (evidence), whatever the shared memory later drops.
-    for (const c of candidates) {
-      const known = verdicts.get(keyOf(c));
-      if (known) evidence.set(`${c[0].id}|${c[1].id}`, known);
+    for (const [upload, link] of candidates) {
+      const end = endsOn.get(upload.id);
+      const [mine, theirs] = [lines.get(upload.id), lines.get(link.id)];
+      const { verdict } = compareAccounts({
+        upload: mine?.lines ?? [],
+        link: theirs?.lines ?? [],
+        truncated: Boolean(mine?.truncated || theirs?.truncated),
+        closing:
+          end && upload.currentBalanceCents !== null
+            ? { date: end, cents: upload.currentBalanceCents }
+            : null,
+        linkBalanceOn: (date) =>
+          balanceOnOrBefore(readingsOf.get(link.id) ?? [], date, SAME_ACCOUNT_BALANCE_SLACK_DAYS),
+      });
+      evidence.set(`${upload.id}|${link.id}`, verdict);
     }
-    const missing = candidates.filter((c) => !evidence.has(`${c[0].id}|${c[1].id}`));
-    if (missing.length > 0) {
-      const need = [...new Set(missing.flatMap(([u, l]) => [u.id, l.id]))];
-      const [rows, readings] = await Promise.all([
-        // Posted lines only: a pending charge isn't on a statement (a tip changes its amount).
-        db.transactions.findMany({
-          where: { accountId: { in: need }, pending: false },
-          select: { accountId: true, date: true, amountCents: true },
-        }),
-        db.balanceSnapshots.findMany({
-          where: { accountId: { in: missing.map(([, l]) => l.id) } },
-          select: { accountId: true, date: true, balanceCents: true },
-        }),
-      ]);
-      const lines = new Map<string, Line[]>();
-      for (const r of rows)
-        lines.set(r.accountId, [
-          ...(lines.get(r.accountId) ?? []),
-          { date: day(r.date)!, amountCents: r.amountCents },
-        ]);
-      const readingsOf = new Map<string, { date: string; balanceCents: number }[]>();
-      for (const r of readings)
-        readingsOf.set(r.accountId, [
-          ...(readingsOf.get(r.accountId) ?? []),
-          { date: day(r.date)!, balanceCents: r.balanceCents },
-        ]);
-      for (const candidate of missing) {
-        const [upload, link] = candidate;
-        const end = endsOn.get(upload.id);
-        const { verdict } = compareAccounts({
-          upload: lines.get(upload.id) ?? [],
-          link: lines.get(link.id) ?? [],
-          closing:
-            end && upload.currentBalanceCents !== null
-              ? { date: end, cents: upload.currentBalanceCents }
-              : null,
-          linkBalanceOn: (date) =>
-            balanceOnOrBefore(readingsOf.get(link.id) ?? [], date, SAME_ACCOUNT_BALANCE_SLACK_DAYS),
-        });
-        if (verdicts.size >= VERDICTS_KEPT) verdicts.delete(verdicts.keys().next().value!);
-        verdicts.set(keyOf(candidate), verdict);
-      }
-    }
-    for (const c of candidates)
-      evidence.set(`${c[0].id}|${c[1].id}`, verdicts.get(keyOf(c)) ?? "unknown");
   }
   const cleared = new Set<string>();
   const left = accountsLeftOut(accounts, {

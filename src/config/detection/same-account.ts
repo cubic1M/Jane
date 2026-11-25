@@ -23,7 +23,6 @@ export const DIFFERENT_ACCOUNT_MIN_OVERLAP_DAYS = 14;
 // of the count (a history that starts partway through a day shows only part of it).
 export const DIFFERENT_ACCOUNT_DAY_SLACK = 5;
 export const SAME_ACCOUNT_EDGE_DAYS = 1;
-// The most lines of each side that are compared (the newest), and the most steps one comparison may
-// take; past either, the answer is "unknown" and the upload stays left out, never a slow page.
+// The most lines of one account that are read to compare (the newest). With more than this on either
+// side the comparison is cut short, and a cut-short comparison never says "different".
 export const SAME_ACCOUNT_MAX_LINES = 1500;
-export const SAME_ACCOUNT_MAX_STEPS = 2_000_000;
