@@ -80,6 +80,9 @@ export type AuditEvent =
   // Removing uploads (src/lib/import/remove.ts): what was removed, as counts only.
   | "upload_removed"
   | "uploaded_account_removed"
+  // The person said an uploaded account is an account of its own (src/lib/import/separate.ts), or took it back.
+  | "uploaded_account_kept_separate"
+  | "uploaded_account_separate_undone"
   | "uploads_reset"
   // An uploaded account's balance given after its upload (src/lib/import/account-balance.ts).
   | "uploaded_balance_set"

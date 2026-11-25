@@ -17,13 +17,12 @@ import {
 } from "@/insights/net-worth";
 import { lenderName } from "@/insights/paid-loans";
 import { monthsEnding } from "@/insights/spending";
-import { withoutCopies } from "@/lib/account-copies";
+import { accountCopies, leftOutNotes, withoutCopies } from "@/lib/account-copies";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
-import { copiesToLeaveOut, maybeSameAccounts } from "@/planning/books";
 
 // What net worth is worked out from, read one way for every surface that shows it (gate B: the
 // weekly email left out what the person owns and their crypto, the month close and Home's line
@@ -56,7 +55,7 @@ export async function loadNetWorthInputs(
     }),
     cryptoTotal(userId, { client }),
   ]);
-  const copies = copiesToLeaveOut(allAccounts);
+  const copies = await accountCopies(db);
   const accounts = withoutCopies(allAccounts, copies, (a) => a.id);
   return {
     accounts,
@@ -131,24 +130,14 @@ export async function loadNetWorthCovers(
   );
 }
 
-// Accounts that may be one account counted twice, in words (src/insights/net-worth.ts), from the
-// accounts net worth counts, and where one is removed; null when there are none. Said under the
-// figure on Home and Money.
+// The accounts net worth leaves out because they may be one already counted, in words
+// (src/insights/net-worth.ts), and where the person settles it; null when there are none. Said
+// under the figure on Home and Money.
 export async function loadMaybeSame(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<{ words: string; short: string; href: string } | null> {
-  const [{ accounts }, items] = await Promise.all([
-    loadNetWorthInputs(userId, { client }),
-    scopedFor(userId, client).plaidItems.findMany({ select: { id: true, institutionName: true } }),
-  ]);
-  const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-  // Only accounts whose balance is counted: net worth leaves out one with no balance, so it isn't
-  // counted twice and there is nothing to say.
-  const pairs = maybeSameAccounts(
-    accounts.filter((a) => a.currentBalanceCents !== null),
-    (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
-  );
+  const pairs = await leftOutNotes(scopedFor(userId, client));
   const words = maybeSameWords(pairs);
   const short = maybeSameShort(pairs);
   return words && short ? { words, short, href: maybeSameHref(pairs) } : null;
@@ -192,7 +181,7 @@ export async function onlyDebtsSeen(
     cryptoTotal(userId, { client }),
   ]);
   return netWorth(
-    withoutCopies(accounts, copiesToLeaveOut(accounts), (a) => a.id).map((a) => ({
+    withoutCopies(accounts, await accountCopies(db), (a) => a.id).map((a) => ({
       ...a,
       balanceCents: a.currentBalanceCents,
     })),

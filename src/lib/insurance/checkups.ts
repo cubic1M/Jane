@@ -12,6 +12,7 @@ import { loadHousehold } from "./household";
 import { listPolicies } from "./policies";
 import { systemDb } from "@/lib/system-db";
 import { STAYING } from "@/lib/only-people";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Running the coverage checkup (spec step 106): on its own once a year and after a life
 // event (spec step 100), or when the person asks. Only in demo advice mode (spec step 98):
@@ -54,7 +55,7 @@ async function inputFor(
     listPolicies(userId, { client }),
     loadHousehold(userId, { client, now }),
     db.accounts.findMany({
-      where: { type: "depository", subtype: "savings" },
+      where: { type: "depository", subtype: "savings", ...(await onlyCounted(db)) },
       select: { currentBalanceCents: true },
     }),
     db.ownedAssets.findMany({ select: { kind: true, valueCents: true } }),

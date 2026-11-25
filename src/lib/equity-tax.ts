@@ -15,6 +15,7 @@ import { assumedRsuGap, rsuVest, worthSettingAside, type RsuResult } from "@/pla
 import { estimateTaxes } from "@/planning/tax-estimate";
 import { isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Crypto and equity pay, taxed right (spec step 219), for its page, the chat and Claude: the
 // crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the
@@ -165,7 +166,7 @@ export async function loadEquityTax(
   if (shortfall > 0) parts.push({ label: "RSU withholding that falls short", cents: shortfall });
   const stockCents = (
     await db.accounts.findMany({
-      where: { subtype: "stock plan" },
+      where: { subtype: "stock plan", ...(await onlyCounted(db)) },
       select: { currentBalanceCents: true },
     })
   ).reduce((a, x) => a + (x.currentBalanceCents ?? 0), 0);

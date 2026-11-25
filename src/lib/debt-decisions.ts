@@ -24,6 +24,7 @@ import {
 } from "@/planning/debt-decisions";
 import { DAY_MS } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { onlyCounted } from "@/lib/account-copies";
 
 // The numbers behind the straight answers to debt and credit decisions (the chat's "should I
 // pay off my card or invest?", "should I consolidate?" ...): the person's debts, cash and
@@ -51,7 +52,7 @@ export async function loadDecisionInput(
   ]);
   const owingCards = book.debts.filter((d) => d.kind === "card" && (d.balanceCents ?? 0) > 0);
   const accounts = await db.accounts.findMany({
-    where: { type: { in: ["depository"] } },
+    where: { type: { in: ["depository"] }, ...(await onlyCounted(db)) },
     select: { currentBalanceCents: true, subtype: true },
   });
   const liquidCents = accounts.reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);

@@ -87,19 +87,19 @@ describe("accounts that may be one account counted twice", () => {
     ).toEqual([]);
   });
 
-  it("says where one is removed: an upload on the import page, links in Settings", () => {
-    const up = { a: { name: "A", itemId: null }, b: { name: "B", itemId: "i1" } };
-    const links = { a: { name: "A", itemId: "i1" }, b: { name: "B", itemId: "i2" } };
-    expect([maybeSameHref([up]), maybeSameHref([links])]).toEqual(["/import", "/settings#banks"]);
+  it("says where it is settled: an upload on the import page, a second link in Settings", () => {
+    const up = { reason: "maybe_same" as const, left: { name: "A" }, with: { name: "B" } };
+    const link = { ...up, reason: "linked_twice" as const };
+    expect([maybeSameHref([up]), maybeSameHref([link])]).toEqual(["/import", "/settings#banks"]);
   });
 
-  it("says each pair by name, both counted, and how to remove one", () => {
-    const [pair] = maybeSameAccounts(
-      [acct("a", null, "Chase checking", null), acct("b", "i1", "TOTAL CHECKING", "1234")],
-      bank,
+  it("says each account left out by name, and what the person can do", () => {
+    const left = { left: { name: "Chase checking" }, with: { name: "TOTAL CHECKING" } };
+    expect(maybeSameWords([{ ...left, reason: "maybe_same" }])).toBe(
+      "Chase checking (uploaded) may be the same account as TOTAL CHECKING (linked), so net worth leaves it out. If it is a different account, say so on the import page; if it is a copy, remove it there.",
     );
-    expect(maybeSameWords([pair!])).toBe(
-      "Chase checking (uploaded) and TOTAL CHECKING (linked) may be the same account; net worth counts both. If they are the same, remove one.",
+    expect(maybeSameWords([{ ...left, reason: "older_upload" }])).toBe(
+      "Chase checking (uploaded) looks like an earlier upload of TOTAL CHECKING, so net worth counts the later one only.",
     );
     expect(maybeSameWords([])).toBeNull();
   });

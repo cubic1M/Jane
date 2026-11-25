@@ -11,7 +11,7 @@ import { cachedRead } from "@/lib/read-cache";
 import { systemDb } from "@/lib/system-db";
 import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { dataReach } from "@/lib/data-reach";
-import { copiesToLeaveOut } from "@/planning/books";
+import { accountCopies } from "@/lib/account-copies";
 import { namedByDirectory, withDirectory } from "./merchants";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import { daysBetween, isoDate, monthsBefore } from "./units";
@@ -128,7 +128,7 @@ export async function loadInput(
 
   // Books QA: an account linked twice (through two logins) counts once, its Plaid streams too (beta
   // accuracy: a bank linked again showed every bill and payday twice in the cash flow).
-  const copies = copiesToLeaveOut(allAccounts);
+  const copies = await accountCopies(db);
   const accounts = allAccounts.filter((a) => !copies.has(a.id));
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   const streams = allStreams.filter((s) => !copies.has(s.accountId));
@@ -194,11 +194,7 @@ export async function loadTransactionsBetween(
   { client = defaultClient, from, to }: { client?: PrismaClient; from: string; to: string },
 ): Promise<DetectionTransaction[]> {
   const db = scopedFor(userId, client);
-  const [accounts, rows, directory, timezone] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, subtype: true, mask: true, itemId: true },
-      orderBy: { id: "asc" },
-    }),
+  const [rows, directory, timezone] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -212,7 +208,7 @@ export async function loadTransactionsBetween(
     }),
     timezoneOf(userId, { client }),
   ]);
-  const copies = copiesToLeaveOut(accounts);
+  const copies = await accountCopies(db);
   return namedByDirectory(
     rows.filter((t) => !copies.has(t.accountId)).map(asDetectionTransaction(timezone)),
     directory,

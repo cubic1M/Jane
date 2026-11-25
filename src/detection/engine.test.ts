@@ -4,6 +4,9 @@ const { scoped } = vi.hoisted(() => ({
   scoped: {
     userId: "user_1",
     accounts: { findMany: vi.fn() },
+    // The accounts counted (src/lib/account-copies.ts): no banks named, nothing said to be separate.
+    plaidItems: { findMany: vi.fn(async () => []) },
+    janePreferences: { findMany: vi.fn(async () => []) },
     transactions: {
       findMany: vi.fn(),
       // Where the data reaches (src/lib/data-reach.ts): nothing older, so it's today.

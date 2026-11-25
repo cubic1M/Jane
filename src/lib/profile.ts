@@ -6,7 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { dataReach } from "@/lib/data-reach";
 import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
-import { copiesToLeaveOut } from "@/planning/books";
+import { accountCopies } from "@/lib/account-copies";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
@@ -213,7 +213,7 @@ async function loadProfileInputFrom(
     }),
   ]);
   // Books QA: an account linked twice (through two logins) counts once.
-  const copies = copiesToLeaveOut(allAccounts);
+  const copies = await accountCopies(db);
   const accounts = allAccounts.filter((a) => !copies.has(a.id));
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   // Other people in their household in Jane (spec step 264), not counting them.

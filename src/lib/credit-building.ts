@@ -27,6 +27,7 @@ import {
   type Streak,
 } from "@/planning/credit-building";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Building credit (spec step 175). Before a card's statement closes Jane works out what to
 // pay so a lower balance is reported: from "Handle the safe stuff" it schedules it by
@@ -77,8 +78,9 @@ const none: CreditBuilding = {
 };
 
 async function checkingOf(userId: string, client: PrismaClient) {
-  const accounts = await scopedFor(userId, client).accounts.findMany({
-    where: { type: "depository", subtype: "checking" },
+  const db = scopedFor(userId, client);
+  const accounts = await db.accounts.findMany({
+    where: { type: "depository", subtype: "checking", ...(await onlyCounted(db)) },
     select: { id: true, currentBalanceCents: true, availableBalanceCents: true },
     orderBy: { id: "asc" },
   });

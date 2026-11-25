@@ -17,6 +17,7 @@ import { fundProfile } from "@/lib/emergency-fund";
 import { proposals, type Proposal } from "@/planning/proposals";
 import { systemDb } from "@/lib/system-db";
 import { todayOf } from "@/lib/today";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
 // an emergency fund from their own spending, categories for merchants that have none, and
@@ -46,7 +47,11 @@ export async function currentProposals(
       systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany(),
       irregularCosts(userId, { client, now }),
       db.accounts.findMany({
-        where: { type: "depository", currentBalanceCents: { not: null } },
+        where: {
+          type: "depository",
+          currentBalanceCents: { not: null },
+          ...(await onlyCounted(db)),
+        },
         select: { currentBalanceCents: true },
       }),
     ]);

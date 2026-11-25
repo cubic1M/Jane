@@ -17,6 +17,7 @@ import { addDemoExtra } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { childRothRoom, giftOk, percentFunded } from "@/planning/family";
 import { systemDb, systemTransaction } from "@/lib/system-db";
+import { onlyCounted } from "@/lib/account-copies";
 
 const WHY = "A link's token is the key: nobody is signed in";
 
@@ -68,7 +69,11 @@ export async function loadFamily(
       },
     }),
     db.accounts.findMany({
-      where: { type: "investment", subtype: { in: ["custodial", "child roth"] } },
+      where: {
+        type: "investment",
+        subtype: { in: ["custodial", "child roth"] },
+        ...(await onlyCounted(db)),
+      },
       select: { id: true, name: true, subtype: true, currentBalanceCents: true },
     }),
     db.plaidItems.findFirst({

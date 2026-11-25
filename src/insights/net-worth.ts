@@ -123,31 +123,40 @@ export function netWorthCovers(
   return `Counts ${list}.${invested > 0 ? "" : " No investment or retirement account is in it."}`;
 }
 
-// Two accounts that may be one account counted twice (src/planning/books.ts maybeSameAccounts),
-// said under net worth and on the books notice: both are counted, and nothing is merged. One pair
-// by name, a few pairs one after another, and many as a count.
+// An account net worth leaves out because it may be one already counted (src/planning/books.ts
+// accountsLeftOut), said under the figure on Home and Money and on the books notice, with where the
+// person says it is another account or removes it. One by name, and many as a count.
 export type MaybeSame = {
-  a: { name: string; itemId: string | null };
-  b: { name: string; itemId: string | null };
+  reason: "maybe_same" | "older_upload" | "linked_twice";
+  left: { name: string };
+  with: { name: string };
 };
-const how = (x: { itemId: string | null }) => (x.itemId === null ? "uploaded" : "linked");
-export const maybeSamePair = ({ a, b }: MaybeSame) =>
-  `${a.name} (${how(a)}) and ${b.name} (${how(b)}) may be the same account; net worth counts both. If they are the same, remove one.`;
-// Where one of them is removed: an uploaded account on the import page, links in Settings.
+export const maybeSamePair = ({ reason, left, with: other }: MaybeSame) =>
+  reason === "maybe_same"
+    ? `${left.name} (uploaded) may be the same account as ${other.name} (linked), so net worth leaves it out.`
+    : reason === "older_upload"
+      ? `${left.name} (uploaded) looks like an earlier upload of ${other.name}, so net worth counts the later one only.`
+      : `${left.name} looks like ${other.name} linked a second time, so net worth counts it once.`;
+// What to do about it: an upload is kept as its own account or removed on the import page.
+const WHAT_TO_DO =
+  "If it is a different account, say so on the import page; if it is a copy, remove it there.";
+// Where it is done: the import page for an upload, the bank links for a second link.
 export const maybeSameHref = (pairs: readonly MaybeSame[]) =>
-  pairs.some(({ a, b }) => a.itemId === null || b.itemId === null) ? "/import" : "/settings#banks";
+  pairs.some((p) => p.reason !== "linked_twice") ? "/import" : "/settings#banks";
 // The same in one sentence, for a line with room for one (Money's net worth).
 export function maybeSameShort(pairs: readonly MaybeSame[]): string | null {
   const [only, ...more] = pairs;
   if (!only) return null;
-  if (more.length === 0)
-    return `${only.a.name} (${how(only.a)}) and ${only.b.name} (${how(only.b)}) may be the same account; net worth counts both.`;
-  return `${pairs.length} pairs of your accounts may be the same account; net worth counts both of each.`;
+  if (more.length === 0) return maybeSamePair(only);
+  return `${pairs.length} of your accounts may be counted twice, so net worth leaves them out.`;
 }
 export function maybeSameWords(pairs: readonly MaybeSame[]): string | null {
   if (pairs.length === 0) return null;
-  if (pairs.length <= 2) return pairs.map(maybeSamePair).join(" ");
-  return `${pairs.length} pairs of your accounts may be the same account; net worth counts both of each. If they are the same, remove one.`;
+  const said =
+    pairs.length <= 2
+      ? pairs.map(maybeSamePair).join(" ")
+      : `${pairs.length} of your accounts may be counted twice, so net worth leaves them out.`;
+  return pairs.some((p) => p.reason === "maybe_same") ? `${said} ${WHAT_TO_DO}` : said;
 }
 
 // Said beside the figure when only a card or loan is on file (debugger 11-04: "You have $0.00",

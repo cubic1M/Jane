@@ -20,6 +20,7 @@ import {
   type AuView,
   type CosignView,
 } from "@/planning/family-credit";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Helping family with credit (spec step 249), for one person: their cards as places to add
 // someone (what it does to both scores), a first card for a student, and loans they co-signed
@@ -72,7 +73,7 @@ export async function loadFamilyCredit(
   const db = scopedFor(userId, client);
   const [accounts, rows, advice, trouble, report] = await Promise.all([
     db.accounts.findMany({
-      where: { type: "credit" },
+      where: { type: "credit", ...(await onlyCounted(db)) },
       select: { id: true, name: true, currentBalanceCents: true, availableBalanceCents: true },
     }),
     db.familyCredit.findMany({ orderBy: { createdAt: "asc" } }),

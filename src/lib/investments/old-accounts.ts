@@ -27,6 +27,7 @@ import {
 import { profileOf } from "./profile";
 import { isoDay as iso } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Old accounts brought home (spec step 211), for its page, Jane's questions and its
 // buttons. Past employers come from payroll history and the person's own answers (a
@@ -148,7 +149,7 @@ export async function loadOldAccounts(
     db.oldPlans.findMany({ orderBy: { createdAt: "asc" } }),
     hasDemoBank(userId, { client }),
     db.accounts.findMany({
-      where: { subtype: "401k" },
+      where: { subtype: "401k", ...(await onlyCounted(db)) },
       select: { id: true, name: true, currentBalanceCents: true },
     }),
   ]);

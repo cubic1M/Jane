@@ -24,6 +24,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { timezoneOf, todayOf } from "@/lib/today";
 import { runsBusiness, type SelfEmployment } from "./business-rules";
 import { partnerFor } from "./partner";
+import { onlyCounted } from "@/lib/account-copies";
 
 // The household facts that matter for cover (spec step 102): whether the person owns or
 // rents, and how many cars, dependants and pets. What they typed wins; until they do,
@@ -190,7 +191,7 @@ async function loadHouseholdFrom(
       },
     }),
     db.accounts.findMany({
-      where: { type: { in: ["depository", "investment"] } },
+      where: { type: { in: ["depository", "investment"] }, ...(await onlyCounted(db)) },
       select: { currentBalanceCents: true },
     }),
     db.transactions.aggregate({

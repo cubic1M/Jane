@@ -26,6 +26,7 @@ import {
 } from "./health-year-rules";
 import { partnerFor } from "./partner";
 import { listPolicies, type Policy } from "./policies";
+import { onlyCounted } from "@/lib/account-copies";
 
 // Health cover all year (spec step 200): the person's health plan's year so far, from the
 // plan's terms and their medical spending; the FSA and HSA money, the plan's network for the
@@ -102,7 +103,7 @@ export async function loadHealthYear(
       orderBy: { date: "asc" },
     }),
     db.accounts.findMany({
-      where: { subtype: "hsa" },
+      where: { subtype: "hsa", ...(await onlyCounted(db)) },
       select: { name: true, currentBalanceCents: true },
     }),
   ]);
