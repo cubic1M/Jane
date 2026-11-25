@@ -134,11 +134,11 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
   });
 
   it("different lines over the same days: a different account, counted, and nothing asked", async () => {
-    const { userId, upload } = await shape({ amounts: OTHER });
+    const { userId, upload } = await shape({ amounts: OTHER, balance: 50_000 });
     const db = scopedFor(userId, client);
     expect((await accountsNotCounted(db)).size).toBe(0);
     expect(await uploadsClearedByEvidence(db)).toEqual(new Set([upload.id]));
-    expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000 + 120_000);
+    expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000 + 50_000);
     expect(await loadMaybeSame(userId, { client })).toBeNull();
     const books = await runBooksCheck(userId, { client, now: NOW });
     expect(books.open.map((i) => i.kind)).not.toContain("maybe_same");
