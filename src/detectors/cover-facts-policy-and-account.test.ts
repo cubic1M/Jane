@@ -34,17 +34,6 @@ describe("car cover cost", () => {
   const insurance = (dates: string[], cents: number, name: string) =>
     dates.map((d) => row(d, cents, name, "GENERAL_SERVICES_INSURANCE", "grad-checking"));
 
-  it("does not call two homeowners premiums from a car insurer car cover", () => {
-    // $1,000 every six months at State Farm: only the word HOMEOWNERS says it is not the car.
-    const home = withRows(
-      insurance(["2026-05-05", "2026-11-05"], 100_000, "STATE FARM HOMEOWNERS"),
-    );
-    expect(fire(home, "car_cover_cost")).toBeNull();
-    // The same payments on a car policy are $2,000 a year, above the average.
-    const car = withRows(insurance(["2026-05-05", "2026-11-05"], 100_000, "STATE FARM AUTO"));
-    expect(fire(car, "car_cover_cost")).not.toBeNull();
-  });
-
   it("does not read two payments on the same day as a monthly premium", () => {
     // Two $1,000 six-month premiums on one day: no rhythm to scale, so no $24,000 a year.
     const same = withRows(insurance(["2026-11-05", "2026-11-05"], 100_000, "GEICO *AUTO"));

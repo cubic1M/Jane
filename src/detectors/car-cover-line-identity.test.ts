@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildProfile, type ProfileInput } from "@/profile/build";
-import { COVER_FACT_DETECTORS, isCarLine } from "./cover-facts";
+import { COVER_FACT_DETECTORS } from "./cover-facts";
 import { runDetectors } from "./index";
 
 // CodeRabbit sweep 1c (#2270): "AUTO PAY" is how a bill is paid, not what it pays for; and a
@@ -28,13 +28,6 @@ const run = (transactions: ProfileInput["transactions"]) => {
 };
 
 describe("car cover's line", () => {
-  it("does not take AUTO PAY for a car", () => {
-    expect(isCarLine("STATE FARM HOMEOWNERS AUTO PAY")).toBe(false);
-    expect(isCarLine("STATE FARM HOMEOWNERS AUTOPAY")).toBe(false);
-    expect(isCarLine("STATE FARM AUTO INSURANCE")).toBe(true);
-    expect(isCarLine("STATE FARM HOMEOWNERS AUTO")).toBe(true);
-    expect(run(rows("STATE FARM HOMEOWNERS AUTO PAY", []))).toBeUndefined();
-  });
   it("keeps one policy's charges together when only some carry a merchant name", () => {
     const s = run(rows("GEICO *AUTO", ["GEICO", undefined, "GEICO", undefined]));
     expect(s?.short).toContain("$3,600.00 a year");

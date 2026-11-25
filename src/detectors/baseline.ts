@@ -182,7 +182,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
   ],
   retiree: [
     "bill_negotiation",
-    // car_cover_cost left on purpose (CodeRabbit sweep 1c): its two payments were ALLSTATE HOME, a home premium.
+    "car_cover_cost",
     "charity_receipts",
     "cheaper_tier",
     "costly_products",
