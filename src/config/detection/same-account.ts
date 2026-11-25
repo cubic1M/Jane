@@ -2,10 +2,10 @@
 // (src/planning/same-account.ts). The founder's rule: Jane double-checks the uploads itself and
 // leaves out the copies, without asking.
 
-// Lines in the days both cover, on the side with fewer of them, needed to say anything either way.
+// Lines in the days both cover, on a side, needed for that side to say anything either way.
 export const SAME_ACCOUNT_MIN_LINES = 5;
-// This share of those lines found on the other side (the same amount, within the day slack, one to
-// one) is the same account; this share or less is a different one; in between, nothing is said.
+// This share of a side's lines found on the other side (the same amount, within the day slack, one to
+// one) is the same account (an upload that is only part of the account still is); this share or less is a different one; in between, nothing is said.
 export const SAME_ACCOUNT_MATCH_RATIO = 0.8;
 export const DIFFERENT_ACCOUNT_MAX_RATIO = 0.2;
 // A bank's statement and the link can date one charge a day or two apart (posted against made).
