@@ -115,7 +115,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       verifiedPercent: null,
       rule: RECEIPT_RULE[r.kind],
       proof: r.proof,
-      lines: [{ id: `${r.actionId}:seen`, ...r.seen }],
+      lines: [{ ...r.seen, id: `${r.actionId}:seen` }],
       heldProof: r.heldOn ? `Still true on ${dayLabel(r.heldOn, { year: true })}.` : null,
       heldLines: [],
       lapsed: false,

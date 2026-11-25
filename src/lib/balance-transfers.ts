@@ -1,8 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { track } from "@/lib/analytics";
+import { trackQuietly } from "@/lib/track-quietly";
 import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
 import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
@@ -150,7 +150,9 @@ export async function startTransfer(
   const asOf = await todayOf(userId, { client, now });
   const scored = scoreTransfer(debt.balanceCents, debt.aprBps, offer, asOf);
   const title = `0% ends on ${offer.cardName}: pay off the balance you moved`;
-  await addDeadline(
+  // The deadline's own id, never a lookup by title and date: two starts for one card name and
+  // promotion end must not pick, attach or delete each other's.
+  const deadlineId = await addDeadline(
     userId,
     {
       title,
@@ -160,45 +162,56 @@ export async function startTransfer(
     },
     { client, now },
   );
-  const deadline = await db.deadlines.findFirst({
-    where: { title, dueOn: new Date(`${scored.promoEndsOn}T00:00:00Z`) },
-    select: { id: true },
-    orderBy: { createdAt: "desc" },
-  });
-  const created = await db.balanceTransfers.create({
-    data: {
+  // The transfer and its promotion go in together: a transfer with no promotion could never be
+  // tracked for pace, and a retry would stop at "already tracking". If they fail, the deadline
+  // made for them goes too.
+  let created;
+  try {
+    created = await personTransaction(
       userId,
-      fromDebtKey: debt.key,
-      fromName: debt.name,
-      offerId: offer.id,
-      issuer: offer.issuer,
-      cardName: offer.cardName,
-      amountCents: debt.balanceCents,
-      feeCents: offer.feeCents,
-      promoMonths: offer.promoMonths,
-      goToAprBps: offer.goToAprBps,
-      monthlyNeededCents: scored.monthlyNeededCents,
-      startedOn: new Date(`${asOf}T00:00:00Z`),
-      promoEndsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
-      deadlineId: deadline?.id ?? null,
-    },
-    select: SELECT,
-  });
-  // It's also the card's 0% promotion: one record, tracked for pace on /loans/interest with the
-  // transfer's own deadline, never a second one (docs/feature-audit.md, cluster 14).
-  await db.cardPromos.create({
-    data: {
-      userId,
-      cardName: offer.cardName,
-      balanceCents: debt.balanceCents + offer.feeCents,
-      startedOn: new Date(`${asOf}T00:00:00Z`),
-      endsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
-      goToAprBps: offer.goToAprBps,
-      deadlineId: deadline?.id ?? null,
-      balanceTransferId: created.id,
-    },
-  });
-  await track(userId, "balance_transfer_started", { promo_months: offer.promoMonths });
+      async (tx) => {
+        const transfer = await tx.balanceTransfer.create({
+          data: {
+            userId,
+            fromDebtKey: debt.key,
+            fromName: debt.name,
+            offerId: offer.id,
+            issuer: offer.issuer,
+            cardName: offer.cardName,
+            amountCents: debt.balanceCents!,
+            feeCents: offer.feeCents,
+            promoMonths: offer.promoMonths,
+            goToAprBps: offer.goToAprBps,
+            monthlyNeededCents: scored.monthlyNeededCents,
+            startedOn: new Date(`${asOf}T00:00:00Z`),
+            promoEndsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
+            deadlineId,
+          },
+          select: SELECT,
+        });
+        // It's also the card's 0% promotion: one record, tracked for pace on /loans/interest with
+        // the transfer's own deadline, never a second one (docs/feature-audit.md, cluster 14).
+        await tx.cardPromo.create({
+          data: {
+            userId,
+            cardName: offer.cardName,
+            balanceCents: debt.balanceCents! + offer.feeCents,
+            startedOn: new Date(`${asOf}T00:00:00Z`),
+            endsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
+            goToAprBps: offer.goToAprBps,
+            deadlineId,
+            balanceTransferId: transfer.id,
+          },
+        });
+        return transfer;
+      },
+      client,
+    );
+  } catch (error) {
+    await db.deadlines.deleteMany({ where: { id: deadlineId } }).catch(() => null);
+    throw error;
+  }
+  await trackQuietly(userId, "balance_transfer_started", { promo_months: offer.promoMonths });
   return toView(created);
 }
 
@@ -215,14 +228,15 @@ export async function endTransfer(
     select: SELECT,
   });
   if (!row) throw new TransferError("That transfer isn't running anymore.");
+  // Its deadline is ticked off and its promotion is over first, and the transfer itself last: if
+  // a step fails, the transfer is still active and ending it again finishes the rest.
+  if (row.deadlineId) await markDeadlineDone(userId, row.deadlineId, { client, now });
+  await db.cardPromos.deleteMany({ where: { balanceTransferId: row.id } });
   const updated = await db.balanceTransfers.update({
     where: { id: row.id },
     data: { status: how, doneAt: now },
     select: SELECT,
   });
-  if (row.deadlineId) await markDeadlineDone(userId, row.deadlineId, { client, now });
-  // Its promotion is over too.
-  await db.cardPromos.deleteMany({ where: { balanceTransferId: row.id } });
-  await track(userId, "balance_transfer_ended", { how });
+  await trackQuietly(userId, "balance_transfer_ended", { how });
   return toView(updated);
 }

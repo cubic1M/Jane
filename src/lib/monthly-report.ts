@@ -191,8 +191,11 @@ export async function monthlyReportFor(
         createdAt: now,
       },
     })
-    // Made meanwhile by another run: keep that one.
-    .catch(() => null);
+    // Made meanwhile by another run: keep that one. A write that failed with no report stored
+    // is a failure, not a month with no report.
+    .catch(async (error) => {
+      if (!(await storedReport(userId, month, { client }))) throw error;
+    });
   await track(userId, "monthly_report_made", { month });
   return storedReport(userId, month, { client });
 }

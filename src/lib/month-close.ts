@@ -18,6 +18,7 @@ import {
   uncertainOf,
   type CloseFigures,
   type CloseTx,
+  accountsOpenBy,
   balancesAtMonthEnd,
   closeNetWorth,
 } from "@/planning/month-close";
@@ -86,13 +87,21 @@ async function figuresFor(
   client: PrismaClient,
   keep?: Pick<CloseFigures, "netWorthCents" | "netWorthNotCounting" | "booksOpen">,
 ): Promise<CloseFigures> {
-  const [txns, worth, books, report] = await Promise.all([
+  const [txns, worth, books, report, seenByEnd] = await Promise.all([
     monthTxns(userId, month, client),
     // What net worth is read from on every page and in the chat: each account once (gate B: the
     // close counted an account linked twice), what they own and their crypto.
     keep ? null : loadNetWorthInputs(userId, { client }),
     keep ? null : openBooks(userId, { client }),
     storedReport(userId, month, { client }),
+    // Accounts with a transaction on or before the month's last day: they were open by then.
+    keep
+      ? null
+      : scopedFor(userId, client).transactions.findMany({
+          where: { date: { lt: new Date(`${nextMonth(month)}-01T00:00:00Z`) } },
+          distinct: ["accountId"],
+          select: { accountId: true },
+        }),
   ]);
   const r = report?.report;
   return {
@@ -103,7 +112,16 @@ async function figuresFor(
     ...(keep
       ? { netWorthCents: keep.netWorthCents, netWorthNotCounting: keep.netWorthNotCounting ?? null }
       : closeNetWorth(
-          balancesAtMonthEnd(worth!.accounts, worth!.snapshots, month),
+          balancesAtMonthEnd(
+            accountsOpenBy(
+              worth!.accounts,
+              worth!.snapshots,
+              new Set(seenByEnd!.map((t) => t.accountId)),
+              month,
+            ),
+            worth!.snapshots,
+            month,
+          ),
           worth!.owned,
           worth!.crypto,
         )),
@@ -151,7 +169,13 @@ export async function runMonthClose(
   const txns = await monthTxns(userId, month, client);
   if (txns.length === 0) return "none";
   // The report carries plan against actual and what worked; make it now if it isn't yet.
-  await monthlyReportFor(userId, { client, now }).catch(() => null);
+  // A report that failed is not a month with no report: leave the close for the next run rather
+  // than freezing it with no plan, paydown or savings results.
+  let reportFailed = false;
+  await monthlyReportFor(userId, { client, now }).catch(() => {
+    reportFailed = true;
+  });
+  if (reportFailed) return "none";
   const uncertain = uncertainOf(txns, month);
   if (uncertain.length > 0) {
     const figures = await figuresFor(userId, month, 0, client);
@@ -160,11 +184,24 @@ export async function runMonthClose(
       uncertain: uncertain.map((t) => t.id),
       figures: figures as unknown as Prisma.InputJsonObject,
     };
-    if (existing) await db.monthCloses.updateMany({ where: { id: existing.id }, data });
-    else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
+    if (existing) {
+      // Only a close still waiting: one the person confirmed since the read stays closed.
+      const wrote = await db.monthCloses.updateMany({
+        where: { id: existing.id, status: { not: "closed" } },
+        data,
+      });
+      if (wrote.count === 0) return "none";
+    } else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
     return "waiting";
   }
-  await close(userId, month, 0, existing?.id ?? null, { client, now });
+  // Charges asked about and confirmed since (the person's tap committed, the close didn't): they
+  // count, as the tap would have counted them.
+  const confirmedBefore = new Set(existing?.uncertain ?? []);
+  const confirmed = txns.filter(
+    (t) => confirmedBefore.has(t.id) && t.categorySource === "user",
+  ).length;
+  const closed = await close(userId, month, confirmed, existing?.id ?? null, { client, now });
+  if (!closed) return "none";
   return "closed";
 }
 
@@ -174,7 +211,7 @@ async function close(
   confirmed: number,
   id: string | null,
   { client, now }: { client: PrismaClient; now: Date },
-) {
+): Promise<boolean> {
   const db = scopedFor(userId, client);
   const figures = (await figuresFor(
     userId,
@@ -183,8 +220,14 @@ async function close(
     client,
   )) as unknown as Prisma.InputJsonObject;
   const data = { status: "closed", uncertain: [], figures, closedAt: now };
-  if (id) await db.monthCloses.updateMany({ where: { id }, data });
-  else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
+  if (id) {
+    // Closing a close that another run closed first changes nothing.
+    const wrote = await db.monthCloses.updateMany({
+      where: { id, status: { not: "closed" } },
+      data,
+    });
+    if (wrote.count === 0) return false;
+  } else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
   // The scan's "confirm the charges" for the month is done once it closes; it stopped showing
   // only at the next scan, so Spending's tree kept "Last month's close · Openai $20.00: I'm not
   // sure what it was" after "Looks right" (debug 2, 11-18).
@@ -193,6 +236,7 @@ async function close(
     data: { status: "gone" },
   });
   await track(userId, "month_closed", { month, confirmed });
+  return true;
 }
 
 // The person's one tap: the charges Jane asked about are right as they are; the month closes.
