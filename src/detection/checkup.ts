@@ -228,10 +228,8 @@ export const CHECKS: Record<FindingType, Check> = {
         // (night QA 10-30: "$11,296 cushion" beside it read as a second answer).
         // With money held back for a dated payment (estimated tax, a yearly bill), say so: the
         // cash alone may be over the months (review 10-30).
-        line:
-          c.setAsideCents > 0
-            ? `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending after ${formatWholeDollars(c.setAsideCents)} held back for payments due`
-            : `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending`,
+        // Over the cushion by less than the amount Jane flags isn't "under" it (CodeRabbit 1c).
+        line: `${formatWholeDollars(c.balanceCents)} cash, ${c.excessCents > 0 ? "just over" : "under"} ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending${c.setAsideCents > 0 ? ` after ${formatWholeDollars(c.setAsideCents)} held back for payments due` : ""}`,
         detail: `You spend about ${formatWholeDollars(c.monthlyCents)} a month, so ${IDLE_CASH_MONTHS_OF_SPENDING} months is ${formatWholeDollars(c.cushionCents)}${c.setAsideCents > 0 ? `, and ${formatWholeDollars(c.setAsideCents)} is held back for tax or yearly bills due within them` : ""}. Jane flags cash ${formatWholeDollars(IDLE_CASH_MIN_EXCESS_CENTS)} or more above that.`,
       };
     },

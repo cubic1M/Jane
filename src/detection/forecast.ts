@@ -343,8 +343,11 @@ function newPayIn4(input: DetectionInput, streams: Stream[], until: string): Exp
       Math.abs(cents - plan.paymentCents) <= BNPL_AMOUNT_TOLERANCE_CENTS;
     // Any of a stream's payments, not only its latest (review 10-31: a stream at $32.60 beside
     // a $32.49 plan expected the same day twice).
-    const covered = streams.some((s) =>
-      s.charges.some((c) => bnplProviderOf(c)?.key === plan.provider && same(c.amountCents)),
+    // Only a stream still running: an inactive one expects nothing, so it can't stand in for the plan.
+    const covered = streams.some(
+      (s) =>
+        s.active &&
+        s.charges.some((c) => bnplProviderOf(c)?.key === plan.provider && same(c.amountCents)),
     );
     if (covered) return [];
     const paid = input.transactions
@@ -404,7 +407,7 @@ export function expectedBetween(
   return (
     inGap(expectedIncome(then, addDays(then.asOf, days))) +
     inGap(scheduledTransfersIn(then, days)) -
-    inGap(upcomingBills(then, days)) -
+    inGap(comingUpBills(then, days)) -
     inGap(scheduledTransfers(then, days))
   );
 }
