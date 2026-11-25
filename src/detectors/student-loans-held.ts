@@ -43,12 +43,12 @@ const graceEnding: Detector = {
     return suggestion("debt", "grace_ending", {
       title: `Plan your student loan payments: the grace period ends ${dayLabel(ends, { long: true, year: true })}`,
       headline: "Plan your first student loan payments",
-      short: `Grace ends ${dayLabel(ends)} on ${formatCents(owed)}${monthly ? `; Standard is about ${formatCents(monthly)} a month` : ""}.`,
+      short: `Grace ends ${dayLabel(ends)} on ${formatCents(owed)}${monthly ? `; ten years of level payments is about ${formatCents(monthly)} a month` : ""}.`,
       worthCents: 0,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, loans.length, "loans in grace"),
       urgency: left <= GRACE_ENDING.urgentDays ? "now" : "soon",
-      why: `Your bank reports ${formatCents(owed)} in student loans in their grace period until ${dayLabel(ends, { long: true, year: true })}${rates ? `, at ${rates}` : ""}; repayment starts after it, and your servicer sends the first due date.${monthly ? ` On the Standard plan (ten years of level payments) that's about ${formatCents(monthly)} a month.` : ""} Before then: sign in to studentaid.gov to see each loan and its servicer, compare each plan's payment in the Loan Simulator, and set up the payment from your bank with your servicer so the first one isn't missed.`,
+      why: `Your bank reports ${formatCents(owed)} in student loans in their grace period until ${dayLabel(ends, { long: true, year: true })}${rates ? `, at ${rates}` : ""}; repayment starts after it, and your servicer sends the first due date.${monthly ? ` As an illustration, ten years of level payments would be about ${formatCents(monthly)} a month; the plan and term that apply to each loan depend on its type and when it was disbursed (studentaid.gov), which your servicer's page shows.` : ""} Before then: sign in to studentaid.gov to see each loan and its servicer, compare each plan's payment in the Loan Simulator, and set up the payment from your bank with your servicer so the first one isn't missed.`,
       action: { label: "See your loans and servicer", href: "/loans/student" },
       more: [
         { label: simulate.title, href: simulate.url },

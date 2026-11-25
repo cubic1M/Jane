@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CALIBRATION_MIN_SAMPLE } from "@/config/reach";
+import { taxReachLine } from "@/detectors/tax-reach";
 import { formatCents } from "@/lib/money";
 import { reachReport, type Totals } from "@/lib/reach";
 import { requireAdmin } from "@/lib/session";
@@ -148,12 +149,7 @@ async function Reach() {
         </p>
         <ul className="list-disc pl-5 text-sm">
           {report.taxes.map((t) => (
-            <li key={t.tool}>
-              {t.tool}
-              {t.reached.length > 0
-                ? `: ${t.reached.map((r) => `${r.person} (${r.months.length === 12 ? "all year" : r.months.join(", ")})`).join("; ")}, by ${t.detectors.join(", ")}`
-                : `: ${t.exempt ?? t.needsPerson ?? "reaches no one"}`}
-            </li>
+            <li key={t.tool}>{taxReachLine(t)}</li>
           ))}
         </ul>
       </section>

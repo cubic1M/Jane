@@ -31,7 +31,7 @@ const passes = (text: string) => {
 describe("the second wording read", () => {
   it("states the part-year method as the IRS's, with asking for it the person's to decide", async () => {
     const s = await card("ra-two-months", "withholding_part_year");
-    expect(s.headline).toMatch(/^Note: about \$[\d,]+ withheld beyond the year's tax$/);
+    expect(s.headline).toMatch(/^Note: about \$[\d,]+ may be over-withheld$/);
     expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
     expect(cardHeadline(s.headline).split(/\s+/).length).toBeLessThanOrEqual(HEADLINE_MAX_WORDS);
     passes(s.headline);

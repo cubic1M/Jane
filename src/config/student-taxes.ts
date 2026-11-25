@@ -286,6 +286,9 @@ export const W4 = {
   ],
   // Two jobs' paychecks: each payer seen at least this many times.
   jobMinPaychecks: 2,
+  // Two jobs at once: each one's latest paycheck is within this many pay intervals of today, and
+  // the two jobs' paychecks overlap in time.
+  jobActiveWithinIntervals: 2,
   // The extension card is shown from this day of the year until the return is due.
   extensionFrom: "03-01",
   form: "Form W-4",
@@ -297,6 +300,9 @@ export const W4 = {
 // --- International students --------------------------------------------------------------------
 
 export const INTERNATIONAL = {
+  // Not shown on any card: fingate.stanford.edu says 30% for nonresidents' awards, while Stanford's
+  // graduate funding page says 14% of taxable fellowship aid for F/J students, with a possible
+  // treaty exemption (CodeRabbit sweep 1c, det-04). Check both at their source before showing a rate.
   stanfordFellowshipWithholding: 0.3,
   links: [
     {

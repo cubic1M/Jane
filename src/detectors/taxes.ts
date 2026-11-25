@@ -926,7 +926,35 @@ const hsaOverLimit: Detector = {
     const fact = profile.facts.has_hsa;
     if (fact.value !== true) return null;
     const h = readHealthTaxes(profile, data).hsa;
-    if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
+    if (h.deposits === 0) return null;
+    // Cover isn't told and a married filer is read as family: deposits past the self-only limit
+    // but within the family one are over only if the plan is self-only. Say that, with no
+    // penalty figure, and let the person say which plan they have.
+    if (h.projectedExcessCents <= 0) {
+      if (!h.coverageAssumed || h.projectedCents <= h.selfLimitCents) return null;
+      return suggestion("taxes", "hsa_over_limit", {
+        // Over already, or only on pace to be by December: the title says which.
+        title:
+          h.contributedCents > h.selfLimitCents
+            ? "Your HSA deposits are over the self-only limit"
+            : "Your HSA deposits could pass the self-only limit at this pace",
+        headline: "Check your HSA cover type",
+        short: `${formatCents(h.contributedCents)} in so far this year; the self-only limit is ${formatCents(h.selfLimitCents)}, the family one ${formatCents(h.limitCents)}.`,
+        worthCents: 0,
+        worthKind: "risk",
+        confidence: weakest([
+          factEvidence(fact),
+          evidence("seen", profile.months, h.deposits, "HSA deposits"),
+          {
+            percent: 50,
+            reason: "I can't see whether your health plan covers just you or a family",
+          },
+        ]),
+        urgency: "soon",
+        why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December. With family cover the limit is ${formatCents(h.limitCents)}, so that fits. With self-only cover it is ${formatCents(h.selfLimitCents)}, and money over it isn't deductible and costs a 6% penalty every year it stays in. Check which cover your plan has: that sets the figure. An employer's deposits I can't see add to the total.`,
+        action: { label: "See the numbers", href: "/taxes/health" },
+      });
+    }
     const over = h.excessCents > 0;
     const cover = h.family ? "family" : "self-only";
     return suggestion("taxes", "hsa_over_limit", {

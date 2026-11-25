@@ -26,6 +26,9 @@ export type TaxToolReach = {
   reached: { person: PersonId; months: string[] }[];
   exempt: string | null;
   needsPerson: string | null;
+  // Where a covering detector threw, so that person and date were not evaluated: a failure, which
+  // the scoreboard keeps apart from a detector that ran and returned nothing.
+  unevaluated: { detector: string; person: PersonId; date: string }[];
 };
 
 const MONTHS = [
@@ -74,11 +77,14 @@ export function taxReach(
 ): TaxToolReach[] {
   // Who each tax topic reaches, month by month.
   const byTopic = new Map<string, Map<PersonId, Set<string>>>();
+  const failed: { detector: string; person: PersonId; date: string }[] = [];
   for (const person of PEOPLE) {
     const base = inputFor(person.id);
     for (const day of yearOfDates(base.today)) {
       const data = movedTo(base, day);
-      const fired = runDetectors({ profile: buildProfile(data), data }, detectors);
+      const fired = runDetectors({ profile: buildProfile(data), data }, detectors, (d) =>
+        failed.push({ detector: d.topic, person: person.id, date: day }),
+      );
       for (const s of fired) {
         if (s.capability !== "taxes") continue;
         const people = byTopic.get(s.topic) ?? new Map<PersonId, Set<string>>();
@@ -108,6 +114,25 @@ export function taxReach(
       })),
       exempt: TOOL_EXEMPT[tool] ?? null,
       needsPerson: TAX_REACH_NEEDS_PERSON[tool] ?? null,
+      unevaluated: failed.filter((f) => covering.some((d) => d.topic === f.detector)),
     };
   });
+}
+
+// One tool's line on the admin scoreboard (src/app/admin/reach/page.tsx). A covering detector that
+// threw is shown as not evaluated, kept apart from one that ran and found no one.
+export function taxReachLine(t: TaxToolReach): string {
+  const failedBy = [...new Set(t.unevaluated.map((u) => u.detector))].join(", ");
+  const failed =
+    t.unevaluated.length > 0
+      ? `${t.unevaluated.length} check${t.unevaluated.length === 1 ? "" : "s"} by ${failedBy} failed to run`
+      : "";
+  if (t.reached.length > 0) {
+    const who = t.reached
+      .map((r) => `${r.person} (${r.months.length === 12 ? "all year" : r.months.join(", ")})`)
+      .join("; ");
+    return `${t.tool}: ${who}, by ${t.detectors.join(", ")}${failed ? `; ${failed}, so this may undercount` : ""}`;
+  }
+  const why = t.exempt ?? t.needsPerson ?? (failed ? `not evaluated: ${failed}` : "reaches no one");
+  return `${t.tool}: ${why}${failed && (t.exempt ?? t.needsPerson) ? `; ${failed}` : ""}`;
 }

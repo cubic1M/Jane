@@ -6,11 +6,13 @@ import {
   IRS_REFUND,
   REFUND_SHOWN_FROM_CENTS,
   SOURCES,
+  STIPEND_WORDS,
   W4,
 } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
+import { observedFilingDay } from "@/lib/filing-day";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { studentMoney, sumCents } from "@/planning/student-money";
 import { dependentOf, federalTaxOf, filingStatusOf, onStudentVisa } from "@/planning/student-tax";
@@ -100,9 +102,9 @@ const partYearWithholding: Detector = {
         ? ` If you owed no federal income tax for ${ESTIMATED_TAX.noLiabilityYear} and expect none for ${ESTIMATED_TAX.taxYear}, ${W4.form}'s "Exempt from withholding" box stops it; a new ${W4.form} is due by ${long(W4.exemptRenewBy)} for the next year.`
         : "";
     return suggestion("taxes", "withholding_part_year", {
-      title: `About ${formatCents(refund)} more than your ${money.year} tax is being withheld from your new job's pay`,
-      headline: `Note: about ${formatWholeDollars(refund)} withheld beyond the year's tax`,
-      short: `Pay from ${dayLabel(first)} is withheld as if it ran all year: about ${formatWholeDollars(refund)} too much.`,
+      title: `If your new job withholds as the default W-4 does, about ${formatCents(refund)} more than your ${money.year} tax is taken from its pay`,
+      headline: `Note: about ${formatWholeDollars(refund)} may be over-withheld`,
+      short: `Pay from ${dayLabel(first)} may be withheld as if it ran all year: about ${formatWholeDollars(refund)} too much.`,
       worthCents: refund,
       worthKind: "earns",
       // It comes back at filing anyway; having it now is worth a share of it.
@@ -115,7 +117,7 @@ const partYearWithholding: Detector = {
         },
       ]),
       urgency: "soon",
-      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year. It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}`,
+      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year and your W-4 is the default one (I see your take-home deposits, not what was withheld; a pay stub shows the federal tax taken). It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 15-T", href: SOURCES.pub15t.url }],
     });
@@ -144,6 +146,20 @@ const twoJobs: Detector = {
       .map(([name, pay]) => ({ name, pay, rhythm: payRhythm(pay) }))
       .filter((j): j is typeof j & { rhythm: NonNullable<typeof j.rhythm> } => j.rhythm !== null);
     if (jobs.length !== 2) return null;
+    // Both must be running now, side by side: a job left in June and another started in July are
+    // one at a time, and a year of both would be a figure nobody earns.
+    const span = (j: (typeof jobs)[number]) => {
+      const days = j.pay.map((t) => t.date).sort();
+      return { first: days[0]!, last: days[days.length - 1]! };
+    };
+    const [spanA, spanB] = jobs.map(span) as [ReturnType<typeof span>, ReturnType<typeof span>];
+    const running = jobs.every(
+      (j, i) =>
+        daysBetween((i === 0 ? spanA : spanB).last, profile.today) <=
+        j.rhythm.days * W4.jobActiveWithinIntervals,
+    );
+    const together = spanA.first <= spanB.last && spanB.first <= spanA.last;
+    if (!running || !together) return null;
     const each = jobs.map((j) => {
       const check = gross(Math.round(sumCents(j.pay) / j.pay.length));
       return {
@@ -196,7 +212,8 @@ const extensionNotToPay: Detector = {
   needs: [],
   detect({ profile, data }): Suggestion | null {
     const { facts, today } = profile;
-    const due = `${today.slice(0, 4)}-${FILING.due.slice(5)}`;
+    // The return's own filing-year calendar: a weekend or Emancipation Day moves the date.
+    const due = observedFilingDay(`${today.slice(0, 4)}-${FILING.due.slice(5)}`);
     if (today.slice(5) < W4.extensionFrom || today > due) return null;
     if (onStudentVisa(facts)) return null;
     const year = Number(today.slice(0, 4)) - 1;
@@ -208,17 +225,25 @@ const extensionNotToPay: Detector = {
     );
     const school = studentMoney({ ...data, today: `${year}-12-31` }).schoolDeposits;
     const said = facts.school_deposit.value;
-    const all = [...untaxed, ...(said === "wage" || said === "aid_refund" ? [] : school)];
+    // One deposit is one kind: a school deposit the bank also filed as contract pay is a stipend
+    // when the person said so or its own words say so (income tax only), else contract pay (income
+    // and self-employment tax); never both.
+    const notStipend = said === "wage" || said === "aid_refund";
+    const isStipend = (t: ProfileTx) =>
+      !notStipend && (said === "fellowship" || STIPEND_WORDS.test(t.description.toUpperCase()));
+    const contract = untaxed.filter((t) => !(school.includes(t) && isStipend(t)));
+    const stipends = notStipend ? [] : school.filter((t) => !untaxed.includes(t) || isStipend(t));
+    const all = [...contract, ...stipends];
     if (all.length === 0) return null;
     const received = sumCents(all);
     // Income tax on all of it, and self-employment tax on the gig and contract part (no employer
     // paid its share).
     const tax =
       federalTaxOf(received, filingStatusOf(facts), dependentOf(facts) === "yes", received) +
-      selfEmploymentTax(sumCents(untaxed), 0);
+      selfEmploymentTax(sumCents(contract), 0);
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const days = daysBetween(today, due);
-    const extended = `${due.slice(0, 4)}-${FILING.extendedTo.slice(5)}`;
+    const extended = observedFilingDay(`${due.slice(0, 4)}-${FILING.extendedTo.slice(5)}`);
     return suggestion("taxes", "filing_extension", {
       title: `An extension moves filing to ${long(extended)}, not paying: tax on ${year}'s untaxed income is due ${long(due)}`,
       headline: `Note: an extension doesn't move the ${dayLabel(due)} payment`,

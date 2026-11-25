@@ -20,7 +20,8 @@ export type StudentMoney = {
   year: number;
   // Deposits from a school that aren't payroll, at least STIPEND_MIN_CENTS each.
   schoolDeposits: ProfileTx[];
-  // Whether any says what it is ("STIPEND", "FELLOWSHIP"); otherwise they only say "REFUND".
+  // Whether every one says what it is ("STIPEND", "FELLOWSHIP"); one that only says "REFUND"
+  // keeps the whole set unconfirmed.
   stipendNamed: boolean;
   // Pay from a school's payroll (wages, withheld, on a W-2), and all wages.
   schoolPay: ProfileTx[];
@@ -57,7 +58,8 @@ export function studentMoney(data: Pick<ProfileInput, "transactions" | "today">)
   return {
     year,
     schoolDeposits,
-    stipendNamed: schoolDeposits.some((t) => STIPEND_WORDS.test(lineOf(t))),
+    stipendNamed:
+      schoolDeposits.length > 0 && schoolDeposits.every((t) => STIPEND_WORDS.test(lineOf(t))),
     schoolPay,
     wages: rows.filter((t) => t.amountCents < 0 && (isWage(t) || schoolPay.includes(t))),
     tuition: toSchool.filter(
