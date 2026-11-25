@@ -118,3 +118,21 @@ export function taxReach(
     };
   });
 }
+
+// One tool's line on the admin scoreboard (src/app/admin/reach/page.tsx). A covering detector that
+// threw is shown as not evaluated, kept apart from one that ran and found no one.
+export function taxReachLine(t: TaxToolReach): string {
+  const failedBy = [...new Set(t.unevaluated.map((u) => u.detector))].join(", ");
+  const failed =
+    t.unevaluated.length > 0
+      ? `${t.unevaluated.length} check${t.unevaluated.length === 1 ? "" : "s"} by ${failedBy} failed to run`
+      : "";
+  if (t.reached.length > 0) {
+    const who = t.reached
+      .map((r) => `${r.person} (${r.months.length === 12 ? "all year" : r.months.join(", ")})`)
+      .join("; ");
+    return `${t.tool}: ${who}, by ${t.detectors.join(", ")}${failed ? `; ${failed}, so this may undercount` : ""}`;
+  }
+  const why = t.exempt ?? t.needsPerson ?? (failed ? `not evaluated: ${failed}` : "reaches no one");
+  return `${t.tool}: ${why}${failed && (t.exempt ?? t.needsPerson) ? `; ${failed}` : ""}`;
+}

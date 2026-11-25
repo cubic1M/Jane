@@ -51,7 +51,8 @@ const taxFormsComing: Detector = {
       })),
       ...lenders.map((l) => ({
         text: `a Form 1098-E from ${l} by ${due}, if the year's interest reached ${formatWholeDollars(FORMS_COMING.loanInterestFormFromCents)}`,
-        form: "january" as const,
+        // Comes only above the threshold, which loan payments don't show: not counted as a form.
+        form: null,
       })),
       ...platforms.map((p) => ({
         text: `from ${p}, a Form 1099-K only above ${formatWholeDollars(SIDE_INCOME.appThreshold.cents)} and ${SIDE_INCOME.appThreshold.payments} payments (a client may send a 1099-NEC); the income counts either way`,

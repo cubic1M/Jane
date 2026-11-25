@@ -244,12 +244,18 @@ const billGapAhead: Detector = {
       .join("; ");
     return suggestion("safe_to_spend", "bill_gap_ahead", {
       title: `Plan how to cover ${what} ${dueOn}: you're about ${formatCents(gap)} short`,
+      // Not said which program: the headline and short line name every date that holds, never the
+      // first as the deadline or a balance projected for another date.
       headline: headlineOf(
-        `Plan for ${bill.stanford ? "your bill" : "rent"} on ${dayLabel(first.day)}`,
+        unsure
+          ? "Plan for your bill ahead"
+          : `Plan for ${bill.stanford ? "your bill" : "rent"} on ${dayLabel(first.day)}`,
         gap,
         "risk",
       ),
-      short: `${formatCents(bill.cents)} due ${dayLabel(first.day)}; you'll have about ${formatCents(bill.cents - gap)}.`,
+      short: unsure
+        ? `${formatCents(bill.cents)} due ${cases.map((c) => dayLabel(c.day)).join(" or ")} by program; at most about ${formatCents(bill.cents - gap)} by then.`
+        : `${formatCents(bill.cents)} due ${dayLabel(first.day)}; you'll have about ${formatCents(bill.cents - first.gap)}.`,
       worthCents: gap,
       worthKind: "risk",
       confidence: weakest([

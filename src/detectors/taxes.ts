@@ -933,7 +933,11 @@ const hsaOverLimit: Detector = {
     if (h.projectedExcessCents <= 0) {
       if (!h.coverageAssumed || h.projectedCents <= h.selfLimitCents) return null;
       return suggestion("taxes", "hsa_over_limit", {
-        title: "Your HSA deposits are over the self-only limit",
+        // Over already, or only on pace to be by December: the title says which.
+        title:
+          h.contributedCents > h.selfLimitCents
+            ? "Your HSA deposits are over the self-only limit"
+            : "Your HSA deposits could pass the self-only limit at this pace",
         headline: "Check your HSA cover type",
         short: `${formatCents(h.contributedCents)} in so far this year; the self-only limit is ${formatCents(h.selfLimitCents)}, the family one ${formatCents(h.limitCents)}.`,
         worthCents: 0,
