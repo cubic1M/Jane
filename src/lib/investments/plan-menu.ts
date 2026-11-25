@@ -16,6 +16,7 @@ import {
   targetDateCheck,
   targetFor,
   weightedBps,
+  withoutGuessedMix,
   yearlyCents,
   type Allocation,
   type MenuFund,
@@ -86,7 +87,8 @@ export type PlanMenuView = {
   pending: boolean;
 };
 
-const fundsOf = (json: unknown): MenuFund[] => (Array.isArray(json) ? (json as MenuFund[]) : []);
+const fundsOf = (json: unknown): MenuFund[] =>
+  Array.isArray(json) ? withoutGuessedMix(json as MenuFund[]) : [];
 
 export async function loadPlanMenu(
   userId: string,

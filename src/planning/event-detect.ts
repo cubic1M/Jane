@@ -163,13 +163,14 @@ export function priceShocks(bars: Readonly<Record<string, readonly Bar[]>>): Mar
 // out a hike"): taken out before matching, so a headline saying a thing did not happen is not that
 // event. Up to two words follow the negation, enough for a verb and its object.
 const NEGATION =
-  /\b(?:will not|would not|does not|did not|do not|has not|have not|is not|are not|was not|were not|won['\u2019]t|wouldn['\u2019]t|doesn['\u2019]t|didn['\u2019]t|don['\u2019]t|hasn['\u2019]t|haven['\u2019]t|isn['\u2019]t|aren['\u2019]t|not|never|no longer|unlikely to|no plans? to|rul(?:es?|ed|ing) out|refus\w+ to|declin\w+ to)\b(?:\s+[\w$%.'\u2019-]+){0,2}/gi;
+  /\b(?:will not|would not|does not|did not|do not|has not|have not|is not|are not|was not|were not|won['\u2019]t|wouldn['\u2019]t|doesn['\u2019]t|didn['\u2019]t|don['\u2019]t|hasn['\u2019]t|haven['\u2019]t|isn['\u2019]t|aren['\u2019]t|not(?!\s+only\b)|never|no longer|unlikely to|no plans? to|rul(?:es?|ed|ing) out|refus\w+ to|declin\w+ to)\b(?:\s+[\w$%.'\u2019-]+){0,2}/gi;
 
 // The event types a headline or feed item is about: every pattern of one of a type's keyword
 // sets matches. Scores are the number of sets matched, for ordering; most text matches none.
 export function classifyText(text: string): { type: EventTypeId; score: number }[] {
   const out: { type: EventTypeId; score: number }[] = [];
-  const asserted = text.replace(NEGATION, " ");
+  // A line break, not a space: a keyword pattern cannot match across the removed clause.
+  const asserted = text.replace(NEGATION, "\n");
   for (const type of EVENT_TYPE_IDS) {
     const score = EVENT_TYPES[type].keywords.filter((set) =>
       set.every((p) => p.test(asserted)),

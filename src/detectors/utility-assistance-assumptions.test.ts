@@ -42,6 +42,11 @@ describe("the Spectrum plan's conditional price", () => {
     expect(internet("SPECTRUM", 6_500)?.why).toMatch(/may need an additional discount/);
   });
 
+  it("keeps the qualification when the bill has TV in it (the price is still quoted)", () => {
+    const why = internet("SPECTRUM TV INTERNET", 9_500)?.why ?? "";
+    expect(why).toMatch(/may need an additional discount/);
+  });
+
   it("says nothing of the kind for a plan with a plain price", () => {
     const why = internet("COMCAST XFINITY", 7_000)?.why ?? "";
     expect(why).not.toMatch(/additional discount/);

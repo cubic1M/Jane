@@ -11,4 +11,11 @@ describe("the Roth or traditional article", () => {
     expect(text).toMatch(/traditional IRA contribution may be deductible/);
     expect(text).toMatch(/workplace plan/);
   });
+
+  it("does not say deductible-only tax savings for every traditional account, nor tax basis twice", () => {
+    const a = EXPLAINERS.find((x) => x.slug === "roth-vs-traditional")!;
+    expect(a.summary).toMatch(/^Deductible traditional/);
+    expect(a.paragraphs.join(" ")).not.toMatch(/Either way, you pay income tax/);
+    expect(a.paragraphs.join(" ")).toMatch(/not taxed again/);
+  });
 });

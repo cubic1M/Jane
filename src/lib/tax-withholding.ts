@@ -27,7 +27,9 @@ export function checkFrom(view: TaxEstimateView): WithholdingCheck {
   return withholdingCheck({
     refundCents: view.estimate.refundCents,
     withholdingKnown: view.withholdingKnown,
-    marginalRate: view.estimate.marginalRate,
+    // A top rate with no income tax under it (the first bracket is reported at zero taxable
+    // income) takes nothing off the withholding: 0, so a deduction isn't sized from it.
+    marginalRate: view.estimate.incomeTaxCents > 0 ? view.estimate.marginalRate : 0,
     perYear: view.paychecks.perYear,
     paychecksLeft: view.paychecks.left,
     withheldPerPaycheckCents: view.paychecks.withheldPerPaycheckCents,

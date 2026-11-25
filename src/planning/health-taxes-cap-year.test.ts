@@ -4,7 +4,7 @@ import { ptcCheck } from "./health-taxes";
 
 // CodeRabbit sweep 1c, cfg-01 #1: the repayment-cap table only covers some years. A year before
 // 2026 that it doesn't list has caps nobody has entered, so no repayment is said for it (the
-// table's own 2025 numbers are FOR REVIEW: see src/config/health-taxes.ts).
+// 2025 numbers are IRS Form 8962 Table 5: see src/config/health-taxes.ts).
 
 const input = (year: number) => ({
   year,
@@ -22,10 +22,10 @@ describe("ptcCheck by tax year", () => {
   });
 
   it("still works for a listed year and for the years with no cap", () => {
-    expect(ptcCheck(input(2025))).toMatchObject({ repayKnown: true, capCents: 157_500 });
+    expect(ptcCheck(input(2025))).toMatchObject({ repayKnown: true, capCents: 162_500 });
     const later = ptcCheck(input(2027));
     expect(later.repayKnown).toBe(true);
     expect(later.capCents).toBeNull();
-    expect(later.repayCents).toBeGreaterThan(157_500);
+    expect(later.repayCents).toBeGreaterThan(162_500);
   });
 });

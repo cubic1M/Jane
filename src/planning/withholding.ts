@@ -131,6 +131,11 @@ export function withholdingCheck(input: {
   const gap = target - refundCents;
   // A 0% top rate: Step 4(b) would be sized from nothing, and would change nothing.
   if (gap < 0 && !(input.marginalRate > 0)) return { status: "unknown", why: "no_rate" };
+  // A refund with nothing withheld per paycheck (overpaid estimated payments): there is no
+  // withholding to take less of, and a zero-dollar W-4 change can't be made.
+  if (gap < 0 && !(input.withheldPerPaycheckCents > 0)) {
+    return { status: "unknown", why: "no_withholding" };
+  }
   let thisYear: W4Change | null = null;
   if (input.paychecksLeft > 0) {
     thisYear = limited(

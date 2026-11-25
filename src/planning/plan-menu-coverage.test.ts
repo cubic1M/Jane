@@ -3,6 +3,7 @@ import {
   cheapestMix,
   parseDisclosure,
   targetDateCheck,
+  withoutGuessedMix,
   type MenuFund,
   type MenuMix,
 } from "./plan-menu";
@@ -56,5 +57,16 @@ describe("a target-date fund's holdings do not depend on who is looking", () => 
   it("so it reports no saving for it", () => {
     const { funds } = parseDisclosure(line, OPTS);
     expect(targetDateCheck(funds, funds[0], 10_000_000)).toBeNull();
+  });
+});
+
+describe("a disclosure confirmed before the parse rule changed (CodeRabbit sweep 1d)", () => {
+  it("loses a glide-path mix on a target-date fund Jane has no holdings for", () => {
+    const stored = target();
+    expect(withoutGuessedMix([stored])[0]!.mix).toBeNull();
+  });
+  it("keeps the mix of a fund whose holdings Jane has, and of other kinds", () => {
+    const other = target({ ticker: "VFIAX", kind: "us_stocks" });
+    expect(withoutGuessedMix([other])[0]!.mix).toEqual(MIX);
   });
 });

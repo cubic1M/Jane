@@ -69,6 +69,13 @@ export function parseDisclosure(
   return { funds, skipped };
 }
 
+// A disclosure confirmed before target-date funds stopped getting a glide-path mix may still
+// carry one for a fund Jane has no holdings for: read back, such a fund has no mix.
+export const withoutGuessedMix = (funds: MenuFund[]): MenuFund[] =>
+  funds.map((f) =>
+    f.kind === "target_date" && !FUND_FACTS[f.ticker]?.mix ? { ...f, mix: null } : f,
+  );
+
 export type Allocation = { ticker: string; name: string; share: number; expenseBps: number }[];
 
 const PURE = ["us_stocks", "intl_stocks", "bonds", "cash"] as const;

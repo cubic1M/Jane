@@ -54,7 +54,15 @@ async function Content() {
                 : `The credit at that income is ${formatCents(c.allowedCents)}.`}{" "}
               Advance credit for the year: {formatCents(c.advanceCents)}
               {v.marketplace.told ? "" : " (worked out from your income early in the year)"}. Repaid
-              with your return: <strong>{formatCents(c.repayCents)}</strong>, with no cap from 2026.
+              with your return:{" "}
+              {c.repayKnown ? (
+                <>
+                  <strong>{formatCents(c.repayCents)}</strong>, with no cap from 2026.
+                </>
+              ) : (
+                <strong>not known for this year</strong>
+              )}
+              .
             </p>
             {v.advice && c.repayCents > 0 && (
               <>

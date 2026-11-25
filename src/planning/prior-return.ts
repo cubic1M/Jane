@@ -202,16 +202,23 @@ export function reviewReturn(r: ReviewInput): Review {
     });
   }
 
+  // The credits are chosen on the income the amended return would have: with the student loan
+  // interest deducted when that finding applies, the same input the combined total uses.
+  const withLoan: EstimateInput =
+    centsOf(f, "studentLoanInterest") === 0 && r.studentLoanInterestCents > 0
+      ? { ...input, studentLoanInterestCents: r.studentLoanInterestCents }
+      : input;
+  const baseWithLoan = tax(withLoan);
   // The credits chosen, so they can be applied to one estimate together (they share one cap).
   const credits: { nonrefundableCents: number; refundableCents: number }[] = [];
   if (centsOf(f, "educationCredit") === 0 && r.tuitionCents > 0) {
     // Without the student's facts the American Opportunity Credit isn't assumed.
     const student = r.student ?? { yearsOfCollegeBefore: 0, halfTime: true };
-    const c = educationChoice({ estimate: input, tuitionCents: r.tuitionCents, student });
+    const c = educationChoice({ estimate: withLoan, tuitionCents: r.tuitionCents, student });
     const sides = (c?.sides ?? []).filter((s, i) => s.eligible && (i === 1 || r.student));
     const best =
       sides.length > 0 ? sides.reduce((a, b) => (b.taxCents < a.taxCents ? b : a)) : null;
-    if (best && base - best.taxCents > 0) {
+    if (best && baseWithLoan - best.taxCents > 0) {
       if (best.credit) credits.push(best.credit);
       findings.push({
         key: "education_credit",
@@ -219,7 +226,7 @@ export function reviewReturn(r: ReviewInput): Review {
         why: r.student
           ? `You paid about ${formatWholeDollars(r.tuitionCents)} in tuition in ${r.year}. The better of the American Opportunity and Lifetime Learning credits would have lowered your tax.`
           : `You paid about ${formatWholeDollars(r.tuitionCents)} in tuition in ${r.year}. The Lifetime Learning credit would have lowered your tax (I don't know the student's year of college, so I haven't counted the American Opportunity credit).`,
-        savesCents: base - best.taxCents,
+        savesCents: baseWithLoan - best.taxCents,
       });
     }
   }
@@ -233,18 +240,18 @@ export function reviewReturn(r: ReviewInput): Review {
     careKnown
   ) {
     const c = careChoice({
-      estimate: input,
+      estimate: withLoan,
       careCents: r.careCents,
       children: r.children,
       bothWork: r.bothWork ?? true,
     });
-    if (c?.sides[1].eligible && base - c.sides[1].taxCents > 0) {
+    if (c?.sides[1].eligible && baseWithLoan - c.sides[1].taxCents > 0) {
       if (c.sides[1].credit) credits.push(c.sides[1].credit);
       findings.push({
         key: "dependent_care_credit",
         title: "The child and dependent care credit wasn't claimed",
         why: `You paid about ${formatWholeDollars(r.careCents)} for childcare in ${r.year}, and the credit is a share of it.`,
-        savesCents: base - c.sides[1].taxCents,
+        savesCents: baseWithLoan - c.sides[1].taxCents,
       });
     }
   }

@@ -85,3 +85,26 @@ describe("traditional IRA needs earned income", () => {
     expect(ira?.action.kind === "goal" && ira.action.targetCents).toBe(CONTRIBUTION_LIMITS.ira);
   });
 });
+
+describe("self-employed people and losses (CodeRabbit sweep 1d, #2273)", () => {
+  it("an HSA still saves income tax for someone with no wages and self-employment income", () => {
+    const se = input({
+      income: { ...NO_INCOME, wagesCents: 0, selfEmploymentCents: $(85_000) },
+    });
+    const hsa = savings(se, { hasHsa: true }).find((s) => s.key === "hsa");
+    expect(hsa?.estimateCents ?? 0).toBeGreaterThan(0);
+  });
+
+  it("a self-employment loss is not taken off the wages an IRA is limited by", () => {
+    const loss = input({
+      income: {
+        ...NO_INCOME,
+        wagesCents: $(40_000),
+        socialSecurityWagesCents: $(40_000),
+        selfEmploymentCents: -$(40_000),
+        retirementCents: $(40_000),
+      },
+    });
+    expect(savings(loss).some((s) => s.key === "ira")).toBe(true);
+  });
+});

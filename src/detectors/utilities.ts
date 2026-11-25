@@ -261,7 +261,7 @@ const lowCostInternet: Detector = {
         { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
       ]),
       urgency: "later",
-      why: `${bundled ? `Your ${plan.isp} bill is about ${formatCents(monthly)} a month, with TV in it.` : `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet.`} ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${bundled ? "Your bill has TV in it and I can't see the internet part alone, so there is no dollar figure." : `On it you'd pay about ${formatCents(off)} a month less, ${formatCents(off * 12)} a year.`} ${"priceNote" in plan && !bundled ? `${plan.priceNote} ` : ""}${plan.isp} decides who qualifies, and its terms are its own.`,
+      why: `${bundled ? `Your ${plan.isp} bill is about ${formatCents(monthly)} a month, with TV in it.` : `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet.`} ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${bundled ? "Your bill has TV in it and I can't see the internet part alone, so there is no dollar figure." : `On it you'd pay about ${formatCents(off)} a month less, ${formatCents(off * 12)} a year.`} ${"priceNote" in plan ? `${plan.priceNote} ` : ""}${plan.isp} decides who qualifies, and its terms are its own.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
     });

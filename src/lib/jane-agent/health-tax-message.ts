@@ -84,9 +84,11 @@ export function healthReply(v: HealthTaxView): MessageParts {
       `Marketplace credit: your income is on pace for ${formatCents(v.pace.projectedCents)}, ${Math.round(c.fplShare * 100)}% of the poverty line for ${people(v.householdSize)}. ${
         c.overCliff
           ? "That's over 400%, where the credit stops: an advance credit is repaid in full."
-          : c.repayCents > 0
-            ? `The credit at that income is ${formatCents(c.allowedCents)}, so about ${formatCents(c.repayCents)} of the ${formatCents(c.advanceCents)} advance would be repaid.`
-            : `The credit at that income (${formatCents(c.allowedCents)}) covers the ${formatCents(c.advanceCents)} advance.`
+          : !c.repayKnown
+            ? `The credit at that income is ${formatCents(c.allowedCents)} against the ${formatCents(c.advanceCents)} advance; the repayment limit for that year isn't on file, so I can't say how much would be repaid.`
+            : c.repayCents > 0
+              ? `The credit at that income is ${formatCents(c.allowedCents)}, so about ${formatCents(c.repayCents)} of the ${formatCents(c.advanceCents)} advance would be repaid.`
+              : `The credit at that income (${formatCents(c.allowedCents)}) covers the ${formatCents(c.advanceCents)} advance.`
       }${mk.told ? "" : " I worked your advance credit out from your income early in the year; tell me yours and I'll be exact."}`,
     );
   } else if (mk.payments > 0) {

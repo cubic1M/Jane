@@ -40,18 +40,17 @@ export const REPAYMENT_CAPS: Readonly<
 > = {
   2025: [
     { under: 2.0, single: $(375), other: $(750) },
-    { under: 3.0, single: $(950), other: $(1_900) },
-    { under: 4.0, single: $(1_575), other: $(3_150) },
+    { under: 3.0, single: $(975), other: $(1_950) },
+    { under: 4.0, single: $(1_625), other: $(3_250) },
   ],
   2026: [],
 };
 
 // From this tax year there is no cap at all (OBBBA 71305), so an empty row is the law, not a gap.
 // Before it, a year REPAYMENT_CAPS doesn't list has caps nobody has put here: no repayment is said.
-// FOR REVIEW at IRS Form 8962 instructions (Table 5, repayment limitation): the 2025 rows above
-// are $375/$750, $950/$1,900 and $1,575/$3,150 here; a CodeRabbit finding (sweep 1c, cfg-01 #1)
-// says they are $975/$1,950 (200-299% of the poverty line) and $1,625/$3,250 (300-399%). Not
-// changed until someone has read the table for the year.
+// 2025 rows: IRS Form 8962 instructions, Table 5 (repayment limitation): $375/$750 under 200% of
+// the poverty line, $975/$1,950 under 300%, $1,625/$3,250 under 400%. Set in sweep 1d after two
+// separate CodeRabbit findings (cfg-01 #1 and #2273) read the table the same way; re-read at source.
 export const NO_REPAYMENT_CAP_FROM = 2026;
 
 // The benchmark (second-cheapest silver) plan's monthly premium, used only when the person

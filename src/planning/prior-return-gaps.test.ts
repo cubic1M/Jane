@@ -113,3 +113,21 @@ describe("the total over several credits", () => {
     expect(r.totalCents).toBe(r.findings.reduce((s, f) => s + f.savesCents, 0));
   });
 });
+
+describe("credits chosen on the same student loan deduction as the total (CodeRabbit sweep 1d)", () => {
+  it("the findings add up to the total when the loan interest moves income across a phase-out", () => {
+    const r = review({
+      input: input({
+        income: { ...NO_INCOME, wagesCents: 8_500_000, socialSecurityWagesCents: 8_500_000 },
+      }),
+      studentLoanInterestCents: 250_000,
+      tuitionCents: 400_000,
+    });
+    expect(keys(r)).toEqual(expect.arrayContaining(["student_loan_interest", "education_credit"]));
+    // $4,000 of tuition at the Lifetime Learning rate (20%), cut by the phase-out at an income of
+    // $82,500 (with the loan interest taken off) is $600; at $85,000 it would be $400.
+    expect(r.findings.find((f) => f.key === "education_credit")?.savesCents).toBe(60_000);
+    const sum = r.findings.reduce((a, f) => a + f.savesCents, 0);
+    expect(Math.abs(sum - r.totalCents)).toBeLessThanOrEqual(100);
+  });
+});

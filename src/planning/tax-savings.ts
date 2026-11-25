@@ -143,8 +143,10 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   } else {
     // No workplace plan: a traditional IRA is deductible in full (the phase-out only
     // applies to people covered by one, or whose spouse is).
-    // A contribution is limited to taxable compensation: wages and self-employment income.
-    const earned = base.income.wagesCents + base.income.selfEmploymentCents;
+    // A contribution is limited to taxable compensation: wages and self-employment income. A
+    // self-employment loss is not taken off the wages (IRS Publication 590-A).
+    const earned =
+      Math.max(0, base.income.wagesCents) + Math.max(0, base.income.selfEmploymentCents);
     const room = Math.min(CONTRIBUTION_LIMITS.ira, earned);
     if (room > 0) {
       out.push({
@@ -174,7 +176,17 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
       key: "hsa",
       title: "Use your HSA's room",
       why: `You have an HSA. Up to ${formatWholeDollars(limit)} a year (${s.year}) goes in before tax, through payroll free of payroll tax too, and comes out tax-free for medical costs.`,
-      estimateCents: saved(lessWages(limit)) + payroll(limit),
+      // Through payroll the wages come down (and payroll tax with them); what pay can't carry (a
+      // self-employed person with no wages) is a personal contribution, deducted from income.
+      estimateCents:
+        saved((i) => {
+          const fromPay = Math.min(limit, Math.max(0, i.income.wagesCents));
+          const personal = { ...lessWages(fromPay)(i) };
+          return {
+            ...personal,
+            otherAdjustmentsCents: (personal.otherAdjustmentsCents ?? 0) + (limit - fromPay),
+          };
+        }) + payroll(limit),
       action: {
         kind: "task",
         title: "Check my HSA contribution",
