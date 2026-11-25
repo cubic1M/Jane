@@ -10,7 +10,7 @@ import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, outCents, tx, weakest, headlineOf } from "./helpers";
-import { daysToEstimatedDate, estimatedDatesBetween, urgencyForEstimated } from "./taxes";
+import { daysToEstimatedDate, estimatedDueDates, urgencyForEstimated } from "./taxes";
 import { dayLabel } from "@/lib/day-label";
 
 // Detectors for how a person earns (spec step 254): taxes with no employer, saving for
@@ -45,24 +45,56 @@ const estimatedTaxes: Detector = {
       annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
     );
     const owed = Math.round(taxable * R.selfEmployedTaxRate);
+    // One tax year at a time (Form 1040-ES): April, June and September of a year and the January
+    // after it. Last year's January date and payments belong to the year before, so they are
+    // neither counted as due nor as paid against this year's amount.
+    const today = profile.today;
+    const year = Number(today.slice(0, 4));
+    const janOf = (y: number) => estimatedDueDates([y - 1])[3];
+    const taxYear = today <= janOf(year) ? year - 1 : year;
+    const yearStart = janOf(taxYear);
+    const inYear = paid.filter((t) => t.date > yearStart && t.date <= today);
+    const paidCents = outCents(inYear);
     // What was due on the dates the statements reach, a quarter of the year's tax each (debugger
     // 11-03: one payment of any size used to silence this). The payment dates before them can't be seen.
-    const paidCents = outCents(paid);
     const firstSeen = data.transactions.reduce(
       (first, t) => (t.date < first ? t.date : first),
-      profile.today,
+      today,
     );
-    const dueCents = Math.round((owed / 4) * estimatedDatesBetween(firstSeen, profile.today));
-    if (paid.length > 0 && paidCents >= dueCents * R.tax.estimatedPaidEnoughShare) return null;
-    const risk = Math.round(
-      (paid.length > 0 ? dueCents - paidCents : owed) * R.underpaymentPenaltyRate,
-    );
+    const dates = estimatedDueDates([taxYear]).filter((d) => d >= firstSeen && d <= today);
+    const eachCents = owed / 4;
+    const dueCents = Math.round(eachCents * dates.length);
+    const enough = R.tax.estimatedPaidEnoughShare;
+    // The penalty runs on each day the paid-in total sat under what was due by then, so a payment
+    // that came late still costs, though the total later caught up.
+    let lateRisk = 0;
+    if (dates.length > 0) {
+      const dayMs = 86_400_000;
+      for (
+        let day = dates[0];
+        day <= today;
+        day = new Date(Date.parse(day) + dayMs).toISOString().slice(0, 10)
+      ) {
+        const required = eachCents * enough * dates.filter((d) => d <= day).length;
+        const have = outCents(inYear.filter((t) => t.date <= day));
+        lateRisk += Math.max(0, required - have);
+      }
+      lateRisk = Math.round((lateRisk * R.underpaymentPenaltyRate) / 365);
+    }
+    // Nothing due yet this tax year, and a person who pays: nothing to say until April.
+    if (dates.length === 0 && paid.length > 0) return null;
+    const caughtUp = inYear.length > 0 && paidCents >= dueCents * enough;
+    if (caughtUp && lateRisk < R.tax.estimatedLateMinPenaltyCents) return null;
+    const risk = caughtUp
+      ? lateRisk
+      : Math.round((inYear.length > 0 ? dueCents - paidCents : owed) * R.underpaymentPenaltyRate);
     return suggestion("taxes", "estimated_taxes", {
       title: "Pay estimated taxes each quarter",
       headline: headlineOf("Pay estimated taxes each quarter", risk, "risk"),
-      short:
-        paid.length > 0
-          ? `You've paid ${formatCents(paidCents)} in tax; about ${formatCents(dueCents)} was due by now.`
+      short: caughtUp
+        ? `You've caught up on tax payments, but some came after their dates, which can cost about ${formatCents(risk)}.`
+        : inYear.length > 0
+          ? `You've paid ${formatCents(paidCents)} in tax this year; about ${formatCents(dueCents)} was due by now.`
           : `Nobody withholds tax from your pay; about ${formatCents(owed)} a year is due.`,
       worthCents: risk,
       worthKind: "risk",
@@ -85,9 +117,11 @@ const estimatedTaxes: Detector = {
       // The next quarterly date drives it: now within two weeks, soon within six.
       urgency: urgencyForEstimated(profile.today),
       why: `${
-        paid.length > 0
-          ? `Nobody withholds tax from your pay. I see ${formatCents(paidCents)} of tax payments, and about ${formatCents(dueCents)} was due by now on about ${formatCents(owed)} of tax a year. Late payment penalties could reach ${formatCents(risk)}.`
-          : `Nobody withholds tax from your pay and I see no tax payments in ${plural(profile.months, "month")}. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
+        caughtUp
+          ? `Nobody withholds tax from your pay. I see ${formatCents(paidCents)} of tax payments this tax year, which covers the about ${formatCents(dueCents)} due by now on about ${formatCents(owed)} of tax a year, but some of it came after a due date. The IRS charges for each day a quarter's share was unpaid: about ${formatCents(risk)} so far.`
+          : inYear.length > 0
+            ? `Nobody withholds tax from your pay. I see ${formatCents(paidCents)} of tax payments this tax year, and about ${formatCents(dueCents)} was due by now on about ${formatCents(owed)} of tax a year. Late payment penalties could reach ${formatCents(risk)}.`
+            : `Nobody withholds tax from your pay and I see no tax payments ${paid.length > 0 ? "for this tax year yet" : `in ${plural(profile.months, "month")}`}. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
       } The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
       action: { label: "Set aside tax", href: "/taxes" },
     });
@@ -184,10 +218,23 @@ const businessSeparation: Detector = {
   detect({ profile, data }) {
     const pattern = profile.facts.income_pattern;
     if (pattern.value !== "business") return null;
+    // Only an account that also took in the shop's sales is the business account: groceries from
+    // a separate personal account are exactly the separation the card asks for.
+    const businessAccounts = new Set(
+      tx(
+        data,
+        (t) =>
+          t.amountCents < 0 &&
+          (t.pfc === "INCOME_CONTRACTOR" ||
+            t.pfc === "INCOME_GIG_ECONOMY" ||
+            (t.pfc === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(t.description))),
+      ).map((t) => t.accountId),
+    );
     const personal = tx(
       data,
       (t) =>
         t.amountCents > 0 &&
+        businessAccounts.has(t.accountId) &&
         (t.pfc === "FOOD_AND_DRINK_GROCERIES" || /HOME RENT/i.test(t.description)),
     );
     if (personal.length === 0) return null;
@@ -353,15 +400,36 @@ const cashFlow: Detector = {
   needs: ["income_pattern"],
   detect({ profile, data }) {
     if (!selfPaid(profile.facts.income_pattern.value)) return null;
-    const lumps = data.transactions
-      .filter(
-        (t) =>
-          t.amountCents > 0 &&
-          t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
-          BUSINESS_LUMPS.pattern.test(t.description),
+    // One tax in one account is one bill with one rhythm: monthly payroll tax and quarterly sales
+    // tax would otherwise blur into a cadence that fits neither. The tax with the most paid out
+    // is the one the card is about.
+    const groups = new Map<string, typeof data.transactions>();
+    for (const t of data.transactions) {
+      if (
+        t.amountCents <= 0 ||
+        t.pfc !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" ||
+        !BUSINESS_LUMPS.pattern.test(t.description)
       )
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (lumps.length < BUSINESS_LUMPS.minPayments) return null;
+        continue;
+      const key = `${t.description.match(BUSINESS_LUMPS.kind)?.[1]?.toUpperCase()}|${t.accountId}`;
+      groups.set(key, [...(groups.get(key) ?? []), t]);
+    }
+    const sum = (list: typeof data.transactions) => list.reduce((s, t) => s + t.amountCents, 0);
+    const best = [...groups.entries()]
+      .filter(([, list]) => list.length >= BUSINESS_LUMPS.minPayments)
+      .sort((a, b) => sum(b[1]) - sum(a[1]))[0];
+    if (!best) return null;
+    const taxName = best[0].split("|")[0].toLowerCase();
+    const lumps = [...best[1]].sort((a, b) => a.date.localeCompare(b.date));
+    // Sales arriving in the same account is only said when deposits in it show it.
+    const salesSameAccount = data.transactions.some(
+      (t) =>
+        t.amountCents < 0 &&
+        t.accountId === lumps[0].accountId &&
+        (t.pfc === "INCOME_CONTRACTOR" ||
+          t.pfc === "INCOME_GIG_ECONOMY" ||
+          (t.pfc === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(t.description))),
+    );
     const gaps = lumps
       .slice(1)
       .map((t, i) => (Date.parse(t.date) - Date.parse(lumps[i].date)) / DAY);
@@ -376,7 +444,7 @@ const cashFlow: Detector = {
     return suggestion("taxes", "cash_flow", {
       title: `Set aside about ${formatCents(weekly)} from each week's sales for the tax bill due every ${months === 1 ? "month" : `${months} months`}`,
       headline: headlineOf("Set aside tax from weekly sales", average, "risk"),
-      short: `About ${formatCents(average)} of tax goes out every ${months} months; ${formatCents(weekly)} a week covers it.`,
+      short: `About ${formatCents(average)} of tax goes out every ${months === 1 ? "month" : `${months} months`}; ${formatCents(weekly)} a week covers it.`,
       worthCents: average,
       worthKind: "risk",
       confidence: weakest([
@@ -384,7 +452,7 @@ const cashFlow: Detector = {
         factEvidence(profile.facts.income_pattern),
       ]),
       urgency: daysLeft <= BUSINESS_LUMPS.soonDays ? "soon" : "later",
-      why: `Your business pays about ${formatCents(average)} of tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${plural(profile.months, "month")}), the next about ${nextWords}, from the same account your weekly sales go into. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week, and keeps it apart from your own money.`,
+      why: `Your business pays about ${formatCents(average)} of ${taxName} tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${plural(profile.months, "month")}), the next about ${nextWords}${salesSameAccount ? ", from the same account your weekly sales go into" : ""}. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week${salesSameAccount ? ", and keeps it apart from your own money" : ""}.`,
       action: { label: "See business taxes", href: "/taxes/business" },
     });
   },

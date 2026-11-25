@@ -16,7 +16,8 @@ const topics = (payee: string) => {
     transactions: [
       ...d.transactions.filter((t) => t.pfc !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"),
       {
-        date: "2026-09-10",
+        // Before the April date: a payment that came after it would be a late one (sweep 1c).
+        date: "2026-01-20",
         amountCents: 50_000_000,
         description: payee,
         pfc: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",

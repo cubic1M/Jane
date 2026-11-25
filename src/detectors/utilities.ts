@@ -213,22 +213,43 @@ const lowCostInternet: Detector = {
     const gross = grossOf({ profile, data });
     if (!people || gross === null) return null;
     const bills = tx(data, (t) => t.pfc === INTERNET && t.amountCents > 0);
-    const plan = LOW_COST_INTERNET.plans.find((p) =>
-      bills.some((t) => p.match.test(`${t.description} ${t.merchantName ?? ""}`)),
-    );
+    const billOf = (p: (typeof LOW_COST_INTERNET.plans)[number]) =>
+      bills.filter((t) => p.match.test(`${t.description} ${t.merchantName ?? ""}`));
+    // The provider billed most recently: a bill from one the person left, or the first plan in the
+    // list, is not the one they pay now.
+    const newestOf = (p: (typeof LOW_COST_INTERNET.plans)[number]) =>
+      billOf(p).reduce((m, t) => (t.date > m ? t.date : m), "");
+    const [plan] = [...LOW_COST_INTERNET.plans]
+      .filter((p) => newestOf(p) !== "")
+      .sort((x, y) => newestOf(y).localeCompare(newestOf(x)));
     if (!plan) return null;
     const limit = povertyLine(people, LOW_COST_INTERNET.incomeShare);
     if (gross > limit) return null;
-    const paid = bills.filter((t) => plan.match.test(`${t.description} ${t.merchantName ?? ""}`));
+    // Its own latest months of bills set the monthly price.
+    const monthIndex = (d: string) => Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7));
+    const latest = monthIndex(newestOf(plan));
+    const paid = billOf(plan).filter(
+      (t) => monthIndex(t.date) > latest - LOW_COST_INTERNET.recentMonths,
+    );
     const monthly = Math.round(
       outCents(paid) / Math.max(1, new Set(paid.map((t) => t.date.slice(0, 7))).size),
     );
-    const off = "priceCents" in plan ? monthly - plan.priceCents : Math.min(plan.offCents, monthly);
-    if (off <= 0) return null;
+    // An internet-and-TV bill can't be set against an internet-only price: say the plan, no figure.
+    const bundled = paid.some((t) =>
+      LOW_COST_INTERNET.bundleWords.test(`${t.description} ${t.merchantName ?? ""}`),
+    );
+    const off = bundled
+      ? 0
+      : "priceCents" in plan
+        ? monthly - plan.priceCents
+        : Math.min(plan.offCents, monthly);
+    if (off <= 0 && !bundled) return null;
     return suggestion("cost", "low_cost_internet", {
       title: `${plan.isp} has a low-income internet plan your household may qualify for`,
       headline: headlineOf(`Check ${plan.isp}'s low-cost internet`, off * 12, "saves"),
-      short: `You pay ${plan.isp} about ${formatCents(monthly)} a month; ${plan.plan}.`,
+      short: bundled
+        ? `${plan.isp} has ${plan.plan}; your ${formatCents(monthly)} bill has TV in it, so I can't say the saving.`
+        : `You pay ${plan.isp} about ${formatCents(monthly)} a month; ${plan.plan}.`,
       worthCents: off * 12,
       worthKind: "saves",
       confidence: weakest([
@@ -237,7 +258,7 @@ const lowCostInternet: Detector = {
         { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
       ]),
       urgency: "later",
-      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. On it you'd pay about ${formatCents(off)} a month less, ${formatCents(off * 12)} a year. ${plan.isp} decides who qualifies, and its terms are its own.`,
+      why: `${bundled ? `Your ${plan.isp} bill is about ${formatCents(monthly)} a month, with TV in it.` : `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet.`} ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours for ${incomeYearOf(data)} looks to be near ${formatCents(gross)}. ${bundled ? "Your bill has TV in it and I can't see the internet part alone, so there is no dollar figure." : `On it you'd pay about ${formatCents(off)} a month less, ${formatCents(off * 12)} a year.`} ${plan.isp} decides who qualifies, and its terms are its own.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
     });
