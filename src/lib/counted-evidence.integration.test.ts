@@ -34,6 +34,8 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
     balance?: number;
     // The link's lines are still pending, each a tip above what the statement will say.
     linkPending?: boolean;
+    // No statement balance: the upload's balance is one typed in, as of another day.
+    typedBalance?: boolean;
   }) {
     const user = await client.user.create({
       data: { email: `evidence-${crypto.randomUUID()}@example.com`, timezone: "UTC" },
@@ -97,6 +99,17 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
         categorySource: "rule" as const,
       })),
     });
+    // The upload's own statement balance, on its last day (a closing balance has its own day).
+    if (upload.amounts.length > 0 && !upload.typedBalance)
+      await client.balanceSnapshot.create({
+        data: {
+          userId,
+          accountId: up.id,
+          date: day(dateOf(upload.amounts.length - 1 + (upload.shiftDays ?? 0))),
+          balanceCents: upload.balance ?? 120_000,
+          source: "file",
+        },
+      });
     // The link's own history reaches the statement's last day.
     await client.balanceSnapshot.create({
       data: {
@@ -149,7 +162,7 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
     const left = await accountsNotCounted(scopedFor(userId, client));
     expect(left.get(upload.id)?.reason).toBe("maybe_same");
     expect((await loadNetWorthInputs(userId, { client })).worth.netCents).toBe(485_000);
-    expect((await loadMaybeSame(userId, { client }))?.words).toMatch(/nothing to compare/);
+    expect((await loadMaybeSame(userId, { client }))?.words).toMatch(/not enough in their lines/);
   });
 
   it("days that don't overlap: nothing to compare either", async () => {
@@ -196,5 +209,15 @@ describe.runIf(url)("an upload beside a linked account, compared", { timeout: 12
       })),
     });
     expect((await accountsNotCounted(db)).get(upload.id)?.reason).toBe("same_account");
+  });
+
+  it("a balance typed in, not the statement's, never settles it by balance", async () => {
+    const { userId, upload } = await shape({
+      amounts: AMOUNTS.slice(0, 3),
+      balance: 120_000,
+      typedBalance: true,
+    });
+    const left = await accountsNotCounted(scopedFor(userId, client));
+    expect(left.get(upload.id)?.reason).toBe("maybe_same");
   });
 });

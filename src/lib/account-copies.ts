@@ -1,5 +1,6 @@
 import type { ScopedDb } from "@/lib/db-scoped";
 import type { MaybeSame } from "@/insights/net-worth";
+import { FILE_SOURCE } from "@/lib/import/balances";
 import { SAME_ACCOUNT_BALANCE_SLACK_DAYS, SAME_ACCOUNT_MAX_LINES } from "@/config/detection";
 import {
   accountsLeftOut,
@@ -31,6 +32,11 @@ type Db = Pick<
   ScopedDb,
   "accounts" | "plaidItems" | "janePreferences" | "transactions" | "importRuns" | "balanceSnapshots"
 >;
+
+const closingOf = (readings: readonly { date: string; balanceCents: number }[]) => {
+  const last = [...readings].sort((a, b) => b.date.localeCompare(a.date))[0];
+  return last ? { date: last.date, cents: last.balanceCents } : null;
+};
 
 async function readCounting(db: Db) {
   const accounts = await db.accounts.findMany({
@@ -124,7 +130,13 @@ async function readCounting(db: Db) {
         })),
       ),
       db.balanceSnapshots.findMany({
-        where: { accountId: { in: candidates.map(([, l]) => l.id) } },
+        where: {
+          OR: [
+            { accountId: { in: candidates.map(([, l]) => l.id) } },
+            // An upload's own closing balances, from its statement (not worked back or typed).
+            { accountId: { in: candidates.map(([u]) => u.id) }, source: FILE_SOURCE },
+          ],
+        },
         select: { accountId: true, date: true, balanceCents: true },
       }),
     ]);
@@ -143,16 +155,14 @@ async function readCounting(db: Db) {
         { date: day(r.date)!, balanceCents: r.balanceCents },
       ]);
     for (const [upload, link] of candidates) {
-      const end = endsOn.get(upload.id);
       const [mine, theirs] = [lines.get(upload.id), lines.get(link.id)];
       const { verdict } = compareAccounts({
         upload: mine?.lines ?? [],
         link: theirs?.lines ?? [],
         truncated: Boolean(mine?.truncated || theirs?.truncated),
-        closing:
-          end && upload.currentBalanceCents !== null
-            ? { date: end, cents: upload.currentBalanceCents }
-            : null,
+        // The statement's own last closing balance, with its own day: a balance typed in or worked
+        // back from today's is another day's, and says nothing about the link on this one.
+        closing: closingOf(readingsOf.get(upload.id) ?? []),
         linkBalanceOn: (date) =>
           balanceOnOrBefore(readingsOf.get(link.id) ?? [], date, SAME_ACCOUNT_BALANCE_SLACK_DAYS),
       });

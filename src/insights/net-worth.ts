@@ -135,7 +135,7 @@ export const maybeSamePair = ({ reason, left, with: other }: MaybeSame) =>
   reason === "same_account"
     ? `${left.name} (uploaded) shows the same activity as ${other.name} (linked), so Jane left it out of net worth.`
     : reason === "maybe_same"
-      ? `${left.name} (uploaded) looks like a copy of ${other.name} (linked), and there was nothing to compare it with, so Jane left it out of net worth.`
+      ? `${left.name} (uploaded) looks like a copy of ${other.name} (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.`
       : reason === "older_upload"
         ? `${left.name} (uploaded) looks like an earlier upload of ${other.name}, so Jane counted the later one only.`
         : `${left.name} looks like ${other.name} linked a second time, so Jane counts it once.`;
@@ -154,7 +154,7 @@ export function maybeSameWords(pairs: readonly MaybeSame[]): string | null {
   const unsure = pairs.filter((p) => p.reason === "maybe_same").length;
   return `${pairs.length} uploaded statements look like copies of your linked accounts, so they are left out of net worth.${
     unsure > 0
-      ? ` Jane could not compare ${unsure === pairs.length ? "them" : `${unsure} of them`} with the bank's own lines.`
+      ? ` Jane could not be sure of ${unsure === pairs.length ? "them" : `${unsure} of them`} from the bank's own lines.`
       : ""
   }`;
 }
