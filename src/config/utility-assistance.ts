@@ -86,7 +86,7 @@ export const LOW_COST_INTERNET = {
   // recentMonths calendar months of bills (a provider the person left is not offered).
   recentMonths: 3,
   // A bill whose words show TV in it: the internet part of the charge isn't known.
-  bundleWords: /\b(?:tv|video|bundle|triple play|double play)\b/i,
+  bundleWords: /\b(?:tv|video|bundle|(?:triple|double)[\s-]*play)\b/i,
   plans: [
     {
       isp: "Xfinity",

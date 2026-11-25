@@ -33,7 +33,13 @@ function otherTaxableYear(data: Parameters<Detector["detect"]>[0]["data"], today
   if (rows.length === 0) return 0;
   const first = data.transactions.reduce((a, t) => (t.date < a ? t.date : a), today);
   const from = first < `${year}-01-01` ? `${year}-01-01` : first;
-  const months = Math.max(1, (Date.parse(today) - Date.parse(from)) / DAY_MS / (365.25 / 12));
+  // To the newest row on or before today, as studentYearOf does: months after the statements stop
+  // hold no rows, so pacing over them would shrink the year.
+  const last = data.transactions.reduce(
+    (a, t) => (t.date <= today && t.date > a ? t.date : a),
+    from,
+  );
+  const months = Math.max(1, (Date.parse(last) - Date.parse(from)) / DAY_MS / (365.25 / 12));
   return Math.round((sumCents(rows) * 12) / months);
 }
 

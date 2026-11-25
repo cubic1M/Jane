@@ -52,8 +52,12 @@ const estimatedTaxes: Detector = {
     const year = Number(today.slice(0, 4));
     const janOf = (y: number) => estimatedDueDates([y - 1])[3];
     const taxYear = today <= janOf(year) ? year - 1 : year;
-    const yearStart = janOf(taxYear);
-    const inYear = paid.filter((t) => t.date > yearStart && t.date <= today);
+    // A payment belongs to the tax year by its own date, Feb 1 to Jan 31 as the tax estimate counts
+    // it (src/lib/tax-estimate.ts): a late fourth installment paid Jan 20 is last year's, not this
+    // year's April one.
+    const inYear = paid.filter(
+      (t) => t.date >= `${taxYear}-02-01` && t.date <= `${taxYear + 1}-01-31` && t.date <= today,
+    );
     const paidCents = outCents(inYear);
     // What was due on the dates the statements reach, a quarter of the year's tax each (debugger
     // 11-03: one payment of any size used to silence this). The payment dates before them can't be seen.

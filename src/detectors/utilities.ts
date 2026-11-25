@@ -222,7 +222,10 @@ const lowCostInternet: Detector = {
     const [plan] = [...LOW_COST_INTERNET.plans]
       .filter((p) => newestOf(p) !== "")
       .sort((x, y) => newestOf(y).localeCompare(newestOf(x)));
-    if (!plan) return null;
+    // A newer internet bill from a provider with no plan here means the person has moved on from
+    // this one: no card rather than a name they no longer pay.
+    const latestBill = bills.reduce((m, t) => (t.date > m ? t.date : m), "");
+    if (!plan || newestOf(plan) !== latestBill) return null;
     const limit = povertyLine(people, LOW_COST_INTERNET.incomeShare);
     if (gross > limit) return null;
     // Its own latest months of bills set the monthly price.
