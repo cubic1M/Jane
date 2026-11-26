@@ -540,6 +540,8 @@ export function parseDebtIntent(
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
+  // A tag command ("don't tag mortgage interest") is the tax topics', whatever it names.
+  if (/^(?:tag|untag|don'?t tag|do not tag|stop tagging) /.test(text)) return null;
   if (
     LOAN_FIT.test(text) &&
     !/\b(?:student)\b|\bwhich loan (?:has|is|costs?|charges?)\b/.test(text) &&

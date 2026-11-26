@@ -152,6 +152,8 @@ const TAG_WORDS: Readonly<Record<string, TaxTagKind>> = {
 };
 const TAG =
   /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?|rental(?: expenses?)?)$/;
+// A tag command, so no other topic reads it ("don't tag mortgage interest" is not a home question).
+export const TAG_COMMAND = /^(?:tag|untag|don'?t tag|do not tag|stop tagging) /;
 const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
@@ -377,11 +379,10 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
   if (IDENTITY_ASK.test(text)) return { kind: "tax", ask: "identity", sign: null };
   if (NOTICE_ASK.test(text)) return { kind: "tax", ask: "notice" };
-  if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
-    return { kind: "tax", ask: "side_income" };
+  if (!TAG_COMMAND.test(text) && SIDE_INCOME.test(text)) return { kind: "tax", ask: "side_income" };
   if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
   if (RECORDS_ASK.test(text)) return { kind: "tax", ask: "records" };
-  if (!/^(?:tag|untag) /.test(text) && HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
+  if (!TAG_COMMAND.test(text) && HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
   for (const [pattern, status] of FILING) {
     if (pattern.test(text)) return { kind: "tax", ask: "set_filing", status };
   }

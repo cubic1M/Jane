@@ -50,6 +50,14 @@ describe("tax questions, routed", () => {
   it("reads a tag command as a tag, not as the home topic", () => {
     expect(parseTaxIntent("tag mortgage interest as rental")).toMatchObject({ ask: "tag" });
     expect(parseTaxIntent("untag mortgage interest")).toMatchObject({ ask: "tag", tag: null });
+    // CodeRabbit #2294: the "don't tag" forms reach the tag command, not the debts or the home.
+    for (const text of [
+      "don't tag mortgage interest",
+      "do not tag mortgage interest",
+      "stop tagging mortgage interest",
+    ]) {
+      expect(parse(text)).toMatchObject({ kind: "tax", ask: "tag", tag: null });
+    }
   });
 });
 
@@ -93,6 +101,30 @@ describe("tax answers, as far as the view says", () => {
     } as never;
     const said = investmentsReply(view, estimate, true);
     expect(said.body).toMatch(/That holds only if you turn off its dividend reinvestment first/);
+    // CodeRabbit #2294: the day count is inclusive, and with no known risk the future purchase
+    // is still a condition.
+    const recent = {
+      ...(view as { harvest: { washRisk: object }[] }),
+      harvest: [
+        {
+          ...(view as { harvest: object[] }).harvest[0],
+          washRisk: { reinvests: false, boughtRecently: true },
+        },
+      ],
+    } as never;
+    expect(investmentsReply(recent, estimate, true).body).toMatch(/is more than 30 days past/);
+    const none = {
+      ...(view as object),
+      harvest: [
+        {
+          ...(view as { harvest: object[] }).harvest[0],
+          washRisk: { reinvests: false, boughtRecently: false },
+        },
+      ],
+    } as never;
+    expect(investmentsReply(none, estimate, true).body).toMatch(
+      /only if you do not buy it again, or something substantially identical, within 30 days after selling/,
+    );
   });
 
   it("names the state payment still to make when no federal one is left", () => {
