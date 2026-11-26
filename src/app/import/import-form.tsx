@@ -82,6 +82,8 @@ export function ImportForm({
   const selection = useRef(0);
   // A column mapping changed after the preview: what it checked isn't what would be imported.
   const [mappingChanged, setMappingChanged] = useState(false);
+  // Counts mapping edits: a preview clears the flag only if none came while it was running.
+  const mappingEdits = useRef(0);
   // Column pickers by file position, kept once shown: the import sends the picked columns too.
   const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export function ImportForm({
     event.preventDefault();
     setError(null);
     const gen = selection.current;
+    const edits = mappingEdits.current;
     const data = formData();
     const over = tooMuch(data);
     if (over) {
@@ -155,7 +158,7 @@ export function ImportForm({
       if (!result) return setError(FAILED);
       setPreview(result);
       // Only a preview that read the mapping as it stands lets the import go.
-      if (result.ok) setMappingChanged(false);
+      if (result.ok && edits === mappingEdits.current) setMappingChanged(false);
       if (!result.ok) return;
       // The first account was only the page's default: files that plainly don't fit it (a card
       // statement into checking) go where they do, an account of theirs or a new one named from
@@ -251,7 +254,10 @@ export function ImportForm({
       onSubmit={onPreview}
       onChange={(event) => {
         const name = (event.target as unknown as HTMLInputElement).name;
-        if (name?.startsWith("map.")) setMappingChanged(true);
+        if (name?.startsWith("map.")) {
+          mappingEdits.current += 1;
+          setMappingChanged(true);
+        }
       }}
       className="flex flex-col gap-4"
     >
