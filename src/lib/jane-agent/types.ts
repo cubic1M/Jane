@@ -519,16 +519,23 @@ export type MessageRefs = {
   claimStep?: string;
   // Spec step 150: the guided question a benefits message asks.
   benefitQuestion?: string;
+  // The benefits the "Yes, they're right" card listed: Yes confirms only these.
+  benefitIds?: string[];
   // Spec step 151: the policy reading a message asks the person to confirm.
   readingId?: string;
   // Spec step 153: the life application a message moves along.
   lifeApplicationId?: string;
+  // The quote the sized message's Apply button names, and the health question a message shows.
+  lifeQuoteId?: string;
+  lifeQuestion?: string;
   // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
   coverEvent?: string;
   // Spec step 155: the renewal negotiation a message asks about.
   negotiationId?: string;
   // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
   savingGroup?: string;
+  // The offers a "Do all of these" card listed: its Yes and Not now act on these only.
+  savingIds?: string[];
   savingId?: string;
   // Spec step 197: the risk a question asks about.
   riskId?: string;

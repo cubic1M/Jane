@@ -51,6 +51,30 @@ export async function acceptShop(
   }
   const db = scopedFor(userId, client);
   const shop = await shopById(userId, shopId, { client });
+  // A tap whose agent never started (the start failed after the switch was saved): the
+  // saved switch is resumed, with no second decision, instead of being "already answered".
+  if (shop && (shop.status === "open" || shop.status === "accepted")) {
+    const stalled = await db.actions.findFirst({
+      where: {
+        type: "insurance_reshop",
+        agentState: null,
+        decision: { choice: "yes", options: { path: ["insuranceShopId"], equals: shop.id } },
+      },
+      select: { id: true, decisionId: true },
+    });
+    if (stalled) {
+      await db.insuranceShops.updateMany({
+        where: { id: shop.id, status: "open" },
+        data: { status: "accepted", answeredAt: now },
+      });
+      const agentJobId = await startAgent(userId, stalled.id, {
+        client,
+        now,
+        source: by === "autopilot" ? "rule" : "chat",
+      });
+      return { decisionId: stalled.decisionId, actionId: stalled.id, agentJobId };
+    }
+  }
   if (!shop || shop.status !== "open" || !shop.pick || shop.savingCents === null) {
     throw new AcceptShopError("This one's already been answered.");
   }

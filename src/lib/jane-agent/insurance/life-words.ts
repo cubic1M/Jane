@@ -4,7 +4,7 @@ import type { LifeApplication, LifeQuote } from "@/lib/insurance/life";
 import { methodLines } from "@/lib/insurance/life-need";
 import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
 import { formatCents } from "@/lib/money";
-import { type MessageAction, openLink } from "../types";
+import { type MessageAction, type MessageRefs, openLink } from "../types";
 import { momentLabel } from "@/lib/day-label";
 import { validTimezone } from "@/lib/digest/week";
 
@@ -61,6 +61,25 @@ export function sizedActions(application: LifeApplication, asOf: string): Messag
     LIFE_LINK,
     { id: "lifecover.dismiss", label: "Not now", kind: "secondary" },
   ];
+}
+
+// Pure: the refs of a sized message: the application, and the quote its Apply button names, so
+// the tap starts that quote or none (never the next carrier in the list).
+export function sizedRefs(application: LifeApplication, asOf: string) {
+  const best = bestQuote(application, asOf);
+  return {
+    lifeApplicationId: application.id,
+    advice: true as const,
+    ...(best ? { lifeQuoteId: best.partnerQuoteId } : {}),
+  };
+}
+
+// Pure: the refs of a health-question message: the question shown, so a tap answers that one
+// or none once the application has moved on.
+export function askingRefs(refs: MessageRefs, application: LifeApplication): MessageRefs {
+  const { lifeQuestion: _shown, ...rest } = refs;
+  const key = nextLifeQuestion(application.answers);
+  return key ? { ...rest, lifeQuestion: key } : rest;
 }
 
 // Pure: the next health question, or the summary before Send.

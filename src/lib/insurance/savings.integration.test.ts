@@ -185,6 +185,30 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
     ).toEqual([]);
   });
 
+  it("Do all of these applies the offers the card listed, and Not now dismisses only those", async () => {
+    const me = await person();
+    await refreshSavings(me.userId, o());
+    await runJaneAgent(me.userId, { client, now: NOW, trigger: "open" });
+    const group = (await client.janeMessage.findMany({ where: { userId: me.userId } })).find(
+      (m) => parseRefs(m.refs).savingGroup,
+    )!;
+    const listed = parseRefs(group.refs).savingIds!;
+    expect(listed).toHaveLength(4);
+    // An offer that came after the card was built: the card never listed it.
+    const offered = await listSavings(me.userId, { ...o(), status: "offered" });
+    const later = offered.find((x) => x.kind === "paperless")!;
+    await client.janeMessage.update({
+      where: { id: group.id },
+      data: {
+        refs: { ...parseRefs(group.refs), savingIds: listed.filter((id) => id !== later.id) },
+      },
+    });
+    await takeChatAction(me.userId, group.id, "saving.apply_all", o());
+    const left = await listSavings(me.userId, { ...o(), status: "offered" });
+    expect(left.map((x) => x.id)).toContain(later.id);
+    expect(left.find((x) => x.id === later.id)?.status).toBe("offered");
+  });
+
   it("closes the chat message once it's answered on the page, and answers and tools say the same", async () => {
     const me = await person();
     await refreshSavings(me.userId, o());

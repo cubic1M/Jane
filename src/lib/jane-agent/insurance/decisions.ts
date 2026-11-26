@@ -593,7 +593,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
             advice: "Yes, if you can spare the cash.",
             facts: `Paying ${car?.carrier ?? "your insurer"} once a year takes about ${money(s.yearlySavingCents)} off, for ${money(s.detail.payNowCents ?? 0)} up front.`,
             actions: [{ id: "saving.apply_all", label: "Do it", kind: "primary" }, SEE],
-            refs: { savingGroup: "same" as never },
+            refs: { savingGroup: "same", savingIds: [s.id] },
           }
         : { facts: "I don't see a saving from paying yearly, or I don't have your premium yet." };
     }
@@ -647,7 +647,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
             advice: "Yes.",
             facts: `Putting your car and ${s.detail.withCarrier ?? "home"} policy with one carrier saves about ${money(s.yearlySavingCents)} a year.`,
             actions: [{ id: "saving.apply_all", label: "Do it", kind: "primary" }, SEE],
-            refs: { savingGroup: "same" as never },
+            refs: { savingGroup: "same", savingIds: [s.id] },
           }
         : {
             facts: home

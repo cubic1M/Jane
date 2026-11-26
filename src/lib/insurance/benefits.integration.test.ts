@@ -162,6 +162,34 @@ describe.runIf(url)("benefits through work against a real database", () => {
     ]);
   });
 
+  it("Yes confirms only the benefits the card listed, not one found since", async () => {
+    const me = await person();
+    await benefitsFromPayroll(me, { client, now: NOW });
+    await runJaneAgent(me, { client, now: NOW, trigger: "open" });
+    const asked = (await client.janeMessage.findMany({ where: { userId: me } })).find((m) =>
+      m.dedupeKey.startsWith("insurance:benefits:"),
+    )!;
+    expect(parseRefs(asked.refs).benefitIds).toHaveLength(7);
+    // A pay-stub refresh finds another one before the tap.
+    const sample = await client.employerBenefit.findFirstOrThrow({ where: { userId: me } });
+    const later = await client.employerBenefit.create({
+      data: {
+        userId: me,
+        employer: sample.employer,
+        kind: "other",
+        label: "Pet insurance",
+        perPayCents: 500,
+        payFrequency: sample.payFrequency,
+        status: "found",
+        source: sample.source,
+      },
+    });
+    await takeChatAction(me, asked.id, "benefits.confirm_all", { client, now: NOW });
+    const after = await listBenefits(me, { client });
+    expect(after.find((b) => b.id === later.id)?.status).toBe("found");
+    expect(after.filter((b) => b.status === "confirmed")).toHaveLength(7);
+  });
+
   it("compares like for like, gets the recommendation ready before open enrollment, and answers", async () => {
     const me = await person();
     await benefitsFromPayroll(me, { client, now: NOW });

@@ -24,7 +24,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { moneyPartnerFor } from "./partner";
-import { runPaycheckPlan } from "./paycheck";
+import { movePaycheckPlan, runPaycheckPlan, undoPaycheckPlan } from "./paycheck";
 import {
   TransferError,
   cancelTransfer,
@@ -179,6 +179,34 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     );
     expect(tool.sampleOnly).toBe(true);
     expect(tool.transfers[0]).toMatchObject({ status: "cancelled" });
+  });
+
+  it("Undo says what is still pending: a transfer past its day still goes through", async () => {
+    const userId = await demoPerson("money-undo");
+    await setSectorAutopilot(userId, "goals", { level: "ask" }, { client, now: LINKED });
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const plan = (await runPaycheckPlan(userId, { client, now: LINKED }))!;
+    const { scheduled, skipped } = await movePaycheckPlan(userId, plan.id, {
+      client,
+      now: LINKED,
+    });
+    expect(scheduled.length).toBeGreaterThan(0);
+    expect(skipped).toEqual([]);
+    expect(await client.moneyTransfer.count({ where: { userId, status: "pending" } })).toBe(
+      scheduled.length,
+    );
+    // Its day has passed but it has not settled yet: it can't be cancelled, and it will go.
+    const late = new Date(NEXT_DAY.getTime() + 86_400_000);
+    await expect(undoPaycheckPlan(userId, plan.id, { client, now: late })).resolves.toEqual({
+      cancelled: 0,
+      remaining: scheduled.length,
+    });
+    // Once settled, there is nothing pending to undo.
+    await settleTransfers(userId, { client, now: late });
+    await expect(undoPaycheckPlan(userId, plan.id, { client, now: late })).rejects.toThrow(
+      /already gone through/,
+    );
   });
 
   it("says when the next paycheck comes when there's none to split yet", async () => {

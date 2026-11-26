@@ -40,12 +40,19 @@ export const paycheckMove: ActionHandler = {
   on: "open",
   async run(context) {
     const { userId, client, now } = context;
-    const moves = await guarded(() => movePaycheckPlan(userId, planOf(context), { client, now }));
-    const cents = moves.filter((m) => m.status === "moved").reduce((s, m) => s + m.cents, 0);
-    return {
-      answeredWith: context.action.label,
-      note: `Done. ${formatCents(cents)} is on its way; you can undo it on Transfers until it goes through.`,
-    };
+    const { scheduled, skipped } = await guarded(() =>
+      movePaycheckPlan(userId, planOf(context), { client, now }),
+    );
+    // What this tap scheduled, not what autopilot had already moved.
+    const cents = scheduled.reduce((s, m) => s + m.cents, 0);
+    const left = skipped.reduce((s, m) => s + m.cents, 0);
+    const note =
+      scheduled.length === 0
+        ? `I couldn't move any of it this time, so nothing is on its way. The ${formatCents(left)} stays in checking.`
+        : skipped.length === 0
+          ? `Done. ${formatCents(cents)} is on its way; you can undo it on Transfers until it goes through.`
+          : `Done. ${formatCents(cents)} is on its way; you can undo it on Transfers until it goes through. I couldn't move ${formatCents(left)}, so that stays in checking.`;
+    return { answeredWith: context.action.label, note };
   },
 };
 
@@ -67,10 +74,22 @@ export const paycheckUndo: ActionHandler = {
   on: "open",
   async run(context) {
     const { userId, client, now, message } = context;
-    const undone = await guarded(() => undoPaycheckPlan(userId, planOf(context), { client, now }));
+    const { cancelled, remaining } = await guarded(() =>
+      undoPaycheckPlan(userId, planOf(context), { client, now }),
+    );
+    if (remaining > 0) {
+      // Some can't be taken back now and still go through: Undo stays on the message.
+      const still = remaining === 1 ? "One transfer" : `${remaining} transfers`;
+      return {
+        status: "open",
+        answeredWith: null,
+        note: `${cancelled > 0 ? `Undone: ${cancelled === 1 ? "1 transfer" : `${cancelled} transfers`} won't go through. ` : ""}${still} can't be undone anymore and will still go through.`,
+        actions: message.actions,
+      };
+    }
     return {
       answeredWith: context.action.label,
-      note: `Undone: ${undone === 1 ? "that transfer won't" : `those ${undone} transfers won't`} go through.`,
+      note: `Undone: ${cancelled === 1 ? "that transfer won't" : `those ${cancelled} transfers won't`} go through.`,
       actions: linksOf(message.actions),
     };
   },
