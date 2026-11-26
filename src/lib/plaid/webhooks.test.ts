@@ -18,6 +18,7 @@ vi.mock("@/lib/db-scoped", () => ({
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
+import { removeOrphans, forgetSince } from "@/lib/evidence/orphans";
 import { planWebhook } from "./webhooks";
 
 const findUnique = vi.fn();
@@ -49,6 +50,25 @@ describe("planWebhook", () => {
       itemId: "item_1",
       sync: true,
     });
+  });
+
+  it.each(["DEFAULT_UPDATE", "HISTORICAL_UPDATE"])(
+    "syncs when Plaid's INVESTMENTS_TRANSACTIONS %s arrives",
+    async (code) => {
+      expect(await plan({ webhook_type: "INVESTMENTS_TRANSACTIONS", webhook_code: code })).toEqual({
+        itemId: "item_1",
+        sync: true,
+      });
+    },
+  );
+
+  it("does the rest of a revoked account's clean-up when one step fails, and answers", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(removeOrphans).mockRejectedValueOnce(new Error("orphans failed"));
+    await expect(
+      plan({ webhook_type: "ITEM", webhook_code: "USER_ACCOUNT_REVOKED", account_id: "a9" }),
+    ).resolves.toEqual({ itemId: "item_1", sync: false });
+    expect(forgetSince).toHaveBeenCalled();
   });
 
   it("marks the item for reconnecting when the bank needs a new sign-in", async () => {

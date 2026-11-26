@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { keepGivenBalance } from "@/lib/import/balances";
 import { enqueueJob } from "@/lib/jobs";
+import { log } from "@/lib/log";
 
 // An uploaded account's balance today, asked for when its file doesn't carry one (cards, Wells
 // Fargo: no balance column). Until it's given, net worth says what it isn't counting rather than
@@ -40,13 +41,20 @@ export async function setUploadedBalance(
   });
   if (count === 0) return null;
   await keepGivenBalance(db, accountId, cents);
-  await Promise.all([
+  // The balance is saved and no longer asked for: a record or event that fails to write must not
+  // stop the numbers being worked out again below, or nothing would ever do it.
+  const noted = await Promise.allSettled([
     logAudit({ type: "user", id: db.userId }, "uploaded_balance_set", {
       type: "account",
       id: accountId,
     }),
     track(db.userId, "uploaded_balance_set"),
   ]);
+  for (const result of noted) {
+    if (result.status === "rejected") {
+      log.error("Couldn't record an uploaded balance", { error: String(result.reason) });
+    }
+  }
   const run = await db.importRuns.create({
     data: { userId: db.userId, kind: "update", rows: 0 },
     select: { id: true },

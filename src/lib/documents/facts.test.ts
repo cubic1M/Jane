@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FACTS, factsFromClaude, factsFromForm, rawFacts, yearlyPremiumCents } from "./facts";
+import {
+  EMPTY_FACTS,
+  factsFromClaude,
+  factsFromForm,
+  isDocumentKind,
+  rawFacts,
+  yearlyPremiumCents,
+} from "./facts";
 
 describe("document facts (spec step 68)", () => {
+  it("takes no inherited name for a kind or a choice", () => {
+    expect(isDocumentKind("constructor")).toBe(false);
+    expect(isDocumentKind("toString")).toBe(false);
+    const result = factsFromForm("insurance_policy", { policyType: "constructor" });
+    expect(result.ok).toBe(false);
+  });
+
   it("reads the person's facts for a policy", () => {
     const result = factsFromForm("insurance_policy", {
       provider: "  GEICO ",

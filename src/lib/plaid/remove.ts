@@ -9,6 +9,7 @@ import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
 import { markFreshStartIfEmpty } from "@/lib/jane-agent/fresh-start";
 import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
 import { isDemoToken } from "./demo";
+import { log } from "@/lib/log";
 
 // Removes a linked bank: tells Plaid (/item/remove, which also stops billing for it),
 // then deletes the item with its accounts, transactions and streams.
@@ -54,13 +55,8 @@ export async function removePlaidItem(
   // The chat's copy of the numbers had that bank's in it (card-chat mismatch). The saved copy
   // and the snapshot go in forgetSince below.
   forgetPrimer(userId);
-  // And everything worked out from that bank goes with it: findings, the decisions and actions
-  // on them, ledger lines and alerts (src/lib/evidence/orphans.ts).
-  await removeOrphans(userId, { client });
-  // What was worked out since it was linked may stand on it: worked out again from what's left.
-  await forgetSince(db, item.createdAt, "bank", { demo: isDemoToken(accessToken) });
-  // The last bank gone: the next one linked is a fresh start for Jane's messages.
-  await markFreshStartIfEmpty(db, client);
+  // The bank is gone for good, so the record of it is written now: a clean-up below that fails
+  // must not leave a deletion with no audit line (a retry would find no Item and stop).
   await logAudit(
     actor,
     "item_removed",
@@ -73,4 +69,21 @@ export async function removePlaidItem(
       demo: isDemoToken(accessToken),
     },
   );
+  // Each clean-up step runs on its own: one that fails is logged and the rest still run, since the
+  // bank is already gone and a retry could not reach them (the detection run also sweeps orphans).
+  const demo = isDemoToken(accessToken);
+  const steps: [string, () => Promise<unknown>][] = [
+    // Everything worked out from that bank goes with it: findings, the decisions and actions on
+    // them, ledger lines and alerts (src/lib/evidence/orphans.ts).
+    ["orphans", () => removeOrphans(userId, { client })],
+    // What was worked out since it was linked may stand on it: worked out again from what's left.
+    ["since", () => forgetSince(db, item.createdAt, "bank", { demo })],
+    // The last bank gone: the next one linked is a fresh start for Jane's messages.
+    ["fresh start", () => markFreshStartIfEmpty(db, client)],
+  ];
+  for (const [what, step] of steps) {
+    await step().catch((error) =>
+      log.error("A clean-up after removing a bank failed", { step: what, error: String(error) }),
+    );
+  }
 }
