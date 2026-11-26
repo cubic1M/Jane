@@ -35,7 +35,10 @@ export async function identityAction(
       return { ok: true, message: "Here are the steps, in order." };
     }
     if (intent === "step") {
-      const view = await markStep(user.id, String(formData.get("step") ?? ""));
+      const caseId = formData.get("case");
+      const view = await markStep(user.id, String(formData.get("step") ?? ""), {
+        ...(typeof caseId === "string" && caseId ? { caseId } : {}),
+      });
       revalidatePath("/taxes/identity");
       return {
         ok: true,

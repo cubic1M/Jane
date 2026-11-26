@@ -29,7 +29,7 @@ export function stepMessage(done: number): Reply {
       { id: "student.next", label: "Done, next step", kind: "primary" },
       STUDENT_PAGE,
     ],
-    refs: {},
+    refs: { studentStep: done },
   };
 }
 

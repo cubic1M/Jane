@@ -61,7 +61,7 @@ export function caseMessage(view: IdentityView): MessageParts | null {
             .join(", then ")}.`
         : ""
     }`,
-    refs: { identityStep: next.key },
+    refs: { identityStep: next.key, identityCaseId: c.id },
     actions: [
       { id: "tax.identity_step", label: "I've done it", kind: "primary" },
       ...(next.url ? [openLink("Open the guide", next.url) as MessageAction] : []),

@@ -9,6 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { STUDENT_STEPS } from "@/config/student-loans";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { gather } from "@/lib/jane-agent/brain";
+import { stepMessage } from "@/lib/jane-agent/student-replies";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
@@ -142,6 +143,37 @@ describe.runIf(url)("student loans against a real database", () => {
     expect(last.status).toBe("answered");
     expect(last.body).toMatch(/^That's every step on studentaid\.gov done/);
     expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(STUDENT_STEPS.length);
+  });
+
+  it("a tap on a step already passed marks nothing", async () => {
+    await client.studentLoanProfile.update({ where: { userId }, data: { stepsDone: 2 } });
+    const shown = stepMessage(0);
+    const stale = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: shown.body,
+        refs: shown.refs,
+        actions: shown.actions,
+        dedupeKey: `student:stale:${crypto.randomUUID()}`,
+      },
+    });
+    await expect(takeChatAction(userId, stale.id, "student.next", opts())).rejects.toThrow();
+    expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(2);
+    // The message that shows step 3 moves it to 3, once.
+    const current = stepMessage(2);
+    const fresh = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: current.body,
+        refs: current.refs,
+        actions: current.actions,
+        dedupeKey: `student:fresh:${crypto.randomUUID()}`,
+      },
+    });
+    await takeChatAction(userId, fresh.id, "student.next", opts());
+    expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(3);
   });
 
   // Debugger 11-06: a teacher's six months of statements, two paychecks a month, read as a year's

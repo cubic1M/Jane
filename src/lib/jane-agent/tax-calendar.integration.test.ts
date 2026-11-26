@@ -265,6 +265,24 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     );
   });
 
+  it("a tap retried after the payment was taken finishes the plan's entry, and pays nothing twice", async () => {
+    const userId = await freelancer("cal-retry");
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    // The step after the payment failed: the plan never got its entry.
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: [] } });
+    const retried = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    expect(retried).toEqual(first);
+    expect(await client.taxPayment.count({ where: { userId } })).toBe(1);
+    const se = await loadSelfEmployed(userId, { client, now });
+    expect(se.payments.filter((p) => p.cents === first.cents && p.to === "federal")).toHaveLength(
+      1,
+    );
+    await expect(payEstimate(userId, "2026-09-15", { client, now, via: "tap" })).rejects.toThrow(
+      "already paid",
+    );
+  });
+
   it("pays nothing before its window or for someone with real accounts, and says so", async () => {
     const userId = await freelancer("cal-edge");
     await setAutopilot(userId, "all", { client, now: LINKED });

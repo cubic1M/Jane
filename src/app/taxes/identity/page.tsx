@@ -74,7 +74,7 @@ async function Content() {
                     ))}
                   </span>
                 )}
-                {!s.doneOn && <StepButton step={s.key} title={s.title} />}
+                {!s.doneOn && <StepButton step={s.key} title={s.title} caseId={v.case?.id ?? ""} />}
               </li>
             ))}
           </ol>

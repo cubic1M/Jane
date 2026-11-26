@@ -48,12 +48,21 @@ export function SignButtons({ signs }: { signs: { key: string; title: string }[]
   );
 }
 
-export function StepButton({ step, title }: { step: string; title: string }) {
+export function StepButton({
+  step,
+  title,
+  caseId,
+}: {
+  step: string;
+  title: string;
+  caseId: string;
+}) {
   const [state, action, pending] = useActionState<IdentityState, FormData>(identityAction, null);
   return (
     <form action={action} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="intent" value="step" />
       <input type="hidden" name="step" value={step} />
+      <input type="hidden" name="case" value={caseId} />
       <button
         type="submit"
         disabled={pending}

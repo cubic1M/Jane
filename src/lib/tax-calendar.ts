@@ -17,7 +17,7 @@ import { loadSelfEmployed, recordTaxPayment, type SelfEmployedView } from "@/lib
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { filingYear } from "@/lib/tax-filing";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
-import type { TaxEstimateView } from "@/lib/tax-estimate";
+import { parseTaxPayments, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { taxPaymentPartnerFor } from "@/lib/tax-payments";
 import { checkFrom } from "@/lib/tax-withholding";
@@ -302,6 +302,26 @@ const ESTIMATE_TITLES = (["estimated_1", "estimated_2", "estimated_3", "estimate
   (k) => TAX_PLAN[k].title,
 );
 
+// What follows a payment the partner took: its reminder on the deadlines (the tax plan's "Pay
+// the … estimated tax payment", spec step 167) is done, so paying never leaves it open to remind
+// again (docs/feature-audit.md), and the quarterly plan counts it.
+async function finishEstimate(
+  userId: string,
+  dueOn: string,
+  paid: { cents: number; day: string },
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<void> {
+  await scopedFor(userId, client).deadlines.updateMany({
+    where: { dueOn: new Date(`${dueOn}T00:00:00Z`), doneAt: null, title: { in: ESTIMATE_TITLES } },
+    data: { doneAt: now },
+  });
+  await recordTaxPayment(
+    userId,
+    { date: paid.day, cents: paid.cents, to: "federal" },
+    { client, now, via: "chat" },
+  );
+}
+
 // Pays one estimated payment through the stand-in and records it where the quarterly plan
 // reads it. By Jane (within the caps) or on the person's tap (the planned amount, whatever
 // the caps). A due date can only be paid once.
@@ -322,8 +342,24 @@ export async function payEstimate(
   }
   const se = await loadSelfEmployed(userId, { client, now });
   const db = scopedFor(userId, client);
-  if ((await db.taxPayments.count({ where: { dueOn: new Date(`${dueOn}T00:00:00Z`) } })) > 0) {
-    throw new TaxCalendarError("That payment is already paid.");
+  const paid = await db.taxPayments.findFirst({
+    where: { dueOn: new Date(`${dueOn}T00:00:00Z`) },
+    select: { cents: true, confirmation: true },
+  });
+  if (paid) {
+    // The partner took it, but a step after it failed: the missing entries are made now, and
+    // nothing is paid again. Once the plan counts every payment of that amount, it's
+    // simply paid.
+    const [profile, payments] = await Promise.all([
+      db.taxProfiles.findFirst({ select: { taxPayments: true } }),
+      db.taxPayments.count({ where: { cents: paid.cents } }),
+    ]);
+    const counted = parseTaxPayments(profile?.taxPayments).filter(
+      (p) => p.to === "federal" && p.cents === paid.cents,
+    ).length;
+    if (counted >= payments) throw new TaxCalendarError("That payment is already paid.");
+    await finishEstimate(userId, dueOn, { cents: paid.cents, day: today }, { client, now });
+    return { cents: paid.cents, confirmation: paid.confirmation };
   }
   const planned = inPayWindow(
     se.federal.payments.filter((p) => p.date === dueOn),
@@ -357,18 +393,7 @@ export async function payEstimate(
       via,
     },
   });
-  // Its reminder on the deadlines (the tax plan's "Pay the … estimated tax payment", spec
-  // step 167) is done: paying never left it open to remind again (docs/feature-audit.md).
-  await db.deadlines.updateMany({
-    where: { dueOn: new Date(`${dueOn}T00:00:00Z`), doneAt: null, title: { in: ESTIMATE_TITLES } },
-    data: { doneAt: now },
-  });
-  // So the quarterly plan counts it.
-  await recordTaxPayment(
-    userId,
-    { date: today, cents: planned.cents, to: "federal" },
-    { client, now, via: "chat" },
-  );
+  await finishEstimate(userId, dueOn, { cents: planned.cents, day: today }, { client, now });
   if (via === "autopilot") {
     await recordAct(userId, "taxes", planned.cents, `Paid the ${dueOn} estimated payment`, {
       client,

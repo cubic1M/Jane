@@ -133,12 +133,16 @@ export async function openCase(
 export async function markStep(
   userId: string,
   step: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), caseId }: Options & { caseId?: string } = {},
 ): Promise<CaseView & { id: string }> {
   if (!isStep(step)) throw new IdentityError("I don't know that step.");
   const db = scopedFor(userId, client);
   const row = await db.taxIdentityCases.findFirst({ where: { closedAt: null } });
   if (!row) throw new IdentityError("There's no case open.");
+  // `caseId`: the case the person saw the step on. Another case being open now is not that one.
+  if (caseId !== undefined && row.id !== caseId) {
+    throw new IdentityError("That step was for a case that's closed.");
+  }
   if (!stepsFor(row.sign as SignKey).some((s) => s.key === step)) {
     throw new IdentityError("That step isn't part of this case.");
   }

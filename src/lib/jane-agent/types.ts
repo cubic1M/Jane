@@ -525,6 +525,8 @@ export type MessageRefs = {
   readingId?: string;
   // Spec step 153: the life application a message moves along.
   lifeApplicationId?: string;
+  // The number of studentaid.gov steps done when a step message was shown.
+  studentStep?: number;
   // The quote the sized message's Apply button names, and the health question a message shows.
   lifeQuoteId?: string;
   lifeQuestion?: string;
@@ -661,6 +663,8 @@ export type MessageRefs = {
   identitySign?: string;
   identitySource?: string;
   identityStep?: string;
+  // The tax identity case the step card was made for.
+  identityCaseId?: string;
   // Spec step 270: the disaster relief (its id) a message is about.
   disasterRelief?: string;
   // Spec step 272: the draft return (its id) a message is about.

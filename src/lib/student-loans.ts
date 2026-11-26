@@ -251,18 +251,34 @@ export async function saveStudentProfile(
   await track(userId, "student_profile_saved", { public_service: data.publicService });
 }
 
-// One more of studentaid.gov's steps done; returns how many are now.
+// One more of studentaid.gov's steps done; returns how many are now. `from`: the number done
+// when the person saw the step, so a second tap on it, or one on a step already moved past,
+// marks nothing.
 export async function markStudentStep(
   userId: string,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, from }: Options & { from?: number } = {},
 ): Promise<number> {
   const profile = await profileOf(userId, client);
+  if (from !== undefined && profile.stepsDone !== from) {
+    throw new StudentProfileError("That step is already marked done.");
+  }
   const stepsDone = Math.min(STUDENT_STEPS.length, profile.stepsDone + 1);
-  await scopedFor(userId, client).studentLoanProfiles.upsert({
-    where: { userId },
-    create: { userId, stepsDone },
-    update: { stepsDone },
+  const db = scopedFor(userId, client);
+  // The write is conditioned on the count it was worked out from.
+  const { count } = await db.studentLoanProfiles.updateMany({
+    where: { stepsDone: profile.stepsDone },
+    data: { stepsDone },
   });
+  if (count === 0) {
+    if ((await db.studentLoanProfiles.count()) > 0) {
+      throw new StudentProfileError("That step is already marked done.");
+    }
+    try {
+      await db.studentLoanProfiles.create({ data: { userId, stepsDone } });
+    } catch {
+      throw new StudentProfileError("That step is already marked done.");
+    }
+  }
   await track(userId, "student_step_done", { step: STUDENT_STEPS[stepsDone - 1]?.key ?? "done" });
   return stepsDone;
 }

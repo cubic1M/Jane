@@ -207,9 +207,23 @@ describe.runIf(url)("side income and rentals against a real database", { timeout
         dedupeKey: `taxes:${candidate.dedupeKey}`,
       },
     });
+    const rental = {
+      rentalPriceCents: 25_000_000,
+      rentalPlacedOn: new Date("2025-03-01T00:00:00Z"),
+    };
+    await client.taxProfile.upsert({
+      where: { userId },
+      create: { userId, ...rental },
+      update: rental,
+    });
     const after = (
       await takeChatAction(userId, message.id, "tax.side_hobby", { client, now: LINKED })
     ).message;
+    // Only the kind is written: the rental details are as they were.
+    expect(await client.taxProfile.findUniqueOrThrow({ where: { userId } })).toMatchObject({
+      ...rental,
+      sideIncomeKind: "hobby",
+    });
     expect(after.refs.note).toBe(
       "Got it: a hobby. Its income is taxed with no expenses and no self-employment tax.",
     );

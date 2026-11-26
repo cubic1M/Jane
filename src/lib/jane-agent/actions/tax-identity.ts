@@ -73,7 +73,11 @@ export const taxIdentityStep: ActionHandler = {
   async run({ userId, message, action, client, now }) {
     const step = message.refs.identityStep;
     if (!step) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
-    const view = await markStep(userId, step, { client, now }).catch(failed);
+    const view = await markStep(userId, step, {
+      client,
+      now,
+      caseId: message.refs.identityCaseId,
+    }).catch(failed);
     return {
       answeredWith: action.label,
       note: view.complete
