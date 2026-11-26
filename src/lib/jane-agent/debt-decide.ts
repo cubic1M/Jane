@@ -11,7 +11,10 @@ import type { DecideContext, Decision } from "./decision";
 // gives the general answer.
 
 export function decisionIdFor(item: string, label: string): DecisionId | null {
-  if (item === "payoff_or_invest") return "pay_or_invest";
+  // "Should I pay off the student loan or invest?" is the student loan's own answer.
+  if (item === "payoff_or_invest") {
+    return /\bstudent (?:loans?|debt)\b/i.test(label) ? "student_early" : "pay_or_invest";
+  }
   return decisionFor(`should i ${label.toLowerCase()}`);
 }
 
