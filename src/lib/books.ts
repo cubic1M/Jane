@@ -393,14 +393,20 @@ export async function openBooks(
     }),
     db.accounts.findMany({ select: { id: true, itemId: true } }),
   ]);
+  // A row can be older than the counting: its account was left out since, and the next check will
+  // mark it fixed. Until then it isn't shown or marked, as that account is in no figure. The
+  // duplicate line is about the left-out copy itself, so it stays.
+  const ofAccount = rows.some((r) => r.accountId !== null && r.kind !== "duplicate");
+  const copies = ofAccount ? await accountCopies(db) : new Set<string>();
+  const shown = rows.filter((r) => r.kind === "duplicate" || !copies.has(r.accountId ?? ""));
   const marked = new Set<string>();
-  for (const r of rows) {
+  for (const r of shown) {
     if (!WORRYING.has(r.kind)) continue;
     if (r.accountId) marked.add(r.accountId);
     if (r.itemId) for (const a of accounts) if (a.itemId === r.itemId) marked.add(a.id);
   }
   return {
-    open: rows.map((r) => ({
+    open: shown.map((r) => ({
       id: r.id,
       kind: r.kind,
       label: BOOKS_KIND_LABELS[r.kind] ?? r.kind,
