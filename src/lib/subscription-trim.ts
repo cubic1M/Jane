@@ -8,5 +8,5 @@ export const subscriptionTrimCents = (yearlyCents: number): number =>
 
 export function subscriptionTrimSentence(yearlyCents: number): string {
   const percent = Math.round(R.subscriptionTrimShare * 100);
-  return `Could save about ${formatCents(subscriptionTrimCents(yearlyCents))} a year: ${percent}% of the ${formatCents(yearlyCents)} above, the share people usually drop when they look at their list.`;
+  return `Could save about ${formatCents(subscriptionTrimCents(yearlyCents))} a year: ${percent}% of the ${formatCents(yearlyCents)} above, a rough estimate of what a look through the list can free up.`;
 }
