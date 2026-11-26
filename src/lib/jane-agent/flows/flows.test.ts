@@ -45,6 +45,8 @@ describe("stepMessage", () => {
       step: 0,
       answers: {},
       options: ["red", "green", "blue", "cyan", "pink"],
+      // Each drawing of the question has its own showing.
+      shown: expect.stringMatching(/^[0-9a-f-]{12}$/),
     });
   });
 
