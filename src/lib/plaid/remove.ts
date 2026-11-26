@@ -55,20 +55,9 @@ export async function removePlaidItem(
   // The chat's copy of the numbers had that bank's in it (card-chat mismatch). The saved copy
   // and the snapshot go in forgetSince below.
   forgetPrimer(userId);
-  // The bank is gone for good, so the record of it is written now: a clean-up below that fails
-  // must not leave a deletion with no audit line (a retry would find no Item and stop).
-  await logAudit(
-    actor,
-    "item_removed",
-    { type: "plaid_item", id: item.id },
-    {
-      user_id: userId,
-      institution: item.institutionName,
-      reason,
-      // /admin/costs counts real banks removed this month: Plaid bills them for the month too.
-      demo: isDemoToken(accessToken),
-    },
-  );
+  // The bank is gone for good, so the record of it is written first; the clean-up below then runs
+  // whether or not that write works (a retry would find no Item and stop), and a failed write still
+  // reaches the caller after it.
   // Each clean-up step runs on its own: one that fails is logged and the rest still run, since the
   // bank is already gone and a retry could not reach them (the detection run also sweeps orphans).
   const demo = isDemoToken(accessToken);
@@ -81,9 +70,24 @@ export async function removePlaidItem(
     // The last bank gone: the next one linked is a fresh start for Jane's messages.
     ["fresh start", () => markFreshStartIfEmpty(db, client)],
   ];
-  for (const [what, step] of steps) {
-    await step().catch((error) =>
-      log.error("A clean-up after removing a bank failed", { step: what, error: String(error) }),
+  try {
+    await logAudit(
+      actor,
+      "item_removed",
+      { type: "plaid_item", id: item.id },
+      {
+        user_id: userId,
+        institution: item.institutionName,
+        reason,
+        // /admin/costs counts real banks removed this month: Plaid bills them for the month too.
+        demo: isDemoToken(accessToken),
+      },
     );
+  } finally {
+    for (const [what, step] of steps) {
+      await step().catch((error) =>
+        log.error("A clean-up after removing a bank failed", { step: what, error: String(error) }),
+      );
+    }
   }
 }

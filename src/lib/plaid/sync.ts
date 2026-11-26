@@ -263,12 +263,6 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     data: fresh.map((r) => ({ ...r, userId: db.userId, source: "plaid" as const })),
     skipDuplicates: true,
   });
-  // The pending ones go only once their posted rows are saved: a save that fails leaves them, so
-  // the next sync (from the same cursor) can still carry a category the person set across.
-  if (replaced.length > 0)
-    await db.transactions.deleteMany({
-      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
-    });
   for (const { plaidTransactionId, ...data } of changed) {
     const { pfcPrimary, pfcDetailed, categorySource, ...rest } = data;
     await db.transactions.updateMany({
@@ -279,6 +273,12 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
           : { ...rest, pfcPrimary, pfcDetailed, categorySource },
     });
   }
+  // The pending ones go only once their posted rows are saved or updated: a save that fails leaves them, so
+  // the next sync (from the same cursor) can still carry a category the person set across.
+  if (replaced.length > 0)
+    await db.transactions.deleteMany({
+      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
+    });
   const { count: removed } =
     sync.removedTransactionIds.length > 0
       ? await db.transactions.deleteMany({

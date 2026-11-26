@@ -61,4 +61,14 @@ describe("removing a linked bank", () => {
     expect(forgetSince).toHaveBeenCalledTimes(1);
     expect(markFreshStartIfEmpty).toHaveBeenCalledTimes(1);
   });
+
+  it("runs the clean-ups even when the audit write fails, and still reports the failure", async () => {
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+    await expect(removePlaidItem("user_1", "item_1", "user_disconnected", { api })).rejects.toThrow(
+      "audit down",
+    );
+    expect(removeOrphans).toHaveBeenCalledTimes(1);
+    expect(forgetSince).toHaveBeenCalledTimes(1);
+    expect(markFreshStartIfEmpty).toHaveBeenCalledTimes(1);
+  });
 });

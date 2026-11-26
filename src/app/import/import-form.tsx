@@ -139,7 +139,6 @@ export function ImportForm({
     setBusy("preview");
     event.preventDefault();
     setError(null);
-    setMappingChanged(false);
     const gen = selection.current;
     const data = formData();
     const over = tooMuch(data);
@@ -155,6 +154,8 @@ export function ImportForm({
       if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       setPreview(result);
+      // Only a preview that read the mapping as it stands lets the import go.
+      if (result.ok) setMappingChanged(false);
       if (!result.ok) return;
       // The first account was only the page's default: files that plainly don't fit it (a card
       // statement into checking) go where they do, an account of theirs or a new one named from
@@ -187,6 +188,10 @@ export function ImportForm({
     if (over) return setError(over);
     startTransition(async () => {
       const result = await startImport(data).catch(() => null);
+      // The import is saved whatever the form shows now: the chip follows it either way.
+      if (result?.ok) {
+        window.dispatchEvent(new CustomEvent(IMPORT_STARTED_EVENT, { detail: result.runId }));
+      }
       if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
@@ -202,8 +207,6 @@ export function ImportForm({
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
-      // The chip on every page starts following it (src/components/import-chip.tsx).
-      window.dispatchEvent(new CustomEvent(IMPORT_STARTED_EVENT, { detail: result.runId }));
     });
   }
 
