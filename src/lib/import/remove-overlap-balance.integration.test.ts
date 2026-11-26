@@ -10,6 +10,7 @@ vi.mock("@/lib/jobs", () => ({ enqueueJob: vi.fn(async () => "job_1") }));
 import { listUploads, removeUpload } from "./remove";
 import { saveUpload } from "./upload";
 import { scopedFor } from "@/lib/db-scoped";
+import { logAudit } from "@/lib/audit";
 
 // Two overlapping Chase checking statements, then the newer one taken back (debug 3, 11-16): the
 // account kept the removed file's closing balance ($6,907.24 where the older file ends at
@@ -120,5 +121,30 @@ describe.runIf(url)("taking back one of two overlapping statements", () => {
     await removeUpload(db, newer.runId);
     expect(await balanceOf(older.accountId)).toBe(OLDER_CLOSE);
     expect(await fileDays(older.accountId)).toEqual(olderDays);
+  });
+
+  it("forgets the balance when the only statement that gave it is taken back, even if the audit line fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = scopedFor(userId, client);
+    const only = await saveUpload(
+      db,
+      form(
+        { accountId: "new", "new.name": "Chase solo", "new.kind": "checking" },
+        "solo.csv",
+        chase(
+          [
+            ["07/01/2026", "AVALON APTS RENT", -120000],
+            ["07/02/2026", "ACME CORP PAYROLL", 145000],
+          ],
+          300000,
+        ),
+      ),
+    );
+    if (!only.ok) throw new Error(only.error);
+    expect(await balanceOf(only.accountId)).not.toBeNull();
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+    const removed = await removeUpload(db, only.runId);
+    expect(removed?.jobId).toBe("job_1");
+    expect(await balanceOf(only.accountId)).toBeNull();
   });
 });
