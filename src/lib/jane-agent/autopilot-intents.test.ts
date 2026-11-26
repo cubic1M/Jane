@@ -32,6 +32,9 @@ describe("sector autopilot intents", () => {
     ["let jane pay my bills up to $1,200 per payment", "bills", "all", 120_000, null],
     ["let jane pay my bills up to $1,200 a month, $300 each time", "bills", "all", 30_000, 120_000],
     ["let jane pay my monthly bills up to $200 per payment", "bills", "all", 20_000, null],
+    // CodeRabbit #2283: "not more than" is a limit, not a refusal.
+    ["let jane pay my bills, not more than $200 automatically", "bills", "all", null, 20_000],
+    ["let jane pay my bills automatically, not more than $200", "bills", "all", null, 20_000],
   ])("reads %j", (text, sector, level, actionCapCents, monthlyCapCents) => {
     expect(parse(text)).toEqual({
       kind: "autopilot_sector",

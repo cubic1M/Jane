@@ -214,6 +214,20 @@ describe.runIf(url)(
       expect(named.reply.actions.some((x) => x.id === "multi.confirm")).toBe(false);
       expect(named.reply.body).toMatch(/vacation savings/i);
 
+      // CodeRabbit #2284: accents fold, and a name matches by whole word.
+      await client.account.updateMany({
+        where: { userId, type: "depository", subtype: "savings" },
+        data: { name: "Café Savings" },
+      });
+      const cafe = await sendToJane(userId, "move $200 to cafe savings", { client, now: later() });
+      expect(cafe.reply.actions.some((x) => x.id === "multi.confirm")).toBe(true);
+      expect(cafe.reply.body).toContain("Café Savings");
+      const partial = await sendToJane(userId, "move $200 to caf savings", {
+        client,
+        now: later(),
+      });
+      expect(partial.reply.actions.some((x) => x.id === "multi.confirm")).toBe(false);
+
       // A real account (no money-movement partner): how to do it themselves, never a team request.
       const real = await client.user.create({
         data: { email: `multi-real-${crypto.randomUUID()}@example.com` },

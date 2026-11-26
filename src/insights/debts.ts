@@ -559,15 +559,14 @@ export function findDebt(debts: readonly Debt[], query: string): Debt | null {
     ...["bank", "the", "and", "usa", "financial"],
   ]);
   const named = q.split(" ").filter((w) => w.length > 2 && !generic.has(w));
-  if (
-    named.length > 0 &&
-    !ofKind.some((d) => named.every((w) => d.name.toLowerCase().includes(w)))
-  ) {
-    return null;
-  }
+  // The debts that carry every name word: the answer comes from these, never from another debt.
+  const matches =
+    named.length > 0
+      ? ofKind.filter((d) => named.every((w) => d.name.toLowerCase().includes(w)))
+      : ofKind;
   return (
-    ofKind.find((d) => d.name.toLowerCase().includes(hit.word)) ??
-    [...ofKind].sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ??
+    matches.find((d) => d.name.toLowerCase().includes(hit.word)) ??
+    [...matches].sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ??
     null
   );
 }

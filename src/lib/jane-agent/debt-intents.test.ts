@@ -222,6 +222,15 @@ describe("debt questions", () => {
       kind: "home_afford",
       priceCents: 40_000_000,
     });
+    // CodeRabbit #2283: the whole amount after the phrase, not its first number.
+    expect(intent("can i afford a home with a down payment of $60,000?")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("can i afford a home, down payment $60k?")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
     expect(intent("is $60,000 enough for a down payment?")).toEqual({
       kind: "home_afford",
       priceCents: null,

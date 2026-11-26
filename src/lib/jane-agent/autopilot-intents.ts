@@ -23,11 +23,12 @@ const ASK =
   /\balways ask\b|\bask (?:me )?(?:first )?(?:before|about)\b|\bstop (?:handling|doing|paying|switching|moving)\b/;
 // "don't let Jane handle insurance" asks it to stop, never to take over.
 const NEGATED =
-  /\b(?:don'?t|do not|never|no longer|not)\b[^.?!;]*\b(?:let|allow)\b|\b(?:don'?t|do not) want (?:jane|you) to\b/;
+  /\b(?:don'?t|do not|never|no longer|not)\b(?!\s+(?:more|over|above|exceed\w*|greater|higher|beyond)\b)[^.?!;]*\b(?:let|allow)\b|\b(?:don'?t|do not) want (?:jane|you) to\b/;
 // "don't pay my bills by yourself": a refusal beside an autonomy phrase is a stop, whatever else
 // the sentence grants (the stricter reading wins).
+// "not more than $200" is a limit, not a refusal.
 const NEGATED_AUTONOMY =
-  /\b(?:don'?t|do not|never|no longer|not|stop)\b[^.?!;]*\b(?:by (?:her|your)self|on (?:her|your) own|automatically|without (?:asking|checking|me))\b/;
+  /\b(?:don'?t|do not|never|no longer|not|stop)\b(?!\s+(?:more|over|above|exceed\w*|greater|higher|beyond)\b)[^.?!;]*\b(?:by (?:her|your)self|on (?:her|your) own|automatically|without (?:asking|checking|me))\b/;
 const MONTHLY = /\b(?:a|per|each|every) month\b|\bmonthly\b/;
 const EACH = /\b(?:each|per|a) (?:time|payment|switch|transfer|bill)\b|\bat a time\b/;
 

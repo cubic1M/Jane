@@ -44,5 +44,9 @@ export const CHAT_EMAIL_MAX_MESSAGES = 5;
 // A message goes by email only once it has sat unread this long, so someone looking at
 // the chat isn't emailed what they're reading. Push goes straight away.
 export const CHAT_EMAIL_AFTER_MINUTES = 60;
+// A push claimed this recently may still be on its way to the device (or about to be given back
+// when none takes it): the email for the same message waits, so a failed email never restores a
+// push marker for a push that did not arrive.
+export const CHAT_PUSH_SETTLE_MINUTES = 2;
 // Messages older than this never go out: by then it's old news, and it's in the chat.
 export const CHAT_NOTIFY_MAX_AGE_HOURS = 24;
