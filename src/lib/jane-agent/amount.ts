@@ -17,7 +17,10 @@ export function parseAmount(typed: string): number | null {
   const text = typed.replace(NOT_MONEY, " ");
   const scaled = /(?:^|[^\w.,])\$?\s?(\d+(?:\.\d+)?)\s?(k|grand|thousand)\b/.exec(text);
   const money = /\$\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)/.exec(text);
-  const worded = /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s?(?:dollars?|bucks|usd)\b/i.exec(text);
+  const worded =
+    /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s?(?:dollars?|bucks|usd)\b/i.exec(
+      text,
+    );
   // The first amount typed wins, whichever way it is written.
   const first = [
     scaled && { at: scaled.index, cents: Math.round(Number(scaled[1]) * 100_000) },

@@ -254,11 +254,15 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
     lines.push(`Here's how I'd pay them off: ${STRATEGY_NAME[pick.strategy]}.`);
     lines.push(...pick.order.map((name, i) => `${i + 1}. ${name}`));
     lines.push(...pick.why);
-    lines.push(`${paying}, you'd be ${outcome(summary[pick.strategy], asOf, summary.leftOut.length > 0)}.`);
+    lines.push(
+      `${paying}, you'd be ${outcome(summary[pick.strategy], asOf, summary.leftOut.length > 0)}.`,
+    );
   } else {
     lines.push(`${paying}, here's how two common orders would go:`);
     for (const s of ["avalanche", "snowball"] as const) {
-      lines.push(`- ${capital(STRATEGY_NAME[s])}: ${outcome(summary[s], asOf, summary.leftOut.length > 0)}`);
+      lines.push(
+        `- ${capital(STRATEGY_NAME[s])}: ${outcome(summary[s], asOf, summary.leftOut.length > 0)}`,
+      );
     }
   }
   const chosen = summary[pick?.strategy ?? "avalanche"];

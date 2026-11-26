@@ -39,13 +39,14 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   if (OVERVIEW.test(text)) return { kind: "autopilot_overview" };
   const sector = sectorIn(text);
   if (!sector) return null;
-  const level: SectorLevel | null = ASK.test(text) || NEGATED.test(text)
-    ? "ask"
-    : SAFE.test(text)
-      ? "safe"
-      : ALL.test(text)
-        ? "all"
-        : null;
+  const level: SectorLevel | null =
+    ASK.test(text) || NEGATED.test(text)
+      ? "ask"
+      : SAFE.test(text)
+        ? "safe"
+        : ALL.test(text)
+          ? "all"
+          : null;
   if (!level) return null;
   if (level === "ask") {
     return { kind: "autopilot_sector", sector, level, actionCapCents: null, monthlyCapCents: null };

@@ -98,7 +98,9 @@ describe("blockCents and parseBlock", () => {
     // CodeRabbit part 2: a row that isn't shaped for its block is refused, not drawn.
     expect(parseBlock({ type: "bars", title: "Spending", rows: [null] })).toBeNull();
     expect(parseBlock({ type: "bars", title: "S", rows: [{ label: "a", cents: "9" }] })).toBeNull();
-    expect(parseBlock({ type: "bars", title: "S", rows: [{ label: "a", cents: 900 }] })).not.toBeNull();
+    expect(
+      parseBlock({ type: "bars", title: "S", rows: [{ label: "a", cents: 900 }] }),
+    ).not.toBeNull();
     expect(parseBlock(null)).toBeNull();
   });
 });
