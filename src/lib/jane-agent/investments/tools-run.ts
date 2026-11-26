@@ -482,7 +482,8 @@ export async function runInvestmentTool(
       });
     }
     case "old_accounts": {
-      const v = await loadOldAccounts(userId, { client, now });
+      // Asked by the model: a lookup, so nothing is created or moved on by it.
+      const v = await loadOldAccounts(userId, { client, now, readOnly: true });
       return out({
         employers: v.plans.map((p) => ({
           employer: p.employer,
@@ -684,6 +685,9 @@ export async function runInvestmentTool(
                 costPercent: a.expenseBps / 100,
               })),
               savesAYear: money(v.plan.savingCents),
+              // Shares of the target this menu has no fund for (moved to cash, or left out): the
+              // mix above is not the target, and the saving is for this mix.
+              noFundOnTheMenuFor: v.plan.missing,
               targetDateFunds: v.plan.targetDates
                 .filter(Boolean)
                 .map((t) => ({ ticker: t!.ticker, savingBuildingItByHand: money(t!.savingCents) })),
@@ -698,6 +702,7 @@ export async function runInvestmentTool(
           from: r.from,
           shorterHistory: r.shorter,
           beforeFeesPercent: Math.round(r.beforeFees * 1000) / 10,
+          afterFeesPercent: Math.round(r.afterFees * 1000) / 10,
           afterFeesAndTaxesPercent: Math.round(r.afterTaxes * 1000) / 10,
           yourMoneyPercent:
             r.moneyWeighted === null ? null : Math.round(r.moneyWeighted * 1000) / 10,

@@ -1053,6 +1053,10 @@ export function yearlyReviewReply(inv: InvestmentSnapshot, year: number): Reply 
         ? { iraCents: inv.retirementAccounts.iraAllowedCents }
         : {}),
       ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+      // The same old plan the posted review names, so its Roll over button has what it acts on.
+      ...(inv.oldAccounts.plans.find((p) => p.status === "found")
+        ? { oldPlanId: inv.oldAccounts.plans.find((p) => p.status === "found")!.id }
+        : {}),
     },
   };
 }

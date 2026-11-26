@@ -47,7 +47,7 @@ describe("the tax profile questions", () => {
       "From your accounts, your income for 2026 looks like wages from ACME CORP (W-2). Is that all of it?",
     );
     expect(ids(q)).toEqual(["tax.found_yes", "open"]);
-    expect(q?.refs).toEqual({ taxField: "incomeKinds" });
+    expect(q?.refs).toEqual({ taxField: "incomeKinds", taxFound: "w2" });
 
     q = nextQuestion(view({ incomeKinds: ["w2"], answered: ["incomeKinds"] }));
     expect(q?.body).toBe("How will you file for 2026?");
@@ -207,7 +207,7 @@ describe("tax replies", () => {
     expect(reply.body).toContain("- Income: wages from a job (found by me: check it)");
     expect(reply.body).toContain("I keep your tax profile up to date from your accounts");
     expect(reply.actions.map((a) => a.id)).toEqual(["tax.found_yes", "open"]);
-    expect(reply.refs).toEqual({ taxField: "incomeKinds" });
+    expect(reply.refs).toEqual({ taxField: "incomeKinds", taxFound: "w2" });
   });
 
   it("offers a button for what was typed, never changes it by itself", () => {
