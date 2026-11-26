@@ -146,8 +146,9 @@ describe.runIf(url)(
       // Typed in passing: asked about, not saved until the yes (open O27).
       expect(asked.body).toMatch(/^Want me to put 2038 on your tax profile/);
       expect((await loadMultiYear(userId, { client, now: LINKED })).retireYear).not.toBe(2038);
-      const reply = (await takeChatAction(userId, asked.id, "tax.retire_set", { client, now: LINKED }))
-        .message;
+      const reply = (
+        await takeChatAction(userId, asked.id, "tax.retire_set", { client, now: LINKED })
+      ).message;
       expect(reply.body).toMatch(
         /^Got it: you plan to retire in 2038\. Here is your federal tax over the next \d+ years\./,
       );

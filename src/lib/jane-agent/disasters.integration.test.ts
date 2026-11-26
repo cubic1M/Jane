@@ -267,8 +267,9 @@ describe.runIf(url)("disasters and losses against a real database", { timeout: 1
     // Typed in passing: asked about, not saved until the yes (open O27).
     expect(asked.body).toMatch(/^Want me to put Travis County on your tax profile/);
     expect(await client.janePreference.count({ where: { userId, key: "profile:county" } })).toBe(0);
-    const reply = (await takeChatAction(userId, asked.id, "tax.county_set", { client, now: LINKED }))
-      .message;
+    const reply = (
+      await takeChatAction(userId, asked.id, "tax.county_set", { client, now: LINKED })
+    ).message;
     expect(reply.body).toMatch(/^Got it: Travis County\./);
     expect(reply.body).toContain("I don't see a disaster postponement for Travis County");
     expect((await loadDisasterRelief(userId, { client, now: LINKED })).relief).toEqual([]);
