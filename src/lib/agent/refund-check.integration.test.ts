@@ -141,6 +141,21 @@ describe.runIf(url)("refunds seen in transactions, against a real database", () 
     expect(await confirmRefunds(userId, { client, notify })).toBe(0);
   });
 
+  it("gives each of two refunds its own credit", async () => {
+    const { userId, accountId } = await person();
+    const first = await approve(userId, "duplicate_charge", { merchant: "Target" }, 10_000);
+    const second = await approve(userId, "duplicate_charge", { merchant: "Target" }, 10_000);
+    await credit(userId, accountId, "TARGET REFUND", 10_000);
+    await credit(userId, accountId, "TARGET REFUND", 10_000);
+    expect(await confirmRefunds(userId, { client, notify })).toBe(2);
+    for (const id of [first, second]) {
+      expect(await client.action.findUniqueOrThrow({ where: { id } })).toMatchObject({
+        status: "done",
+        refundCents: 10_000,
+      });
+    }
+  });
+
   it("closes a fee refund when the bank reverses fees on that account", async () => {
     const { userId, accountId } = await person("Chase");
     const actionId = await approve(

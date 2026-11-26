@@ -53,10 +53,16 @@ export function isRefundFor(action: RefundAction, credit: Credit): boolean {
 }
 
 // What was asked for: the refund on the card, or for fees the total charged.
-export function expectedCents(cardSnapshot: unknown, evidence: unknown): number | null {
+export function expectedCents(
+  cardSnapshot: unknown,
+  evidence: unknown,
+  actionType?: string,
+): number | null {
   const card = (cardSnapshot ?? {}) as { annualSavingsCents?: unknown };
-  if (typeof card.annualSavingsCents === "number") return card.annualSavingsCents;
   const total = (evidence as { totalCents?: unknown } | null)?.totalCents;
+  // For fees the card's figure is a pace over a year, not what was charged: ask for the total.
+  if (actionType === "recover_bank_fees" && typeof total === "number" && total > 0) return total;
+  if (typeof card.annualSavingsCents === "number") return card.annualSavingsCents;
   return typeof total === "number" ? total : null;
 }
 
@@ -112,21 +118,40 @@ export async function confirmRefunds(
   const used = new Set<string>();
   let confirmed = 0;
   for (const action of actions) {
-    const expected = expectedCents(action.decision.cardSnapshot, action.decision.finding.evidence);
+    const expected = expectedCents(
+      action.decision.cardSnapshot,
+      action.decision.finding.evidence,
+      action.type,
+    );
     if (!expected || expected <= 0) continue;
     const view = {
       type: action.type,
       createdAt: action.createdAt,
       evidence: action.decision.finding.evidence,
     };
-    const matches = credits.filter((c) => !used.has(c.id) && isRefundFor(view, c));
-    const back = matches.reduce((sum, c) => sum + -c.amountCents, 0);
+    const candidates = credits.filter((c) => !used.has(c.id) && isRefundFor(view, c));
+    const back = candidates.reduce((sum, c) => sum + -c.amountCents, 0);
     if (back < expected * REFUND_MATCH_MIN_SHARE) continue;
+    // Only the credits this refund needs: two $100 refunds with two $100 credits close both.
+    const matches: typeof candidates = [];
+    let taken = 0;
+    for (const c of candidates) {
+      if (taken >= expected) break;
+      matches.push(c);
+      taken += -c.amountCents;
+    }
     for (const c of matches) used.add(c.id);
     const refundCents = Math.min(back, expected);
     const seenOn = matches[matches.length - 1].date;
     const closing = action.status !== "done";
     const status: ActionStatus = "done";
+    // The finding first: the action row is what a later scan looks for, so a failure here is retried.
+    if (closing) {
+      await db.findings.updateMany({
+        where: { id: action.decision.findingId },
+        data: { status: FINDING_STATUS.done },
+      });
+    }
     await db.actions.updateMany({
       where: { id: action.id },
       data: {
@@ -145,10 +170,6 @@ export async function confirmRefunds(
       },
     });
     if (closing) {
-      await db.findings.updateMany({
-        where: { id: action.decision.findingId },
-        data: { status: FINDING_STATUS.done },
-      });
       const title = String(
         (action.decision.cardSnapshot as { title?: unknown } | null)?.title ?? "Your refund",
       );

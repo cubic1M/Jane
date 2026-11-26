@@ -55,5 +55,9 @@ describe("refunds seen in transactions", () => {
     expect(expectedCents({ annualSavingsCents: 6_420 }, {})).toBe(6_420);
     expect(expectedCents({ annualSavingsCents: null }, { totalCents: 23_400 })).toBe(23_400);
     expect(expectedCents(null, null)).toBeNull();
+    // Fees: the card's figure is a yearly pace; the bank is asked for what was charged.
+    expect(
+      expectedCents({ annualSavingsCents: 81_600 }, { totalCents: 6_800 }, "recover_bank_fees"),
+    ).toBe(6_800);
   });
 });
