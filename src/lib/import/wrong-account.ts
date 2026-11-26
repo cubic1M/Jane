@@ -96,10 +96,12 @@ const masksAgree = (a: string, b: string) => {
   return x.length >= 2 && y.length >= 2 && (x.endsWith(y) || y.endsWith(x));
 };
 
-// A file from an account Jane already gets from a linked bank: importing it too would count every
-// transaction twice (spending, fees, net worth). Sure when the bank and the last four agree, and
-// then the import waits; else, the same bank and kind with no number in the file, a warning. A
-// different last four is another account, and says nothing.
+// A file from an account Jane already gets from a linked bank, whose transactions come in by
+// themselves. Sure when the bank and the last four agree, and then the import waits; else, the same
+// bank and kind with no number in the file, a warning, naming the account only when just one fits
+// (a file can't always say checking from savings). A different last four is another account, and
+// says nothing. It says nothing about what would be counted: that is decided once the file is in
+// (src/planning/books.ts accountsLeftOut).
 export function linkedAccountNote(
   linked: readonly LinkedAccount[],
   files: readonly (FileFacts & { mask?: string | null })[],
@@ -118,14 +120,17 @@ export function linkedAccountNote(
     if (sure) {
       return {
         sure: true,
-        text: `You already link ${label(sure)} through ${sure.institution}, so its transactions come in by themselves. Importing ${f.file} would count them twice.`,
+        text: `You already link ${label(sure)} through ${sure.institution}, so its transactions come in by themselves. There's no need to import ${f.file}.`,
       };
     }
-    const unsure = same.find((l) => !f.mask || !l.mask);
+    const [unsure, ...others] = same.filter((l) => !f.mask || !l.mask);
     if (unsure && !maybe) {
       maybe = {
         sure: false,
-        text: `If ${f.file} is your linked ${label(unsure)}, skip it: its transactions already come in from ${unsure.institution}, and importing it would count them twice.`,
+        text:
+          others.length === 0
+            ? `If ${f.file} is your linked ${label(unsure)}, skip it: its transactions already come in from ${unsure.institution}.`
+            : `If ${f.file} is from one of your linked ${unsure.institution} accounts, skip it: their transactions already come in by themselves.`,
       };
     }
   }

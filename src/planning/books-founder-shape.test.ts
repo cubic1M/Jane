@@ -103,7 +103,7 @@ describe.each(Object.entries(SHAPES))("the founder's shape: %s", (_name, shape) 
       [...left].map(([id, why]) => ({
         reason: why.reason as "maybe_same",
         left: { name: id },
-        with: { name: why.sameAs.name },
+        with: { name: why.sameAs.name, counted: !left.has(why.sameAs.id) },
       })),
     );
     expect(said).toMatch(/left out of net worth/);

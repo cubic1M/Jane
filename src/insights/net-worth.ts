@@ -129,7 +129,9 @@ export function netWorthCovers(
 export type MaybeSame = {
   reason: "same_account" | "maybe_same" | "older_upload" | "linked_twice";
   left: { name: string };
-  with: { name: string };
+  // Whether the account it is said to be a copy of is itself counted (an earlier upload of an
+  // upload that is left out too is not "counted the later one").
+  with: { name: string; counted: boolean };
 };
 export const maybeSamePair = ({ reason, left, with: other }: MaybeSame) =>
   reason === "same_account"
@@ -137,7 +139,9 @@ export const maybeSamePair = ({ reason, left, with: other }: MaybeSame) =>
     : reason === "maybe_same"
       ? `${left.name} (uploaded) looks like a copy of ${other.name} (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.`
       : reason === "older_upload"
-        ? `${left.name} (uploaded) looks like an earlier upload of ${other.name}, so Jane counted the later one only.`
+        ? other.counted
+          ? `${left.name} (uploaded) looks like an earlier upload of ${other.name}, so Jane counted the later one only.`
+          : `${left.name} (uploaded) looks like an earlier upload of ${other.name}, which Jane also left out, so neither is in net worth.`
         : `${left.name} looks like ${other.name} linked a second time, so Jane counts it once.`;
 // Where to look: the import page for an upload (where one tap says it is another account), the
 // bank links for a second link. Said as a quiet link, never as something to do.
@@ -150,7 +154,9 @@ export function maybeSameWords(pairs: readonly MaybeSame[]): string | null {
   if (more.length === 0) return maybeSamePair(only);
   const copies = (r: MaybeSame["reason"]) => r === "same_account" || r === "maybe_same";
   if (!pairs.every((p) => copies(p.reason)))
-    return `${pairs.length} of your accounts look like copies of ones already counted, so they are left out of net worth.`;
+    return pairs.some((p) => p.reason === "older_upload" && !p.with.counted)
+      ? `${pairs.length} of your accounts look like copies or earlier uploads, so they are left out of net worth.`
+      : `${pairs.length} of your accounts look like copies of ones already counted, so they are left out of net worth.`;
   const unsure = pairs.filter((p) => p.reason === "maybe_same").length;
   return `${pairs.length} uploaded statements look like copies of your linked accounts, so they are left out of net worth.${
     unsure > 0
@@ -230,32 +236,38 @@ export function monthlyNetWorth(
 
 // The net worth line the hub and /net-worth both draw, so they agree with each other and with
 // the headline (phone walk: the page jumped by a car's value in the month it was first valued
-// and ended at a month-old snapshot). How the accounts moved: things owned count across the
-// whole window at their value now, and so does an account with no balance history yet (a
-// sample person's investments, an account linked today); this month is today's net worth.
+// and ended at a month-old snapshot). How the accounts moved: from the first balance of any
+// account given, things owned count at their value now, and so does an account with no balance
+// history yet (a sample person's investments, an account linked today); earlier months are empty;
+// this month is today's net worth.
 export function netWorthLine(
   accounts: { id: string; type: string; currentBalanceCents: number | null }[],
-  snapshots: Snapshot[],
+  allSnapshots: Snapshot[],
   owned: OwnedValue[],
   asOf: string,
   monthCount: number,
   todayCents: number,
 ): { month: string; netCents: number | null }[] {
   const ends = monthsEnding(asOf, monthCount);
+  // Only the accounts given have a say: a balance of one left out (a copy of a linked account) adds
+  // no month and starts no line.
+  const mine = new Set(accounts.map((a) => a.id));
+  const snapshots = allSnapshots.filter((s) => mine.has(s.accountId));
   // No history at all (a bank linked today): only this month, never a made-up flat year.
   if (snapshots.length === 0)
     return ends.map((month, i) => ({ month, netCents: i === ends.length - 1 ? todayCents : null }));
-  const start = `${ends[0]}-01`;
   const kept = new Set(snapshots.map((s) => s.accountId));
   // Before an account's first balance it counts at that balance, as the chart does: adding a
   // savings file isn't a gain (debugger 11-04). Only back to the first balance of any account, so
   // months before anything was known stay empty.
   const inOrder = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  // The first day any of them has a balance: nothing earlier is listed.
+  const start = inOrder[0].date;
   const firstOf = new Map<string, Snapshot>();
   for (const s of inOrder) if (!firstOf.has(s.accountId)) firstOf.set(s.accountId, s);
   const carried = [...firstOf.values()]
-    .filter((s) => s.date > inOrder[0].date)
-    .map((s) => ({ ...s, date: inOrder[0].date }));
+    .filter((s) => s.date > start)
+    .map((s) => ({ ...s, date: start }));
   const months = monthlyNetWorth(
     accounts,
     [
@@ -267,7 +279,7 @@ export function netWorthLine(
     ],
     asOf,
     monthCount,
-    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < start ? o.valuedOn : start })),
+    owned.map((o) => ({ ...o, valuedOn: start })),
   );
   return months.map((m, i) => (i === months.length - 1 ? { ...m, netCents: todayCents } : m));
 }

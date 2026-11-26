@@ -88,13 +88,20 @@ describe("accounts that may be one account counted twice", () => {
   });
 
   it("says where to look: an upload on the import page, a second link in Settings", () => {
-    const up = { reason: "maybe_same" as const, left: { name: "A" }, with: { name: "B" } };
+    const up = {
+      reason: "maybe_same" as const,
+      left: { name: "A" },
+      with: { name: "B", counted: true },
+    };
     const link = { ...up, reason: "linked_twice" as const };
     expect([maybeSameHref([up]), maybeSameHref([link])]).toEqual(["/import", "/settings#banks"]);
   });
 
   it("says what Jane did, with no chore for the person", () => {
-    const left = { left: { name: "Chase checking" }, with: { name: "TOTAL CHECKING" } };
+    const left = {
+      left: { name: "Chase checking" },
+      with: { name: "TOTAL CHECKING", counted: true },
+    };
     expect(maybeSameWords([{ ...left, reason: "maybe_same" }])).toBe(
       "Chase checking (uploaded) looks like a copy of TOTAL CHECKING (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.",
     );

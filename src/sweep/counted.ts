@@ -58,3 +58,43 @@ export function countingProblems(
   }
   return lines;
 }
+
+// What is said about the accounts left out agrees with what is counted: an account said to be left
+// out isn't counted, "the later one" is only said counted when it is, "neither" only when it isn't,
+// and an account said to be counted on its own is.
+export function noticeProblems(
+  counted: ReadonlySet<string>,
+  said: readonly { leftId: string; withId: string; words: string }[],
+  saidOwn: readonly string[] = [],
+): string[] {
+  const lines: string[] = [];
+  for (const { leftId, withId, words } of said) {
+    if (counted.has(leftId)) lines.push(`said left out but counted: ${words}`);
+    if (/counted the later one|counts it once/.test(words) && !counted.has(withId))
+      lines.push(`says the other is counted, and it isn't: ${words}`);
+    if (/neither is in net worth/.test(words) && counted.has(withId))
+      lines.push(`says neither is counted, and one is: ${words}`);
+  }
+  for (const id of saidOwn)
+    if (!counted.has(id)) lines.push(`${id} is said to be counted as its own, and isn't`);
+  return lines;
+}
+
+// A month-by-month net worth lists a figure only from the first month a counted account has a
+// balance in; the current month is today's figure.
+export function historyProblems(
+  months: readonly { month: string; netCents: number | null }[],
+  countedBalanceDays: readonly string[],
+): string[] {
+  const first = countedBalanceDays.reduce<string | null>(
+    (m, d) => (m === null || d < m ? d : m),
+    null,
+  );
+  return months
+    .slice(0, -1)
+    .flatMap((m) =>
+      m.netCents !== null && (first === null || m.month < first.slice(0, 7))
+        ? [`${m.month} has a figure and no counted account has a balance by then`]
+        : [],
+    );
+}

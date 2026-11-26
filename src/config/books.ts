@@ -51,7 +51,6 @@ export const BOOKS_WORRYING_KINDS: readonly string[] = [
   "stale",
   "broken",
   "duplicate",
-  "maybe_same",
 ];
 export const BOOKS_URGENT_KINDS: readonly string[] = ["broken"];
 // Issue kinds, and how each is said.
@@ -61,6 +60,5 @@ export const BOOKS_KIND_LABELS: Readonly<Record<string, string>> = {
   stale: "A bank link that hasn't updated",
   broken: "A bank link that needs you to sign in again",
   duplicate: "The same account linked twice",
-  maybe_same: "Two accounts that may be the same",
   transfer: "A transfer with no other side",
 };

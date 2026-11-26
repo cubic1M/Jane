@@ -147,7 +147,7 @@ describe("linkedAccountNote", () => {
       ]),
     ).toEqual({
       sure: true,
-      text: "You already link Total Checking ····4321 through Chase, so its transactions come in by themselves. Importing Chase4321_Activity.CSV would count them twice.",
+      text: "You already link Total Checking ····4321 through Chase, so its transactions come in by themselves. There's no need to import Chase4321_Activity.CSV.",
     });
   });
 
@@ -158,7 +158,7 @@ describe("linkedAccountNote", () => {
       ]),
     ).toEqual({
       sure: false,
-      text: "If citi.csv is your linked Card, skip it: its transactions already come in from Citibank Online, and importing it would count them twice.",
+      text: "If citi.csv is your linked Card, skip it: its transactions already come in from Citibank Online.",
     });
   });
 

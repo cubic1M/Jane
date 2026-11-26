@@ -9,7 +9,14 @@ import { crossFormatTwins, type RowFacts } from "./cross-format";
 // 11-03: net worth $34,806 for someone with $18,494). So a preview into a new account says when
 // the file's rows are already in another one, and offers it. Asked, not decided: it's the person's
 // money and their choice.
-export type AlreadyIn = { accountId: string; name: string; rows: number; ofRows: number };
+export type AlreadyIn = {
+  accountId: string;
+  name: string;
+  rows: number;
+  ofRows: number;
+  // A linked account takes no uploads: its bank fills it.
+  linked: boolean;
+};
 
 export async function alreadyInAnotherAccount(
   db: ScopedDb,
@@ -29,7 +36,7 @@ export async function alreadyInAnotherAccount(
   if (incoming.length < OTHER_ACCOUNT_MIN_ROWS) return null;
   const days = incoming.map((r) => r.date).sort();
   const [accounts, stored] = await Promise.all([
-    db.accounts.findMany({ select: { id: true, name: true } }),
+    db.accounts.findMany({ select: { id: true, name: true, source: true } }),
     db.transactions.findMany({
       where: {
         date: {
@@ -76,5 +83,6 @@ export async function alreadyInAnotherAccount(
     name: best.account.name,
     rows: best.rows,
     ofRows: incoming.length,
+    linked: best.account.source !== "csv",
   };
 }

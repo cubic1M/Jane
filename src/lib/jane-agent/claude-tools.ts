@@ -19,7 +19,8 @@ import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { loansNotCounted, notCounting, owedIsKnown } from "@/insights/net-worth";
+import { loansNotCounted, maybeSamePair, notCounting, owedIsKnown } from "@/insights/net-worth";
+import { leftOutNotes } from "@/lib/account-copies";
 import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import {
@@ -1129,11 +1130,16 @@ async function runChatToolWork(
       });
     }
     case "books_check": {
-      const books = await openBooks(userId, { client });
+      const [books, leftOut] = await Promise.all([
+        openBooks(userId, { client }),
+        leftOutNotes(scopedFor(userId, client)),
+      ]);
       return out({
         allAddUp: books.open.filter((o) => o.kind !== "transfer").length === 0,
         problems: books.open.map((o) => ({ what: o.label, detail: o.words })),
         accountsWithMarkedFigures: books.markedAccountIds.length,
+        // Not problems: accounts Jane left out of net worth so nothing counts twice.
+        leftOutOfNetWorth: leftOut.map(maybeSamePair),
       });
     }
     case "money_for_two": {

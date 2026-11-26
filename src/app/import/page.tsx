@@ -7,7 +7,7 @@ import { accountKindOf } from "@/data-sources/types";
 import { LeftOutAccount } from "./left-out";
 import { UploadHistory } from "./upload-history";
 import { maybeSamePair } from "@/insights/net-worth";
-import { leftOutNotes, SEPARATE_ACCOUNT } from "@/lib/account-copies";
+import { leftOutView, SEPARATE_ACCOUNT } from "@/lib/account-copies";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
@@ -42,7 +42,7 @@ async function ImportContent({
     asks,
     linkedRows,
     timezone,
-    notCounted,
+    { notes: notCounted, left: leftOut },
     separateRows,
   ] = await Promise.all([
     listAccountSummaries(db),
@@ -50,8 +50,8 @@ async function ImportContent({
     uploadedTotals(db),
     db.accounts.findMany({ where: { source: "csv" }, select: { id: true } }),
     balancesToAsk(db),
-    // A linked bank's accounts, by institution and last four: a file from one of them would
-    // count it twice.
+    // A linked bank's accounts, by institution and last four: their transactions come in by
+    // themselves.
     db.accounts.findMany({
       where: { source: "plaid" },
       select: {
@@ -63,7 +63,7 @@ async function ImportContent({
       },
     }),
     timezoneOf(user.id),
-    leftOutNotes(db),
+    leftOutView(db),
     db.janePreferences.findMany({
       where: { kind: SEPARATE_ACCOUNT.kind },
       select: { key: true },
@@ -80,7 +80,11 @@ async function ImportContent({
   const separateIds = new Set(
     separateRows.map((p) => p.key.slice(SEPARATE_ACCOUNT.keyPrefix.length)),
   );
-  const ownAccounts = accounts.filter((a) => separateIds.has(a.id) && uploadedIds.has(a.id));
+  // Said to be counted only when it is: one that is also a certain copy (the same last four) stays
+  // left out whatever was said.
+  const ownAccounts = accounts.filter(
+    (a) => separateIds.has(a.id) && uploadedIds.has(a.id) && !leftOut.has(a.id),
+  );
 
   return (
     <>
