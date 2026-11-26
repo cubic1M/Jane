@@ -10,6 +10,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { ChatActionError, takeChatAction } from "./actions";
 import { sendToJane } from "./typing";
+import { closeSettled } from "./messages";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 
@@ -104,15 +105,63 @@ describe.runIf(url)(
       expect(transfer).toMatchObject({ amountCents: month, purpose: "goal", status: "pending" });
       expect(message.actions.map((a) => a.id)).toContain("multi.undo");
 
-      // Undo, while it's pending.
+      // Typed, while it's pending: points to the button.
+      const typed = await sendToJane(userId, "undo the transfer", { client, now: later() });
+      expect(typed.reply.body).toContain('Tap "Undo the transfer"');
+
+      // Undo, while it's pending: the plan's other step stays in the record.
       const { message: undone } = await takeChatAction(userId, reply.id, "multi.undo", {
         client,
         now: later(),
       });
-      expect(undone.refs.note).toBe("Undone: the transfer won't happen.");
+      expect(undone.refs.note).toMatch(/^All done, in order\.\n1\. Done\. /);
+      expect(undone.refs.note).toMatch(/\n2\. Undone: .* won't happen\.$/);
+      expect(undone.refs.note).not.toContain("until then");
+      const after = await sendToJane(userId, "undo the transfer", { client, now: later() });
+      expect(after.reply.body).toContain("no transfer of mine");
+      expect(after.reply.body).not.toContain("Undo the transfer");
       expect(
         (await client.moneyTransfer.findUniqueOrThrow({ where: { id: transfer.id } })).status,
       ).toBe("cancelled");
+    });
+
+    it("drops the Undo and its 'until then' line once the transfer has gone through", async () => {
+      const userId = await demoPerson("multi-settled");
+      const { reply } = await sendToJane(
+        userId,
+        "Cancel Hulu and put the savings in my emergency fund",
+        { client, now: later() },
+      );
+      await takeChatAction(userId, reply.id, "multi.confirm", { client, now: later() });
+      const transfer = await client.moneyTransfer.findFirstOrThrow({ where: { userId } });
+      await closeSettled(userId, { client, now: later() });
+      const open = await client.janeMessage.findUniqueOrThrow({ where: { id: reply.id } });
+      expect(JSON.stringify(open.actions)).toContain("multi.undo");
+      expect((open.refs as { note: string }).note).toContain("until then");
+
+      await client.moneyTransfer.update({
+        where: { id: transfer.id },
+        data: { status: "completed", completedAt: later() },
+      });
+      await closeSettled(userId, { client, now: later() });
+      const closed = await client.janeMessage.findUniqueOrThrow({ where: { id: reply.id } });
+      expect(JSON.stringify(closed.actions)).not.toContain("multi.undo");
+      const note = (closed.refs as { note: string }).note;
+      expect(note).not.toContain("until then");
+      expect(note).toMatch(/^All done, in order\.\n1\. Done\. /);
+    });
+
+    it("tells a person with no demo bank that Jane moves no money in their bank", async () => {
+      const user = await client.user.create({
+        data: { email: `multi-real-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      const { reply } = await sendToJane(user.id, "cancel my last transfer", {
+        client,
+        now: later(),
+      });
+      expect(reply.body).toContain("I can't move money in your bank yet");
+      expect(reply.body).not.toContain("Undo the transfer");
     });
 
     it("stops at a step that fails, says why, and runs nothing after it", async () => {

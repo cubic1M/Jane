@@ -75,6 +75,12 @@ describe("a typed transfer undo", () => {
     expect(parse("undo the transfer")).toEqual({ kind: "undo", transfer: true });
     expect(parse("cancel my last transfer")).toEqual({ kind: "undo", transfer: true });
     expect(parse("undo")).toEqual({ kind: "undo" });
+    for (const text of [
+      "undo the $50 transfer",
+      "undo my transfer to savings",
+      "can I undo the transfer?",
+    ])
+      expect(parse(text)).toEqual({ kind: "undo", transfer: true });
   });
 });
 

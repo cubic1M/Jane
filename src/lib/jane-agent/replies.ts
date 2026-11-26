@@ -829,10 +829,10 @@ function shortPeriodLine(
     transactions[0]!.date,
   );
   if (lastDate < from) {
-    return `I can't see ${label}: what I have ends on ${dayLabel(lastDate)}.`;
+    return `I can't see ${label.replace(/^in /, "")}: what I have ends on ${dayLabel(lastDate)}.`;
   }
   if (firstDate > to) {
-    return `I can't see ${label}: what I have starts on ${dayLabel(firstDate)}.`;
+    return `I can't see ${label.replace(/^in /, "")}: what I have starts on ${dayLabel(firstDate)}.`;
   }
   // The days are read as one month, so a refund on one day nets against a purchase on another and
   // every answer (all spending, a merchant, a part, a category) follows the same rule: the
@@ -1274,11 +1274,24 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
 }
 
 // "Undo the transfer": the button is on the plan's own message, and works while the transfer is
-// still pending; a transfer that has gone through can't be taken back from here.
-export function undoTransferReply(): Reply {
+// still pending. With none pending the answer says so: a real account has no transfer of Jane's
+// at all, because Jane doesn't move money in a bank (src/lib/jane-agent/multi.ts).
+export function undoTransferReply({
+  pending,
+  canMoveMoney,
+}: {
+  pending: number;
+  canMoveMoney: boolean;
+}): Reply {
+  if (pending > 0) {
+    return reply(
+      `${pending === 1 ? "One transfer from a plan is" : `${pending} transfers from a plan are`} still pending. Tap "Undo the transfer" on that plan's message in this chat to take ${pending === 1 ? "it" : "them"} back; once a transfer has gone through it stays.`,
+    );
+  }
   return reply(
-    'To take back a transfer from a plan, tap "Undo the transfer" on that plan\'s message in this chat. It works while the transfer is still pending; one that has gone through stays.',
-    [openLink("Open the plan", "/plan")],
+    canMoveMoney
+      ? "There's no transfer of mine waiting to be taken back: none is pending, and one that has gone through stays."
+      : "I can't move money in your bank yet, so there's no transfer of mine to take back. Anything you moved yourself is undone in your bank.",
   );
 }
 
