@@ -347,6 +347,18 @@ describe("Cash App", () => {
     ]);
   });
 
+  it("leaves out a row in another currency instead of adding it to US dollars", () => {
+    const text = [
+      "Transaction ID,Date,Transaction Type,Currency,Amount,Fee,Net Amount,Asset Type,Asset Price,Asset Amount,Status,Notes,Name of sender/receiver,Account",
+      "txe1,2026-10-20 13:22:10 EDT,P2P,EUR,-$50.00,$0.00,-$50.00,,,,COMPLETE,rent,Lee Wong,Visa Debit 1234",
+      "txe2,2026-10-19 13:22:10 EDT,P2P,USD,-$20.00,$0.00,-$20.00,,,,COMPLETE,lunch,Lee Wong,Visa Debit 1234",
+    ].join("\n");
+    const other = readCsvFile({ name: "cash.csv", text });
+    if (!other.ok) throw new Error(other.error);
+    expect(other.transactions.map((t) => t.amountCents)).toEqual([2000]);
+    expect(other.skipped.map((x) => x.reason)).toEqual(["In EUR, not US dollars"]);
+  });
+
   // Seen in the app: a driver's Doordash pay came in as a refund at a restaurant.
   it("calls a direct deposit income, whoever sent it", () => {
     const deposit = result.transactions[1];

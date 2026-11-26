@@ -691,6 +691,11 @@ const cashApp: CsvFormat = {
     if (CASH_APP_NOT_DONE.test(status)) {
       return { ok: false, reason: `Not completed (${status})`, silent: true };
     }
+    // As PayPal's: a row in another currency isn't added to US dollars.
+    const currency = get("currency").trim().toUpperCase();
+    if (currency && currency !== "USD") {
+      return { ok: false, reason: `In ${currency}, not US dollars` };
+    }
     const date = parseIsoDate(when.slice(0, 10)) ?? parseUsDate(when.split(/\s+/)[0]);
     if (!date) return { ok: false, reason: `Unreadable date "${when}"` };
     const cents = parseMoneyToCents(get("net amount"));
