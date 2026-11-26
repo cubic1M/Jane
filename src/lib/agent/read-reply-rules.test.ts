@@ -46,4 +46,10 @@ describe("reading a company's reply by rules", () => {
       expect(readReplyByRules(text).outcome, text).toBe("done");
     }
   });
+
+  it("reads a lower rate with words between 'lower' and 'rate' as done", () => {
+    expect(readReplyByRules("We have applied a lower interest rate to your plan.").outcome).toBe(
+      "done",
+    );
+  });
 });

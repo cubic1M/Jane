@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { localVoice, spokenText } from "./speech";
 
 // "Read aloud" on Jane's messages (spec step 186): the browser's own speech, on request,
@@ -17,10 +17,18 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
     () => false,
   );
   const [speaking, setSpeaking] = useState(false);
+  // A tap that is waiting for the voices to load: dropped when the message leaves the page.
+  const pending = useRef<(() => void) | null>(null);
+  const clearPending = () => {
+    if (pending.current)
+      window.speechSynthesis?.removeEventListener?.("voiceschanged", pending.current);
+    pending.current = null;
+  };
 
   // Stop when the message leaves the page.
   useEffect(
     () => () => {
+      clearPending();
       if (speaking) window.speechSynthesis.cancel();
     },
     [speaking],
@@ -31,6 +39,7 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
   function toggle() {
     const synth = window.speechSynthesis;
     synth.cancel();
+    clearPending();
     if (speaking) {
       setSpeaking(false);
       return;
@@ -50,6 +59,7 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
     }
     // Voices load late on some browsers: the first tap waits for them, once, instead of doing nothing.
     if (synth.getVoices().length === 0) {
+      pending.current = start;
       synth.addEventListener?.("voiceschanged", start, { once: true });
       return;
     }

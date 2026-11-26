@@ -45,7 +45,7 @@ function isOrdinaryDebt(phrase: string): boolean {
   return (
     words.length > 0 &&
     words.every((w) =>
-      /^(?:credit|card|cards|student|car|auto|personal|home|loan|loans|debt|debts|mortgage|balance|balances|all|of|my|our|the)$/.test(
+      /^(?:credit|card|cards|student|car|auto|personal|home|loan|loans|debt|debts|mortgage|balance|balances|all|of|my|our|the|a|an)$/.test(
         w,
       ),
     ) &&

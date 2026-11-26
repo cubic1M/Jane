@@ -22,6 +22,9 @@ export type Invoice = {
   totalCents: number | null;
   // What the lines add up to (credits taken off).
   linesCents: number;
+  // The invoice's own currency when it is not dollars ("EUR", "GBP"), read from its symbols and codes:
+  // the amounts are then not comparable to a charge on the bank. Null for dollars or unstated.
+  currency: string | null;
 };
 
 // An amount with its cents, a dollar sign or not, a minus (hyphen, minus sign or en dash) or brackets
@@ -46,8 +49,8 @@ const wordsOf = (description: string) =>
 //    a sum of the lines, never the one charged;
 //  - the invoice's total, which the lines add up to: "Total", "Grand total", "Order total",
 //    "Total due", "Total (USD)", "Total incl. tax", "Total due before Dec 1". Only these whole
-//    forms: "Total Protection" and "Total Wine" are things sold. A strong label ("Grand total",
-//    "Total due", "Total charged") beats a plain "Total"; the last of the same strength wins;
+//    forms: "Total Protection" and "Total Wine" are things sold. A "Grand total" beats a "Total due"
+//    or "Total charged", which beat a plain "Total"; the last of the same strength wins;
 //  - what has been paid of it: "Amount due", "Balance due on Dec 1", "Amount paid", "Total paid",
 //    "Paid". These are the total only when the invoice states none of its own: on a part-paid
 //    invoice the lines add up to the total, not to the amount left, and a payment is not the invoice.
@@ -62,7 +65,11 @@ const BEFORE_TAX = new RegExp(
     `|pre ?(?:tax|vat|gst)|net\\s+${SUM_WORD}|${SUM_WORD}\\s+net)\\b`,
 );
 // A label that says more than a plain "Total": the whole invoice's amount to pay.
-const STRONG_TOTAL = /^(?:grand|final)\s+total\b|\btotal\s+(?:due|charged|payable)\b/;
+// "Grand total" and "Final total" state the whole invoice; "Total due" may be what is left after a
+// part payment, so it ranks below them.
+const FULL_TOTAL = /^(?:grand|final)\s+total\b/;
+const DUE_TOTAL = /\btotal\s+(?:due|charged|payable)\b/;
+const strengthOf = (words: string) => (FULL_TOTAL.test(words) ? 2 : DUE_TOTAL.test(words) ? 1 : 0);
 const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
 const WHEN = "(?:\\s+(?:on|by|for|before|until)\\s+.+)?$";
 const INVOICE_TOTAL = new RegExp(
@@ -95,9 +102,20 @@ function descriptionOf(beforePrice: string): string {
     .trim();
 }
 
+const CODES: Record<string, string> = { "€": "EUR", "£": "GBP" };
+// Dollars only when the text says USD, or says nothing of another currency: CAD and AUD invoices use
+// the same "$".
+function currencyOf(text: string): string | null {
+  if (/\busd\b|\bus\s?\$|\bus dollars?\b/i.test(text)) return null;
+  const code = /\b(eur|gbp|cad|aud|nzd|chf|jpy|inr|sek|nok|dkk|mxn|brl|sgd|hkd)\b/i.exec(text);
+  if (code) return code[1]!.toUpperCase();
+  const symbol = /[€£]/.exec(text);
+  return symbol ? CODES[symbol[0]]! : null;
+}
+
 export function readInvoice(text: string): Invoice | null {
   const lines: InvoiceLine[] = [];
-  const totals: { cents: number; strong: boolean }[] = [];
+  const totals: { cents: number; strength: number }[] = [];
   const payments: { cents: number }[] = [];
   for (const raw of text.split(/\r?\n/).slice(0, INVOICE_MAX_LINES)) {
     const found = [...raw.matchAll(AMOUNT)];
@@ -113,7 +131,7 @@ export function readInvoice(text: string): Invoice | null {
     const words = wordsOf(description);
     if (SUBTOTAL.test(words) || (SUMS.test(words) && BEFORE_TAX.test(words))) continue;
     if (INVOICE_TOTAL.test(words)) {
-      totals.push({ cents: Math.abs(cents), strong: STRONG_TOTAL.test(words) });
+      totals.push({ cents: Math.abs(cents), strength: strengthOf(words) });
       continue;
     }
     if (PAYMENT_STATE.test(words)) {
@@ -125,23 +143,23 @@ export function readInvoice(text: string): Invoice | null {
   if (lines.length === 0) return null;
   const totalCents = chosenTotal(totals, payments);
   const signed = signedToTotal(lines, totalCents);
-  return { lines: signed, totalCents, linesCents: sumOf(signed) };
+  return { lines: signed, totalCents, linesCents: sumOf(signed), currency: currencyOf(text) };
 }
 
-// The invoice's total: the strong label over a plain "Total", and the last of the same strength,
+// The invoice's total: the strongest label over a plain "Total", and the last of the same strength,
 // since an invoice ends with what is to be paid; a total of nothing only when no other is stated.
 // With none stated, what is left to pay, else what was paid ("Amount due $0.00" on a paid invoice
 // doesn't say what it came to).
 function chosenTotal(
-  totals: { cents: number; strong: boolean }[],
+  totals: { cents: number; strength: number }[],
   payments: { cents: number }[],
 ): number | null {
   const last = <T extends { cents: number }>(items: T[]) =>
     items.length > 0 ? items[items.length - 1]!.cents : null;
   const owing = totals.filter((t) => t.cents > 0);
   const pool = owing.length > 0 ? owing : totals;
-  const strong = pool.filter((t) => t.strong);
-  const stated = last(strong.length > 0 ? strong : pool);
+  const top = Math.max(...pool.map((t) => t.strength), 0);
+  const stated = last(pool.filter((t) => t.strength === top));
   if (stated !== null) return stated;
   return last(payments.filter((t) => t.cents > 0)) ?? last(payments);
 }
@@ -180,6 +198,13 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
     extraCents: null,
   };
   if (!charge) return plain;
+  // A charge on the bank is in dollars: an invoice in another currency can't be set against it.
+  if (invoice.currency) {
+    return {
+      ...plain,
+      against: { chargeCents: charge.charge.cents, totalMatches: false, linesAddUp: false },
+    };
+  }
   const against = {
     chargeCents: charge.charge.cents,
     totalMatches: invoice.totalCents === charge.charge.cents,
@@ -213,13 +238,16 @@ export function readAgainst(invoice: Invoice, charge: ChargeExplanation | null):
   return { ...plain, against, extraCents: extra };
 }
 
-const money = formatCents;
-const priced = (l: InvoiceLine) =>
-  `${l.description} (${l.cents < 0 ? "-" : ""}${money(Math.abs(l.cents))})`;
+const dollars = formatCents;
 
 // What was read, in plain words: the invoice's own lines and total, and what the lines explain.
 export function readingWords(r: InvoiceReading): string[] {
   const { invoice } = r;
+  // An invoice in another currency keeps its own code: never shown with a dollar sign.
+  const money = (cents: number) =>
+    invoice.currency ? `${(cents / 100).toFixed(2)} ${invoice.currency}` : dollars(cents);
+  const priced = (l: InvoiceLine) =>
+    `${l.description} (${l.cents < 0 ? "-" : ""}${money(Math.abs(l.cents))})`;
   const out = [
     `The invoice lists ${invoice.lines.length === 1 ? "1 line" : `${invoice.lines.length} lines`}:`,
     ...invoice.lines.map((l) => `- ${priced(l)}`),
@@ -232,9 +260,15 @@ export function readingWords(r: InvoiceReading): string[] {
         : `Its total is ${money(invoice.totalCents)}, but the lines I could read come to ${money(invoice.linesCents)}, so I may have missed one.`,
   );
   if (!r.against) return out;
+  if (invoice.currency) {
+    out.push(
+      `This invoice is in ${invoice.currency} and your charge is in dollars, so I won't set one against the other or say which line explains the charge.`,
+    );
+    return out;
+  }
   if (!r.against.totalMatches) {
     out.push(
-      `That isn't the ${money(r.against.chargeCents)} you were charged, so this may be a different invoice, or only part of one: I won't say which line explains the charge.`,
+      `That isn't the ${dollars(r.against.chargeCents)} you were charged, so this may be a different invoice, or only part of one: I won't say which line explains the charge.`,
     );
     return out;
   }
