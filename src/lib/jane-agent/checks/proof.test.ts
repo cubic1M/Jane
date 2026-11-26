@@ -7,7 +7,14 @@ vi.mock("../answer", () => ({
   }),
 }));
 
-import { ask, formatProof, inputFor, unfilledInputs, type PersonProof } from "./proof";
+import {
+  ask,
+  formatProof,
+  inputFor,
+  toolsCovering,
+  unfilledInputs,
+  type PersonProof,
+} from "./proof";
 
 // Spec step 266: the proof's write-up, one table for everyone and a section each.
 
@@ -113,5 +120,16 @@ describe("ask", () => {
     vi.mocked(answerByRules).mockRejectedValueOnce(new Error(""));
     const q = await ask("u1", "how much can I spend", { client: {} as never, now: new Date() });
     expect(q.error).toBe("Unknown rule error");
+  });
+});
+
+describe("the tools behind a suggestion", () => {
+  it("a combined strategist idea runs the tools of each part", () => {
+    expect(toolsCovering("debt:borrowing_power", "borrowing_power")).toEqual([
+      { name: "borrowing_power", topic: "borrowing_power" },
+    ]);
+    const idea = toolsCovering("strategist:debt:borrowing_power+books:data_problems", "idea");
+    expect(idea.map((t) => t.name)).toEqual(["borrowing_power", "books_check", "connections"]);
+    expect(idea[0]).toEqual({ name: "borrowing_power", topic: "borrowing_power" });
   });
 });

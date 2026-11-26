@@ -43,16 +43,25 @@ const NEGATIVE_WORDS =
 // Politeness is no answer: "Tap the button below. Thanks for asking." says nothing.
 const COURTESY =
   /\b(?:thanks|thank you|you're welcome|no problem|happy to help|hope that helps)\b/i;
+// A courtesy sentence is short and says nothing else: no figure, and only a few words.
+const isCourtesy = (sentence: string) =>
+  COURTESY.test(sentence) &&
+  !/\d/.test(sentence) &&
+  sentence.split(/\s+/).filter(Boolean).length <= 5;
 const NOT_ANSWERED = [unknownReply().body, CHAT_UNAVAILABLE_TEXT, ASK_BLOCKED_REPLY];
 
 // True when the reply only points at a button: once the "tap the button" sentences are taken
 // out, fewer than three words are left. "You can save $20. Tap the button." is an answer.
 export function onlyPointsAtButton(body: string): boolean {
   if (!BARE_BUTTON.test(body)) return false;
-  // Clause by clause: "Save $20 by cancelling it; tap the button." keeps its first clause.
+  // Sentence by sentence, a standalone courtesy goes ("Thanks for asking."); a sentence that
+  // only has the word in it stays ("Your balance is $42.00 thanks to the refund."). Then clause by
+  // clause: "Save $20 by cancelling it; tap the button." keeps its first clause.
   const rest = body
-    .split(/(?<=[.!?])\s+|\n|[;,]\s+/)
-    .filter((clause) => !BARE_BUTTON.test(clause) && !COURTESY.test(clause))
+    .split(/(?<=[.!?])\s+|\n/)
+    .filter((sentence) => !isCourtesy(sentence))
+    .flatMap((sentence) => sentence.split(/[;,]\s+/))
+    .filter((clause) => !BARE_BUTTON.test(clause))
     .join(" ");
   return rest.split(/\s+/).filter(Boolean).length < 3;
 }

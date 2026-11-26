@@ -4,7 +4,14 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import type { CheckQuestion } from "./bank";
 import type { Facts } from "./facts";
-import { firstSentence, fixedChecks, fixedScore, reasonOf, type Answer } from "./grade";
+import {
+  firstSentence,
+  fixedChecks,
+  fixedScore,
+  onlyPointsAtButton,
+  reasonOf,
+  type Answer,
+} from "./grade";
 
 // Spec step 87: the fixed checks on one of Jane's answers, each with its reason.
 
@@ -221,6 +228,11 @@ describe("fixedChecks: sign, button-only and capped (CodeRabbit sweep)", () => {
     expect(failed(clause)).not.toContain("written");
     const polite = fixedChecks(q("x"), rules("Tap the button below. Thanks for asking."), facts);
     expect(failed(polite)).toEqual(expect.arrayContaining(["written", "shape"]));
+    // A sentence that only has the word in it is an answer, not a courtesy.
+    expect(onlyPointsAtButton("Your balance is $42.00 thanks to the refund. Tap the button.")).toBe(
+      false,
+    );
+    expect(onlyPointsAtButton("Tap the button below. Thanks for asking.")).toBe(true);
   });
   it("a capped turn is not answered", () => {
     const checks = fixedChecks(

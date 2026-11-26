@@ -182,8 +182,8 @@ export function forTheBeta<T extends Pick<Suggestion, "action" | "more">>(sugges
   );
 }
 
-const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
-const partsOfIdea = (key: string) => key.slice(STRATEGIST_CAPABILITY.length + 1).split("+");
+export const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
+export const partsOfIdea = (key: string) => key.slice(STRATEGIST_CAPABILITY.length + 1).split("+");
 
 // Strategist ideas (step 256) still open and still resting on suggestions that fire tonight,
 // as suggestions again: their confidence is the weakest of those parts', as tonight stands.

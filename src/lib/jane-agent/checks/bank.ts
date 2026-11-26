@@ -60,7 +60,12 @@ const safe = (f: Facts) => [f.safeCents];
 // Spec step 183: answers that are a short list by design.
 const WHOLE: Expect = { intent: "whole_picture", figures: safe, list: true, maxChars: 900 };
 const WHOLE_MONTH: Expect = { intent: "whole_picture", list: true, maxChars: 900 };
-const PAYROLL: Expect = { mentions: /acme/i, avoid: /interest|\$1\.02/i };
+// The employer and when the next pay lands: a date or a day word, not only the name.
+const PAYROLL: Expect = {
+  mentions:
+    /(?=[\s\S]*acme)(?=[\s\S]*\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}|(?:mon|tues|wednes|thurs|fri|satur|sun)day|\d{4}-\d{2}-\d{2}|today|tomorrow)\b)/i,
+  avoid: /interest|\$1\.02/i,
+};
 const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
 const food = (month: (f: Facts) => string) => (f: Facts) => [
   spentOn(f, "Food and drink", month(f)),
@@ -371,7 +376,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "multi-2",
     text: "cancel Hulu and put $50 in my emergency fund",
     needs: "rules",
-    expect: { intent: "multi", avoid: /\bdone\b/i },
+    expect: { intent: "multi", button: "multi.confirm", avoid: /\bdone\b/i },
   },
 
   // Everything Jane did (spec step 187).
@@ -1381,7 +1386,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "and in August?",
     needs: "rules",
     after: "follow-4",
-    expect: { mentions: /target/i },
+    expect: { mentions: /(?=[\s\S]*target)(?=[\s\S]*\baug(?:ust)?\b)/i },
   },
   {
     id: "follow-5",
