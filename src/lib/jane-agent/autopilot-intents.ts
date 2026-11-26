@@ -29,7 +29,11 @@ const NEGATED =
 // "not more than $200" is a limit, not a refusal; "stop asking me and let jane pay" is a grant, but
 // "stop asking me to let jane pay ... I don't want that" is still a refusal.
 const NEGATED_AUTONOMY =
-  /\b(?:don'?t|do not|never|no longer|not|stop(?!\s+(?:asking|checking|bugging|nagging)(?:\s+me)?\s*(?:and|,|then)\b))\b(?!\s+(?:more|over|above|exceed\w*|greater|higher|beyond)\b)[^.?!;]*\b(?:by (?:her|your)self|on (?:her|your) own|automatically|without (?:asking|checking|me))\b/;
+  /\b(?:don'?t|do not|never|no longer|not|stop(?!\s+(?:asking|checking|bugging|nagging)(?:\s+me)?\s*(?:(?:and|then)\b|,)))\b(?!\s+(?:more|over|above|exceed\w*|greater|higher|beyond)\b)[^.?!;]*\b(?:by (?:her|your)self|on (?:her|your) own|automatically|without (?:asking|checking|me))\b/;
+// "Only after I approve them": a grant with a condition on it is not the
+// sector-wide yes it would otherwise read as; the condition is the ask-first level.
+const CONDITIONAL =
+  /\bonly (?:after|if|when|once|with)\b[^.?!;]*\b(?:i|my|me)\b[^.?!;]*\b(?:approv\w*|confirm\w*|ok(?:ay)?|say(?:s)? (?:yes|so)|agree\w*|sign\w* off)\b|\b(?:after|once) i (?:approve|confirm|ok|okay|say yes|sign off)\b/;
 const MONTHLY = /\b(?:a|per|each|every) month\b|\bmonthly\b/;
 const EACH = /\b(?:each|per|a) (?:time|payment|switch|transfer|bill)\b|\bat a time\b/;
 
@@ -46,7 +50,7 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   const sector = sectorIn(text);
   if (!sector) return null;
   const level: SectorLevel | null =
-    ASK.test(text) || NEGATED.test(text) || NEGATED_AUTONOMY.test(text)
+    ASK.test(text) || NEGATED.test(text) || NEGATED_AUTONOMY.test(text) || CONDITIONAL.test(text)
       ? "ask"
       : SAFE.test(text)
         ? "safe"

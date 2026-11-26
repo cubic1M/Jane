@@ -88,9 +88,11 @@ export function documentsReply(view: TaxDocumentsView): MessageParts {
       const status =
         f.check?.status === "differs" && f.document.decision !== "right"
           ? "collected, doesn't match your accounts (not used)"
-          : f.check?.status === "unchecked"
-            ? "collected (nothing in your accounts to check it against)"
-            : "collected, matches your accounts";
+          : f.check?.status === "differs"
+            ? "collected, accepted by you though it differs from your accounts"
+            : f.check?.status === "unchecked"
+              ? "collected (nothing in your accounts to check it against)"
+              : "collected, matches your accounts";
       return `- ${formName(f)}: ${status}`;
     }
     if (f.received) return `- ${formName(f)}: you have it`;

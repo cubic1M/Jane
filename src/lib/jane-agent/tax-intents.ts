@@ -49,6 +49,8 @@ export type TaxIntent =
       to: string;
       month: number | null;
       day: number | null;
+      // "this year" or "last year" when said; the month alone otherwise.
+      relativeYear?: "this" | "last";
     }
   | { kind: "tax"; ask: "work_state"; state: string }
   | { kind: "tax"; ask: "states" }
@@ -150,6 +152,8 @@ const TAG_WORDS: Readonly<Record<string, TaxTagKind>> = {
 };
 const TAG =
   /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?|rental(?: expenses?)?)$/;
+// A tag command, so no other topic reads it ("don't tag mortgage interest" is not a home question).
+export const TAG_COMMAND = /^(?:tag|untag|don'?t tag|do not tag|stop tagging) /;
 const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
@@ -203,7 +207,7 @@ const MONTHS = [
   "december",
 ];
 const MOVE = new RegExp(
-  `\\b(?:i|we) (?:moved|relocated)(?: from (${STATE_NAMES}))? to (${STATE_NAMES})(?: (?:in|on|at the (?:start|beginning|end) of) (${MONTHS.join("|")})(?: (\\d{1,2})(?:st|nd|rd|th)?)?)?(?: this year| last year)?$`,
+  `\\b(?:i|we) (?:moved|relocated)(?: from (${STATE_NAMES}))? to (${STATE_NAMES})(?: (?:in|on|at the (?:start|beginning|end) of) (${MONTHS.join("|")})(?: (\\d{1,2})(?:st|nd|rd|th)?)?)?(?: (this|last) year)?$`,
 );
 const WORK_STATE = new RegExp(
   `\\b(?:i|we) work (?:remotely |from home )?for (?:a |an )?(?:company|employer|firm|business) (?:based |that's |that is )?(?:in|out of) (${STATE_NAMES})\\b|\\bmy (?:employer|company|job) is (?:based )?in (${STATE_NAMES})\\b`,
@@ -315,7 +319,7 @@ const DECISIONS: readonly (readonly [DecisionTopic, RegExp])[] = [
   ],
   [
     "owe",
-    /\bhow much (?:will|would|do) i owe\b|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
+    /\bhow much (?:will|would|do) i owe\b(?=.*\b(?:tax|taxes|irs|federal|return)\b)|^how much (?:will|would) i owe\s*[?.!]?$|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
   ],
   ["refund", /\bhow (?:big|much)\b.*\brefund\b|\b(?:will|am) i (?:get|getting) a refund\b/],
   [
@@ -375,11 +379,10 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
   if (IDENTITY_ASK.test(text)) return { kind: "tax", ask: "identity", sign: null };
   if (NOTICE_ASK.test(text)) return { kind: "tax", ask: "notice" };
-  if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
-    return { kind: "tax", ask: "side_income" };
+  if (!TAG_COMMAND.test(text) && SIDE_INCOME.test(text)) return { kind: "tax", ask: "side_income" };
   if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
   if (RECORDS_ASK.test(text)) return { kind: "tax", ask: "records" };
-  if (HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
+  if (!TAG_COMMAND.test(text) && HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
   for (const [pattern, status] of FILING) {
     if (pattern.test(text)) return { kind: "tax", ask: "set_filing", status };
   }
@@ -401,6 +404,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
         to,
         month: move[3] ? MONTHS.indexOf(move[3]) + 1 : null,
         day: move[4] ? Number(move[4]) : null,
+        ...(move[5] ? { relativeYear: move[5] as "this" | "last" } : {}),
       };
     }
   }

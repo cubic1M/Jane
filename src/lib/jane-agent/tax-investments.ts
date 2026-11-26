@@ -97,9 +97,18 @@ export function investmentsReply(
     view.washSales.length > 0
       ? ` One sale at a loss was a wash sale (${formatCents(view.washSales[0].washDisallowedCents)} can't count).`
       : "";
+  const first = view.harvest[0];
+  // The saving holds only if the sale is not a wash sale: say what has to happen first.
+  const washFirst = first?.washRisk.reinvests
+    ? ` That holds only if you turn off its dividend reinvestment first; buying it again within ${WASH_SALE_DAYS} days either side would make it a wash sale.`
+    : first?.washRisk.boughtRecently
+      ? ` That holds only once your recent purchase of it is more than ${WASH_SALE_DAYS} days past; until then it would be a wash sale.`
+      : first
+        ? ` That holds only if you do not buy it again, or something substantially identical, within ${WASH_SALE_DAYS} days after selling.`
+        : "";
   const harvest =
-    advice && view.harvest[0]
-      ? ` ${view.harvest[0].holding.name} is down ${formatCents(view.harvest[0].lossCents)}: selling it this year would mean about ${formatWholeDollars(harvestSaving(view.harvest[0], estimate))} less tax, by my estimate.`
+    advice && first
+      ? ` ${first.holding.name} is down ${formatCents(first.lossCents)}: selling it this year would mean about ${formatWholeDollars(harvestSaving(first, estimate))} less tax, by my estimate.${washFirst}`
       : "";
   return {
     body: `${realisedLine}${open}${wash}${harvest}`,

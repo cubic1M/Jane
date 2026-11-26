@@ -38,6 +38,19 @@ describe("sector autopilot intents", () => {
     // "Stop asking me" is a grant, not a refusal.
     ["stop asking me and let jane pay my bills automatically", "bills", "all", null, null],
     ["don't let jane pay my bills automatically", "bills", "ask", null, null],
+    // CodeRabbit #2290: the comma form of the same grant.
+    ["stop asking me, let jane pay my bills automatically", "bills", "all", null, null],
+    // CodeRabbit #2294: a condition on the grant keeps the ask-first level.
+    [
+      "stop asking me, let jane pay my bills automatically only after I approve them",
+      "bills",
+      "ask",
+      null,
+      null,
+    ],
+    // An opt-out is still a grant.
+    ["let jane pay my bills unless I say otherwise", "bills", "all", null, null],
+    ["let jane pay my bills by herself only if I say yes first", "bills", "ask", null, null],
     // CodeRabbit #2290: asking to stop being asked to let Jane, then saying no, is a refusal.
     [
       "stop asking me to let jane pay my bills automatically. I don't want that",

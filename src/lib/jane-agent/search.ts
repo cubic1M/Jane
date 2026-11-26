@@ -90,7 +90,9 @@ export async function searchChat(
     await db.janeMessages.findMany({
       where: { AND: where },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: CHAT_SEARCH_RESULTS * 2,
+      // A day asked for is cut to its local date below, so the cut-off waits until after it: sixty
+      // messages of the next day must not push the day's own out of the first rows.
+      ...(query.date ? {} : { take: CHAT_SEARCH_RESULTS }),
       select: { id: true, kind: true, body: true, createdAt: true },
     })
   )
