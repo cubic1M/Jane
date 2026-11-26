@@ -343,19 +343,15 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         }),
       ]);
       // Spec step 94: where it went, as a chart, when no one category was asked about.
-      const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
+      const block =
+        intent.category || intent.shortPeriod
+          ? null
+          : spendingBlock(transactions, asOf, intent.month);
       const answer = spendingReply(intent, transactions, asOf, budgets, {
         drawn: block !== null,
         declined: declined.map((p) => p.key.replace(/^budget:/, "")),
       });
-      // A week or a day was asked for; spending is read a month at a time.
-      const said = intent.shortPeriod
-        ? {
-            ...answer,
-            body: `I read spending a month at a time, not a week or a day, so this is the month so far.\n\n${answer.body}`,
-          }
-        : answer;
-      return block ? { ...said, refs: { ...said.refs, block } } : said;
+      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
