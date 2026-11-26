@@ -816,11 +816,14 @@ async function runChatToolWork(
           usual: c.usualCents === null ? null : money(c.usualCents),
           merchant: c.merchant,
           category: c.category,
+          // "Can act on it" only for a finding that is still open: the same test as openFindingId.
           jane: c.finding?.handledBy
             ? `already acting on it (${c.finding.handledBy === "rule" ? "autopilot" : "they said yes"})`
-            : c.finding
+            : c.finding && (c.finding.status === "new" || c.finding.status === "shown")
               ? `can act on it with finding ${c.finding.id}`
-              : null,
+              : c.finding
+                ? "there was a finding about it, no longer open"
+                : null,
           openFindingId:
             c.finding && (c.finding.status === "new" || c.finding.status === "shown")
               ? c.finding.id
@@ -1261,33 +1264,40 @@ async function runChatToolWork(
         });
       }
       return out({
-        accounts: forecasts.map((f) => ({
-          account: f.accountName,
-          balanceToday: money(f.todayCents),
-          // An uploaded statement's balance, when it isn't today's: today's is walked forward.
-          ...(f.startCents !== f.todayCents || f.startOn !== input.asOf
-            ? { statementBalance: money(f.startCents), statementBalanceOn: f.startOn }
-            : {}),
-          lowestPoint: money(f.lowest.balanceCents),
-          lowestOn: f.lowest.date,
-          goesNegative: f.lowest.balanceCents < 0,
-          billsBeforeThen: f.bills
-            .filter((b) => b.date <= f.lowest.date)
-            .map((b) => ({ what: b.merchant, on: b.date, amount: money(b.amountCents) })),
-          depositsBeforeThen: f.income
-            .filter((i) => i.date <= f.lowest.date)
-            .map((i) => ({ from: i.merchant, on: i.date, amount: money(i.amountCents) })),
-          // The low point is often the day before payday, so none come before it, and Claude
-          // read that as no pay coming (walk batch 1, 11-18: "I can't tell when your next
-          // paycheck lands" over three paychecks two weeks apart).
-          nextDeposit: f.income[0]
+        accounts: forecasts.map((f) =>
+          f.staleFrom
             ? {
-                from: f.income[0].merchant,
-                on: f.income[0].date,
-                amount: money(f.income[0].amountCents),
+                account: f.accountName,
+                note: `This account's latest balance is from ${f.staleFrom}, too old to forecast from. Say so; don't say whether it will go negative.`,
               }
-            : null,
-        })),
+            : {
+                account: f.accountName,
+                balanceToday: money(f.todayCents),
+                // An uploaded statement's balance, when it isn't today's: today's is walked forward.
+                ...(f.startCents !== f.todayCents || f.startOn !== input.asOf
+                  ? { statementBalance: money(f.startCents), statementBalanceOn: f.startOn }
+                  : {}),
+                lowestPoint: money(f.lowest.balanceCents),
+                lowestOn: f.lowest.date,
+                goesNegative: f.lowest.balanceCents < 0,
+                billsBeforeThen: f.bills
+                  .filter((b) => b.date <= f.lowest.date)
+                  .map((b) => ({ what: b.merchant, on: b.date, amount: money(b.amountCents) })),
+                depositsBeforeThen: f.income
+                  .filter((i) => i.date <= f.lowest.date)
+                  .map((i) => ({ from: i.merchant, on: i.date, amount: money(i.amountCents) })),
+                // The low point is often the day before payday, so none come before it, and Claude
+                // read that as no pay coming (walk batch 1, 11-18: "I can't tell when your next
+                // paycheck lands" over three paychecks two weeks apart).
+                nextDeposit: f.income[0]
+                  ? {
+                      from: f.income[0].merchant,
+                      on: f.income[0].date,
+                      amount: money(f.income[0].amountCents),
+                    }
+                  : null,
+              },
+        ),
       });
     }
     case "alerts": {
@@ -1295,11 +1305,13 @@ async function runChatToolWork(
       // since disconnected.
       const alerts = await alertsThatHold(
         userId,
-        await newestUnreadAlerts(userId, { client, limit: 10 }),
+        // More than ten are read: the ones for a bank since disconnected drop out, and the ten
+        // shown are the newest that still hold, not the newest ten of which some were dropped.
+        await newestUnreadAlerts(userId, { client, limit: 50 }),
         { client, now },
       );
       return out({
-        unread: alerts.map((a) => ({
+        unread: alerts.slice(0, 10).map((a) => ({
           title: a.title,
           what: a.body,
           on: a.createdAt.toISOString().slice(0, 10),

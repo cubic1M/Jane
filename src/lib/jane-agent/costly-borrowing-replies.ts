@@ -24,7 +24,7 @@ export function wayOutLines(d: CostlyBorrowing): string[] {
   return [
     `- ${a.pal.label}: ${formatCents(a.pal.amountCents)} over ${a.pal.termMonths} months at up to ${formatRate(a.pal.aprBps)}, ${formatCents(a.pal.paymentCents)} a month, ${formatCents(a.pal.totalCostCents)} in interest and fees in all. A payday loan on the same amount costs about ${formatCents(a.pal.paydayFeeCents)} every two weeks.`,
     `- ${EMPLOYER_ADVANCE.label}: ${a.employer}`,
-    `- A buffer: set aside ${formatCents(a.buffer.monthlyCents)} a month and you'd have ${formatCents(a.buffer.targetCents)} in ${a.buffer.months} months, so the next gap before payday doesn't need a loan.`,
+    `- A buffer: set aside ${formatCents(a.buffer.monthlyCents)} a month and you'd have ${formatCents(a.buffer.targetCents)} in ${a.buffer.months} months, so a gap before payday may need less borrowing.`,
   ];
 }
 

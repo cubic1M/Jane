@@ -64,8 +64,12 @@ const RULES: { outcome: ReplyOutcome; patterns: RegExp[] }[] = [
       /\brefund (has been|was|is being) (processed|issued|approved)\b/i,
       /\b(processed|issued|approved) (a|the|your) refund\b/i,
       /\bkeep (your|the) (previous|old|current) price\b/i,
-      /\bwe('ve| have) (applied|reversed|credited)\b/i,
-      /\bwe('ve| have) (cancell?ed|closed)\b/i,
+      // What was done, not only that something was: "applied a temporary hold" isn't a refund and
+      // "closed your ticket" isn't a cancelled account.
+      /\bwe('ve| have) applied (a|the|your) (credit|refund|discount|adjustment|price|rate|(new|lower|reduced) (price|rate|fee|charge))\b/i,
+      /\bwe('ve| have) reversed (the|your|a|that) (annual |duplicate |monthly |late |extra |double |renewal |service )?(charge|fee|payment|renewal)\b/i,
+      /\bwe('ve| have) credited (your|the) (account|card|balance|refund)\b/i,
+      /\bwe('ve| have) (cancell?ed|closed) (your|the) (account|subscription|membership|plan|service)\b/i,
       /\b(subscription|account|membership) (has been|was|is now) (cancell?ed|closed)\b/i,
     ],
   },
@@ -94,7 +98,12 @@ function sentences(body: string): string[] {
 
 // The rules read the body alone: a subject line ("Re: Request from ...") isn't the answer.
 export function readReplyByRules(body: string): ReplyReading {
-  const rule = RULES.find((r) => r.patterns.some((p) => p.test(body)));
+  // What they wrote now, not the quoted history of what was said before ("> We have cancelled...").
+  const current = body
+    .split("\n")
+    .filter((line) => !line.trim().startsWith(">"))
+    .join("\n");
+  const rule = RULES.find((r) => r.patterns.some((p) => p.test(current)));
   const outcome = rule?.outcome ?? "unclear";
   const all = sentences(body);
   // The sentence that says what happened, or the first that isn't a pleasantry.

@@ -31,7 +31,14 @@ export const creditBuildingSource: MessageSource = {
         out.push({
           kind: "decision",
           body: line,
-          refs: { advice: true, creditStatement: { accountId: s.accountId, closesOn: s.closesOn } },
+          refs: {
+            advice: true,
+            creditStatement: {
+              accountId: s.accountId,
+              closesOn: s.closesOn,
+              amountCents: s.suggested.amountCents,
+            },
+          },
           actions: [payButton(), CREDIT_PAGE, snoozeButton()],
           dedupeKey: `statement:${s.accountId}:${s.closesOn}`,
           priority: MESSAGE_PRIORITY.statement_pay,

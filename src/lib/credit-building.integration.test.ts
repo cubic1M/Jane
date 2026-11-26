@@ -129,6 +129,23 @@ describe.runIf(url)("building credit against a real database", { timeout: 120_00
     });
   });
 
+  // CodeRabbit part 2: a tap pays the amount the card showed, never a different one.
+  it("refuses a tap whose amount is not the one on the card, and pays when it is", async () => {
+    const id = await demoPerson("build-amount");
+    const s = (await loadCreditBuilding(id, opts())).statement!;
+    const target = { accountId: s.accountId, closesOn: s.closesOn };
+    await expect(
+      payBeforeStatement(id, { ...target, amountCents: s.suggested!.amountCents + 100 }, opts()),
+    ).rejects.toThrow(/amount has changed/);
+    expect(await client.moneyTransfer.count({ where: { userId: id } })).toBe(0);
+    const paid = await payBeforeStatement(
+      id,
+      { ...target, amountCents: s.suggested!.amountCents },
+      opts(),
+    );
+    expect(paid.amountCents).toBe(s.suggested!.amountCents);
+  });
+
   it("never pays on its own at Ask me first; at Handle the safe stuff it does, within the caps", async () => {
     const id = await demoPerson("build-auto");
     expect(await runCreditBuilding(id, opts())).toBe(false);

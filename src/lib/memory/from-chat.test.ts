@@ -46,6 +46,26 @@ describe("facts from the chat", () => {
     expect(factsFromChat("can I rent out my spare room?")).toEqual([]);
   });
 
+  // CodeRabbit part 2: each of these used to be kept as a high-confidence fact about the person.
+  it("does not take a car rental for a home, a denial for a side gig, or a diagnosis for a goal", () => {
+    expect(said("I rent a car for work")).toEqual({});
+    expect(said("I rent my apartment from a friend")).toEqual({ housing: "rent" });
+    expect(said("I rent in Oakland.")).toEqual({ housing: "rent" });
+    expect(said("I don't have a side gig")).toEqual({});
+    expect(said("I have a side gig")).toEqual({ side_gig: true });
+    expect(said("I'm saving for epilepsy treatment")).toEqual({});
+    expect(said("I'm saving for a car")).toEqual({ "goal:car": "car" });
+  });
+
+  it("keeps a goal only when every word of it is ordinary", () => {
+    expect(said("I'm saving for an epilepsy treatment fund")).toEqual({});
+    expect(said("I want to pay off my daughter's tutor")).toEqual({});
+    expect(said("I'm saving for a down payment on a house")).toEqual({
+      "goal:down_payment_on_a_house": "down payment on a house",
+    });
+    expect(said("I rent a small apartment")).toEqual({ housing: "rent" });
+  });
+
   it("labels each fact in plain words", () => {
     expect(factsFromChat("I rent")[0]).toEqual({
       key: "housing",
