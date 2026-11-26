@@ -1,4 +1,5 @@
 import { RETENTION, RETENTION_REMIND_DAYS } from "@/config/records";
+import { ITEMIZED } from "@/config/tax-rates";
 import { addDays } from "@/lib/dates";
 import { centsToInput } from "@/lib/money";
 
@@ -24,11 +25,31 @@ export type Evidence =
 export type AuditItem = {
   key: string;
   label: string;
+  // What the estimate counts, and nothing else.
   claimedCents: number;
+  // All that was paid, where only a part of it can count: its own figure, with its own label.
+  gross?: { label: string; cents: number };
   evidence: Evidence[];
   // What's still needed to back it up (e.g. a charity's receipt for a big gift).
   needs: string[];
 };
+
+// Medical costs count only above a share of income, and only when itemizing beats the standard
+// deduction.
+export function medicalFigures(
+  paidCents: number,
+  deduction: { kind: "standard" | "itemized"; itemized: { medicalCents: number } },
+): Required<Pick<AuditItem, "claimedCents" | "gross">> {
+  const claimedCents = deduction.kind === "itemized" ? deduction.itemized.medicalCents : 0;
+  const floor = `${ITEMIZED.medicalFloorShare * 100}%`;
+  const label =
+    deduction.kind === "standard"
+      ? "All medical costs paid (the estimate takes the standard deduction, so none is claimed)"
+      : claimedCents > 0
+        ? `All medical costs paid, before the ${floor} of income floor`
+        : `All medical costs paid, none over ${floor} of income`;
+  return { claimedCents, gross: { label, cents: paidCents } };
+}
 
 export type AuditPack = {
   year: number;
@@ -41,12 +62,13 @@ export type AuditPack = {
 };
 
 export function buildAuditPack(year: number, candidates: AuditItem[]): AuditPack {
-  const withSource = candidates.filter((c) => c.claimedCents > 0 && c.evidence.length > 0);
+  const counted = candidates.filter((c) => c.claimedCents > 0 || (c.gross?.cents ?? 0) > 0);
+  const withSource = counted.filter((c) => c.evidence.length > 0);
   return {
     year,
     items: withSource,
-    gaps: candidates
-      .filter((c) => c.claimedCents > 0 && c.evidence.length === 0)
+    gaps: counted
+      .filter((c) => c.evidence.length === 0)
       .map((c) => ({
         ...c,
         needs: c.needs.length > 0 ? c.needs : ["A document or receipt for it."],
@@ -172,6 +194,9 @@ export function auditPackCsv(pack: AuditPack): string {
   const rows: string[][] = [["Item", "Source", "Date", "Detail", "Amount"]];
   for (const item of pack.items) {
     rows.push([item.label, "Claimed", "", "", centsToInput(item.claimedCents)]);
+    if (item.gross) {
+      rows.push([item.label, item.gross.label, "", "", centsToInput(item.gross.cents)]);
+    }
     for (const e of item.evidence) rows.push([item.label, ...evidenceText(e)]);
     for (const n of item.needs) rows.push([item.label, "Still needed", "", n, ""]);
   }

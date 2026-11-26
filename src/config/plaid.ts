@@ -76,6 +76,15 @@ export const CRON_SYNC_LIMIT = 25;
 // no clock): the rest, oldest first, wait for tomorrow's run (or a webhook before it).
 export const CRON_SYNC_BUDGET_MS = 120_000;
 
+// The nightly request as a whole (maxDuration is 300 s): past this no step starts and the one under
+// way isn't waited for, so the run is still recorded.
+export const CRON_REQUEST_BUDGET_MS = 270_000;
+// Kept for the steps after the bank syncs: a sync still under way is waited for only until this much
+// of the night is left.
+export const CRON_AFTER_SYNC_RESERVE_MS = 120_000;
+// The banks' least, when the work before them has already used into that: they aren't skipped.
+export const CRON_SYNC_LEAST_MS = 20_000;
+
 // Webhooks signed longer ago than this are rejected as possible replays (Plaid's advice).
 export const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 

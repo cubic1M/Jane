@@ -29,11 +29,11 @@ describe("the Robinhood box on the Investing page", () => {
     vi.clearAllMocks();
   });
 
-  it("is nothing at all with the switch off, without even reading", async () => {
+  // robinhood-panel-off.test.tsx covers someone who still has a stored connection.
+  it("is nothing at all with the switch off and nothing stored", async () => {
     vi.stubEnv("ROBINHOOD_LINK", "");
     expect(await render()).toBeNull();
     expect(mocks.whyCantConnect).not.toHaveBeenCalled();
-    expect(mocks.connectionView).not.toHaveBeenCalled();
   });
 
   it.each(["trial", "demo"])("is nothing for a %s person", async (why) => {

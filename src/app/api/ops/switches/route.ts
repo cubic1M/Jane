@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { type SwitchTier, isKillSwitch, mayChange } from "@/config/kill-switches";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { cronAuthorized } from "@/lib/cron-auth";
+import { alertError } from "@/lib/error-alerts";
+import { log } from "@/lib/log";
 import { setSwitch, switchesOn } from "@/lib/ops-switches";
 
 const TIERS: readonly [SwitchTier, string][] = [
@@ -23,6 +25,34 @@ function tierOf(request: Request): SwitchTier | null {
 export async function GET(request: Request) {
   if (!tierOf(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json({ on: await switchesOn() });
+}
+
+// The switch is set first, and stands: an emergency stop never waits on the audit log. A record
+// that can't be written reaches the team instead, with what was switched.
+async function record(name: string, on: boolean, how: { tier: SwitchTier; trigger: string }) {
+  try {
+    await logAudit(
+      SYSTEM_ACTOR,
+      "ops_switch_set",
+      { type: "ops_switch", id: name },
+      { on, ...how },
+    );
+  } catch (error) {
+    const word = on ? "on" : "off";
+    log.error("A switch change wasn't recorded", {
+      switch: name,
+      on,
+      ...how,
+      error: error instanceof Error ? error.name : "Error",
+    });
+    await alertError(
+      {
+        message: `SwitchNotRecorded: ${name} turned ${word}, with no audit record`,
+        path: `/api/ops/switches/${name}-${word}`,
+      },
+      { pastCeiling: true },
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -50,13 +80,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "OPS_SWITCHES isn't on" }, { status: 409 });
   }
   const changed = await setSwitch(name, on, { tier, trigger });
-  if (changed) {
-    await logAudit(
-      SYSTEM_ACTOR,
-      "ops_switch_set",
-      { type: "ops_switch", id: name },
-      { on, tier, trigger },
-    );
-  }
+  if (changed) await record(name, on, { tier, trigger });
   return NextResponse.json({ changed, on: await switchesOn() });
 }

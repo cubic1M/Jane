@@ -16,6 +16,7 @@ import { todayOf } from "@/lib/today";
 import {
   buildAuditPack,
   matchReceipts,
+  medicalFigures,
   retentionSchedule,
   type AuditItem,
   type AuditPack,
@@ -145,10 +146,13 @@ export async function loadAuditRecords(
         needs.push(`The charity's receipt for your gift to ${t.payee}.`);
       }
     }
+    const paidCents = rows.reduce((s, t) => s + t.amountCents, 0);
     candidates.push({
       key: TAG_KEY[tag],
       label: TAX_TAGS[tag].plural.replace(/^./, (c) => c.toUpperCase()),
-      claimedCents: rows.reduce((s, t) => s + t.amountCents, 0),
+      ...(tag === "medical"
+        ? medicalFigures(paidCents, estimate.estimate.deduction)
+        : { claimedCents: paidCents }),
       evidence,
       needs,
     });

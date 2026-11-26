@@ -20,6 +20,9 @@ export const NEWS_MAX_OUTPUT_TOKENS = 3_000;
 export const NEWS_INPUT_TOKENS_PER_HEADLINE = 80;
 export const NEWS_INPUT_TOKENS_FIXED = 600;
 
+// The longest the daily job spends on news; what isn't done by then waits for tomorrow.
+export const NEWS_CRON_BUDGET_MS = 30_000;
+
 // How far back the job looks for headlines and filings, in days.
 export const NEWS_LOOKBACK_DAYS = 7;
 export const FILINGS_LOOKBACK_DAYS = 90;

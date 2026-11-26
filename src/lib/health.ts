@@ -78,7 +78,17 @@ export type JobHealth = {
   lastOk: boolean | null;
   lastSuccessAt: Date | null;
   missed: boolean;
+  // What went partly wrong in a run that still ended well.
+  note: string | null;
 };
+
+// The nightly bank job ends well when only some syncs failed: how many.
+function partlyFailed(name: string, summary: unknown): string | null {
+  if (name !== "plaid-sync") return null;
+  const { synced, failed } = (summary ?? {}) as { synced?: unknown; failed?: unknown };
+  if (typeof synced !== "number" || typeof failed !== "number" || failed === 0) return null;
+  return `${failed} of ${synced + failed} bank syncs failed`;
+}
 
 export async function jobHealth({
   client = defaultClient,
@@ -91,7 +101,7 @@ export async function jobHealth({
         systemDb(WHY, client).cronRun.findFirst({
           where: { name },
           orderBy: { startedAt: "desc" },
-          select: { startedAt: true, ok: true },
+          select: { startedAt: true, ok: true, summary: true },
         }),
         systemDb(WHY, client).cronRun.findFirst({
           where: { name, ok: true },
@@ -110,6 +120,7 @@ export async function jobHealth({
         lastRunAt: last?.startedAt ?? null,
         lastOk: last?.ok ?? null,
         lastSuccessAt,
+        note: last?.ok ? partlyFailed(name, last.summary) : null,
         // A job that has never run isn't "missed" yet: it may just be new. One that has run
         // for longer than that without ever succeeding is.
         missed:

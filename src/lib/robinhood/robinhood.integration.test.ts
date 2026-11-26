@@ -65,6 +65,8 @@ const disconnect = () =>
 describe.runIf(url)("the Robinhood connection", () => {
   let fake: FakeRobinhood;
   const people: string[] = [];
+  // This suite's own fake servers: other suites' sign-in clients may be in use.
+  const issuers: string[] = [];
   const said: string[] = [];
 
   async function person(id?: string) {
@@ -110,13 +112,12 @@ describe.runIf(url)("the Robinhood connection", () => {
   });
   afterAll(async () => {
     await system().user.deleteMany({ where: { id: { in: people } } });
-    await system().robinhoodOauthClient.deleteMany({
-      where: { issuer: { contains: "127.0.0.1" } },
-    });
+    await system().robinhoodOauthClient.deleteMany({ where: { issuer: { in: issuers } } });
     vi.unstubAllEnvs();
   });
   beforeEach(async () => {
     fake = await new FakeRobinhood().start();
+    issuers.push(fake.mcpUrl);
     vi.stubEnv("ROBINHOOD_LINK", "1");
     vi.stubEnv("ROBINHOOD_MCP_URL", fake.mcpUrl);
     vi.stubEnv("KILL_BANKS", "");
@@ -143,7 +144,8 @@ describe.runIf(url)("the Robinhood connection", () => {
     });
 
   describe("switched off", () => {
-    it("every route answers 404, nothing reaches the server, and no refresh runs", async () => {
+    // disconnect-off.integration.test.ts: someone with a stored connection can still end it.
+    it("every route answers 404 to someone with nothing stored, and no refresh runs", async () => {
       const userId = await person();
       session.userId = userId;
       vi.stubEnv("ROBINHOOD_LINK", "");
