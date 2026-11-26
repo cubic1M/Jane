@@ -99,7 +99,10 @@ function inOrder(dates: (string | null)[]): boolean {
 // How a column writes its numeric dates. Null: none are numeric (ISO or text dates, or not
 // dates at all), so there is nothing to ask. "unknown": the dates can't tell, ask the person.
 export function detectDateOrder(values: string[]): DateOrder | "unknown" | null {
-  const numeric = values.map(numericParts).filter((p) => p !== null);
+  // Only values that are dates in some order count as evidence: "99/01/2026" is none, and must
+  // not settle day-first for the rows that are.
+  const readable = values.filter((v) => numericParts(v) !== null && looksLikeDate(v));
+  const numeric = readable.map(numericParts).filter((p) => p !== null);
   if (numeric.length === 0) return null;
   if (numeric.every(([a, b]) => a === b)) return "mdy";
   const dayFirst = numeric.some(([a]) => a > 12);
@@ -108,8 +111,8 @@ export function detectDateOrder(values: string[]): DateOrder | "unknown" | null 
   // Neither (or both, a mixed column): settled only when one order keeps the rows in date
   // order and the other doesn't.
   if (dayFirst && monthFirst) return "unknown";
-  const asMdy = inOrder(values.filter((v) => numericParts(v)).map((v) => parseDate(v, "mdy")));
-  const asDmy = inOrder(values.filter((v) => numericParts(v)).map((v) => parseDate(v, "dmy")));
+  const asMdy = inOrder(readable.map((v) => parseDate(v, "mdy")));
+  const asDmy = inOrder(readable.map((v) => parseDate(v, "dmy")));
   if (asMdy !== asDmy) return asMdy ? "mdy" : "dmy";
   return "unknown";
 }
