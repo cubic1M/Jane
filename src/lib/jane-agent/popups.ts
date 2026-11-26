@@ -2,6 +2,7 @@ import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { GREETING_START, HELLO_START, MORNING_BRIEF } from "@/config/agent-chat";
 import { isChoice } from "./choices";
+import { isUndoId } from "./undo-id";
 import type { MessageKind } from "./types";
 import type { MessageView } from "./view";
 
@@ -29,7 +30,7 @@ export function isPopup(m: MessageView): boolean {
     m.kind !== "reply" &&
     m.status === "open" &&
     !m.options &&
-    m.buttons.some((b) => !b.id.startsWith("undo."))
+    m.buttons.some((b) => !isUndoId(b.id))
   );
 }
 
@@ -152,7 +153,7 @@ export function firstSentence(text: string): string {
 
 export function popupCard(m: MessageView): PopupCard {
   // Chosen: its choices as they were, the chosen one marked (src/components/floating-cards.tsx).
-  const live = m.chosen ? m.chosen.choices : m.buttons.filter((b) => !b.id.startsWith("undo."));
+  const live = m.chosen ? m.chosen.choices : m.buttons.filter((b) => !isUndoId(b.id));
   const snooze = live.find((b) => b.id === "snooze") ?? null;
   const rest = live.filter((b) => b !== snooze);
   const primary = rest.find((b) => b.kind === "primary");

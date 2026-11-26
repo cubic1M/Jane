@@ -13,6 +13,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { summarize, TITLE_LOAN_NAMES } from "@/planning/costly-borrowing";
 import { formatCents, formatWholeDollars } from "@/lib/money";
+import { subscriptionTrimCents } from "@/lib/subscription-trim";
 import { type Detector, suggestion } from "./contract";
 import {
   cashLine,
@@ -96,11 +97,11 @@ const subscriptions: Detector = {
       title: "Go through your subscriptions and cancel the ones you don't use",
       headline: headlineOf(
         "Cancel subscriptions you don't use",
-        Math.round(yearly * R.subscriptionTrimShare),
+        subscriptionTrimCents(yearly),
         "saves",
       ),
       short: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions.`,
-      worthCents: Math.round(yearly * R.subscriptionTrimShare),
+      worthCents: subscriptionTrimCents(yearly),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, n, "subscription charges"),
       urgency: "later",

@@ -53,6 +53,7 @@ import {
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { markPrimerStale } from "../primer-store";
+import { isUndoId } from "../undo-id";
 import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNever, undoNo, undoRule, undoSnooze, undoSuggestNever } from "./undo";
@@ -568,7 +569,7 @@ async function takeChatActionWork(
     throw new ChatActionError("not_offered", "That button isn't on this message.");
   }
   const { undoUntil } = message.refs;
-  if (actionId.startsWith("undo.") && undoUntil && new Date(undoUntil) <= now) {
+  if (isUndoId(actionId) && undoUntil && new Date(undoUntil) <= now) {
     throw new ChatActionError("expired", "It's too late to undo this one.");
   }
 

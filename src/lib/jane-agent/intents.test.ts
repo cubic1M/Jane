@@ -70,6 +70,14 @@ describe("parseAmount", () => {
 });
 
 // Night QA 10-30: "how much do I spend on daycare" found no spending on "daycare".
+describe("a typed transfer undo", () => {
+  it("names the transfer, so a rule approval is not offered instead", () => {
+    expect(parse("undo the transfer")).toEqual({ kind: "undo", transfer: true });
+    expect(parse("cancel my last transfer")).toEqual({ kind: "undo", transfer: true });
+    expect(parse("undo")).toEqual({ kind: "undo" });
+  });
+});
+
 describe("matchCategory", () => {
   it("reads childcare words as Services, where Plaid puts childcare", () => {
     for (const word of ["daycare", "childcare"]) {

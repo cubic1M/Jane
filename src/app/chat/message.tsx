@@ -5,6 +5,7 @@ import { useActionState, useEffect, useOptimistic, useState } from "react";
 import { AiWrittenLabel } from "@/components/ai-written-label";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { concise } from "@/lib/jane-agent/popups";
+import { isUndoId } from "@/lib/jane-agent/undo-id";
 import type { MessageView } from "@/lib/jane-agent/view";
 import {
   DONE_ACTION,
@@ -89,8 +90,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
   // Revert and Done belong to the floating card: the chat keeps no trace of a choice (founder
   // 11-11).
   const buttons = message.buttons.filter(
-    (b) =>
-      !(undoExpired && b.id.startsWith("undo.")) && b.id !== DONE_ACTION && b.id !== REVERT_ACTION,
+    (b) => !(undoExpired && isUndoId(b.id)) && b.id !== DONE_ACTION && b.id !== REVERT_ACTION,
   );
 
   if (!message.fromJane) {

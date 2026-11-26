@@ -1273,6 +1273,15 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
   );
 }
 
+// "Undo the transfer": the button is on the plan's own message, and works while the transfer is
+// still pending; a transfer that has gone through can't be taken back from here.
+export function undoTransferReply(): Reply {
+  return reply(
+    'To take back a transfer from a plan, tap "Undo the transfer" on that plan\'s message in this chat. It works while the transfer is still pending; one that has gone through stays.',
+    [openLink("Open the plan", "/plan")],
+  );
+}
+
 // "Pause autopilot": offers the switch to "Ask me first".
 export function pauseReply(level: string | null): Reply {
   const settings = openLink("Autopilot settings", "/settings#autopilot");

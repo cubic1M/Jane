@@ -48,7 +48,7 @@ export type Intent =
   // Spec step 139: "how much have you saved me?"
   | { kind: "saved" }
   | { kind: "approve_all" }
-  | { kind: "undo" }
+  | { kind: "undo"; transfer?: true }
   | { kind: "pause_autopilot" }
   // amountCents is null when no amount was given; month (YYYY-MM) null means now.
   // category: the person's words when they name a spending category ("food"), for the
@@ -466,6 +466,8 @@ const CHECKED =
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
+const UNDO_TRANSFER =
+  /^(?:undo|cancel|take back) (?:the|my|that|this) (?:last |latest |pending |simulated )?(?:transfers?|moves?)$/;
 // Asking whether a purchase is OK without the word "afford": "can I spend $500 on food
 // this week", "should I buy a $1,200 laptop", "is it ok to spend 300 on clothes", "do I
 // have enough for a $900 trip". Only with an amount; without one, "how much can I spend"
@@ -838,6 +840,7 @@ export function parseIntent(
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  if (UNDO_TRANSFER.test(text)) return { kind: "undo", transfer: true };
   // Spec step 136: "what's a deductible?" is a question about the word, before the sectors.
   const learn = parseLearnIntent(text);
   if (learn) return learn;
