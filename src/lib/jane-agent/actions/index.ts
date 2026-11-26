@@ -515,8 +515,12 @@ export async function takeChatAction(
     throw new ChatActionError("not_found", "That message isn't there anymore.");
   }
   const tap = `${userId}:${messageId}`;
-  if (!(await hit("chatTapInFlight", tap, options)).ok) {
-    await giveBack("chatTapInFlight", tap, options);
+  // One instant for taking the place and for giving it back, so the release always lands on the
+  // window that was counted, never on the next one's (which may be another tap's).
+  const at = options.now ?? new Date();
+  const placed = { ...options, now: at };
+  if (!(await hit("chatTapInFlight", tap, placed)).ok) {
+    await giveBack("chatTapInFlight", tap, placed);
     throw new ChatActionError("not_open", "This one's already being answered.");
   }
   try {
@@ -524,7 +528,7 @@ export async function takeChatAction(
       takeChatActionWork(userId, messageId, actionId, { ...options, client }),
     );
   } finally {
-    await giveBack("chatTapInFlight", tap, options).catch(() => {});
+    await giveBack("chatTapInFlight", tap, placed).catch(() => {});
   }
 }
 
@@ -560,7 +564,13 @@ async function takeChatActionWork(
   const outcome = await handler.run({ userId, message, action, client, now, choice });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
-  await markPrimerStale(userId, { client, now });
+  // The handler's work is done: Claude's copy of the numbers going stale late must not leave the
+  // message open to be tapped again (a second transfer for the same step).
+  await markPrimerStale(userId, { client, now }).catch((error) => {
+    console.error("marking the primer stale failed after a tap", {
+      error: error instanceof Error ? error.name : "unknown",
+    });
+  });
   // Spec step 230: each button of a debt review is its own item. The message stays open,
   // without the button just used, until every item has been dealt with.
   const review = message.refs.reviewButtons ?? [];
@@ -575,9 +585,10 @@ async function takeChatActionWork(
     : (outcome.status ?? "answered");
   const refs = { ...(outcome.refs ?? message.refs) };
   if (outcome.note) refs.note = outcome.note;
-  // Only if no other tap changed it meanwhile.
+  // Only if no other tap changed it meanwhile, and it was not brought back in place with new words
+  // and buttons (a refresh sets a new createdAt): an old outcome never covers the new message.
   await db.janeMessages.updateMany({
-    where: { id: message.id, status: message.status },
+    where: { id: message.id, status: message.status, createdAt: message.createdAt },
     data: {
       status,
       ...(outcome.body ? { body: outcome.body } : {}),
@@ -603,15 +614,23 @@ async function takeChatActionWork(
     );
     await track(userId, "chat_action_taken", { action: actionId, kind: message.kind });
   };
-  if (defer && !outcome.posted) {
-    defer(async () => {
+  // The audit row never waits on the cleanup: it is written whether closing the others worked.
+  const closeThenSettle = async () => {
+    try {
       await closeSettled(userId, { client, now });
+    } finally {
       await settle();
-    });
+    }
+  };
+  if (defer && !outcome.posted) {
+    defer(closeThenSettle);
   } else {
-    await closeSettled(userId, { client, now });
-    if (defer) defer(settle);
-    else await settle();
+    try {
+      await closeSettled(userId, { client, now });
+    } finally {
+      if (defer) defer(settle);
+      else await settle();
+    }
   }
 
   const updated = await db.janeMessages.findFirst({

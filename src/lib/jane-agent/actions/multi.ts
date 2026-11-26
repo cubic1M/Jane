@@ -1,6 +1,6 @@
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
-import { cancelTransfer, scheduleTransfer } from "@/lib/money-movement/transfers";
+import { TransferError, cancelTransfer, scheduleTransfer } from "@/lib/money-movement/transfers";
 import { postMessages } from "../messages";
 import type { MultiResult, MultiStep } from "../types";
 import { ChatActionError, linksOf, type ActionContext, type ActionHandler } from "./handler";
@@ -13,13 +13,16 @@ import { dayLabel } from "@/lib/day-label";
 // transfer through the money-movement partner. The first that fails stops the rest and
 // says why. Transfers can be undone while they're pending.
 
+// A step's result, and the background work it queued (a switch's agent job) for the caller to run.
+type Step = MultiResult & { agentJobIds: (string | undefined)[]; agentActionIds: string[] };
+
 async function runStep(
   { userId, message, client, now }: ActionContext,
   step: MultiStep,
   n: number,
-): Promise<MultiResult> {
+): Promise<Step> {
   if (step.kind === "transfer") {
-    const { id, runOn } = await scheduleTransfer(
+    const { id, runOn, awaitingPartner } = await scheduleTransfer(
       userId,
       {
         fromAccountId: step.fromAccountId,
@@ -34,11 +37,12 @@ async function runStep(
       "person",
       { client, now },
     );
-    return {
-      status: "done",
-      note: `${formatCents(step.amountCents)} goes to ${step.goalName} on ${dayLabel(runOn)}; you can undo it until then.`,
-      transferId: id,
-    };
+    // A big move out of a shared account has not gone to the partner yet: it waits for the other
+    // person's tap, and Undo cancels the request.
+    const note = awaitingPartner
+      ? `${formatCents(step.amountCents)} to ${step.goalName} waits for your partner's OK before it is scheduled; you can undo the request until then.`
+      : `${formatCents(step.amountCents)} goes to ${step.goalName} on ${dayLabel(runOn)}; you can undo it until then.`;
+    return { status: "done", note, transferId: id, agentJobIds: [], agentActionIds: [] };
   }
   // The feature's own message for this step, hidden behind the plan, then its own button.
   const dedupeKey = `multi:${message.id}:${n}`;
@@ -63,12 +67,17 @@ async function runStep(
     select: { id: true },
   });
   if (!row) throw new ChatActionError("failed", "That step couldn't start.");
-  const { message: answered } = await takeChatAction(userId, row.id, step.action, {
+  const taken = await takeChatAction(userId, row.id, step.action, {
     client,
     now,
     ...(step.choice ? { choice: step.choice } : {}),
   });
-  return { status: "done", note: answered.refs.note ?? "Done." };
+  return {
+    status: "done",
+    note: taken.message.refs.note ?? "Done.",
+    agentJobIds: taken.agentJobIds,
+    agentActionIds: taken.agentActionIds,
+  };
 }
 
 export const multiConfirm: ActionHandler = {
@@ -79,13 +88,22 @@ export const multiConfirm: ActionHandler = {
     if (steps.length === 0)
       throw new ChatActionError("failed", "There's nothing in this plan. Ask again.");
     const results: MultiResult[] = [];
+    const agentJobIds: (string | undefined)[] = [];
+    const agentActionIds: string[] = [];
     for (const [i, step] of steps.entries()) {
       if (results.some((r) => r.status === "failed")) {
         results.push({ status: "not_done", note: "Not done, because the step before it failed." });
         continue;
       }
       try {
-        results.push(await runStep(context, step, i + 1));
+        const {
+          agentJobIds: jobs,
+          agentActionIds: actions,
+          ...result
+        } = await runStep(context, step, i + 1);
+        results.push(result);
+        agentJobIds.push(...jobs);
+        agentActionIds.push(...actions);
       } catch (error) {
         const why = error instanceof Error ? error.message : "Something went wrong.";
         results.push({ status: "failed", note: `Didn't happen: ${why}` });
@@ -110,6 +128,8 @@ export const multiConfirm: ActionHandler = {
       note: [head, ...lines].join("\n"),
       refs: { ...context.message.refs, multi: { steps, results } },
       actions: [...undo, ...linksOf(context.message.actions)],
+      agentJobIds,
+      agentActionIds,
     };
   },
 };
@@ -126,28 +146,60 @@ export const multiCancel: ActionHandler = {
   },
 };
 
-// Undo what the plan moved, while it's still pending.
+// Undo what the plan moved, while it's still pending. Each transfer is tried: one that has gone
+// through stays (and is said), one that could not be reached keeps the button for another try.
 export const multiUndo: ActionHandler = {
   id: "multi.undo",
   on: "answered",
   async run({ userId, message, client, now }) {
     const results = message.refs.multi?.results ?? [];
     const ids = results.flatMap((r) => (r.transferId ? [r.transferId] : []));
-    let note = "Undone: the transfer won't happen.";
-    try {
-      for (const id of ids) await cancelTransfer(userId, id, { client, now });
-    } catch (error) {
-      throw new ChatActionError(
-        "expired",
-        error instanceof Error ? error.message : "That can't be undone anymore.",
-      );
+    const cancelled = new Set<string>();
+    const gone = new Set<string>();
+    const retry = new Set<string>();
+    let why: string | null = null;
+    for (const id of ids) {
+      try {
+        await cancelTransfer(userId, id, { client, now });
+        cancelled.add(id);
+      } catch (error) {
+        if (why === null && error instanceof Error) why = error.message;
+        if (error instanceof TransferError) gone.add(id);
+        else retry.add(id);
+      }
     }
-    if (ids.length > 1) note = "Undone: those transfers won't happen.";
+    if (cancelled.size === 0)
+      throw new ChatActionError("expired", why ?? "That can't be undone anymore.");
+    const parts = [
+      cancelled.size > 1
+        ? "Undone: those transfers won't happen."
+        : "Undone: the transfer won't happen.",
+    ];
+    if (gone.size > 0)
+      parts.push(
+        gone.size > 1
+          ? "Others had already gone through, so they stay."
+          : "The other one had already gone through, so it stays.",
+      );
+    if (retry.size > 0) parts.push("One couldn't be reached just now; tap Undo again to retry it.");
+    // A transfer that is cancelled, or too late to cancel, is not offered again.
+    const settled = results.map((r) =>
+      r.transferId && !retry.has(r.transferId) ? { ...r, transferId: undefined } : r,
+    );
     return {
       status: "answered",
       answeredWith: message.answeredWith,
-      note,
-      actions: linksOf(message.actions),
+      note: parts.join(" "),
+      refs: {
+        ...message.refs,
+        multi: { steps: message.refs.multi?.steps ?? [], results: settled },
+      },
+      actions: [
+        ...(retry.size > 0
+          ? [{ id: "multi.undo" as const, label: "Undo the transfer", kind: "secondary" as const }]
+          : []),
+        ...linksOf(message.actions),
+      ],
     };
   },
 };
