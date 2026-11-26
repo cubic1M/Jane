@@ -1150,13 +1150,13 @@ const NO_BANK_WORD = "(?:(?!savings|deposit|bank|checking|\\bCDs?\\b)[^.!?]){0,4
 const DEPOSIT_INSURANCE = [
   // Jane itself (or "Jane's account") said to be a bank or insured, not a clause that mentions it.
   new RegExp(
-    `\\bJane(?:['’]s(?:\\s+\\w+){1,2})?\\s+(?:is|are)\\s+(?:an?\\s+)?(?:${FDIC_SAID}|(?:FDIC[- ]insured\\s+)?bank\\b)`,
+    `\\bJane(?:['’]s(?:\\s+\\w+){1,2})?\\s+(?:is|are)\\s+(?:an?\\s+)?(?:${INSURED_SAID}|(?:FDIC[- ]insured\\s+)?bank\\b)`,
     "i",
   ),
   // An account or balance named for Jane, said to be insured: "Jane accounts are FDIC insured",
   // "Your Jane balance is FDIC-insured" (security round 48).
   new RegExp(
-    `\\bJane(?:['’]s)?\\s+(?:\\w+\\s+){0,2}?(?:accounts?|balances?|wallets?|cash|savings|money|funds|deposits?)\\s+(?:is|are)\\s+(?:\\w+\\s+)?${FDIC_SAID}`,
+    `\\bJane(?:['’]s)?\\s+(?:\\w+\\s+){0,2}?(?:accounts?|balances?|wallets?|cash|savings|money|funds|deposits?)\\s+(?:is|are)\\s+(?:\\w+\\s+)?${INSURED_SAID}`,
     "i",
   ),
   // Jane said to be an FDIC member, which only an insured bank may say (12 CFR 328): "Jane,
@@ -1258,7 +1258,8 @@ const TRUSTED_HOST = /(?:^|\.)(?:[a-z0-9-]+\.gov|annualcreditreport\.com)$/i;
 const hostOf = (link: string) =>
   link
     .replace(/^https?:\/\//i, "")
-    .split(/[/?#]/)[0]
+    // A browser reads a backslash in the authority like a slash: "https://evil.com\\@x.gov" is evil.com.
+    .split(/[/\\?#]/)[0]
     .split("@")
     .at(-1)!
     .split(":")[0]
@@ -1306,7 +1307,7 @@ const DONE = "cancel(?:l)?ed|sent|filed|disputed|called|emailed|switched|negotia
 // "I sent you a reminder" can be true, "I called it your buffer" names something, and "I paid" is a
 // person's words in a script far more than Jane's.
 const SAID_DONE =
-  "cancel(?:l)?ed|sent(?! you)|filed|disputed|called(?! (?:it|this|that|these)\\b)|emailed|switched|negotiated";
+  "cancel(?:l)?ed|sent(?! you)|filed|disputed|called(?! (?:it|this|that|these)\\b)|emailed|switched|negotiated|submitted";
 const DOING = "cancel(?:l)?ing|sending|filing|disputing|calling|emailing|switching|negotiating";
 // "I'll call it your buffer" names something; nobody's phoned.
 const WILL =
@@ -1552,7 +1553,8 @@ function scan(
     issues.push("untrusted_link");
     matched.push("link");
   }
-  if (asksForCredentials(original)) {
+  // Normalised like the rest, so emphasis marks can't split "one-time **code**".
+  if (asksForCredentials(forChecking(original))) {
     issues.push("credential_request");
     matched.push("credentials");
   }
