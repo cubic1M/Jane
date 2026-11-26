@@ -43,6 +43,8 @@ describe("byHerself", () => {
       level: "safe" as const,
       actionCapCents: 10_000,
       monthlyCapCents: 40_000,
+      source: "set" as const,
+      usedThisMonthCents: 0,
     };
     const reply = sectorChangeReply(
       {
