@@ -34,7 +34,7 @@ export function irmaaMessage(v: RetirementTaxView): MessageParts | null {
   const t = v.tuned;
   const advice =
     v.advice && t.preTaxCapCents !== null
-      ? ` To stay under it, keep pre-tax withdrawals and conversions this year under about ${formatWholeDollars(t.preTaxCapCents)}, and take the rest from taxable accounts, then Roth.`
+      ? ` To stay under it, keep pre-tax withdrawals and conversions this year under about ${formatWholeDollars(t.preTaxCapCents)}.`
       : "";
   return {
     body: `Your income this year sets your Medicare premiums in ${i.premiumYear}. At about ${formatWholeDollars(v.magiCents)}, you're ${formatWholeDollars(i.roomCents)} under the line at ${formatWholeDollars(i.nextLineCents)}${i.estimated ? " (estimated from this year's)" : ""}; over it, Part B and D cost about ${formatWholeDollars(i.nextYearlyCents)} a year more${v.people === 2 ? " for the two of you" : ""}.${advice}`,
