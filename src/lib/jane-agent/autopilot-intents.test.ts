@@ -35,6 +35,9 @@ describe("sector autopilot intents", () => {
     // CodeRabbit #2283: "not more than" is a limit, not a refusal.
     ["let jane pay my bills, not more than $200 automatically", "bills", "all", null, 20_000],
     ["let jane pay my bills automatically, not more than $200", "bills", "all", null, 20_000],
+    // "Stop asking me" is a grant, not a refusal.
+    ["stop asking me and let jane pay my bills automatically", "bills", "all", null, null],
+    ["don't let jane pay my bills automatically", "bills", "ask", null, null],
   ])("reads %j", (text, sector, level, actionCapCents, monthlyCapCents) => {
     expect(parse(text)).toEqual({
       kind: "autopilot_sector",
