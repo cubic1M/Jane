@@ -189,12 +189,12 @@ export function safeToSpend(
     taxConfidencePercent: tax.confidencePercent,
     safeCents: beforeTax - taxHeldCents,
     unevenPayMonthlyCents:
-      checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
+      checking.reduce((sum, a) => sum + (unevenPay(input, a.id, [...checkingIds]) ?? 0), 0) || null,
     unevenPayMonths:
       Math.max(
         0,
         ...checking.flatMap((a) =>
-          unevenPay(input, a.id) === null ? [] : [unevenPayMonths(input, a.id)],
+          unevenPay(input, a.id, [...checkingIds]) === null ? [] : [unevenPayMonths(input, a.id)],
         ),
       ) || null,
     leftOut: input.accounts
