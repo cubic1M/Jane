@@ -22,9 +22,10 @@ type Metadata = Record<string, unknown>;
 // - action: targets one of their actions (or carries their id as metadata user_id)
 // - queue: targets the person (target user) and lists their action ids in action_ids
 // - person: targets the person (target user), about no one request
+// - connector: targets a step with a company (target connector_action, metadata user_id)
 type Shown = {
   shown: true;
-  whose: "action" | "queue" | "person";
+  whose: "action" | "queue" | "person" | "connector";
   what: (metadata: Metadata, company: string | null) => string;
 };
 
@@ -172,11 +173,14 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   connector_action_cancelled: own,
   connector_action_refused: automatic,
   // The team settled one of their actions stuck in running (metadata user_id names whose).
-  connector_action_marked: onAction((m) =>
-    m.outcome === "succeeded"
-      ? "Marked a stuck step done, after checking with the company"
-      : "Marked a stuck step failed, after checking with the company",
-  ),
+  connector_action_marked: {
+    shown: true,
+    whose: "connector",
+    what: (m) =>
+      m.outcome === "succeeded"
+        ? "Marked a stuck step done, after checking with the company"
+        : "Marked a stuck step failed, after checking with the company",
+  },
   connector_action_executed: automatic,
   connector_action_failed: automatic,
   connector_action_updated: automatic,
@@ -374,6 +378,7 @@ export type TeamAccessEntry = {
 export const UNDONE_WHY = "A request you've since undone";
 // Why for a look at the person rather than a request: the beta's activity log.
 export const PERSON_WHY = "To improve Jane during the beta";
+export const CONNECTOR_WHY = "A step with a company that stopped part way";
 
 const metadataOf = (value: unknown): Metadata =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Metadata) : {};
@@ -405,6 +410,18 @@ export function teamAccessEntries(
         who,
         what: rule.what(metadata, null),
         why: PERSON_WHY,
+        actionId: null,
+      });
+      continue;
+    }
+    if (rule.whose === "connector") {
+      if (row.targetType !== "connector_action" || metadata.user_id !== userId) continue;
+      entries.push({
+        key: row.id,
+        at: row.createdAt,
+        who,
+        what: rule.what(metadata, null),
+        why: CONNECTOR_WHY,
         actionId: null,
       });
       continue;

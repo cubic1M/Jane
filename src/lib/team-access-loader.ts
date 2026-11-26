@@ -53,6 +53,8 @@ export async function teamAccessFor(
             { targetType: "action", targetId: { in: actions.map((a) => a.id) } },
             // Actions since undone are gone, but their events still carry the person's id.
             { targetType: "action", metadata: { path: ["user_id"], equals: userId } },
+            // A step with a company the team settled (src/lib/connectors/stuck.ts).
+            { targetType: "connector_action", metadata: { path: ["user_id"], equals: userId } },
           ],
         },
       ],

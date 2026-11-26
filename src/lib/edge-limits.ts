@@ -102,11 +102,22 @@ export function refusal(kind: EdgeKind, result: RateResult, url?: string): NextR
   return NextResponse.json({ error: TOO_MANY_MESSAGE }, { status: 429, headers });
 }
 
-// Auth.js takes any cookie starting with its name as part of a split session (a session here never
-// needs splitting), and sessionTokenFrom reads only the exact names. So a split one signs someone in
-// while every limit here sees no session.
-const oddSessionCookie = (cookie: string | null) =>
-  /(?:^|;\s*)(?:__Secure-)?authjs\.session-token[^=;\s]+\s*=/.test(cookie ?? "");
+// Auth.js signs a request in from its own reading of the cookie header, and every limit here counts
+// the one sessionTokenFrom reads. They part ways on a split session (any longer name; a session here
+// never needs splitting), on a name sent twice with two values (Auth.js takes the first, Next.js the
+// last), and on spaces, tabs or quotes around either part. A session cookie goes on only written as
+// a browser writes it: `name=value`, one value for each name.
+function oddSessionCookie(cookie: string | null): boolean {
+  const seen = new Map<string, string>();
+  return (cookie ?? "").split(";").some((pair) => {
+    const name = pair.split("=")[0]!.trim();
+    if (!/^(?:__Secure-)?authjs\.session-token/.test(name)) return false;
+    const value = /^ *(?:__Secure-)?authjs\.session-token=([^\s"]*)$/.exec(pair)?.[1];
+    if (value === undefined || (seen.get(name) ?? value) !== value) return true;
+    seen.set(name, value);
+    return false;
+  });
+}
 
 const onUploadPage = (pathname: string) =>
   ACTION_UPLOAD_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));

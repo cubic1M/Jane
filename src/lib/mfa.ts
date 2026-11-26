@@ -37,10 +37,13 @@ export async function enrollment(
   let secret = user.mfaSecretEncrypted ? decrypt(user.mfaSecretEncrypted) : null;
   if (!secret) {
     secret = generateSecret();
-    await systemDb(WHY, client).user.update({
-      where: { id: userId },
+    // Only into an empty place: a second page asking at once, or one that read before two-factor was
+    // finished, would otherwise replace the secret the person's app already holds.
+    const { count } = await systemDb(WHY, client).user.updateMany({
+      where: { id: userId, mfaSecretEncrypted: null, mfaEnabledAt: null },
       data: { mfaSecretEncrypted: encrypt(secret) },
     });
+    if (count === 0) return enrollment(userId, email, { client });
   }
   return { enrolled: false, secret, uri: otpauthUri(email, secret) };
 }
@@ -108,6 +111,9 @@ async function replaceBackupCodes(
   await personTransaction(
     userId,
     async (tx) => {
+      // One replacement at a time for a person: two at once each cleared the old set before the
+      // other's was written, and both sets stayed usable.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mfa-codes:${userId}`}))`;
       await tx.mfaBackupCode.deleteMany({ where: { userId } });
       await tx.mfaBackupCode.createMany({
         data: codes.map((code) => ({ userId, codeHash: hashBackupCode(code) })),
@@ -138,8 +144,16 @@ export async function verifySessionCode(
     return { result: "wrong_code" };
   }
   let backupCodes: string[] | undefined;
-  if (!user.mfaEnabledAt) {
-    await systemDb(WHY, client).user.update({ where: { id: userId }, data: { mfaEnabledAt: now } });
+  // Of two first codes at once, one turns it on: the other only verifies its session.
+  const turnedOn =
+    !user.mfaEnabledAt &&
+    (
+      await systemDb(WHY, client).user.updateMany({
+        where: { id: userId, mfaEnabledAt: null, mfaSecretEncrypted: user.mfaSecretEncrypted },
+        data: { mfaEnabledAt: now },
+      })
+    ).count > 0;
+  if (turnedOn) {
     // Whoever else is signed in is out: someone who got into the account is what two-factor is for,
     // and any session could have read the secret before this first code.
     await systemDb(
@@ -176,17 +190,20 @@ export async function turnOffTwoFactor(
     await logAudit(actorFor(userId, user), "mfa_failed", { type: "user", id: userId });
     return "wrong_code";
   }
-  await systemTransaction(
+  const cleared = await systemTransaction(
     WHY,
     async (tx) => {
-      await tx.mfaBackupCode.deleteMany({ where: { userId } });
-      await tx.user.update({
-        where: { id: userId },
+      // Only the two-factor the code was checked against, not one set up since.
+      const { count } = await tx.user.updateMany({
+        where: { id: userId, mfaSecretEncrypted: user.mfaSecretEncrypted },
         data: { mfaSecretEncrypted: null, mfaEnabledAt: null },
       });
+      if (count > 0) await tx.mfaBackupCode.deleteMany({ where: { userId } });
+      return count > 0;
     },
     client,
   );
+  if (!cleared) return "wrong_code";
   // A code for the old secret proves nothing about a new one, if two-factor comes back.
   await systemDb(
     "Stopping two-factor un-verifies the person's sessions",

@@ -55,7 +55,10 @@ export async function rlsCoverage({
     .sort();
   const rows = await client.$queryRaw<Row[]>`
     SELECT c.relname AS table, c.relrowsecurity AS rls, count(p.polname)::int AS policies,
-      coalesce(bool_or(p.polname = 'jane_rls_owner'), false) AS person_policy
+      -- And bound to jane_rls: a policy of that name for another role gives a person nothing.
+      coalesce(bool_or(p.polname = 'jane_rls_owner'
+        AND (SELECT oid FROM pg_roles WHERE rolname = ${RLS_ROLE}) = ANY(p.polroles)), false)
+        AS person_policy
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
     LEFT JOIN pg_policy p ON p.polrelid = c.oid
@@ -73,8 +76,9 @@ export async function rlsCoverage({
   return { role, tables, missing, ok: role && missing.length === 0 && tables.length > 0 };
 }
 
-// Whether this server really switches to jane_rls for a person's queries, tried live: the same
-// switch every scoped query makes, then asking the database who it is.
+// Whether this server really switches to jane_rls for a person's queries, tried live: the switch a
+// person's transaction makes (a single scoped query's is answered by the pool, src/lib/rls-pg.ts),
+// then asking the database who it is.
 export async function rlsSwitchWorks(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
@@ -107,20 +111,29 @@ export type LoginCheck = {
 };
 
 // What this server logged in as, asked of the database, without switching. On Neon a role made in
-// the console, not with SQL, inherits every table's privileges, and this notices (`users` stands
-// for them all; jane_rls_protect_all() takes back any table the login holds directly).
+// the console, not with SQL, inherits every table's privileges, and this notices. Every table of
+// ours is asked about, whole or by column, so one grant made later is noticed too; an extension's
+// own tables and views aren't ours (jane_rls_protect_all() takes back any table the login holds
+// directly).
 export async function loginCheck({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<LoginCheck> {
   const [row] = await client.$queryRaw<
-    { login: string; rolsuper: boolean; rolbypassrls: boolean; reads: boolean; writes: boolean }[]
+    { login: string; rolsuper: boolean; rolbypassrls: boolean; touches: boolean }[]
   >`
     SELECT current_user AS login, r.rolsuper, r.rolbypassrls,
-      has_table_privilege(current_user, 'public.users', 'SELECT') AS reads,
-      has_table_privilege(current_user, 'public.users', 'UPDATE') AS writes
+      EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+        WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND NOT EXISTS (SELECT 1 FROM pg_depend d
+            WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'e')
+          AND (has_table_privilege(c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+            OR has_any_column_privilege(c.oid, 'SELECT, INSERT, UPDATE'))
+      ) AS touches
     FROM pg_roles r WHERE r.rolname = current_user`;
   return {
     login: row.login,
-    denied: !row.rolsuper && !row.rolbypassrls && !row.reads && !row.writes,
+    denied: !row.rolsuper && !row.rolbypassrls && !row.touches,
   };
 }

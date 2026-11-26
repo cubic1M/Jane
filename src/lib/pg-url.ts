@@ -14,7 +14,8 @@ export function withVerifyFull(connectionString: string | undefined): string | u
     // Not a URL (a key=value string): left for pg to read as it is.
     return connectionString;
   }
-  const mode = url.searchParams.get("sslmode");
+  // Named twice, pg goes by the last one.
+  const mode = url.searchParams.getAll("sslmode").at(-1);
   if (!mode || !ALIASES.has(mode) || url.searchParams.has("uselibpqcompat")) {
     return connectionString;
   }
