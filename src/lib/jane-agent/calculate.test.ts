@@ -54,6 +54,37 @@ describe("the chat's arithmetic", () => {
     expect(r.numbers).toEqual({});
   });
 
+  it("does not simulate for ages, and does not turn an unreadable rate into zero", () => {
+    // CodeRabbit part 2: a billion at a cent a month is 100 billion months of work.
+    const started = Date.now();
+    const r = ok({
+      operation: "payoff_months",
+      balance: 1_000_000_000,
+      monthly_payment: 0.01,
+      apr_percent: 0,
+    });
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(r.note).toMatch(/more than 100 years/);
+    expect(
+      calculate({
+        operation: "payoff_months",
+        balance: 2410.5,
+        monthly_payment: 200,
+        apr_percent: "24",
+      }),
+    ).toMatchObject({ ok: false });
+  });
+
+  it("a rate too small to see still pays off in about a year, not 100 years", () => {
+    const r = ok({
+      operation: "payoff_months",
+      balance: 1200,
+      monthly_payment: 100,
+      apr_percent: 1e-14,
+    });
+    expect(r.note ?? "").not.toMatch(/100 years/);
+  });
+
   it("refuses missing or odd input", () => {
     expect(calculate({ operation: "percent_of", percent: 4 })).toMatchObject({ ok: false });
     expect(calculate({ operation: "nope" })).toMatchObject({ ok: false });

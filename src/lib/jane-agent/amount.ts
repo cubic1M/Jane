@@ -16,12 +16,24 @@ const NOT_MONEY =
 export function parseAmount(typed: string): number | null {
   const text = typed.replace(NOT_MONEY, " ");
   const scaled = /(?:^|[^\w.,])\$?\s?(\d+(?:\.\d+)?)\s?(k|grand|thousand)\b/.exec(text);
-  if (scaled) return Math.round(Number(scaled[1]) * 100_000);
   const money = /\$\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)/.exec(text);
+  const worded =
+    /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s?(?:dollars?|bucks|usd)\b/i.exec(
+      text,
+    );
+  // The first amount typed wins, whichever way it is written.
+  const first = [
+    scaled && { at: scaled.index, cents: Math.round(Number(scaled[1]) * 100_000) },
+    money && { at: money.index, cents: parseMoneyToCents(money[1]) },
+    worded && { at: worded.index, cents: parseMoneyToCents(worded[1]) },
+  ]
+    .filter((c): c is { at: number; cents: number | null } => Boolean(c))
+    .sort((a, b) => a.at - b.at)[0];
+  if (first) return first.cents !== null && first.cents > 0 ? first.cents : null;
   const bare = /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\b/.exec(
     text.replace(DATE_WORDS, " "),
   );
-  const found = money?.[1] ?? bare?.[1];
+  const found = bare?.[1];
   if (!found) return null;
   const cents = parseMoneyToCents(found);
   return cents !== null && cents > 0 ? cents : null;

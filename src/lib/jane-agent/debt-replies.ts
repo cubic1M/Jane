@@ -207,13 +207,13 @@ const LEFT_OUT_WHY: Record<LeftOut["reason"], string> = {
 };
 
 // "Debt-free by March 2028 (17 months), with $1,234.56 of interest".
-function outcome(plan: PayoffPlan, asOf: string): string {
+function outcome(plan: PayoffPlan, asOf: string, partial = false): string {
   if (!plan.ok) {
     return plan.reason === "budget_below_minimums"
       ? "that's less than the minimums"
       : "it doesn't finish within 50 years";
   }
-  return `debt-free by ${monthLabel(monthAfter(asOf, plan.months), { long: true })} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
+  return `${partial ? "done with these by" : "debt-free by"} ${monthLabel(monthAfter(asOf, plan.months), { long: true })} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
 }
 
 // The buttons that start the plan, Jane's pick first in demo advice mode.
@@ -254,11 +254,15 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
     lines.push(`Here's how I'd pay them off: ${STRATEGY_NAME[pick.strategy]}.`);
     lines.push(...pick.order.map((name, i) => `${i + 1}. ${name}`));
     lines.push(...pick.why);
-    lines.push(`${paying}, you'd be ${outcome(summary[pick.strategy], asOf)}.`);
+    lines.push(
+      `${paying}, you'd be ${outcome(summary[pick.strategy], asOf, summary.leftOut.length > 0)}.`,
+    );
   } else {
     lines.push(`${paying}, here's how two common orders would go:`);
     for (const s of ["avalanche", "snowball"] as const) {
-      lines.push(`- ${capital(STRATEGY_NAME[s])}: ${outcome(summary[s], asOf)}`);
+      lines.push(
+        `- ${capital(STRATEGY_NAME[s])}: ${outcome(summary[s], asOf, summary.leftOut.length > 0)}`,
+      );
     }
   }
   const chosen = summary[pick?.strategy ?? "avalanche"];
@@ -275,7 +279,7 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
       `With more each month: ${more
         .map(
           (s) =>
-            `${formatCents(s.extraCents)} extra, debt-free by ${monthLabel(monthAfter(asOf, s.months), { long: true })}`,
+            `${formatCents(s.extraCents)} extra, ${summary.leftOut.length > 0 ? "done with these by" : "debt-free by"} ${monthLabel(monthAfter(asOf, s.months), { long: true })}`,
         )
         .join("; ")}.`,
     );

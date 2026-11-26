@@ -53,13 +53,15 @@ export async function loadDecisionFacts(
   });
   const card = profile.facts.card_debt_cents.value;
   const rates = data.liabilities
-    .filter((l) => l.kind !== "mortgage" && l.aprBps !== null)
+    // The cards' own rates: a loan's rate is not what a card charges.
+    .filter((l) => l.kind === "credit" && l.aprBps !== null)
     .map((l) => l.aprBps as number);
   const goals = await listGoals(userId, { client, now });
   return {
     cardDebtCents: typeof card === "number" ? card : 0,
     cardBalanceUnknown: data.accounts.some((a) => a.type === "credit" && a.balanceKnown === false),
-    topRateBps: rates.length > 0 ? Math.max(...rates) : null,
+    topRateBps:
+      typeof card === "number" && card > 0 && rates.length > 0 ? Math.max(...rates) : null,
     cashCents: cash,
     monthlySpendCents: spend,
     cushionTargetCents: target?.targetCents ?? null,

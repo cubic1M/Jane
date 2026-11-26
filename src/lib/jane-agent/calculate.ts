@@ -111,8 +111,17 @@ export function calculate(input: CalcInput): CalcResult {
     case "payoff_months": {
       const balance = num(input.balance);
       const payment = num(input.monthly_payment);
-      const apr = num(input.apr_percent) ?? 0;
-      if (balance === null || payment === null || balance <= 0 || payment <= 0 || apr < 0) {
+      // A rate that was given but can't be read is an error, not a rate of zero.
+      const given = input.apr_percent !== undefined && input.apr_percent !== null;
+      const apr = num(input.apr_percent) ?? (given ? null : 0);
+      if (
+        balance === null ||
+        payment === null ||
+        apr === null ||
+        balance <= 0 ||
+        payment <= 0 ||
+        apr < 0
+      ) {
         return {
           ok: false,
           error: "payoff_months needs balance and monthly_payment (dollars), and apr_percent.",
@@ -130,7 +139,16 @@ export function calculate(input: CalcInput): CalcResult {
       const months =
         rate === 0
           ? Math.ceil(balance / payment)
-          : Math.ceil(-Math.log(1 - (rate * balance) / payment) / Math.log(1 + rate));
+          : Math.ceil(-Math.log1p(-(rate * balance) / payment) / Math.log1p(rate));
+      // Past a hundred years it's not a plan: say so, rather than simulate for ages.
+      if (!Number.isFinite(months) || months > 1200) {
+        return {
+          ok: true,
+          cents: {},
+          numbers: {},
+          note: "At this payment the balance takes more than 100 years to pay off.",
+        };
+      }
       // Simulated month by month, so the interest is what the card would really charge.
       let left = balance;
       let interest = 0;

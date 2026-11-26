@@ -212,6 +212,25 @@ describe("debt questions", () => {
       kind: "home_afford",
       priceCents: null,
     });
+    // CodeRabbit part 2: the same when the question is "can I buy a home".
+    expect(intent("Can I buy a home with a $60,000 down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    // The amount is the one the down payment names, not any amount in the question.
+    expect(intent("can i afford a $400,000 home with a $60,000 down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: 40_000_000,
+    });
+    expect(intent("is $60,000 enough for a down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    // With no down payment, the amount is still the home's price.
+    expect(intent("Can I afford a $400,000 home with no down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: 40_000_000,
+    });
     expect(intent("should i refinance now or wait")).toEqual({ kind: "refinance", target: null });
     expect(intent("when does my home insurance renew")).not.toMatchObject({ kind: "home_afford" });
     expect(intent("when will my mortgage be paid off")).toMatchObject({ kind: "debt_detail" });

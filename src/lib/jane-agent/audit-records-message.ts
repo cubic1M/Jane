@@ -14,8 +14,8 @@ export function retentionMessage(r: Retention): MessageParts {
   const can = r.status === "can_go";
   return {
     body: can
-      ? `Your ${r.year} tax records (${r.rule.toLowerCase()}) passed their keep-until date of ${dayLabel(r.keepUntil)}. Check nothing's needed for a later year, then you can throw them away. I never delete anything. Want a reminder on your deadlines?`
-      : `Your ${r.year} tax records can be thrown away after ${dayLabel(r.keepUntil)} (${r.rule.toLowerCase()}). I never delete anything; want a reminder on your deadlines?`,
+      ? `Your ${r.year} tax records (${r.rule.toLowerCase()}) passed their keep-until date of ${dayLabel(r.keepUntil, { year: true })}. Check nothing's needed for a later year, then you can throw them away. I never delete anything. Want a reminder on your deadlines?`
+      : `Your ${r.year} tax records can be thrown away after ${dayLabel(r.keepUntil, { year: true })} (${r.rule.toLowerCase()}). I never delete anything; want a reminder on your deadlines?`,
     refs: { taxYear: r.year },
     actions: [
       { id: "tax.records_remind", label: "Remind me", kind: "primary" },
@@ -43,7 +43,7 @@ export function recordsReply(view: AuditRecordsView): MessageParts {
         ? [`Counted but not in the pack for lack of a source:\n${gaps.join("\n")}`]
         : []),
       keep
-        ? `Keep these records until ${dayLabel(keep.keepUntil)} (${keep.rule.toLowerCase()}).`
+        ? `Keep these records until ${dayLabel(keep.keepUntil, { year: true })} (${keep.rule.toLowerCase()}).`
         : "",
     ]
       .filter(Boolean)

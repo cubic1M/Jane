@@ -549,6 +549,22 @@ export function findDebt(debts: readonly Debt[], query: string): Debt | null {
   const hit = kinds.find(({ word }) => new RegExp(`\\b${word}\\b`).test(q));
   if (!hit) return null;
   const ofKind = debts.filter((d) => d.kind === hit.kind);
+  // A name besides the kind's word ("discover card") that no debt of that kind carries is a debt
+  // the person doesn't have here: not the largest one of the kind.
+  // Words that describe rather than name ("my current car loan", "the other card").
+  const generic = new Set([
+    ...Object.values(KIND_WORDS).flatMap((words) => words.flatMap((w) => w.split(" "))),
+    ...["current", "new", "old", "other", "main", "existing", "first", "second", "total", "own"],
+    // Words every bank's card has: the provider's own words are what tell cards apart.
+    ...["bank", "the", "and", "usa", "financial"],
+  ]);
+  const named = q.split(" ").filter((w) => w.length > 2 && !generic.has(w));
+  if (
+    named.length > 0 &&
+    !ofKind.some((d) => named.every((w) => d.name.toLowerCase().includes(w)))
+  ) {
+    return null;
+  }
   return (
     ofKind.find((d) => d.name.toLowerCase().includes(hit.word)) ??
     [...ofKind].sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ??
