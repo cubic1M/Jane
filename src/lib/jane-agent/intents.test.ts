@@ -178,6 +178,12 @@ describe("parseIntent", () => {
     expect(parse(text)).toEqual({ kind: "spending", category, month });
   });
 
+  // CodeRabbit part 2: a week asked for is never "everything on file".
+  it("keeps a week or a day out of the all-history answer", () => {
+    expect(parse("how much have I spent on groceries this week?")).not.toHaveProperty("sinceStart");
+    expect(parse("how much have I spent on groceries?")).toHaveProperty("sinceStart", true);
+  });
+
   it.each([
     ["what's due", null],
     ["Whats coming up?", null],

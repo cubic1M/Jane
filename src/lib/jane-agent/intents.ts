@@ -951,6 +951,8 @@ export function parseIntent(
     const sinceStart =
       month === null &&
       !perMonth &&
+      // A week or a day asked for is not "everything on file".
+      !/\b(?:this|last|past) week\b|\btoday\b|\byesterday\b/.test(text) &&
       /\b(?:have (?:i|we) spent|did (?:i|we) spend|(?:i|we)'ve spent)\b/.test(text);
     // "On spotify a year": what it costs a year, the cost answer's own (debugger 11-17).
     const yearly = / (?:(?:a|per|each|every) year|yearly|annually)$/;
