@@ -124,13 +124,28 @@ export async function refreshSavings(
   return listSavings(userId, { client, status: "offered" });
 }
 
+// What a saving says to the person: its kind, figures and what changes. A card carries this
+// token, and the tap applies only while it is still the same (the figures move with the cash).
+export function termsOf(s: SavingCandidate): string {
+  return [
+    s.kind,
+    s.yearlySavingCents,
+    s.currentYearlyCents,
+    s.newYearlyCents,
+    s.detail.fromDeductibleCents ?? "",
+    s.detail.toDeductibleCents ?? "",
+    s.detail.withCarrier ?? "",
+    s.detail.payNowCents ?? "",
+  ].join("|");
+}
+
 // Applies one saving with the carrier, on the person's tap: the policy's price (and, for
 // pay in full, how often it is paid; for a higher deductible, the deductible; for a bundle,
 // the carrier) changes to what the carrier confirmed.
 export async function applySaving(
   userId: string,
   savingId: string,
-  { client = defaultClient, now = new Date(), partner }: Options = {},
+  { client = defaultClient, now = new Date(), partner, terms }: Options & { terms?: string } = {},
 ): Promise<Saving> {
   const db = scopedFor(userId, client);
   const row = await db.insuranceSavings.findFirst({
@@ -149,6 +164,12 @@ export async function applySaving(
   if (!fresh) {
     await db.insuranceSavings.deleteMany({ where: { id: savingId } });
     throw new SavingError("That doesn't apply anymore: your policy or your cash changed.");
+  }
+  // A card's Yes is for the terms the card showed: if they moved, nothing is applied.
+  if (terms !== undefined && terms !== termsOf(fresh)) {
+    throw new SavingError(
+      "The figures changed since I showed you this. Open it again for the new ones.",
+    );
   }
   const policy = policies.find((p) => p.id === fresh.policyId)!;
   const kind = fresh.kind;

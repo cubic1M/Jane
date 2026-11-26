@@ -81,6 +81,9 @@ export const TAX_CALENDAR: Readonly<Record<number, readonly CalendarKey[]>> = {
 // Jane pays an estimated payment this many days before it is due (and up to PAY_GRACE_DAYS
 // after, if it was missed), when it fits the caps; otherwise it asks.
 export const ESTIMATE_PAY_LEAD_DAYS = 5;
+// Estimated payments Jane made from this day on name their plan entry (its `ref`); an entry with no
+// name belongs to a payment made before. Only those older payments are matched by amount and day.
+export const TAX_ENTRY_REF_FROM = "2026-11-27T00:00:00Z";
 export const ESTIMATE_PAY_GRACE_DAYS = 30;
 
 // The year-end message goes out from this day of December.

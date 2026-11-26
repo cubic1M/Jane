@@ -539,6 +539,9 @@ export type MessageRefs = {
   // The offers a "Do all of these" card listed: its Yes and Not now act on these only.
   savingIds?: string[];
   savingId?: string;
+  // What each offer on the card said (termsOf in src/lib/insurance/savings.ts), by saving id: a Yes
+  // applies only while the terms are still these.
+  savingTerms?: Record<string, string>;
   // Spec step 197: the risk a question asks about.
   riskId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only

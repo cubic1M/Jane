@@ -283,6 +283,108 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     );
   });
 
+  it("a repair finds its own entry by the payment, not by another payment of the same amount", async () => {
+    const userId = await freelancer("cal-twin");
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    // An earlier quarter's payment of the very same amount, whose entry never got made.
+    await client.taxPayment.create({
+      data: {
+        userId,
+        year: 2026,
+        dueOn: new Date("2026-06-15T00:00:00Z"),
+        cents: first.cents,
+        partner: "demo",
+        confirmation: "DEMO-20260615-AAAAAAAA",
+        via: "tap",
+      },
+    });
+    const entries = async () =>
+      (
+        (await client.taxProfile.findUniqueOrThrow({ where: { userId } })).taxPayments as {
+          ref?: string;
+        }[]
+      ).length;
+    // The September payment is already counted: the repair must not count it a second time.
+    await expect(payEstimate(userId, "2026-09-15", { client, now, via: "tap" })).rejects.toThrow(
+      "already paid",
+    );
+    expect(await entries()).toBe(1);
+    // The June one is the one that is missing, and gets its own entry.
+    await payEstimate(userId, "2026-06-15", { client, now, via: "tap" });
+    expect(await entries()).toBe(2);
+  });
+
+  it("a repair of a payment Jane made by itself records the autopilot's act once, even run twice at once", async () => {
+    const userId = await freelancer("cal-act");
+    await setAutopilot(userId, "all", { client, now: LINKED });
+    await setSectorAutopilot(
+      userId,
+      "taxes",
+      { level: "all", actionCapCents: 5_000_000, monthlyCapCents: 10_000_000 },
+      { client, now: LINKED },
+    );
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "autopilot" });
+    const acts = () => client.autopilotAct.count({ where: { userId, sector: "taxes" } });
+    expect(await acts()).toBe(1);
+    // The step after the payment failed before the plan's entry and the act were made.
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: [] } });
+    await client.autopilotAct.deleteMany({ where: { userId } });
+    const both = await Promise.allSettled([
+      payEstimate(userId, "2026-09-15", { client, now, via: "tap" }),
+      payEstimate(userId, "2026-09-15", { client, now, via: "tap" }),
+    ]);
+    expect(both.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await acts()).toBe(1);
+    const profile = await client.taxProfile.findUniqueOrThrow({ where: { userId } });
+    expect(profile.taxPayments).toHaveLength(1);
+    expect(await client.taxPayment.count({ where: { userId } })).toBe(1);
+    expect(first.cents).toBeGreaterThan(0);
+  });
+
+  it("an entry typed by the person never stands in for a payment made since payments named their entry", async () => {
+    const userId = await freelancer("cal-typed");
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    // The person typed a payment of the same amount for the same day; the plan's own entry is gone.
+    const typed = [{ date: "2026-09-12", cents: first.cents, to: "federal" }];
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: typed } });
+    // Made before payments named theirs: the typed entry is taken for it, as it always was.
+    await client.taxPayment.updateMany({
+      where: { userId },
+      data: { createdAt: new Date("2026-09-12T18:00:00Z") },
+    });
+    await expect(payEstimate(userId, "2026-09-15", { client, now, via: "tap" })).rejects.toThrow(
+      "already paid",
+    );
+    // Made since: it is its own payment, and gets its own entry.
+    await client.taxPayment.updateMany({
+      where: { userId },
+      data: { createdAt: new Date("2027-01-05T18:00:00Z") },
+    });
+    await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    const profile = await client.taxProfile.findUniqueOrThrow({ where: { userId } });
+    expect(profile.taxPayments).toHaveLength(2);
+  });
+
+  it("a payment the person records and a repair at the same moment both keep their entry", async () => {
+    const userId = await freelancer("cal-both");
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: [] } });
+    await Promise.all([
+      payEstimate(userId, "2026-09-15", { client, now, via: "tap" }),
+      recordTaxPayment(
+        userId,
+        { date: "2026-08-01", cents: first.cents + 100, to: "federal" },
+        { client, now, via: "chat" },
+      ),
+    ]);
+    const profile = await client.taxProfile.findUniqueOrThrow({ where: { userId } });
+    expect(profile.taxPayments).toHaveLength(2);
+  });
+
   it("a repair on a later day dates the entry by the day the payment was accepted", async () => {
     const userId = await freelancer("cal-retry-day");
     await payEstimate(userId, "2026-09-15", { client, now: at("2026-09-12"), via: "tap" });

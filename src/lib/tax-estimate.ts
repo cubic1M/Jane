@@ -892,7 +892,14 @@ async function loadTaxEstimateFrom(
 
 // Spec step 123: estimated tax payments the person told Jane about, for the tax year (Feb 1
 // to Jan 31 of the next year, like the ones seen in transactions).
-export type EnteredTaxPayment = { date: string; cents: number; to: "federal" | "state" };
+// ref: the tax_payments row a payment Jane made for the person was recorded from, so a repair finds
+// its own entry (and not another payment of the same amount).
+export type EnteredTaxPayment = {
+  date: string;
+  cents: number;
+  to: "federal" | "state";
+  ref?: string;
+};
 
 export function parseTaxPayments(value: unknown): EnteredTaxPayment[] {
   if (!Array.isArray(value)) return [];

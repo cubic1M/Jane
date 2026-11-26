@@ -5,6 +5,7 @@ import type { OptionSet } from "@/lib/floating-cards";
 import { toOptionSet } from "@/lib/option-set";
 import { isUndoId } from "./undo-id";
 import { withFrom } from "./back-link";
+import { shownTokenOf } from "./shown";
 import { drawBlock, parseBlock, type DrawnBlock } from "./blocks";
 
 const drawn = (value: unknown): DrawnBlock | null => {
@@ -44,6 +45,8 @@ export type MessageView = {
   pinned: boolean;
   // A guided flow's question as drawn (refs.flow.shown): sent back with each tap on its buttons.
   flowShown?: string;
+  // What a student step or a saving card showed (src/lib/jane-agent/shown.ts), sent back with the tap.
+  shown?: string;
   // One of the day's suggestions (it can sit in the card stack).
   suggestion: boolean;
   // Options of one choice (refs.options), while the message is open: the floating pick card.
@@ -199,6 +202,7 @@ export function toView(
     block: drawn(message.refs.block),
     pinned: message.refs.pinned === true,
     ...(message.refs.flow?.shown ? { flowShown: message.refs.flow.shown } : {}),
+    ...(shownTokenOf(message) ? { shown: shownTokenOf(message)! } : {}),
     suggestion: Boolean(message.refs.suggestion),
     options:
       message.status === "open" && message.refs.options?.options?.length

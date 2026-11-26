@@ -17,6 +17,8 @@ export type ActionContext = {
   // The showing of a guided flow's question the button was drawn with (refs.flow.shown), when the
   // page sent it.
   flowShown?: string;
+  // What a student step or a saving card showed (src/lib/jane-agent/shown.ts), when the page sent it.
+  shown?: string;
   client: PrismaClient;
   now: Date;
 };

@@ -202,6 +202,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
               {message.flowShown && (
                 <input type="hidden" name="flowShown" value={message.flowShown} />
               )}
+              {message.shown && <input type="hidden" name="shown" value={message.shown} />}
               {buttons.map((b) => (
                 <button
                   key={b.id}

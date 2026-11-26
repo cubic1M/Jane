@@ -23,7 +23,6 @@ const KEPT: Record<string, { uses: number; why: string }> = {
   "lib/invariants/accuracy-email.ts": { uses: 1, why: "the founders' daily email" },
   "lib/jane-agent/checks/proof.ts": { uses: 1, why: "the chat checks, on sample people" },
   "lib/jane-agent/checks/baseline.ts": { uses: 1, why: "the chat checks, on sample people" },
-  "lib/jane-agent/checks/facts.ts": { uses: 1, why: "the chat checks, on sample people" },
   "lib/investments/strategy-today.ts": { uses: 1, why: "a memo's key, made again each day" },
   "lib/jane-agent/debt-intents.ts": { uses: 1, why: "a default every chat caller replaces" },
   "lib/jane-agent/replies.ts": { uses: 1, why: "a default every chat caller replaces" },

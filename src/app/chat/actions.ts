@@ -28,6 +28,8 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   const choice = formData.get("choice");
   // The showing of a guided flow's question the tapped button belongs to.
   const flowShown = formData.get("flowShown");
+  // What a student step or a saving card showed.
+  const shown = formData.get("shown");
   try {
     // The timezone is read alongside the tap, and what the answer doesn't need (audit,
     // analytics, closing the messages it settled) follows the response.
@@ -38,6 +40,7 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
           ...(typeof flowShown === "string" && flowShown
             ? { flowShown: flowShown.slice(0, 40) }
             : {}),
+          ...(typeof shown === "string" && shown ? { shown: shown.slice(0, 200) } : {}),
           defer: (work) =>
             after(() =>
               work().catch((error) =>

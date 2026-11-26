@@ -9,6 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { STUDENT_STEPS } from "@/config/student-loans";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { gather } from "@/lib/jane-agent/brain";
+import { studentToken } from "@/lib/jane-agent/shown";
 import { stepMessage } from "@/lib/jane-agent/student-replies";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
@@ -131,7 +132,10 @@ describe.runIf(url)("student loans against a real database", () => {
     });
     let current = message.id;
     for (let i = 1; i < STUDENT_STEPS.length; i += 1) {
-      const { message: next } = await takeChatAction(userId, current, "student.next", opts());
+      const { message: next } = await takeChatAction(userId, current, "student.next", {
+        ...opts(),
+        shown: studentToken(i - 1),
+      });
       expect(next.status).toBe("open");
       expect(next.body).toContain(`step ${i + 1} of 5: ${STUDENT_STEPS[i].title}`);
       expect(
@@ -139,7 +143,10 @@ describe.runIf(url)("student loans against a real database", () => {
       ).toBeTruthy();
       current = next.id;
     }
-    const { message: last } = await takeChatAction(userId, current, "student.next", opts());
+    const { message: last } = await takeChatAction(userId, current, "student.next", {
+      ...opts(),
+      shown: studentToken(STUDENT_STEPS.length - 1),
+    });
     expect(last.status).toBe("answered");
     expect(last.body).toMatch(/^That's every step on studentaid\.gov done/);
     expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(STUDENT_STEPS.length);
@@ -158,6 +165,11 @@ describe.runIf(url)("student loans against a real database", () => {
         dedupeKey: `student:stale:${crypto.randomUUID()}`,
       },
     });
+    await expect(
+      takeChatAction(userId, stale.id, "student.next", { ...opts(), shown: studentToken(0) }),
+    ).rejects.toThrow();
+    // A page that did not say which step it drew taps nothing, and neither does one that drew
+    // another step than the message now holds (a stale tab).
     await expect(takeChatAction(userId, stale.id, "student.next", opts())).rejects.toThrow();
     expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(2);
     // The message that shows step 3 moves it to 3, once.
@@ -172,7 +184,11 @@ describe.runIf(url)("student loans against a real database", () => {
         dedupeKey: `student:fresh:${crypto.randomUUID()}`,
       },
     });
-    await takeChatAction(userId, fresh.id, "student.next", opts());
+    await expect(
+      takeChatAction(userId, fresh.id, "student.next", { ...opts(), shown: studentToken(1) }),
+    ).rejects.toThrow(/moved on/);
+    expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(2);
+    await takeChatAction(userId, fresh.id, "student.next", { ...opts(), shown: studentToken(2) });
     expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(3);
   });
 
