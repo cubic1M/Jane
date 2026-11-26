@@ -80,7 +80,13 @@ export async function missingRefundAlerts(
 
 export class UnusualError extends Error {}
 
-export type UnusualOutcome = { answer: "me" | "not_me"; note: string; steps: readonly string[] };
+export type UnusualOutcome = {
+  answer: "me" | "not_me";
+  note: string;
+  steps: readonly string[];
+  // A dispute card was opened on the plan (only with a team behind it).
+  disputeCard: boolean;
+};
 
 export async function answerUnusual(
   userId: string,
@@ -145,6 +151,7 @@ export async function answerUnusual(
         answer,
         note: "Thanks. I won't flag that merchant again unless it's much more than this.",
         steps: [],
+        disputeCard: false,
       }
     : {
         answer,
@@ -152,5 +159,6 @@ export async function answerUnusual(
           ? "I've opened a dispute card on your plan: say yes there and our team asks the card for the money back. Meanwhile, lock the card."
           : "Call your card company today and tell them this charge isn't yours: they're the ones who can get it back, and the time to dispute is limited. I can't do it for you. Meanwhile, lock the card.",
         steps: CARD_LOCK_STEPS,
+        disputeCard: findingId !== null,
       };
 }

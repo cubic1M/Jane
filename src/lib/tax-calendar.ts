@@ -358,7 +358,12 @@ export async function payEstimate(
       (p) => p.to === "federal" && p.cents === paid.cents,
     ).length;
     if (counted >= payments) throw new TaxCalendarError("That payment is already paid.");
-    await finishEstimate(userId, dueOn, { cents: paid.cents, day: today }, { client, now });
+    await finishEstimate(
+      userId,
+      dueOn,
+      { cents: paid.cents, day: await todayOf(userId, { client, now }) },
+      { client, now },
+    );
     return { cents: paid.cents, confirmation: paid.confirmation };
   }
   const planned = inPayWindow(
@@ -393,7 +398,12 @@ export async function payEstimate(
       via,
     },
   });
-  await finishEstimate(userId, dueOn, { cents: planned.cents, day: today }, { client, now });
+  await finishEstimate(
+    userId,
+    dueOn,
+    { cents: planned.cents, day: await todayOf(userId, { client, now }) },
+    { client, now },
+  );
   if (via === "autopilot") {
     await recordAct(userId, "taxes", planned.cents, `Paid the ${dueOn} estimated payment`, {
       client,

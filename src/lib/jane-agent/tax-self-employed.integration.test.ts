@@ -9,7 +9,13 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { setAutopilot } from "@/lib/autopilot";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
-import { loadSelfEmployed, saveHomeOffice } from "@/lib/self-employed";
+import {
+  SelfEmployedError,
+  loadSelfEmployed,
+  recordTaxPayment,
+  recordTaxPayments,
+  saveHomeOffice,
+} from "@/lib/self-employed";
 import { runTaxAutopilot, setAsideGoalName } from "@/lib/tax-autopilot";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
@@ -207,5 +213,44 @@ describe.runIf(url)("freelancers' taxes against a real database", () => {
       homeOffice: { squareFeet: 150 },
     });
     expect(tool.demoAdvice.estimatedPayments[0].due).toBe("2027-01-15");
+  });
+
+  it("saves a quarter's payments together, and dates them by the person's own day", async () => {
+    const user = await client.user.create({
+      data: { email: `se-day-${crypto.randomUUID()}@example.com`, timezone: "Pacific/Auckland" },
+    });
+    created.push(user.id);
+    // 8pm UTC on the 26th is already the 27th in Auckland.
+    const now = new Date("2026-11-26T20:00:00Z");
+    // One bad payment in the pair: neither is saved, so a retry finds no half.
+    await expect(
+      recordTaxPayments(
+        user.id,
+        [
+          { date: "2026-11-27", cents: 100_000, to: "federal" },
+          { date: "2026-11-27", cents: 0, to: "state" },
+        ],
+        { client, now, via: "chat" },
+      ),
+    ).rejects.toThrow(SelfEmployedError);
+    expect(await client.taxProfile.count({ where: { userId: user.id } })).toBe(0);
+    await recordTaxPayments(
+      user.id,
+      [
+        { date: "2026-11-27", cents: 100_000, to: "federal" },
+        { date: "2026-11-27", cents: 20_000, to: "state" },
+      ],
+      { client, now, via: "chat" },
+    );
+    const saved = await client.taxProfile.findUniqueOrThrow({ where: { userId: user.id } });
+    expect(saved.taxPayments).toHaveLength(2);
+    // A day after the person's own today is still refused.
+    await expect(
+      recordTaxPayment(
+        user.id,
+        { date: "2026-11-28", cents: 1_000, to: "federal" },
+        { client, now, via: "chat" },
+      ),
+    ).rejects.toThrow(SelfEmployedError);
   });
 });

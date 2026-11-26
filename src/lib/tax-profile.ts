@@ -193,9 +193,20 @@ export async function saveTaxAnswers(
 export async function confirmFound(
   userId: string,
   field: Extract<ProfileField, "incomeKinds" | "state" | "dependants">,
-  options: Options & { via: "chat" | "page" },
+  options: Options & { via: "chat" | "page"; expected?: string },
 ): Promise<TaxProfileView> {
   const view = await loadTaxProfile(userId, options);
+  // `expected`: what the question showed. If what Jane finds is something else by now, nothing
+  // is saved, so a Yes is never taken for a value the person did not see.
+  const now =
+    field === "state"
+      ? view.state.value
+      : field === "incomeKinds"
+        ? [...view.incomeKinds.value].sort().join(",")
+        : null;
+  if (options.expected !== undefined && now !== null && options.expected !== now) {
+    throw new TaxProfileError("What I found has changed since I asked. Take a look at it again.");
+  }
   // "Yes, these are my dependants": the children in the household listed for insurance.
   if (field === "dependants") {
     const d = view.dependants;

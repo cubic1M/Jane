@@ -360,10 +360,13 @@ export async function runInsuranceTool(
     };
   }
   if (name === "insurance_review") {
-    const [latest, profile] = await Promise.all([
+    const [stored, profile, advice] = await Promise.all([
       latestCheckup(userId, { client }),
       loadInsurance(userId, { client, now }),
+      adviceMode(userId, { client }),
     ]);
+    // The checkup's recommendations are advice: a stored one is not shown outside demo advice mode.
+    const latest = advice ? stored : null;
     const review = await loadReview(
       userId,
       latest ?? { recommendations: [], createdAt: now },

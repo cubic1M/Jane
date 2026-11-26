@@ -73,7 +73,12 @@ export const taxFoundYes: ActionHandler = {
       throw new ChatActionError("failed", "Something went wrong. Open your tax profile instead.");
     }
     const { userId, client, now } = context;
-    const view = await confirmFound(userId, field, { client, now, via: "chat" }).catch(failed);
+    const view = await confirmFound(userId, field, {
+      client,
+      now,
+      via: "chat",
+      expected: context.message.refs.taxFound,
+    }).catch(failed);
     return moveOn(context, view, field === "state" ? "Got it." : "Got it. That's your income.");
   },
 };

@@ -28,7 +28,7 @@ import { estimateTaxes } from "@/planning/tax-estimate";
 import { estimatedTaxDates } from "@/planning/tax-pack";
 import { payeeOf } from "@/planning/tax-tags";
 import { isoDay as iso } from "@/lib/dates";
-import { chatToday } from "@/lib/today";
+import { chatToday, todayOf } from "@/lib/today";
 
 // Freelancers' taxes (spec step 123), from the same estimate as /taxes: business expenses
 // (tagged), the home office and mileage helpers, what to set aside from each payment and the
@@ -259,21 +259,35 @@ export async function saveMiles(
 export async function recordTaxPayment(
   userId: string,
   payment: EnteredTaxPayment,
+  options: Options & { via: "chat" | "page" },
+): Promise<void> {
+  await recordTaxPayments(userId, [payment], options);
+}
+
+// Several payments in one write (a quarter's federal and state), so they are saved together or
+// not at all: a retry never finds one of them already there. "Today" is the person's own day.
+export async function recordTaxPayments(
+  userId: string,
+  payments: EnteredTaxPayment[],
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.date) || payment.date > iso(now)) {
-    throw new SelfEmployedError("Give the day you paid, today or before.");
+  const today = await todayOf(userId, { client, now });
+  for (const payment of payments) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.date) || payment.date > today) {
+      throw new SelfEmployedError("Give the day you paid, today or before.");
+    }
+    if (!Number.isInteger(payment.cents) || payment.cents <= 0) {
+      throw new SelfEmployedError("Give the amount you paid.");
+    }
+    if (payment.to !== "federal" && payment.to !== "state")
+      throw new SelfEmployedError("Federal or state?");
   }
-  if (!Number.isInteger(payment.cents) || payment.cents <= 0) {
-    throw new SelfEmployedError("Give the amount you paid.");
-  }
-  if (payment.to !== "federal" && payment.to !== "state")
-    throw new SelfEmployedError("Federal or state?");
+  if (payments.length === 0) return;
   const db = scopedFor(userId, client);
   const current = await db.taxProfiles.findFirst({ select: { taxPayments: true } });
   const list = [
     ...parseTaxPayments(current?.taxPayments),
-    payment,
+    ...payments,
   ] as unknown as Prisma.InputJsonArray;
   await db.taxProfiles.upsert({
     where: { userId },
@@ -281,5 +295,7 @@ export async function recordTaxPayment(
     update: { taxPayments: list },
   });
   await audit(userId, "taxPayments", via);
-  await track(userId, "tax_payment_recorded", { to: payment.to, via });
+  for (const payment of payments) {
+    await track(userId, "tax_payment_recorded", { to: payment.to, via });
+  }
 }

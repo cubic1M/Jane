@@ -1,5 +1,5 @@
 import { adviceMode } from "@/lib/advice-mode";
-import { SelfEmployedError, recordTaxPayment, saveMiles } from "@/lib/self-employed";
+import { SelfEmployedError, recordTaxPayments, saveMiles } from "@/lib/self-employed";
 import { formatCents } from "@/lib/money";
 import { chatToday } from "@/lib/today";
 import { ChatActionError, type ActionHandler } from "./handler";
@@ -22,19 +22,13 @@ export const taxQuarterPaid: ActionHandler = {
     const q = message.refs.taxQuarter;
     if (!q) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
     const date = await chatToday(userId, { client, now });
-    if (q.cents > 0) {
-      await recordTaxPayment(
-        userId,
-        { date, cents: q.cents, to: "federal" },
-        { client, now, via: "chat" },
-      ).catch(failed);
-    }
-    if (q.stateCents > 0) {
-      await recordTaxPayment(
-        userId,
-        { date, cents: q.stateCents, to: "state" },
-        { client, now, via: "chat" },
-      ).catch(failed);
+    // The federal and state payments in one write: both are saved or neither.
+    const payments = [
+      ...(q.cents > 0 ? [{ date, cents: q.cents, to: "federal" as const }] : []),
+      ...(q.stateCents > 0 ? [{ date, cents: q.stateCents, to: "state" as const }] : []),
+    ];
+    if (payments.length > 0) {
+      await recordTaxPayments(userId, payments, { client, now, via: "chat" }).catch(failed);
     }
     return {
       answeredWith: action.label,

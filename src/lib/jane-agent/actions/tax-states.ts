@@ -1,5 +1,11 @@
 import { loadTaxProfile } from "@/lib/tax-profile";
-import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
+import {
+  ResidencyError,
+  loadResidency,
+  saveLocality,
+  saveMoves,
+  saveWorkState,
+} from "@/lib/tax-states";
 import { stateName } from "@/planning/tax-profile";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import { moveLine } from "../tax-states-message";
@@ -22,7 +28,13 @@ const saveMove = async ({ userId, message, action, client, now }: ActionContext)
   const move = message.refs.taxMove;
   if (!move) throw broken();
   const year = Number(move.date.slice(0, 4));
-  await saveMoves(userId, year, [move], { client, now, via: "chat" }).catch(failed);
+  // The moves already told for the year stay: this one is added to them (once, if it is already
+  // there), not put in their place.
+  const told = (await loadResidency(userId, year, { client })).told ?? [];
+  const others = told.filter(
+    (m) => !(m.date === move.date && m.from === move.from && m.to === move.to),
+  );
+  await saveMoves(userId, year, [...others, move], { client, now, via: "chat" }).catch(failed);
   return {
     answeredWith: action.label,
     note: `Got it: you moved ${moveLine(move)}. Your ${year} state taxes are split between ${stateName(move.from)} and ${stateName(move.to)}, and ${stateName(move.to)} is on your tax profile.`,

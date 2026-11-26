@@ -6,6 +6,7 @@ import {
   sendResponse,
   type Response,
 } from "@/lib/tax-notices";
+import { chatToday } from "@/lib/today";
 import { ChatActionError, type ActionContext, type ActionHandler } from "./handler";
 
 // Tax notices from the chat (spec step 217): confirm a reading, pick a response (it drafts
@@ -28,9 +29,16 @@ export const taxNoticeConfirm: ActionHandler = {
   async run(context) {
     const { userId, client, now, action } = context;
     const n = await confirmTaxNotice(userId, idOf(context), { client, now }).catch(failed);
+    // A date that has passed was not put on the deadlines: say what it was, not that it is there.
+    const today = await chatToday(userId, { client, now });
+    const said = !n.dueOn
+      ? ""
+      : n.dueOn >= today
+        ? `: it's on your deadlines for ${n.dueOn}`
+        : `: the date to respond by was ${n.dueOn}, which has passed, so it isn't on your deadlines`;
     return {
       answeredWith: action.label,
-      note: `Confirmed${n.dueOn ? `: it's on your deadlines for ${n.dueOn}` : ""}. Tell me what you want to do about it.`,
+      note: `Confirmed${said}. Tell me what you want to do about it.`,
     };
   },
 };

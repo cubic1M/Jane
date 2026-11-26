@@ -187,7 +187,7 @@ describe.runIf(url)("balance transfers against a real database", () => {
       },
     });
     const done = await takeChatAction(userId, message.id, "transfer.done", opts(now));
-    expect(done.message.refs.note).toMatch(/is paid off before the 0% ended/);
+    expect(done.message.refs.note).toMatch(/is paid off\./);
     expect((await client.deadline.findFirstOrThrow({ where: { userId } })).doneAt).not.toBeNull();
     // Its promotion is over too.
     expect(await client.cardPromo.count({ where: { userId } })).toBe(0);

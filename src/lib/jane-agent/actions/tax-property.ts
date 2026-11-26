@@ -31,7 +31,11 @@ export const taxPropertyDraft: ActionHandler = {
     const a = await draftPropertyAppeal(userId, { client, now, via: "chat" }).catch(failed);
     return {
       answeredWith: action.label,
-      note: `Done: your appeal is drafted (about ${formatWholeDollars(a.savingCents)} a year if it works) and the deadline is on your plan. Tell me who files it.`,
+      note: `Done: your appeal is drafted (about ${formatWholeDollars(a.savingCents)} a year if it works) ${
+        a.remindedFor
+          ? "and the deadline is on your plan."
+          : "but I don't have the date the appeal window closes yet, so no deadline is on your plan. Check it with your county."
+      } Tell me who files it.`,
     };
   },
 };

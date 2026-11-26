@@ -61,7 +61,16 @@ export function nextQuestion(view: TaxProfileView): Question | null {
       refs: { taxField: PROFILE_FIELDS.find((f) => view[f].status !== "yours") },
     };
   }
-  return { ...question(view, field), refs: { taxField: field } };
+  const shown =
+    field === "state" && view.state.status === "found"
+      ? view.state.value
+      : field === "incomeKinds" && view.incomeKinds.status === "found"
+        ? [...view.incomeKinds.value].sort().join(",")
+        : null;
+  return {
+    ...question(view, field),
+    refs: { taxField: field, ...(shown ? { taxFound: shown } : {}) },
+  };
 }
 
 const FIELD_NAMES: Readonly<Record<ProfileField, string>> = {

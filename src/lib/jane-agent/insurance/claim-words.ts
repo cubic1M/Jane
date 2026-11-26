@@ -9,12 +9,14 @@ import { dayLabel } from "@/lib/day-label";
 // (what to do now, what to collect, who to call); then the same message becomes the claim's
 // tracker, one step at a time.
 
-const contactLine = (carrier: string | null, phone: string | null, url: string | null) =>
-  carrier
-    ? phone
-      ? `Your insurer: ${carrier}, claims line ${phone}${url ? `, or online at ${url}` : ""}.`
-      : `Your insurer: ${carrier}. ${CLAIM_CONTACT_FALLBACK}`
-    : CLAIM_CONTACT_FALLBACK;
+const contactLine = (carrier: string | null, phone: string | null, url: string | null) => {
+  if (!carrier) return CLAIM_CONTACT_FALLBACK;
+  if (phone)
+    return `Your insurer: ${carrier}, claims line ${phone}${url ? `, or online at ${url}` : ""}.`;
+  // A claims address with no phone is still the way in: the fallback is for neither.
+  if (url) return `Your insurer: ${carrier}, claims online at ${url}.`;
+  return `Your insurer: ${carrier}. ${CLAIM_CONTACT_FALLBACK}`;
+};
 
 export function guideBody(
   kind: PolicyKind,

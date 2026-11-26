@@ -610,6 +610,9 @@ export type MessageRefs = {
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
+  // What a "That's right" question showed (the state code, or the income kinds joined): its Yes
+  // saves that, and only while it is still what Jane finds.
+  taxFound?: string;
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
