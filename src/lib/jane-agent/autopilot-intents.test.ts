@@ -69,6 +69,13 @@ describe("sector autopilot intents", () => {
     });
   });
 
+  // A question about the past is not a setting, whatever condition it names (#2294 review).
+  it("does not read a question about paid bills as a setting", () => {
+    expect(parse("which bills were paid only after I approved them")).not.toMatchObject({
+      kind: "autopilot_sector",
+    });
+  });
+
   it.each([
     "what can you do by yourself?",
     "how much do you do on your own",

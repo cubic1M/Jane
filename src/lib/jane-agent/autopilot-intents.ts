@@ -50,7 +50,10 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   const sector = sectorIn(text);
   if (!sector) return null;
   const level: SectorLevel | null =
-    ASK.test(text) || NEGATED.test(text) || NEGATED_AUTONOMY.test(text) || CONDITIONAL.test(text)
+    ASK.test(text) ||
+    NEGATED.test(text) ||
+    NEGATED_AUTONOMY.test(text) ||
+    (CONDITIONAL.test(text) && ALL.test(text))
       ? "ask"
       : SAFE.test(text)
         ? "safe"
