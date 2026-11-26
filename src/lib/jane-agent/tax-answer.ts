@@ -14,7 +14,7 @@ import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadEquityTax } from "@/lib/equity-tax";
-import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
+import { loadMultiYear, retireYearProblem } from "@/lib/multi-year";
 import { yearsReply } from "./multi-year-message";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { propertyReply } from "./property-tax-message";
@@ -35,7 +35,6 @@ import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { retirementReply } from "./retirement-tax-message";
 import { listDraftReturns } from "@/lib/draft-return";
 import { draftReply } from "./draft-return-message";
-import { correctFact } from "@/lib/profile";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
@@ -72,6 +71,8 @@ import {
   packReply,
   setFilingReply,
   setKidsReply,
+  setCountyReply,
+  setRetireYearReply,
   setStateReply,
   tagReply,
   tagTotalReply,
@@ -168,11 +169,8 @@ export async function answerTaxIntent(
     case "disaster":
       return disasterReply(await loadDisasterRelief(userId, { client, now }));
     case "set_county": {
-      const name = intent.county.replace(/\b\w/g, (c) => c.toUpperCase());
-      await correctFact(userId, "county", name, { client, now });
-      const v = await loadDisasterRelief(userId, { client, now });
-      const reply = disasterReply(v);
-      return { ...reply, body: `Got it: ${name} County.\n${reply.body}` };
+      // A county typed in passing is asked about, never saved on the spot (open O27).
+      return setCountyReply(intent.county.replace(/\b\w/g, (c) => c.toUpperCase()));
     }
     case "health":
       return healthReply(await loadHealthTaxes(userId, { client, now }));
@@ -194,16 +192,10 @@ export async function answerTaxIntent(
     case "years":
       return yearsReply(await loadMultiYear(userId, { client, now }));
     case "retire_year": {
-      try {
-        await setRetireYear(userId, intent.year, { client, now, via: "chat" });
-      } catch (error) {
-        if (error instanceof MultiYearError) return { body: error.message, refs: {}, actions: [] };
-        throw error;
-      }
-      return {
-        ...yearsReply(await loadMultiYear(userId, { client, now })),
-        body: `Got it: you plan to retire in ${intent.year}. ${yearsReply(await loadMultiYear(userId, { client, now })).body}`,
-      };
+      // Asked about, never saved on the spot (open O27); a year that can't be used says so now.
+      const problem = retireYearProblem(intent.year, now);
+      if (problem) return { body: problem, refs: {}, actions: [] };
+      return setRetireYearReply(intent.year);
     }
     case "equity":
       return equityReply(await loadEquityTax(userId, { client, now }));

@@ -423,7 +423,8 @@ const DEBT_TROUBLE =
 // Spec step 248. Rent reporting, a rent increase, and a security deposit.
 const RENTING =
   /\b(?:report|reporting|reported)\b.*\b(?:my )?rent\b|\brent\b.*\b(?:credit (?:report|score|file|bureaus?)|build(?:ing)? (?:my )?credit)\b|\b(?:my )?rent (?:went up|is going up|increase\w*|hike|raised)\b|\brent (?:is|got) (?:too )?(?:high|raised)\b|\b(?:security|rental) deposit\b|\bdeposit back\b|\blandlord\b.*\bdeposit\b/;
-const PAST_COST = /\b(?:did|have|has|had|ever|so far)\b/;
+const PAST_COST =
+  /\b(?:did|has|have|had)\b[^?]*\b(?:cost|paid|charged)\b|\b(?:did|have|has|had) (?:i|we)\b|\bever\b|\bso far\b/;
 const COSTLY =
   /\bpayday (?:loans?|lenders?|advances?)\b|\bcash advances?\b|\bpay(?:check)? advance apps?\b|\b(?:earnin|brigit|moneylion|klover)\b|\bhigh[- ]cost (?:loans?|borrowing)\b|\bsmall[- ]dollar loans?\b|\bpayday alternative\b|\bcostly (?:short[- ]term )?borrowing\b|\boverdrafts?\b.*\b(?:keep|keeps|again|repeated|every month|so often|a lot|cost me|add up)\b|\b(?:keep|keeps|stop|always)\b.*\boverdraft\w*/;
 // Spec step 246.
@@ -534,7 +535,12 @@ export function parseDebtIntent(
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   // "Should I get a payday loan?" is the decision; "how much have payday loans cost me?" is the history.
   // A question in the past ("how much did getting a payday loan cost me?") is the history.
-  if (COSTLY.test(text) && decisionFor(text) === "payday_loan" && !PAST_COST.test(text)) {
+  // (a condition with "if" or "when" is a question about now, whatever it says of the past)
+  if (
+    COSTLY.test(text) &&
+    decisionFor(text) === "payday_loan" &&
+    (!PAST_COST.test(text) || /\b(?:if|when|unless)\b/.test(text))
+  ) {
     return { kind: "debt_decision", which: "payday_loan" };
   }
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };

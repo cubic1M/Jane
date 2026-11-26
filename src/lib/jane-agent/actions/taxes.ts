@@ -8,6 +8,11 @@ import {
   type TaxAnswer,
 } from "@/lib/tax-profile";
 import type { TaxProfileView } from "@/planning/tax-profile";
+import { loadDisasterRelief } from "@/lib/disasters";
+import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
+import { ProfileError, correctFact } from "@/lib/profile";
+import { disasterReply } from "../disaster-message";
+import { yearsReply } from "../multi-year-message";
 import { snoozeButton } from "../sources/source";
 import {
   FILING_BUTTONS,
@@ -148,4 +153,58 @@ export const taxStateSet: ActionHandler = {
   on: "open",
   run: (context) =>
     answer(context, { field: "state", value: context.message.refs.taxState ?? "" }, "Got it."),
+};
+
+// "Yes, put it on" for a county the person typed ("I live in Travis County"): saved on the yes,
+// then the disaster relief for it, in the same message (open O27).
+export const taxCountySet: ActionHandler = {
+  id: "tax.county_set",
+  on: "open",
+  async run({ userId, message, client, now, action }) {
+    const county = message.refs.taxCounty;
+    if (!county) throw new ChatActionError("failed", "Something went wrong. Say the county again.");
+    try {
+      await correctFact(userId, "county", county, { client, now });
+    } catch (error) {
+      if (error instanceof ProfileError) throw new ChatActionError("failed", error.message);
+      throw error;
+    }
+    const reply = disasterReply(await loadDisasterRelief(userId, { client, now }));
+    return {
+      // Open while the answer has buttons of its own (the disaster move): they work on an open one.
+      status: reply.actions.some((a) => a.kind !== "link") ? "open" : "answered",
+      answeredWith: action.label,
+      body: `Got it: ${county} County.\n${reply.body}`,
+      actions: reply.actions,
+      refs: reply.refs,
+      note: "Saved on your tax profile.",
+    };
+  },
+};
+
+// "Yes, put it on" for a retirement year the person typed ("I plan to retire in 2045").
+export const taxRetireSet: ActionHandler = {
+  id: "tax.retire_set",
+  on: "open",
+  async run({ userId, message, client, now, action }) {
+    const year = message.refs.retireYear;
+    if (typeof year !== "number") {
+      throw new ChatActionError("failed", "Something went wrong. Say the year again.");
+    }
+    try {
+      await setRetireYear(userId, year, { client, now, via: "chat" });
+    } catch (error) {
+      if (error instanceof MultiYearError) throw new ChatActionError("failed", error.message);
+      throw error;
+    }
+    const reply = yearsReply(await loadMultiYear(userId, { client, now }));
+    return {
+      status: reply.actions.some((a) => a.kind !== "link") ? "open" : "answered",
+      answeredWith: action.label,
+      body: `Got it: you plan to retire in ${year}. ${reply.body}`,
+      actions: reply.actions,
+      refs: reply.refs,
+      note: "Saved on your tax profile.",
+    };
+  },
 };

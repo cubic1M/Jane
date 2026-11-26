@@ -1,5 +1,6 @@
 import {
   SCENARIO_COVER,
+  SCENARIO_COVER_FACTS,
   SCENARIO_DEFAULTS,
   SCENARIO_LABELS,
   WHAT_IF_FLOOR_CENTS,
@@ -101,6 +102,9 @@ export type ScenarioRun = {
     investing: string;
   };
   plan: PlanChange[];
+  // Whether this run may carry advice (demo advice mode): the cover lines are what to check
+  // when it does, plain facts when it doesn't, and a real account never gets the advice.
+  advice: boolean;
 };
 
 const BASELINE_PARAMS: ScenarioParams = {
@@ -115,6 +119,7 @@ export function runScenario(
   scenario: Scenario,
   baseline: WhatIfBaseline,
   overrides: Partial<ScenarioParams> = {},
+  { advice = false }: { advice?: boolean } = {},
 ): ScenarioRun {
   const params = { ...SCENARIO_DEFAULTS[scenario], ...overrides };
   const before = project(baseline, BASELINE_PARAMS);
@@ -188,8 +193,11 @@ export function runScenario(
       detail: "The one-time cost comes out of cash in the first month.",
     });
   }
-  for (const line of SCENARIO_COVER[scenario]) {
-    plan.push({ key: `cover:${plan.length}`, title: "Check your cover", detail: line });
+  const cover = advice ? SCENARIO_COVER[scenario] : SCENARIO_COVER_FACTS[scenario];
+  if (advice) {
+    for (const line of cover) {
+      plan.push({ key: `cover:${plan.length}`, title: "Check your cover", detail: line });
+    }
   }
 
   return {
@@ -198,7 +206,8 @@ export function runScenario(
     params,
     before,
     after,
-    sectors: { forecast, goals, debt, taxes, insurance: SCENARIO_COVER[scenario], investing },
+    sectors: { forecast, goals, debt, taxes, insurance: cover, investing },
     plan,
+    advice,
   };
 }

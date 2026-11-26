@@ -140,22 +140,27 @@ export async function loadMultiYear(
   };
 }
 
+// Why a retirement year can't be used, or null: it has to be a year from this one to the end of
+// the projection.
+export function retireYearProblem(retireYear: number, now: Date): string | null {
+  const thisYear = now.getUTCFullYear();
+  if (
+    !Number.isInteger(retireYear) ||
+    retireYear < thisYear ||
+    retireYear > thisYear + MAX_PROJECTION_YEARS - 1
+  ) {
+    return `Give a year from ${thisYear} to ${thisYear + MAX_PROJECTION_YEARS - 1}.`;
+  }
+  return null;
+}
+
 export async function setRetireYear(
   userId: string,
   retireYear: number | null,
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
-  const thisYear = now.getUTCFullYear();
-  if (
-    retireYear !== null &&
-    (!Number.isInteger(retireYear) ||
-      retireYear < thisYear ||
-      retireYear > thisYear + MAX_PROJECTION_YEARS - 1)
-  ) {
-    throw new MultiYearError(
-      `Give a year from ${thisYear} to ${thisYear + MAX_PROJECTION_YEARS - 1}.`,
-    );
-  }
+  const problem = retireYear === null ? null : retireYearProblem(retireYear, now);
+  if (problem) throw new MultiYearError(problem);
   await scopedFor(userId, client).taxProfiles.upsert({
     where: { userId },
     create: { userId, retireYear },

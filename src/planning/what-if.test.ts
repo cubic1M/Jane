@@ -45,7 +45,7 @@ describe("project", () => {
 describe("runScenario", () => {
   it("runs every scenario with a plain-words line for each sector", () => {
     for (const s of SCENARIOS) {
-      const run = runScenario(s, baseline);
+      const run = runScenario(s, baseline, {}, { advice: true });
       expect(run.sectors.forecast.length, s).toBeGreaterThan(10);
       expect(run.sectors.insurance.length, s).toBeGreaterThan(0);
       expect(run.after.rows).toHaveLength(12);
@@ -53,7 +53,7 @@ describe("runScenario", () => {
   });
 
   it("job loss: cash runs out, goals slip, the plan pauses extras and trims", () => {
-    const run = runScenario("job_loss", baseline, { months: 6 });
+    const run = runScenario("job_loss", baseline, { months: 6 }, { advice: true });
     expect(run.after.runsOutMonth).toBe(3);
     expect(run.sectors.goals[0].status).toBe("slips");
     expect(run.sectors.debt).toBe("Debt-free moves from August 2027 to February 2028.");
@@ -63,6 +63,25 @@ describe("runScenario", () => {
     expect(run.plan.map((c) => c.key)).toEqual(
       expect.arrayContaining(["pause-extra", "goal:g1", "cover:3"]),
     );
+  });
+
+  // CodeRabbit part 2 (open O26): a real account is shown what is true about cover, never what to
+  // check or what fills a gap; that is demo advice only.
+  it("a real account gets cover facts, no cover advice and no cover step in the plan", () => {
+    for (const s of SCENARIOS) {
+      const run = runScenario(s, baseline);
+      expect(run.advice, s).toBe(false);
+      expect(run.sectors.insurance.join(" "), s).not.toMatch(
+        /check|COBRA|marketplace|worth a look|matter more|can fill/i,
+      );
+      expect(
+        run.plan.filter((c) => c.key.startsWith("cover:")),
+        s,
+      ).toEqual([]);
+    }
+    expect(runScenario("job_loss", baseline).sectors.insurance).toEqual([
+      "Health, disability and life cover through work usually end with the job.",
+    ]);
   });
 
   it("a raise raises the margin and slips nothing", () => {

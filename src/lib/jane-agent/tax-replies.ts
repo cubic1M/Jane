@@ -135,6 +135,29 @@ export function setStateReply(state: string): Reply {
   };
 }
 
+// Nothing a person types in passing is saved as a fact: the county asks first (open O27).
+export function setCountyReply(county: string): Reply {
+  return {
+    body: `Want me to put ${county} County on your tax profile as where you live? I'll check disaster relief for it.`,
+    actions: [
+      { id: "tax.county_set", label: "Yes, put it on", kind: "primary" },
+      link("See my tax profile"),
+    ],
+    refs: { taxField: "county", taxCounty: county },
+  };
+}
+
+export function setRetireYearReply(year: number): Reply {
+  return {
+    body: `Want me to put ${year} on your tax profile as the year you plan to retire? I'll use it for your taxes over the next several years.`,
+    actions: [
+      { id: "tax.retire_set", label: "Yes, put it on", kind: "primary" },
+      link("See my tax profile"),
+    ],
+    refs: { taxField: "retireYear", retireYear: year },
+  };
+}
+
 // Spec step 119: the tags so far.
 export function tagsReply(view: TaxTagsView): Reply {
   const lines = TAX_TAG_ORDER.filter((t) => view.totals[t].count > 0).map(

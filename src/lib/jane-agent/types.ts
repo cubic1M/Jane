@@ -158,6 +158,9 @@ export const ACTION_IDS = [
   "tax.income_add",
   "tax.income_no",
   "tax.state_set",
+  // Part 2 open O27: the county or retirement year a person typed, saved only on their yes.
+  "tax.county_set",
+  "tax.retire_set",
   // Spec step 119: tax tags and forms.
   "tax.tag_yes",
   "tax.tag_no",
@@ -601,6 +604,10 @@ export type MessageRefs = {
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
+  // The county (as typed, capitalised) and the retirement year a typed answer would put on the
+  // tax profile once the person says yes.
+  taxCounty?: string;
+  retireYear?: number;
   // Spec step 119: a merchant's tax tag to keep or set (a TAX_TAGS key, or "none"), and a tax
   // form to tick off.
   merchantKey?: string;
