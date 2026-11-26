@@ -343,6 +343,31 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     expect(first.cents).toBeGreaterThan(0);
   });
 
+  it("an entry typed by the person never stands in for a payment made since payments named their entry", async () => {
+    const userId = await freelancer("cal-typed");
+    const now = at("2026-09-12");
+    const first = await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    // The person typed a payment of the same amount for the same day; the plan's own entry is gone.
+    const typed = [{ date: "2026-09-12", cents: first.cents, to: "federal" }];
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: typed } });
+    // Made before payments named theirs: the typed entry is taken for it, as it always was.
+    await client.taxPayment.updateMany({
+      where: { userId },
+      data: { createdAt: new Date("2026-09-12T18:00:00Z") },
+    });
+    await expect(payEstimate(userId, "2026-09-15", { client, now, via: "tap" })).rejects.toThrow(
+      "already paid",
+    );
+    // Made since: it is its own payment, and gets its own entry.
+    await client.taxPayment.updateMany({
+      where: { userId },
+      data: { createdAt: new Date("2027-01-05T18:00:00Z") },
+    });
+    await payEstimate(userId, "2026-09-15", { client, now, via: "tap" });
+    const profile = await client.taxProfile.findUniqueOrThrow({ where: { userId } });
+    expect(profile.taxPayments).toHaveLength(2);
+  });
+
   it("a repair on a later day dates the entry by the day the payment was accepted", async () => {
     const userId = await freelancer("cal-retry-day");
     await payEstimate(userId, "2026-09-15", { client, now: at("2026-09-12"), via: "tap" });

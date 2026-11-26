@@ -1,5 +1,10 @@
 import { TAX_PLAN } from "@/config/tax-plan";
-import { CALENDAR_ITEMS, YEAR_END_FROM_DAY, type CalendarKey } from "@/config/tax-calendar";
+import {
+  CALENDAR_ITEMS,
+  TAX_ENTRY_REF_FROM,
+  YEAR_END_FROM_DAY,
+  type CalendarKey,
+} from "@/config/tax-calendar";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -337,12 +342,15 @@ async function settleEstimate(
         select: { taxPayments: true },
       });
       const entries = parseTaxPayments(profile?.taxPayments);
-      // An entry made before payments named theirs: the same amount, on the same day.
+      // An entry made before payments named theirs: the same amount, on the same day. A payment
+      // made since is matched by its own name only (an entry the person typed, with the same
+      // amount on the same day, is another payment).
+      const legacy = payment.createdAt < new Date(TAX_ENTRY_REF_FROM);
       const counted = entries.some(
         (p) =>
           p.to === "federal" &&
           (p.ref === payment.id ||
-            (p.ref === undefined && p.cents === payment.cents && p.date === day)),
+            (legacy && p.ref === undefined && p.cents === payment.cents && p.date === day)),
       );
       if (!counted) {
         const list = [

@@ -211,6 +211,18 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
       takeChatAction(me.userId, card.id, "saving.apply", { ...o(), shown }),
     ).rejects.toThrow(/figures changed/);
     expect(await deductible()).toBe(100_000);
+    // The starting deductible moved inside the same step up: what the card said is no longer true.
+    await client.insurancePolicy.update({
+      where: { id: me.policyId },
+      data: { premiumCents: 14_200, deductibleCents: 90_000 },
+    });
+    await expect(
+      takeChatAction(me.userId, card.id, "saving.apply", { ...o(), shown }),
+    ).rejects.toThrow(/figures changed/);
+    await client.insurancePolicy.update({
+      where: { id: me.policyId },
+      data: { deductibleCents: 100_000 },
+    });
     // Back to what it said: the tap applies.
     await client.insurancePolicy.update({
       where: { id: me.policyId },

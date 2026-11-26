@@ -132,6 +132,7 @@ export function termsOf(s: SavingCandidate): string {
     s.yearlySavingCents,
     s.currentYearlyCents,
     s.newYearlyCents,
+    s.detail.fromDeductibleCents ?? "",
     s.detail.toDeductibleCents ?? "",
     s.detail.withCarrier ?? "",
     s.detail.payNowCents ?? "",
