@@ -6,6 +6,11 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+// The real concierge read, except where a test makes it fail.
+vi.mock("@/lib/concierge-mode", async (original) => {
+  const actual = await original<typeof import("@/lib/concierge-mode")>();
+  return { ...actual, conciergeMode: vi.fn(actual.conciergeMode) };
+});
 
 import {
   CHAT_MAX_MESSAGE,
@@ -16,6 +21,7 @@ import {
 import { TRIAL_CAP_TEXT, addMonthlySpend } from "./claude-limits";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { encrypt } from "@/lib/crypto";
 import { exportUserData } from "@/lib/data-export";
 import { linkDemoBank } from "@/lib/plaid/demo";
@@ -374,6 +380,26 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         expect(fallback.source).toBe("claude_unavailable");
       }
       warn2.mockRestore();
+      resetClaudeHealth();
+    });
+
+    // CodeRabbit part 2: what is set up for the Claude call (the concierge read) failing is an
+    // answer from the data and the use refunded, never an error after the question was stored.
+    it("answers from the data when the call's setup fails, and a failed analytics write loses nothing", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      create.mockReset().mockResolvedValue({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Fine." }],
+      });
+      vi.mocked(conciergeMode).mockRejectedValueOnce(new Error("db blip"));
+      const out = await send("is my rent too high?", { claude });
+      expect(out.source).toBe("claude_unavailable");
+      expect(out.reply.body.length).toBeGreaterThan(20);
+      expect(create).not.toHaveBeenCalled();
+      vi.mocked(track).mockRejectedValueOnce(new Error("analytics down"));
+      const stored = await send("safe to spend", { claude });
+      expect(stored.reply.body).toBe("Fine.");
+      error.mockRestore();
       resetClaudeHealth();
     });
 
