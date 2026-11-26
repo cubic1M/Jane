@@ -22,11 +22,13 @@ export const taxQuarterPaid: ActionHandler = {
     const q = message.refs.taxQuarter;
     if (!q) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
     const date = await chatToday(userId, { client, now });
-    await recordTaxPayment(
-      userId,
-      { date, cents: q.cents, to: "federal" },
-      { client, now, via: "chat" },
-    ).catch(failed);
+    if (q.cents > 0) {
+      await recordTaxPayment(
+        userId,
+        { date, cents: q.cents, to: "federal" },
+        { client, now, via: "chat" },
+      ).catch(failed);
+    }
     if (q.stateCents > 0) {
       await recordTaxPayment(
         userId,
@@ -36,7 +38,12 @@ export const taxQuarterPaid: ActionHandler = {
     }
     return {
       answeredWith: action.label,
-      note: `Noted: ${formatCents(q.cents)} federal${q.stateCents > 0 ? ` and ${formatCents(q.stateCents)} state` : ""}. Your estimate counts it now.`,
+      note: `Noted: ${[
+        q.cents > 0 ? `${formatCents(q.cents)} federal` : null,
+        q.stateCents > 0 ? `${formatCents(q.stateCents)} state` : null,
+      ]
+        .filter(Boolean)
+        .join(" and ")}. Your estimate counts it now.`,
     };
   },
 };

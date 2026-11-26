@@ -235,8 +235,10 @@ async function answer(
         two.map((part) => answerByRules(userId, part, { client, now, topic, cardTopic })),
       );
       if (replies.every((r) => r !== null)) {
+        // Each answer is shaped on its own, then joined: a short style keeps one sentence of
+        // each, not of the first only.
         return {
-          reply: shapeReply(joinReplies(replies as Reply[]), style),
+          reply: joinReplies((replies as Reply[]).map((r) => shapeReply(r, style))),
           partsAnswered: two.length,
         };
       }
@@ -354,13 +356,15 @@ async function answer(
         // What Jane knows about them from earlier: the chat starts fresh, Jane doesn't.
         memory: memoryForChat(await listFacts(userId, { client }).catch(() => [])),
         topic,
-      }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
-        log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
-        return {
-          kind: "unavailable",
-          reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
-        };
       });
+    } catch (error): Awaited<ReturnType<typeof askClaudeInChat>> {
+      // Also what is set up for the call (the advice and concierge reads, the memory): a failure
+      // there gives the same answer from the data, with the use refunded below.
+      log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
+      return {
+        kind: "unavailable",
+        reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
+      };
     } finally {
       await claudeFinished(userId, { client, now });
     }
@@ -465,10 +469,11 @@ async function sendToJaneWork(
   // count, and the reply stays as it is (src/config/claim-check.ts).
   await noteClaims(userId, reply.body, source, { client, now });
   // What kind of question, never its words.
+  // The reply is stored: a failed analytics write must not lose it for the person.
   await track(userId, "chat_message_sent", {
     intent,
     source,
     ...(issues ? { issues: issues.join(",") } : {}),
-  });
+  }).catch((error) => log.error("chat_message_sent not recorded", { error: String(error).slice(0, 200) }));
   return { sent: toChatMessage(sent), reply: replied, source, intent, issues };
 }

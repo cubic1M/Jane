@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { FILING_STATUSES } from "@/config/tax";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -278,5 +279,14 @@ describe.runIf(url)("the tax profile against a real database", () => {
     expect(data.income.seenInAccounts[0]).toMatchObject({ kind: "Wages from a job", form: "W-2" });
     expect(data.janeDoesByHerself[0]).toContain("I work out your tax profile from your accounts");
     expect(result.cents.length).toBeGreaterThan(0);
+    // CodeRabbit part 2: the filing status carries whether the person said it, as the state does.
+    await saveTaxAnswers(userId, [{ field: "filingStatus", value: "single" }], {
+      client,
+      via: "chat",
+    });
+    const told = JSON.parse(
+      (await runChatTool(userId, "tax_profile", {}, { client, now: LINKED })).content,
+    );
+    expect(told.filingStatus).toEqual({ name: FILING_STATUSES.single, status: "yours" });
   }, 180_000);
 });

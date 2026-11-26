@@ -173,7 +173,9 @@ export function wholePictureReply(
     focus === "month"
       ? [
           top.length === 0
-            ? "Nothing needs doing this month. I'll tell you here when something does."
+            ? picture.due.length > 0
+              ? "No priority needs doing this month beyond what is due. I'll tell you here when one does."
+              : "Nothing needs doing this month. I'll tell you here when something does."
             : `This month, ${top.length === 1 ? "one thing matters most" : `${top.length} things matter most`}, starting with ${top[0].title.replace(/[.!?]+$/, "")}.`,
           ...numbered,
           picture.headline,
