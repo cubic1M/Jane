@@ -39,13 +39,18 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
   function toggle() {
     const synth = window.speechSynthesis;
     synth.cancel();
-    clearPending();
+    // A tap that is still waiting for the voices is cancelled by the next tap, not read later.
+    if (pending.current) {
+      clearPending();
+      return;
+    }
     if (speaking) {
       setSpeaking(false);
       return;
     }
     const lang = navigator.language || "en-US";
     function start() {
+      pending.current = null;
       // Only a voice on this device: a network voice would send the message to a speech service.
       const voice = localVoice(synth.getVoices(), lang);
       if (!voice) return;

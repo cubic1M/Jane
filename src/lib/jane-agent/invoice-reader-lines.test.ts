@@ -311,6 +311,20 @@ describe("which total is the one charged, whatever the order the invoice ends in
     expect(readInvoice("Plan  $100.00\nTotal  $100.00")!.currency).toBeNull();
   });
 
+  // CodeRabbit #2286: the currency comes from the amounts, not from a stray "USD" in a sentence.
+  it("reads the currency from the amounts, and the total label in any listed currency", () => {
+    const eur = readInvoice(
+      "Plan €20.00\nUsage €80.00\nTotal €100.00\nUSD payments are not accepted.",
+    )!;
+    expect(eur.currency).toBe("EUR");
+    const chf = readInvoice("Plan CHF 100.00\nTotal CHF 100.00")!;
+    expect(chf.totalCents).toBe(10_000);
+    expect(chf.linesCents).toBe(10_000);
+    expect(chf.currency).toBe("CHF");
+    // Two currencies on one invoice: never compared to a charge.
+    expect(readInvoice("Plan €20.00\nTotal €20.00\nCharged USD 22.00")!.currency).toBe("MIXED");
+  });
+
   it("uses the amount due or paid only when the invoice states no total", () => {
     expect(readInvoice("Plan  $100.00\nAmount due  $100.00")!.totalCents).toBe(10_000);
     expect(readInvoice("Plan  $100.00\nAmount paid  $100.00\nAmount due  $0.00")!.totalCents).toBe(

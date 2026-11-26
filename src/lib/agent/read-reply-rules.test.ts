@@ -35,6 +35,15 @@ describe("reading a company's reply by rules", () => {
     }
   });
 
+  // CodeRabbit #2286: a new fee is not a completed request.
+  it("does not read a new fee as the request being done", () => {
+    const reading = readReplyByRules(
+      "We have applied a new account review fee. Please provide the receipt.",
+    );
+    expect(reading.outcome).toBe("needs_info");
+    expect(readReplyByRules("We have applied a new lower rate to your plan.").outcome).toBe("done");
+  });
+
   it("still reads a confirmation as done", () => {
     for (const text of [
       "We have cancelled your subscription.",

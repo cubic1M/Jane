@@ -29,7 +29,7 @@ const CAR = /\b(?:car|truck|suv|vehicle|motorcycle)\b/;
 const OTHER_SECTOR =
   /\b(?:insurance|cover|warranty|tax\w*|refinanc\w*|mortgage|life|term|disability|umbrella|renters?|annuit\w*|ira|roth|401\s?k|hsa|529)\b/;
 
-const PRICE = /\$\s?\d|\b\d[\d,.]*\s?(?:k|dollars|bucks|usd)\b/;
+const PRICE = /\$\s*\d|\b\d[\d,.]*\s?(?:k|dollars|bucks|usd)\b/;
 
 // What people put in front of a question ("yea so", "hey,", "do you think"): dropped before it
 // is read, so the same question in other words is the same question.

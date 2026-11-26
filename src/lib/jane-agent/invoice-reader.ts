@@ -70,7 +70,8 @@ const BEFORE_TAX = new RegExp(
 const FULL_TOTAL = /^(?:grand|final)\s+total\b/;
 const DUE_TOTAL = /\btotal\s+(?:due|charged|payable)\b/;
 const strengthOf = (words: string) => (FULL_TOTAL.test(words) ? 2 : DUE_TOTAL.test(words) ? 1 : 0);
-const CURRENCY = "(?:usd|eur|gbp|cad|aud)";
+const CODE_LIST = "eur|gbp|cad|aud|nzd|chf|jpy|inr|sek|nok|dkk|mxn|brl|sgd|hkd";
+const CURRENCY = `(?:usd|${CODE_LIST})`;
 const WHEN = "(?:\\s+(?:on|by|for|before|until)\\s+.+)?$";
 const INVOICE_TOTAL = new RegExp(
   `^(?:(?:invoice|grand|final|order)\\s+)?total(?:\\s+(?:due|payable|charged|owed|amount|price|${CURRENCY}))*` +
@@ -92,7 +93,7 @@ const QUANTITY = [/\s+[x×]\s*\d+(?:\.\d+)?$/i, /(?:\t|\s{2,}|\s*\|\s*)\d+(?:\.\
 function descriptionOf(beforePrice: string): string {
   let text = beforePrice
     .replace(/\s*\.{2,}\s*$/, "")
-    .replace(/[\s|:·]+$/, "")
+    .replace(/[\s|:·€£]+$/, "")
     .replace(/\s+[x×]$/i, "");
   for (const quantity of QUANTITY) text = text.replace(quantity, "");
   return text
@@ -103,14 +104,20 @@ function descriptionOf(beforePrice: string): string {
 }
 
 const CODES: Record<string, string> = { "€": "EUR", "£": "GBP" };
-// Dollars only when the text says USD, or says nothing of another currency: CAD and AUD invoices use
-// the same "$".
+// One currency per invoice, read from what the amounts are written in: a code or a symbol beside
+// them. Null for dollars or when nothing says otherwise (CAD and AUD invoices use the same "$", so
+// their code counts). A stray "USD" in a sentence is not evidence ("USD payments are not accepted");
+// "USD 108.00" beside euro amounts is: such an invoice is "MIXED" and is never compared to a charge.
 function currencyOf(text: string): string | null {
-  if (/\busd\b|\bus\s?\$|\bus dollars?\b/i.test(text)) return null;
-  const code = /\b(eur|gbp|cad|aud|nzd|chf|jpy|inr|sek|nok|dkk|mxn|brl|sgd|hkd)\b/i.exec(text);
-  if (code) return code[1]!.toUpperCase();
-  const symbol = /[€£]/.exec(text);
-  return symbol ? CODES[symbol[0]]! : null;
+  const found = new Set<string>();
+  for (const m of text.matchAll(new RegExp(`\\b(${CODE_LIST})\\b`, "gi"))) {
+    found.add(m[1]!.toUpperCase());
+  }
+  for (const m of text.matchAll(/[€£]/g)) found.add(CODES[m[0]]!);
+  if (found.size === 0) return null;
+  const usdAmount = /\b(?:usd|us[ \t]?\$)[ \t]?\d|\d[ \t]?usd\b|\bus[ \t]?\$/i.test(text);
+  if (found.size > 1 || usdAmount) return "MIXED";
+  return [...found][0]!;
 }
 
 export function readInvoice(text: string): Invoice | null {

@@ -114,6 +114,21 @@ describe("read_invoice", () => {
     });
   });
 
+  // CodeRabbit #2286: an invoice in euros is never shown in dollars.
+  it("keeps the invoice's own currency on every amount", async () => {
+    const { data } = await run("read_invoice", {
+      text: "Plan  €20.00\nUsage  €80.00\nTotal  €100.00",
+    });
+    expect(data.currency).toBe("EUR");
+    expect(data.lines).toEqual([
+      { line: "Plan", amount: "20.00 EUR" },
+      { line: "Usage", amount: "80.00 EUR" },
+    ]);
+    expect(data.total).toBe("100.00 EUR");
+    expect(data.linesAddUpTo).toBe("100.00 EUR");
+    expect(JSON.stringify(data)).not.toContain("$");
+  });
+
   it("lists the lines alone when no charge is named", async () => {
     const { data } = await run("read_invoice", { text: TEXT });
     expect(data.setAgainstCharge).toBeNull();
