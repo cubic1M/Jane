@@ -17,7 +17,7 @@ import { monthLabel } from "../replies";
 import { loadSnapshot, type SnapshotFinding } from "../snapshot";
 import { shortName } from "../sources/findings";
 import type { ChatMessage, MessageAction, MessageRefs } from "../types";
-import type { FlowContext, FlowDef, FlowId } from "./engine";
+import type { Answers, FlowContext, FlowDef, FlowId } from "./engine";
 import { shiftMonth } from "@/lib/dates";
 import { chatToday } from "@/lib/today";
 
@@ -152,6 +152,16 @@ const goal: FlowDef<null> = {
 
 // --- Switch a provider and dispute a charge: a finding's own Yes -----------------------
 
+// The fingerprint of the finding picked, taken when it is picked; the end refuses a finding that
+// has changed since (the freshness contract on MessageRefs.fingerprint).
+const stampFinding = (key: string, answers: Answers, data: { findings: SnapshotFinding[] }) =>
+  key === "finding"
+    ? { fingerprint: data.findings.find((f) => f.findingId === answers.finding)?.fingerprint ?? "" }
+    : {};
+const CHANGED = "That one changed since you picked it, so I've stopped. Ask again to see it as it is.";
+const changed = (finding: SnapshotFinding, answers: Answers) =>
+  !answers.fingerprint || finding.fingerprint !== answers.fingerprint;
+
 // The finding's own button handler, as if its message had been tapped.
 function tapOn(
   context: FlowContext,
@@ -208,6 +218,7 @@ const switchFlow: FlowDef<SwitchData> = {
   },
   none: (data) =>
     data.findings.length === 0 ? "I haven't compared any providers for you yet." : null,
+  stamp: stampFinding,
   steps: [
     {
       key: "finding",
@@ -242,6 +253,7 @@ const switchFlow: FlowDef<SwitchData> = {
   async finish(answers, data, context) {
     const finding = data.findings.find((f) => f.findingId === answers.finding);
     if (!finding) return "That one isn't there anymore.";
+    if (changed(finding, answers)) return CHANGED;
     const outcome = await findingPick.run(
       tapOn(context, finding, { pickOptionId: answers.option }, "Yes, switch"),
     );
@@ -268,6 +280,7 @@ const dispute: FlowDef<DisputeData> = {
     data.findings.length === 0
       ? "I don't see a charge that looks wrong right now: no double charges, charges after a cancellation or trials that turned into a charge."
       : null,
+  stamp: stampFinding,
   steps: [
     {
       key: "finding",
@@ -290,6 +303,7 @@ const dispute: FlowDef<DisputeData> = {
   async finish(answers, data, context) {
     const finding = data.findings.find((f) => f.findingId === answers.finding);
     if (!finding) return "That one isn't there anymore.";
+    if (changed(finding, answers)) return CHANGED;
     const outcome = await findingYes.run(tapOn(context, finding, {}, "Yes, ask for it back"));
     return outcome.note ?? "Done.";
   },

@@ -30,6 +30,9 @@ export type FlowDef<D> = {
   // Said instead of the first question when there's nothing to do.
   none(data: D): string | null;
   steps: { key: string; ask(answers: Answers, data: D): FlowQuestion }[];
+  // Extra answers taken when a step is answered, from what is shown then (a finding's fingerprint),
+  // so the end can tell that what was confirmed is what is there now.
+  stamp?(key: string, answers: Answers, data: D): Answers;
   // The last answer: the feature's own code. Returns what happened, in a line.
   finish(answers: Answers, data: D, context: FlowContext): Promise<string>;
 };
@@ -59,6 +62,10 @@ export function stepMessage<D>(
 ): { body: string; actions: MessageAction[]; refs: MessageRefs } {
   const ask = flow.steps[state.step].ask(state.answers, data);
   const options = ask.options.slice(0, CHAT_FLOW_OPTIONS);
+  const cutOff =
+    ask.options.length > options.length
+      ? ` Showing the first ${options.length} of ${ask.options.length}.`
+      : "";
   const hint =
     ask.typed === "amount"
       ? " Or type an amount."
@@ -66,7 +73,7 @@ export function stepMessage<D>(
         ? " Or type your own."
         : "";
   return {
-    body: `${flow.title}, ${state.step + 1} of ${flow.steps.length}: ${ask.question}${hint}`,
+    body: `${flow.title}, ${state.step + 1} of ${flow.steps.length}: ${ask.question}${hint}${cutOff}`,
     actions: [
       ...options.map((o, i): MessageAction => ({
         id: PICK_IDS[i],

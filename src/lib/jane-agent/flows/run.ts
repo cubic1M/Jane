@@ -26,8 +26,10 @@ export async function answerFlow(
   context: FlowContext,
 ): Promise<FlowMove> {
   const flow = FLOWS[state.id];
-  const answers: Answers = { ...state.answers, [flow.steps[state.step].key]: value };
-  const data = await flow.load(context, answers);
+  const key = flow.steps[state.step].key;
+  const picked: Answers = { ...state.answers, [key]: value };
+  const data = await flow.load(context, picked);
+  const answers: Answers = { ...picked, ...flow.stamp?.(key, picked, data) };
   if (state.step + 1 >= flow.steps.length) {
     return { done: true, note: await flow.finish(answers, data, context) };
   }

@@ -131,4 +131,21 @@ describe.runIf(url)("guided flows against a real database", () => {
     const done = await tap(confirm, "Yes, ask for it back");
     expect(done.refs.note).toMatch(/^Got it\. I'll ask for the money back today/);
   });
+
+  // CodeRabbit part 2: the Yes acts on the finding that was picked, not on whatever it became.
+  it("stops when the finding changed between the pick and the Yes", async () => {
+    const first = await say("dispute a charge");
+    const confirm = await tap(first, first.actions[0].label);
+    const flow = confirm.refs.flow!;
+    expect(flow.answers.fingerprint).toBeTruthy();
+    await client.finding.updateMany({
+      where: { id: flow.answers.finding },
+      data: { title: "A different charge now", status: "shown" },
+    });
+    const done = await tap(confirm, "Yes, ask for it back");
+    expect(done.refs.note).toMatch(/^That one changed since you picked it/);
+    expect(
+      await client.decision.count({ where: { userId, findingId: flow.answers.finding } }),
+    ).toBe(0);
+  });
 });

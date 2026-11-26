@@ -15,7 +15,7 @@ const lower = (c: RewardCategory) => REWARD_CATEGORY_LABELS[c].toLowerCase();
 
 // The one-tap application: the label says it's a real application with a hard check. The
 // card goes in the message's refs (creditCard).
-export function applyButton(b: BetterCard): MessageAction {
+export function applyButton(b: { card: { name: string } }): MessageAction {
   return {
     id: "credit_card.apply",
     label: `Apply for the ${b.card.name} (hard credit check)`,

@@ -53,8 +53,9 @@ export async function flowReply(flow: FlowId | "resume", context: FlowContext): 
     }
     return startFlow(flow, context);
   }
-  await setAside(context, open.id, null);
+  // Shown first: if it can't be, the stored question is still there to resume.
   const step = await showFlow(open.state, context);
+  await setAside(context, open.id, null);
   return { ...step, body: `Let's pick up where we left off. ${step.body}` };
 }
 

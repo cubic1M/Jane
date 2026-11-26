@@ -109,7 +109,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         ...base,
         kind: "heads_up",
         body: canBudget ? `${change.title} Want a budget for it?` : change.title,
-        refs: canBudget ? { change: { ...refs.change, category, budgetCents } } : refs,
+        refs: canBudget ? { ...refs, change: { ...refs.change, category, budgetCents } } : refs,
         actions: [
           ...(canBudget
             ? [{ id: "change.budget", label: "Set a budget", kind: "primary" } as const]
