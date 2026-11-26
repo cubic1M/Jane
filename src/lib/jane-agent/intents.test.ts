@@ -183,7 +183,7 @@ describe("parseIntent", () => {
       kind: "spending",
       category: "food",
       month: "2026-10",
-      shortPeriod: true,
+      shortPeriod: "week",
     });
     expect(parse("how much did I spend this month")).not.toHaveProperty("shortPeriod");
     // A week asked for is never the usual month.

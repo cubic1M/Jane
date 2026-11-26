@@ -28,6 +28,8 @@ import { shiftMonth } from "@/lib/dates";
 // cancel: a subscription. lower: a bill, a rate or fees. refund: money back from a charge.
 export type ActVerb = "cancel" | "lower" | "refund";
 
+export type ShortPeriod = "today" | "yesterday" | "week" | "last_week";
+
 export type Intent =
   | { kind: "help" }
   // Loans and debt (spec Phase Y, ./debt-intents.ts).
@@ -71,7 +73,9 @@ export type Intent =
       month: string;
       perMonth?: true;
       sinceStart?: true;
-      shortPeriod?: true;
+      // A short period asked for: today, yesterday, the last seven days ("this week") or the seven
+      // days before them ("last week"). Read by day, not by month.
+      shortPeriod?: ShortPeriod;
     }
   // days is null for the usual coming-up list; beforePayday: only what's due before the next pay.
   | { kind: "coming_up"; days: number | null; beforePayday?: true }
@@ -935,12 +939,17 @@ export function parseIntent(
     }
   }
   if (SPENDING.test(text)) {
-    const on = /\b(?:on|for|at) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(text);
+    // The period words end the name ("at safeway yesterday", "on groceries past week").
+    const on =
+      /\b(?:on|for|at) (.+?)(?= (?:this|last|past|in|during|so far|since|today|yesterday)\b|$)/.exec(
+        text,
+      );
     // "how much did I spend eating out": a spending word straight after, without "on" (night
     // round 11-06), taken only when it names one, so "spend last month" stays the whole month.
-    const after = /\bspen(?:d|t|ding) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(
-      text,
-    );
+    const after =
+      /\bspen(?:d|t|ding) (.+?)(?= (?:this|last|past|in|during|so far|since|today|yesterday)\b|$)/.exec(
+        text,
+      );
     const named = after && cleanTarget(after[1]);
     const category = on
       ? cleanTarget(on[1])
@@ -957,7 +966,15 @@ export function parseIntent(
     const perMonth = month === null && (RECURRING.test(text) || habitual);
     // A week or a day asked for is not "everything on file", and not a month either: the answer
     // is the month so far, and says so.
-    const shortPeriod = /\b(?:this|last|past) week\b|\btoday\b|\byesterday\b/.test(text);
+    const shortPeriod: ShortPeriod | null = /\byesterday\b/.test(text)
+      ? "yesterday"
+      : /\btoday\b/.test(text)
+        ? "today"
+        : /\blast week\b/.test(text)
+          ? "last_week"
+          : /\b(?:this|past) week\b|\b(?:last|past) (?:7|seven) days\b/.test(text)
+            ? "week"
+            : null;
     const sinceStart =
       month === null &&
       !perMonth &&
@@ -975,7 +992,7 @@ export function parseIntent(
       month: month ?? asOf.slice(0, 7),
       ...(perMonth && !shortPeriod ? { perMonth: true as const } : {}),
       ...(sinceStart ? { sinceStart: true as const } : {}),
-      ...(shortPeriod && month === null ? { shortPeriod: true as const } : {}),
+      ...(shortPeriod && month === null ? { shortPeriod } : {}),
     };
   }
   if (COMING_UP.test(text)) {
