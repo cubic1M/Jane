@@ -317,7 +317,7 @@ const DECISIONS: readonly (readonly [DecisionTopic, RegExp])[] = [
   ],
   [
     "owe",
-    /\bhow much (?:will|would|do) i owe\b(?=.*\b(?:tax|taxes|irs|federal|return)\b)|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
+    /\bhow much (?:will|would|do) i owe\b(?=.*\b(?:tax|taxes|irs|federal|return)\b)|^how much (?:will|would) i owe\s*[?.!]?$|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
   ],
   ["refund", /\bhow (?:big|much)\b.*\brefund\b|\b(?:will|am) i (?:get|getting) a refund\b/],
   [

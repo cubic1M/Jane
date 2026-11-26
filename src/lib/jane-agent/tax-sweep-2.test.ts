@@ -21,6 +21,8 @@ const parse = (text: string) => parseIntent(text, "2026-11-20");
 describe("tax questions, routed", () => {
   it("leaves a plain 'how much do I owe' to the debts, and keeps the tax ones", () => {
     expect(parse("how much do i owe")).toEqual({ kind: "debts" });
+    // A bare "will I owe" is about the year's tax (the tax chat's own question); "do I owe" is debts.
+    expect(parse("how much will i owe")).toMatchObject({ kind: "tax", ask: "decide" });
     expect(parse("how much tax do i owe")).toMatchObject({ kind: "tax", ask: "decide" });
     expect(parse("how much will i owe in taxes")).toMatchObject({ kind: "tax", ask: "decide" });
   });
