@@ -90,20 +90,30 @@ export async function acceptShop(
         agentState: null,
         decision: { choice: "yes", options: { path: ["insuranceShopId"], equals: shop.id } },
       },
-      select: { id: true, decisionId: true, decision: { select: { options: true } } },
+      select: {
+        id: true,
+        decisionId: true,
+        decision: { select: { options: true, source: true } },
+      },
     });
     if (stalled) {
+      // The saved switch was never bound, so a quote past its day is refused as a fresh Yes is.
+      if (shop.expiresAt && shop.expiresAt <= now) {
+        throw new AcceptShopError("These quotes have expired. Ask me to shop it again.");
+      }
       // The quote the saved switch names, which the shop may not record yet (the shop write
       // failed after the decision was saved): restore it before the agent binds the shop's pick.
       const saved = stalled.decision?.options as Partial<InsuranceSwitchOptions> | null;
       const quotes = [shop.pick, ...shop.runnersUp].filter((q): q is StoredQuote => q !== null);
       const savedQuote =
         shop.status === "open" && saved
-          ? quotes.find(
-              (q) =>
-                q.carrier.name === saved.insuranceCarrier &&
-                q.annualPremiumCents === saved.insuranceAnnualCents,
-            )
+          ? saved.insuranceQuoteId
+            ? quotes.find((q) => q.id === saved.insuranceQuoteId)
+            : quotes.find(
+                (q) =>
+                  q.carrier.name === saved.insuranceCarrier &&
+                  q.annualPremiumCents === saved.insuranceAnnualCents,
+              )
           : undefined;
       await db.insuranceShops.updateMany({
         where: { id: shop.id, status: "open" },
@@ -115,10 +125,11 @@ export async function acceptShop(
             : {}),
         },
       });
+      // The approval's own source: an autopilot yes keeps its hold when a person retries it.
       const agentJobId = await startOnce(userId, stalled.id, {
         client,
         now,
-        source: by === "autopilot" ? "rule" : "chat",
+        source: stalled.decision?.source === "rule" ? "rule" : "chat",
       });
       return { decisionId: stalled.decisionId, actionId: stalled.id, agentJobId };
     }
@@ -181,6 +192,7 @@ export async function acceptShop(
     insuranceCarrier: chosen.carrier.name,
     insuranceAnnualCents: chosen.annualPremiumCents,
     insuranceSavingCents: savingCents,
+    insuranceQuoteId: chosen.id,
   };
 
   const result = await db.transaction(async (tx) => {

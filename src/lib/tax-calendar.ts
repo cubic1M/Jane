@@ -344,7 +344,7 @@ export async function payEstimate(
   const db = scopedFor(userId, client);
   const paid = await db.taxPayments.findFirst({
     where: { dueOn: new Date(`${dueOn}T00:00:00Z`) },
-    select: { cents: true, confirmation: true },
+    select: { cents: true, confirmation: true, createdAt: true },
   });
   if (paid) {
     // The partner took it, but a step after it failed: the missing entries are made now, and
@@ -361,7 +361,12 @@ export async function payEstimate(
     await finishEstimate(
       userId,
       dueOn,
-      { cents: paid.cents, day: await todayOf(userId, { client, now }) },
+      // The day it was accepted, not the retry's: the estimate counts entries by their day,
+      // and a repair after a tax-year boundary must stay in the year it was paid.
+      {
+        cents: paid.cents,
+        day: await todayOf(userId, { client, now: paid.createdAt < now ? paid.createdAt : now }),
+      },
       { client, now },
     );
     return { cents: paid.cents, confirmation: paid.confirmation };

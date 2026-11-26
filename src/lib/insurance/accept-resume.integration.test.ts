@@ -112,6 +112,32 @@ describe.runIf(url)("an accepted switch whose agent did not start", () => {
     expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
   });
 
+  it("a resumed switch is refused once its quotes have expired", async () => {
+    const { user, shop, first } = await stalledSwitch("pick");
+    await client.action.update({
+      where: { id: first.actionId },
+      data: { agentState: null, replyToken: null },
+    });
+    const later = new Date(NOW.getTime() + 400 * 86_400_000);
+    await client.insuranceShop.update({
+      where: { id: shop.id },
+      data: { status: "open", answeredAt: null, expiresAt: new Date(later.getTime() - 1000) },
+    });
+    await expect(acceptShop(user.id, shop.id, { client, now: later })).rejects.toThrow(/expired/);
+  });
+
+  it("a person's retry of an autopilot yes keeps the rule's hold", async () => {
+    const { user, shop, first } = await stalledSwitch("pick");
+    await client.action.update({
+      where: { id: first.actionId },
+      data: { agentState: null, replyToken: null, agentNextAt: null },
+    });
+    await client.decision.update({ where: { id: first.decisionId }, data: { source: "rule" } });
+    await acceptShop(user.id, shop.id, { client, now: NOW });
+    const action = await client.action.findUniqueOrThrow({ where: { id: first.actionId } });
+    expect(action.agentNextAt!.getTime()).toBeGreaterThan(NOW.getTime());
+  });
+
   it("a resumed switch restores the quote the person picked when the shop write was lost", async () => {
     const { user, shop, runnerUp, first } = await stalledSwitch("runner-up");
     expect(runnerUp).toBeTruthy();

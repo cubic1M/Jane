@@ -283,6 +283,19 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     );
   });
 
+  it("a repair on a later day dates the entry by the day the payment was accepted", async () => {
+    const userId = await freelancer("cal-retry-day");
+    await payEstimate(userId, "2026-09-15", { client, now: at("2026-09-12"), via: "tap" });
+    await client.taxPayment.updateMany({
+      where: { userId },
+      data: { createdAt: new Date("2026-09-12T18:00:00Z") },
+    });
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: [] } });
+    await payEstimate(userId, "2026-09-15", { client, now: at("2026-09-20"), via: "tap" });
+    const profile = await client.taxProfile.findUniqueOrThrow({ where: { userId } });
+    expect((profile.taxPayments as { date: string }[]).map((p) => p.date)).toEqual(["2026-09-12"]);
+  });
+
   it("pays nothing before its window or for someone with real accounts, and says so", async () => {
     const userId = await freelancer("cal-edge");
     await setAutopilot(userId, "all", { client, now: LINKED });
