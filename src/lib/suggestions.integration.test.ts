@@ -11,6 +11,12 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+// A first sync also saves the person's numbers for Claude, which nothing here reads: about a
+// quarter of each sync.
+vi.mock("@/lib/jane-agent/claude-tools", async (original) => ({
+  ...(await original<typeof import("@/lib/jane-agent/claude-tools")>()),
+  refreshPrimer: vi.fn(async () => undefined),
+}));
 
 import { suggestionsSource } from "@/lib/jane-agent/sources/suggestions";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
@@ -28,25 +34,37 @@ const LATER = new Date("2026-10-22T15:00:00Z");
 
 describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () => {
   let client: PrismaClient;
-  const made = new Map<string, string>();
+  const made: string[] = [];
+  const seeded = new Map<string, Promise<string>>();
 
-  beforeAll(async () => {
+  /** A new sample person with their demo bank synced. */
+  async function newPerson(person: (typeof PEOPLE)[number]["id"]) {
+    const trial = await startTrial({ client, now: NOW, defer: true, person });
+    made.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW });
+    return trial.userId;
+  }
+  // Each person is synced once, by the first test that needs them, inside that test's own time:
+  // one hook that synced all eight took about 94 s on a quiet machine against its 120 s limit,
+  // and timed out under CI's load.
+  function userFor(person: (typeof PEOPLE)[number]["id"]) {
+    let userId = seeded.get(person);
+    if (!userId) seeded.set(person, (userId = newPerson(person)));
+    return userId;
+  }
+
+  beforeAll(() => {
     stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
-    for (const p of PEOPLE) {
-      const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });
-      await syncItem(trial.itemId, { client, now: NOW });
-      made.set(p.id, trial.userId);
-    }
-  }, 120_000);
+  });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: { in: [...made.values()] } } });
+    await client.user.deleteMany({ where: { id: { in: made } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
 
   it.each(PEOPLE)("$id gets their top suggestions from their written list", async (person) => {
-    const userId = made.get(person.id)!;
+    const userId = await userFor(person.id);
     const out = await scanSuggestions(userId, { client, now: NOW });
     expect(out.selected.length).toBeGreaterThan(0);
     expect(out.selected.length).toBeLessThanOrEqual(SUGGESTIONS_PER_DAY);
@@ -71,7 +89,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   });
 
   it("is safe to run twice in a day, and ranks again tomorrow", async () => {
-    const userId = made.get("debt")!;
+    const userId = await userFor("debt");
     const first = await offeredToday(userId, { client, now: NOW });
     await scanSuggestions(userId, { client, now: NOW });
     expect((await offeredToday(userId, { client, now: NOW })).map((o) => o.key)).toEqual(
@@ -87,7 +105,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   // Overnight upload QA: a pick made from the first file kept its figures after a second upload
   // changed them, in the chat message too ("$548/yr" against the report's "$473").
   it("gives today's picks the new figures when the scan runs again the same day", async () => {
-    const userId = made.get("renter")!;
+    const userId = await userFor("renter");
     const [top] = await offeredToday(userId, { client, now: NOW });
     const fresh = await client.suggestion.findFirstOrThrow({ where: { userId, key: top.key } });
     await client.suggestion.updateMany({
@@ -118,7 +136,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   });
 
   it("shows the short card, and the whole explanation behind Why?", async () => {
-    const userId = made.get("renter")!;
+    const userId = await userFor("renter");
     const [top] = await offeredToday(userId, { client, now: NOW });
     expect(top.headline.length).toBeLessThanOrEqual(60);
     expect(top.short.length).toBeLessThanOrEqual(120);
@@ -136,7 +154,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   });
 
   it("never offers a no again, and the source says how sure Jane is", async () => {
-    const userId = made.get("renter")!;
+    const userId = await userFor("renter");
     const [top] = await offeredToday(userId, { client, now: NOW });
     const snapshot = await loadSnapshot(userId, { client, now: NOW });
     const [message] = suggestionsSource
@@ -171,21 +189,19 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
 
   it("gives no recommendations on investments, taxes, insurance or loans to real accounts", async () => {
     {
-      const trial = await startTrial({ client, now: NOW, defer: true, person: "family" });
-      made.set("real-copy", trial.userId);
-      await syncItem(trial.itemId, { client, now: NOW });
+      const userId = await newPerson("family");
       // A CSV account next to the demo bank turns demo advice off (src/lib/advice-mode.ts).
       await client.account.create({
         data: {
-          userId: trial.userId,
+          userId,
           source: "csv",
           name: "My real account",
           type: "depository",
           currentBalanceCents: 1000,
         },
       });
-      await scanSuggestions(trial.userId, { client, now: NOW });
-      const rows = await client.suggestion.findMany({ where: { userId: trial.userId } });
+      await scanSuggestions(userId, { client, now: NOW });
+      const rows = await client.suggestion.findMany({ where: { userId } });
       expect(rows.length).toBeGreaterThan(0);
       for (const r of rows) expect(ADVICE_TOPICS as readonly string[]).not.toContain(r.topic);
     }
@@ -196,7 +212,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   it("never offers a task on a page the beta hides, and lets one already stored go", async () => {
     let caught = 0;
     for (const person of PEOPLE) {
-      const userId = made.get(person.id)!;
+      const userId = await userFor(person.id);
       const input = await loadProfileInput(userId, { client, now: LATER });
       const hidden = runDetectors({ profile: buildProfile(input), data: input }).filter((s) =>
         [s.action, ...(s.more ?? [])].some(promisesHiddenPage),
@@ -252,10 +268,8 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       (await offeredToday(userId, { client, now: at })).map((s) => s.key);
 
     beforeEach(async () => {
-      const trial = await startTrial({ client, now: NOW, defer: true, person: PEOPLE[0].id });
-      await syncItem(trial.itemId, { client, now: NOW });
-      await scanSuggestions(trial.userId, { client, now: NOW });
-      userId = trial.userId;
+      userId = await newPerson(PEOPLE[0].id);
+      await scanSuggestions(userId, { client, now: NOW });
     });
     afterEach(async () => {
       await client.user.deleteMany({ where: { id: userId } });
