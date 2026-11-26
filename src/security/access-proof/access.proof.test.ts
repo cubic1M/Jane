@@ -343,6 +343,24 @@ describe.runIf(process.env.ACCESS_PROOF === "1")("the access proof", () => {
     expect(open.problems.join()).toContain("not refused");
   });
 
+  it("keeps whose a row was when it goes along with its parent", async () => {
+    await takeWrites();
+    await asSystem(async (sql) => {
+      await sql(
+        `INSERT INTO gift_links (id, user_id, college_plan_id, token)
+         VALUES ('proof-link', $1, 'proof-plan', 'proof-token')`,
+        [alice.userId],
+      );
+      await sql(
+        `INSERT INTO gifts (id, gift_link_id, giver_name, amount_cents)
+         VALUES ('proof-gift', 'proof-link', 'A giver', 100)`,
+      );
+      await sql(`DELETE FROM gift_links WHERE id = 'proof-link'`);
+    });
+    const gone = (await takeWrites()).find((w) => w.tbl === "gifts" && w.op === "DELETE");
+    expect(gone?.old_owner).toBe(alice.userId);
+  });
+
   it("the owner sees their marker on their own pages, so its absence means something", async () => {
     const reads = surfacesToAttack().filter(
       (surface) =>

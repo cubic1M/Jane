@@ -25,7 +25,12 @@ export async function resolveTree(node: unknown, depth = 0): Promise<unknown> {
       if (isControlFlow(error)) throw error;
       return { props: element.props };
     }
-    return { props, rendered: await resolveTree(rendered, depth + 1) };
+    // One that draws nothing may be the browser's: what it was handed goes there all the same.
+    const drawsNothing = rendered === null || rendered === undefined || rendered === false;
+    return {
+      props: drawsNothing ? element.props : props,
+      rendered: await resolveTree(rendered, depth + 1),
+    };
   }
   return { props, children: await resolveTree(children, depth + 1) };
 }
