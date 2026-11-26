@@ -31,7 +31,7 @@ function urgentAlerts(snapshot: Snapshot): Candidate[] {
       actions: [
         { id: "alert.got_it", label: "Got it", kind: "primary" },
         snoozeButton(),
-        openLink("See alerts", "/jane#alerts"),
+        openLink("See alerts", `/jane?alert=${alert.id}#alerts`),
       ],
       dedupeKey: `alert:${alert.id}`,
       priority: MESSAGE_PRIORITY.urgent_alert,

@@ -169,6 +169,69 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect(old.map((a) => a.id)).toEqual([rows[3].id]);
   });
 
+  it("lists the alert a card's link points at, even past the limit", async () => {
+    // Walk 23: "See alerts" opened a list of 3 that left out the $744 charge the card was about.
+    const user = await person();
+    await raiseAlerts(
+      user.id,
+      ["a", "b", "c", "d"].map((key) => alert({ type: "fee_charged", key })),
+      { client, now: NOW, send },
+    );
+    const rows = await alertsOf(user.id);
+    await markAlertsRead(user.id, { client, now: NOW, ids: [rows[0].id] });
+    const listed = await recentAlerts(user.id, { client, now: NOW, limit: 1 });
+    expect(listed.map((a) => a.id)).not.toContain(rows[0].id);
+
+    const pointed = await recentAlerts(user.id, {
+      client,
+      now: NOW,
+      limit: 1,
+      include: rows[0].id,
+    });
+    expect(pointed.map((a) => a.id)).toContain(rows[0].id);
+    expect(pointed).toHaveLength(2);
+    // Another person's alert is never listed by its id.
+    const other = await person();
+    await raiseAlerts(other.id, [alert({ type: "fee_charged", key: "z" })], {
+      client,
+      now: NOW,
+      send,
+    });
+    const [theirs] = await alertsOf(other.id);
+    const mine = await recentAlerts(user.id, { client, now: NOW, limit: 1, include: theirs.id });
+    expect(mine.map((a) => a.id)).not.toContain(theirs.id);
+  });
+
+  it("retires a large-charge alert once a later scan asks 'Was this you?' about the same charge", async () => {
+    // Walk 23: one $744 charge in the dock twice, from a short first sync and a longer later one.
+    const user = await person();
+    const charge = `tx_${crypto.randomUUID()}`;
+    const other = `tx_${crypto.randomUUID()}`;
+    await raiseAlerts(user.id, [alert({ key: charge }), alert({ key: other })], {
+      client,
+      now: NOW,
+      send,
+    });
+    await raiseAlerts(
+      user.id,
+      [
+        alert({
+          type: "unusual_activity",
+          key: `new_merchant:internal-revenue-service:${charge}`,
+          title: "$744.00 at Internal Revenue Service, a first charge",
+        }),
+      ],
+      { client, now: NOW, send },
+    );
+    const rows = await alertsOf(user.id);
+    expect(rows.map((r) => [r.type, r.key]).sort()).toEqual(
+      [
+        ["large_charge", other],
+        ["unusual_activity", `new_merchant:internal-revenue-service:${charge}`],
+      ].sort(),
+    );
+  });
+
   it("emails a bill reminder only when it's urgent", async () => {
     const user = await person();
     await raiseAlerts(

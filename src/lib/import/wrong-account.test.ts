@@ -158,7 +158,7 @@ describe("linkedAccountNote", () => {
       ]),
     ).toEqual({
       sure: false,
-      text: "If citi.csv is your linked Card, skip it: its transactions already come in from Citibank Online.",
+      text: `Jane can't yet tell whether citi.csv is your linked Card. Until it can, citi.csv is left out of net worth; "This is a different account" on this page counts it.`,
     });
   });
 
@@ -178,5 +178,44 @@ describe("linkedAccountNote", () => {
       ),
     ).toBeNull();
     expect(linkedAccountNote(linked, [{ file: "x.csv", mask: "4321" }])).toBeNull();
+  });
+
+  // Walk 23: only a Chase checking account linked, a savings statement uploaded: "If
+  // f-savings-short.csv is your linked Plaid checking ····3235, skip it" would have left $5,120.00
+  // out of net worth.
+  describe("follows what net worth decides about the file", () => {
+    const checking = [
+      { id: "l1", name: "Plaid Checking", institution: "Chase", mask: "3235", kind: "checking" },
+    ];
+    const file = { file: "f-savings-short.csv", bank: "Chase", mask: null };
+
+    it("says nothing about a savings file beside a linked checking account", () => {
+      expect(linkedAccountNote(checking, [{ ...file, kind: "savings" }])).toBeNull();
+    });
+
+    it("says nothing when comparing the lines says it is a different account", () => {
+      expect(
+        linkedAccountNote(checking, [{ ...file, kind: "checking", verdicts: { l1: "different" } }]),
+      ).toBeNull();
+    });
+
+    it("says it is left out by itself when the lines say it is the same account", () => {
+      const note = linkedAccountNote(checking, [
+        { ...file, kind: "checking", verdicts: { l1: "same" } },
+      ]);
+      expect(note).toEqual({
+        sure: false,
+        text: "f-savings-short.csv matches your linked Plaid Checking ····3235, whose transactions already come in from Chase, so Jane leaves it out of net worth by itself.",
+      });
+    });
+
+    it("says it is left out until Jane can tell, and never tells the person to skip it", () => {
+      for (const verdicts of [{ l1: "unknown" as const }, undefined]) {
+        const note = linkedAccountNote(checking, [{ ...file, kind: "checking", verdicts }]);
+        expect(note?.text).toContain("is left out of net worth");
+        expect(note?.text).toContain("This is a different account");
+        expect(note?.text).not.toMatch(/skip it/);
+      }
+    });
   });
 });
