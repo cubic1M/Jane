@@ -29,7 +29,12 @@ export const taxRefundNo: ActionHandler = {
   async run({ userId, message, action, client }) {
     const id = message.refs.taxRefund;
     if (!id) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
-    await dismissRefund(userId, id, { client, via: "chat" });
+    try {
+      await dismissRefund(userId, id, { client, via: "chat" });
+    } catch (error) {
+      if (error instanceof RefundError) throw new ChatActionError("failed", error.message);
+      throw error;
+    }
     return { answeredWith: action.label, note: "OK. It's yours to use as you like." };
   },
 };

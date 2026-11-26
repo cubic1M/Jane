@@ -16,7 +16,7 @@ import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
-import { parseActions } from "./types";
+import { parseActions, parseRefs } from "./types";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
@@ -182,6 +182,25 @@ describe.runIf(url)(
       await expect(markStep(userId, "report_ftc", { client, now: JAN })).rejects.toBeInstanceOf(
         IdentityError,
       );
+    });
+
+    it("a step card marks the case that showed it, not a later one", async () => {
+      const userId = await person("stale-case");
+      const first = await openCase(userId, "unknown_form", "told", { client, now: JAN });
+      const { message } = await post(userId, `identity-step:`, JAN);
+      expect(parseRefs(message.refs).identityCaseId).toBe(first.id);
+      // That case closes and another opens with the same step on it.
+      await client.taxIdentityCase.updateMany({
+        where: { userId, closedAt: null },
+        data: { closedAt: JAN },
+      });
+      const second = await openCase(userId, "unknown_form", "told", { client, now: JAN });
+      await expect(
+        takeChatAction(userId, message.id, "tax.identity_step", { client, now: JAN }),
+      ).rejects.toThrow();
+      const view = await loadIdentity(userId, { client, now: JAN });
+      expect(view.case?.id).toBe(second.id);
+      expect(view.case?.steps.filter((x) => x.doneOn)).toEqual([]);
     });
 
     it("one case at a time, only the steps the case has", async () => {

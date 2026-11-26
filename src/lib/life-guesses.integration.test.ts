@@ -13,7 +13,7 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { lifeSource } from "@/lib/jane-agent/sources/life";
-import { lifeGuessesFor } from "./life-guesses";
+import { lifeGuessesFor, runLifeChecklist } from "./life-guesses";
 
 // Spec step 100 against a real, migrated Postgres: someone paying a mover and a new
 // landlord is asked once if they're moving; Yes starts the checklist and Jane does what it
@@ -126,6 +126,31 @@ describe.runIf(url)("life events spotted, against a real database", { timeout: 1
     ]);
     // With the checklist going, it isn't asked again.
     expect(await lifeGuessesFor(userId, { client, now: NOW })).toEqual([]);
+  });
+
+  it("a Yes that stopped part-way is finished by the retry: the missing reminders, none twice", async () => {
+    const userId = await person("life-retry");
+    await runLifeChecklist(userId, "moving", { client, now: NOW });
+    // The last reminder never saved.
+    await client.deadline.deleteMany({
+      where: { userId, title: "Check your old security deposit came back" },
+    });
+    const run = await runLifeChecklist(userId, "moving", { client, now: NOW });
+    expect(run.reminders).toHaveLength(3);
+    const titles = (await client.deadline.findMany({ where: { userId } })).map((d) => d.title);
+    expect(titles.sort()).toEqual([
+      "Check your old security deposit came back",
+      "Forward your mail with the post office",
+      "Review your insurance for the new address",
+    ]);
+    // The budget tick stays ticked, and one event only.
+    const events = await client.lifeEvent.findMany({ where: { userId, kind: "moving" } });
+    expect(events).toHaveLength(1);
+    expect(events[0].checkedItems).toEqual(["budget"]);
+    // Nothing missing now: a third Yes is one answered elsewhere.
+    await expect(runLifeChecklist(userId, "moving", { client, now: NOW })).rejects.toThrow(
+      /already have a moving checklist/,
+    );
   });
 
   it("stops at Not me, and Don't ask again stops every kind", async () => {

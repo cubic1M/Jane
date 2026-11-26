@@ -519,16 +519,25 @@ export type MessageRefs = {
   claimStep?: string;
   // Spec step 150: the guided question a benefits message asks.
   benefitQuestion?: string;
+  // The benefits the "Yes, they're right" card listed: Yes confirms only these.
+  benefitIds?: string[];
   // Spec step 151: the policy reading a message asks the person to confirm.
   readingId?: string;
   // Spec step 153: the life application a message moves along.
   lifeApplicationId?: string;
+  // The number of studentaid.gov steps done when a step message was shown.
+  studentStep?: number;
+  // The quote the sized message's Apply button names, and the health question a message shows.
+  lifeQuoteId?: string;
+  lifeQuestion?: string;
   // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
   coverEvent?: string;
   // Spec step 155: the renewal negotiation a message asks about.
   negotiationId?: string;
   // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
   savingGroup?: string;
+  // The offers a "Do all of these" card listed: its Yes and Not now act on these only.
+  savingIds?: string[];
   savingId?: string;
   // Spec step 197: the risk a question asks about.
   riskId?: string;
@@ -601,6 +610,9 @@ export type MessageRefs = {
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
+  // What a "That's right" question showed (the state code, or the income kinds joined): its Yes
+  // saves that, and only while it is still what Jane finds.
+  taxFound?: string;
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
@@ -654,6 +666,8 @@ export type MessageRefs = {
   identitySign?: string;
   identitySource?: string;
   identityStep?: string;
+  // The tax identity case the step card was made for.
+  identityCaseId?: string;
   // Spec step 270: the disaster relief (its id) a message is about.
   disasterRelief?: string;
   // Spec step 272: the draft return (its id) a message is about.

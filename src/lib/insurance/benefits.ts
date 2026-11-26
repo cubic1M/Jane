@@ -218,8 +218,15 @@ export async function confirmBenefit(
   return { ...benefit, status: "confirmed", policyId };
 }
 
-export async function confirmAllFound(userId: string, { client = defaultClient }: Options = {}) {
-  const found = (await listBenefits(userId, { client })).filter((b) => b.status === "found");
+// `only`: the benefits a card listed, so one found after the card was shown stays to be asked
+// about; a listed one that was answered elsewhere is skipped.
+export async function confirmAllFound(
+  userId: string,
+  { client = defaultClient, only }: Options & { only?: readonly string[] } = {},
+) {
+  const found = (await listBenefits(userId, { client })).filter(
+    (b) => b.status === "found" && (!only || only.includes(b.id)),
+  );
   for (const b of found) await confirmBenefit(userId, b.id, { client });
   return found.length;
 }

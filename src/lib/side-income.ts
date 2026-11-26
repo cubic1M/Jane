@@ -196,6 +196,26 @@ export type SideIncomeAnswers = {
 };
 
 // The rental property and hobby-or-business, as the person gave them. Checked here.
+// Hobby or business only: the rental details are left as they are, so a save made on the profile
+// page at the same moment is not written back over.
+export async function saveSideIncomeKind(
+  userId: string,
+  kind: "business" | "hobby",
+  { client = defaultClient, via }: { client?: PrismaClient; via: "chat" | "page" },
+): Promise<void> {
+  await scopedFor(userId, client).taxProfiles.upsert({
+    where: { userId },
+    create: { userId, sideIncomeKind: kind },
+    update: { sideIncomeKind: kind },
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "tax_profile_changed",
+    { type: "user", id: userId },
+    { fields: "sideIncome", via },
+  );
+}
+
 export async function saveSideIncomeAnswers(
   userId: string,
   answers: SideIncomeAnswers,

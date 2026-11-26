@@ -29,6 +29,11 @@ export async function cardCoverAnswer(
     lines.push(
       `You're paying twice: your ${first.card} already gives you ${first.benefit.toLowerCase()}, and you also pay ${first.merchant}${first.annualSavingsCents ? ` ${formatCents(first.annualSavingsCents)} a year` : ""}.`,
     );
+  } else if (duplicates.length > 0) {
+    // A duplicate already approved or being cancelled can still bill until it is confirmed.
+    lines.push(
+      `Your ${cards.map((c) => c.card).join(" and ")} ${cards.length === 1 ? "comes" : "come"} with cover. Cancelling a plan that duplicates it is in progress, and it can still be charged until the cancellation is confirmed.`,
+    );
   } else {
     lines.push(
       `Your ${cards.map((c) => c.card).join(" and ")} ${cards.length === 1 ? "comes" : "come"} with cover, and nothing you pay for duplicates it.`,

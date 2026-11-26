@@ -211,6 +211,7 @@ describe("things waiting on the person", () => {
     todo: null,
     url: null,
     switchName: null,
+    lastMessageId: null,
     ...over,
   });
 
@@ -244,6 +245,25 @@ describe("things waiting on the person", () => {
       posted(snapshot({ agentSteps: [step({ todo: "Q1" })] }), {
         recent: [],
         seenKeys: [first.dedupeKey],
+      }),
+    ).toEqual([]);
+  });
+
+  it("asks again when the same question comes again in a new message", () => {
+    const first = bySource(
+      snapshot({ agentSteps: [step({ todo: "Q1", lastMessageId: "m1" })] }),
+      "steps",
+    )[0];
+    const again = bySource(
+      snapshot({ agentSteps: [step({ todo: "Q1", lastMessageId: "m2" })] }),
+      "steps",
+    )[0];
+    expect(first.dedupeKey).not.toBe(again.dedupeKey);
+    // The same message is not asked twice.
+    expect(
+      posted(snapshot({ agentSteps: [step({ todo: "Q1", lastMessageId: "m2" })] }), {
+        recent: [],
+        seenKeys: [again.dedupeKey],
       }),
     ).toEqual([]);
   });

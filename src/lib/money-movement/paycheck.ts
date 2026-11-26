@@ -250,7 +250,7 @@ export async function movePaycheckPlan(
   userId: string,
   planId: string,
   { client = defaultClient, now = new Date(), partner }: Options = {},
-): Promise<PlanMove[]> {
+): Promise<{ moves: PlanMove[]; scheduled: PlanMove[]; skipped: PlanMove[] }> {
   const db = scopedFor(userId, client);
   const row = await db.paycheckPlans.findFirst({ where: { id: planId } });
   if (!row || (row.status !== "proposed" && row.status !== "partial")) {
@@ -258,6 +258,9 @@ export async function movePaycheckPlan(
   }
   const moves = movesOf(row.moves);
   const done: PlanMove[] = [];
+  // What this tap did, apart from what autopilot had already moved.
+  const scheduled: PlanMove[] = [];
+  const skipped: PlanMove[] = [];
   for (const move of moves) {
     if (move.status !== "asked") {
       done.push(move);
@@ -274,17 +277,21 @@ export async function movePaycheckPlan(
           partner,
         },
       );
-      done.push({ ...move, status: "moved", transferId: id });
+      const moved: PlanMove = { ...move, status: "moved", transferId: id };
+      done.push(moved);
+      scheduled.push(moved);
     } catch (error) {
       if (!(error instanceof TransferError)) throw error;
-      done.push({ ...move, status: "skipped" });
+      const left: PlanMove = { ...move, status: "skipped" };
+      done.push(left);
+      skipped.push(left);
     }
   }
   await db.paycheckPlans.updateMany({
     where: { id: planId },
     data: { moves: done as unknown as Prisma.InputJsonArray, status: "moved" },
   });
-  return done;
+  return { moves: done, scheduled, skipped };
 }
 
 // "Not this time": nothing more moves for this paycheck.
@@ -305,25 +312,35 @@ export async function undoPaycheckPlan(
   userId: string,
   planId: string,
   { client = defaultClient, now = new Date(), partner }: Options = {},
-): Promise<number> {
+): Promise<{ cancelled: number; remaining: number }> {
   const db = scopedFor(userId, client);
   const row = await db.paycheckPlans.findFirst({ where: { id: planId }, select: { key: true } });
   if (!row) throw new PaycheckError("That paycheck's plan isn't there anymore.");
   const pending = await db.moneyTransfers.findMany({
-    where: { planKey: row.key, status: "pending" },
+    // Both: a transfer waiting on the partner is cancelled the same way (cancelTransfer).
+    where: { planKey: row.key, status: { in: ["pending", "awaiting_partner"] } },
     select: { id: true },
   });
-  let undone = 0;
+  let cancelled = 0;
+  // Ones that could not be cancelled but have not gone through yet (the day passed, or the
+  // partner is already processing them): they still go, so Undo stays offered and says so.
+  let remaining = 0;
   for (const t of pending) {
     try {
       await cancelTransfer(userId, t.id, { client, now, partner });
-      undone += 1;
+      cancelled += 1;
     } catch (error) {
       if (!(error instanceof TransferError)) throw error;
+      const still = await db.moneyTransfers.count({
+        where: { id: t.id, status: { in: ["pending", "awaiting_partner"] } },
+      });
+      if (still > 0) remaining += 1;
     }
   }
-  if (undone === 0) throw new PaycheckError("Those transfers have already gone through.");
-  return undone;
+  if (cancelled === 0 && remaining === 0) {
+    throw new PaycheckError("Those transfers have already gone through.");
+  }
+  return { cancelled, remaining };
 }
 
 // The newest plan, for the chat and Claude.

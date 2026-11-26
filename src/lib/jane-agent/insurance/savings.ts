@@ -50,7 +50,7 @@ export async function savingsAnswer(
     return {
       body: sameCoverBody(same, policies, true) + extra,
       actions: sameCoverActions(same),
-      refs: { savingGroup: "same", advice: true as const },
+      refs: { savingGroup: "same", savingIds: same.map((s) => s.id), advice: true as const },
     };
   }
   if (lower[0]) {

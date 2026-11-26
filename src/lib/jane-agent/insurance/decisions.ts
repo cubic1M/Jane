@@ -122,12 +122,14 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
     P(
       "\\bis my (?:car |auto |home )?deductible (?:right|ok|okay|good|fine|set right|about right|too (?:high|low))\\b",
       "\\b(?:right|best) deductible for me\\b",
+      // Lowering one is a question of what fits their cash, not of the raise-only saving.
+      "\\blower (?:my|the) (?:car |auto |home )?deductible\\b",
     ),
   ],
   [
     "deductible",
     P(
-      "\\b(?:raise|increase|lower|change) (?:my|the) (?:car |auto |home )?deductible\\b",
+      "\\b(?:raise|increase|change) (?:my|the) (?:car |auto |home )?deductible\\b",
       "\\bhigher deductible\\b",
     ),
   ],
@@ -382,6 +384,13 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
           facts:
             "I don't have a car, home or renters policy on file to size liability for. Add one and I'll check it.",
         };
+      // A policy with no limit on file: what it holds is asked for, not judged short or enough.
+      if (n.limitUnknown) {
+        return {
+          facts: n.summary,
+          actions: [openLink("Add its limit", "/insurance"), SEE],
+        };
+      }
       return {
         advice: n.gapCents > 0 ? `More than you have.` : "You have enough.",
         facts: n.summary,
@@ -452,8 +461,14 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       const benefit = Number(has.coverage.deathBenefit ?? 0);
       return benefit
         ? {
-            advice: need && benefit < need ? "Probably not quite." : "It looks enough.",
-            facts: `Your ${has.carrier} life policy pays ${money(benefit)}${need ? `, against the ${money(need)} I'd size for your income and debts` : ""}.`,
+            // "Enough" only against a target worked out: with none, the benefit is said and the
+            // inputs asked for.
+            ...(need
+              ? { advice: benefit < need ? "Probably not quite." : "It looks enough." }
+              : {}),
+            facts: need
+              ? `Your ${has.carrier} life policy pays ${money(benefit)}, against the ${money(need)} I'd size for your income and debts.`
+              : `Your ${has.carrier} life policy pays ${money(benefit)}. I can't tell yet whether that's enough: tell me what you earn and who depends on it, and I'll size it.`,
             actions: [openLink("Your life cover", "/insurance/life"), SEE],
           }
         : {
@@ -593,7 +608,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
             advice: "Yes, if you can spare the cash.",
             facts: `Paying ${car?.carrier ?? "your insurer"} once a year takes about ${money(s.yearlySavingCents)} off, for ${money(s.detail.payNowCents ?? 0)} up front.`,
             actions: [{ id: "saving.apply_all", label: "Do it", kind: "primary" }, SEE],
-            refs: { savingGroup: "same" as never },
+            refs: { savingGroup: "same", savingIds: [s.id] },
           }
         : { facts: "I don't see a saving from paying yearly, or I don't have your premium yet." };
     }
@@ -647,7 +662,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
             advice: "Yes.",
             facts: `Putting your car and ${s.detail.withCarrier ?? "home"} policy with one carrier saves about ${money(s.yearlySavingCents)} a year.`,
             actions: [{ id: "saving.apply_all", label: "Do it", kind: "primary" }, SEE],
-            refs: { savingGroup: "same" as never },
+            refs: { savingGroup: "same", savingIds: [s.id] },
           }
         : {
             facts: home

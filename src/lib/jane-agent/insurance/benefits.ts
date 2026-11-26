@@ -5,6 +5,7 @@ import { openEnrollmentDates } from "@/lib/insurance/health";
 import type { Reply } from "../replies";
 import { BENEFITS_LINK, benefitLine } from "./benefit-words";
 import { dayLabel } from "@/lib/day-label";
+import { adviceMode } from "@/lib/advice-mode";
 import { chatToday } from "@/lib/today";
 
 // "What benefits do I get through work?" (spec step 150): the benefits on file, the
@@ -40,7 +41,10 @@ export async function benefitsAnswer(
       ? `Open enrollment at ${window.employer} runs ${dayLabel(window.start, { year: true })} to ${dayLabel(window.end, { year: true })}; marketplace plans close on ${dayLabel(marketplace.date, { year: true })}.`
       : `Marketplace open enrollment closes on ${dayLabel(marketplace.date, { year: true })}.`,
   );
-  const ready = review?.reason === "enrollment" ? review : null;
+  // A recommendation is advice: shown only while demo advice mode is on (a checkup stored while it
+  // was on can outlive it, for a demo account that has since linked a real bank).
+  const ready =
+    review?.reason === "enrollment" && (await adviceMode(userId, { client })) ? review : null;
   if (ready && ready.recommendations.length > 0) {
     lines.push(
       `My recommendation for open enrollment: ${ready.recommendations[0].title} ${ready.recommendations[0].risk}`,

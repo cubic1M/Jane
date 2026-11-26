@@ -40,6 +40,8 @@ export type InsuranceSwitchOptions = {
   insuranceCarrier: string;
   insuranceAnnualCents: number;
   insuranceSavingCents: number;
+  // The quote the person confirmed (older decisions have none).
+  insuranceQuoteId?: string;
 };
 
 export function insuranceSwitchOf(options: unknown): InsuranceSwitchOptions | null {

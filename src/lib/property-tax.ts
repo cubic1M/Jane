@@ -43,6 +43,10 @@ export type PropertyAppealView = {
   status: "drafted" | "team" | "self" | "dropped";
 };
 
+// A drafted appeal, and the day the appeal window closes when it is known and was put on the
+// plan (null when there is none to remind of).
+export type DraftedAppeal = PropertyAppealView & { remindedFor: string | null };
+
 export type PropertyTaxView = {
   year: number;
   advice: boolean;
@@ -285,7 +289,7 @@ export async function remindAppealWhenSuggested(
 export async function draftPropertyAppeal(
   userId: string,
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
-): Promise<PropertyAppealView> {
+): Promise<DraftedAppeal> {
   const view = await loadPropertyTax(userId, { client, now });
   if (!view.advice) {
     throw new PropertyTaxError("Drafting an appeal comes once Jane works with a tax professional.");
@@ -323,9 +327,12 @@ export async function draftPropertyAppeal(
     create: { userId, year: view.year, ...data },
     update: data,
   });
-  if (view.window.closesOn) await remindAppealWindow(userId, { client, now, via: "chat" });
+  const remindedFor = view.window.closesOn
+    ? await remindAppealWindow(userId, { client, now, via: "chat" })
+    : null;
   await track(userId, "property_appeal_drafted", { via });
   return {
+    remindedFor,
     id: row.id,
     year: row.year,
     board: row.board,

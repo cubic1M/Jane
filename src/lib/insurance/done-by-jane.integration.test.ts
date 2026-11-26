@@ -270,7 +270,7 @@ describe.runIf(url)("renewal calls and claims done by Jane, against a real datab
       m.dedupeKey.includes("claim-draft"),
     );
     expect(message?.body.split("\n")[0]).toBe(
-      "Here's the claim I'd file with GEICO. Nothing goes until you tap File it.",
+      "Here's the claim I'd file with GEICO. Nothing happens until you confirm.",
     );
     await takeChatAction(me, message!.id, "claim.file", opts());
     const filed = (await claimById(me, claim.id, opts()))!;

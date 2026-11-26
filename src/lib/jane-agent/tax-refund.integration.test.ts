@@ -129,6 +129,22 @@ describe.runIf(url)("tax refunds against a real database", () => {
     ).toBe(false);
   });
 
+  it("says so when the refund is gone before Not this time", async () => {
+    const message = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "Your refund came in.",
+        refs: { taxRefund: "gone-refund" },
+        actions: [{ id: "tax.refund_no", label: "Not this time", kind: "secondary" }],
+        dedupeKey: `taxes:refund:gone-${crypto.randomUUID()}`,
+      },
+    });
+    await expect(
+      takeChatAction(userId, message.id, "tax.refund_no", { client, now: later() }),
+    ).rejects.toMatchObject({ code: "failed", message: "That refund isn't there any more." });
+  });
+
   it("answers where's my refund, and gives Claude the refunds", async () => {
     const { reply } = await sendToJane(userId, "where's my refund", { client, now: later() });
     expect(reply.body).toMatch(/^Your federal tax refund of \$3,200\.00 landed on Oct 8\./);

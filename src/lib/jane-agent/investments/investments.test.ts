@@ -2691,6 +2691,25 @@ const REVIEW_SNAP = (over: Partial<InvestmentSnapshot> = {}) =>
     ...over,
   });
 
+describe("the yearly review's old plan reference (CodeRabbit sweep)", () => {
+  it("names the plan the review lists, not an earlier found plan that saves nothing", () => {
+    const nothingSaved = {
+      ...OLD_FOUND,
+      id: "p0",
+      employer: "Initech",
+      fees: { beforeCents: 1_000, afterCents: 1_000, savedCents: 0 },
+    };
+    const reply = yearlyReviewReply(
+      {
+        ...REVIEW_SNAP(),
+        oldAccounts: { advice: true, demo: true, plans: [nothingSaved, OLD_FOUND] as never },
+      } as never,
+      2026,
+    );
+    expect(reply.refs.oldPlanId).toBe("p1");
+  });
+});
+
 describe("the yearly review", () => {
   it("is one message with every item's button, once a year", () => {
     const messages = investmentsSource

@@ -11,7 +11,9 @@ import type { DetectionInput } from "@/detection/types";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { healthInput } from "@/lib/health-score";
+import { logAudit } from "@/lib/audit";
 import { listPreferences } from "@/lib/jane-agent/preferences";
+import { todayOf } from "@/lib/today";
 import { moneyPartnerFor, type MoneyMovementPartner } from "@/lib/money-movement/partner";
 import { scheduleTransfer, TransferError } from "@/lib/money-movement/transfers";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
@@ -32,6 +34,36 @@ type Options = {
   partner?: MoneyMovementPartner | null;
   input?: DetectionInput;
 };
+
+// "Not this month": kept as a "never" preference named for the month, so only that month's
+// paycheck is held and the next month is unaffected.
+const skipKey = (month: string) => `steady_skip:${month}`;
+
+async function monthSkipped(userId: string, month: string, client: PrismaClient) {
+  const found = await scopedFor(userId, client).janePreferences.count({
+    where: { kind: "never", key: skipKey(month) },
+  });
+  return found > 0;
+}
+
+export async function skipSteadyMonth(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<void> {
+  const month = (await todayOf(userId, { client, now })).slice(0, 7);
+  const data = { value: { month }, label: `No steady paycheck for ${month}` };
+  await scopedFor(userId, client).janePreferences.upsert({
+    where: { userId_kind_key: { userId, kind: "never", key: skipKey(month) } },
+    create: { userId, kind: "never", key: skipKey(month), ...data },
+    update: data,
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "preference_saved",
+    { type: "user", id: userId },
+    { kind: "never" },
+  );
+}
 
 const monthOf = (d: Date | string) => (typeof d === "string" ? d : iso(d)).slice(0, 7);
 
@@ -271,6 +303,8 @@ export async function runSteadyPay(
   if (view.sent || plan.status !== "ready" || plan.paycheckCents < MIN_STEADY_MOVE_CENTS) {
     return { deposits, paycheck: "none" };
   }
+  // The person said not this month: nothing is asked or sent for it.
+  if (await monthSkipped(userId, view.month, client)) return { deposits, paycheck: "none" };
   const allowed = await mayAct(
     userId,
     "goals",
@@ -311,6 +345,10 @@ export async function payNow(
     throw new SteadyError("There's no steady paycheck to send right now.");
   }
   if (view.sent) throw new SteadyError("This month's paycheck was already sent.");
+  // Autopilot never sends a month the person skipped; their own tap later still can.
+  if (by === "autopilot" && (await monthSkipped(userId, view.month, client))) {
+    throw new SteadyError("You said not this month, so it waits for next month.");
+  }
   if (view.plan.status !== "ready" || view.plan.paycheckCents < MIN_STEADY_MOVE_CENTS) {
     throw new SteadyError(view.plan.reason);
   }

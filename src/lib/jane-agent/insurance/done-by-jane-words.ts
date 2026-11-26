@@ -69,7 +69,7 @@ export function draftBody(
         })
       : null;
   return [
-    `Here's the claim I'd file with ${claim.carrier ?? "your insurer"}. Nothing goes until you tap File it.`,
+    `Here's the claim I'd file with ${claim.carrier ?? "your insurer"}. Nothing happens until you confirm.`,
     `- What happened: ${claim.description ?? ""}`,
     `- On: ${claim.happenedOn}`,
     `- Claiming: ${claim.amountCents ? formatCents(claim.amountCents) : "?"}`,
@@ -89,7 +89,7 @@ export const draftActions = (claim: Claim, concierge: boolean): MessageAction[] 
 export function claimStatusBody(claim: Claim): string {
   const status = claim.carrierStatus ?? "received";
   const payout =
-    (status === "approved" || status === "paid") && claim.payoutCents !== null
+    (status === "approved" || status === "paid") && claim.payoutCents != null
       ? status === "paid"
         ? ` They paid ${formatCents(claim.payoutCents ?? 0)}, so I've closed the claim.`
         : ` They'll pay ${formatCents(claim.payoutCents ?? 0)}, after your deductible.`

@@ -113,8 +113,14 @@ describe.runIf(url)("when income stops", { timeout: 120_000 }, () => {
       where: { userId, dedupeKey: { startsWith: "lean:ask:" } },
     });
     expect(asked.body).toMatch(/^Your paycheck from .+ hasn't come in; it was due 2026-10-/);
+    // The plan was switched on by a tap whose reply failed to show it: this tap shows the plan
+    // and starts nothing again.
+    await client.leanPlan.updateMany({
+      where: { userId, status: "proposed" },
+      data: { status: "active", startedAt: LATE },
+    });
     const { message } = await takeChatAction(userId, asked.id, "lean.start", { client, now: LATE });
-    expect(message.body).toMatch(/^Lean plan on: automatic transfers are paused/);
+    expect(message.body).toMatch(/^Lean plan on: I won't start new automatic transfers/);
     expect(message.body).toContain("Your cash covers about");
     expect(message.body).toContain("California unemployment insurance");
     expect(await leanActive(userId, { client })).toBe(true);

@@ -14,7 +14,12 @@ import { postMessages } from "@/lib/jane-agent/messages";
 import { runJaneAgent } from "@/lib/jane-agent/run";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { upkeepSource } from "@/lib/jane-agent/sources/upkeep";
-import { currentTuneUp, pendingGoalTransfers, runPlanUpkeep } from "./plan-upkeep";
+import {
+  countGoalTransfer,
+  currentTuneUp,
+  pendingGoalTransfers,
+  runPlanUpkeep,
+} from "./plan-upkeep";
 
 // Spec step 101 against a real, migrated Postgres: on Nov 2 a Food budget of $300 meets
 // three months of about $450, and $250 moved to savings; at "Ask me first" nothing changes
@@ -134,6 +139,22 @@ describe.runIf(url)("plans that keep up, against a real database", { timeout: 12
     // Counted once.
     expect(await pendingGoalTransfers(userId, { client, now: NOW })).toEqual([]);
     expect((await currentTuneUp(userId, { client, now: NOW }))?.status).toBe("accepted");
+  });
+
+  it("counts a transfer into a goal with nothing saved yet, once", async () => {
+    const userId = await person("upkeep-null", "ask");
+    await client.savingsGoal.updateMany({ where: { userId }, data: { manualSavedCents: null } });
+    const [transfer] = await pendingGoalTransfers(userId, { client, now: NOW });
+    const counted = await countGoalTransfer(userId, transfer.transactionId, "counted", {
+      client,
+      now: NOW,
+    });
+    expect(counted.savedCents).toBe(25_000);
+    expect(await saved(userId)).toBe(25_000);
+    await expect(
+      countGoalTransfer(userId, transfer.transactionId, "counted", { client, now: NOW }),
+    ).rejects.toThrow(/already counted/);
+    expect(await saved(userId)).toBe(25_000);
   });
 
   it("keeps the budgets on Keep, and skips a transfer on Not this one", async () => {

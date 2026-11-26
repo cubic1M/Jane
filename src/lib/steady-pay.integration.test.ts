@@ -189,6 +189,40 @@ describe.runIf(url)("a steady paycheck from uneven income", { timeout: 120_000 }
     ).toBe(1);
   });
 
+  it("Not this month holds that month's paycheck even when autopilot would send it", async () => {
+    const userId = await freelancer("steady-skip");
+    await setSectorAutopilot(userId, "goals", { level: "ask" }, { client, now: NOW });
+    expect((await runSteadyPay(userId, { client, now: NOW })).paycheck).toBe("asked");
+    const snapshot = (await loadSnapshot(userId, { client, now: NOW }))!;
+    await postMessages(
+      userId,
+      gather(snapshot, NOW, { trigger: "open", sources: [steadySource] }),
+      { client, now: NOW },
+    );
+    const message = await client.janeMessage.findFirstOrThrow({
+      where: { userId, dedupeKey: { startsWith: "steady:" } },
+    });
+    await takeChatAction(userId, message.id, "steady.skip", { client, now: NOW });
+    // The person later lets autopilot move money: this month stays held.
+    await setSectorAutopilot(
+      userId,
+      "goals",
+      { level: "safe", actionCapCents: 2_000_000, monthlyCapCents: 5_000_000 },
+      { client, now: NOW },
+    );
+    expect((await runSteadyPay(userId, { client, now: NOW })).paycheck).toBe("none");
+    await expect(payNow(userId, "autopilot", { client, now: NOW })).rejects.toBeInstanceOf(
+      SteadyError,
+    );
+    expect(
+      await client.moneyTransfer.count({ where: { userId, planKey: { startsWith: "steady:" } } }),
+    ).toBe(0);
+    // Their own tap still can send it.
+    await expect(payNow(userId, "person", { client, now: NOW })).resolves.toMatchObject({
+      runOn: "2026-10-17",
+    });
+  });
+
   it("does nothing for someone with steady pay, and nothing for a real account", async () => {
     const steadyPerson = await client.user.create({
       data: { email: `steady-none-${crypto.randomUUID()}@example.com` },

@@ -1,5 +1,6 @@
 import { conciergeMode } from "@/lib/concierge-mode";
 import { LeanError, declineLean, loadLeanPlan, startLean } from "@/lib/lean-plan";
+import { scopedFor } from "@/lib/db-scoped";
 import {
   ChatActionError,
   answeredElsewhere,
@@ -21,18 +22,32 @@ export const leanStart: ActionHandler = {
   on: "open",
   async run(context) {
     const { userId, client, now } = context;
+    const id = idOf(context);
     try {
-      await startLean(userId, idOf(context), { client, now });
+      await startLean(userId, id, { client, now });
     } catch (error) {
-      if (error instanceof LeanError) throw answeredElsewhere(error.message);
-      throw error;
+      if (!(error instanceof LeanError)) throw error;
+      // The plan is on but showing it failed last time: this tap shows it, and starts nothing.
+      const on = await scopedFor(userId, client).leanPlans.findFirst({
+        where: { id, status: "active" },
+        select: { id: true },
+      });
+      if (!on) throw answeredElsewhere(error.message);
     }
     const { message } = await loadLeanPlan(userId, { client, now });
+    // Transfers already scheduled keep their dates: only new automatic ones are held.
+    const scheduled = await scopedFor(userId, client).moneyTransfers.count({
+      where: { status: "pending" },
+    });
+    const still =
+      scheduled > 0
+        ? ` ${scheduled === 1 ? "One transfer is" : `${scheduled} transfers are`} already scheduled and still goes on its date.`
+        : "";
     return {
       answeredWith: context.action.label,
       // Nothing here touches a real bank: its automatic transfers go on unless the person stops them.
       body: (await conciergeMode(userId, { client }))
-        ? `Lean plan on: automatic transfers are paused until pay is back. ${message}`
+        ? `Lean plan on: I won't start new automatic transfers until pay is back.${still} ${message}`
         : `Lean plan on. Your bank's automatic transfers keep running, so pause any you can't cover from your bank's app. ${message}`,
       note: "I'll go back to normal when your pay resumes.",
     };

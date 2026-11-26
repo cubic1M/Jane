@@ -1,7 +1,7 @@
 import { formatCents } from "@/lib/money";
 import { savePreference } from "@/lib/jane-agent/preferences";
 import { UNEVEN_INCOME_FACT } from "@/config/steady-pay";
-import { SteadyError, payNow } from "@/lib/steady-pay";
+import { SteadyError, payNow, skipSteadyMonth } from "@/lib/steady-pay";
 import { answeredElsewhere, type ActionHandler } from "./handler";
 
 // Buttons on the steady paycheck (spec step 240): Pay me now (the person's tap; the plan is
@@ -32,6 +32,8 @@ export const steadySkip: ActionHandler = {
   id: "steady.skip",
   on: "open",
   async run(context) {
+    // Kept for the month, so the autopilot's paycheck does not send it later.
+    await skipSteadyMonth(context.userId, { client: context.client, now: context.now });
     return { answeredWith: context.action.label, note: "OK, nothing moves this month." };
   },
 };

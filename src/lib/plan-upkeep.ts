@@ -212,15 +212,36 @@ export async function countGoalTransfer(
     skipDuplicates: true,
   });
   if (count === 0) throw new UpkeepError("That transfer was already counted or skipped.");
+  try {
+    // An increment in the database, so two transfers counted at once both land, not the later
+    // one's total over the earlier's.
+    const added = await db.savingsGoals.updateMany({
+      where: { id: transfer.goal.id, manualSavedCents: { not: null } },
+      data: { manualSavedCents: { increment: transfer.amountCents } },
+    });
+    if (added.count === 0) {
+      const first = await db.savingsGoals.updateMany({
+        where: { id: transfer.goal.id, manualSavedCents: null },
+        data: { manualSavedCents: transfer.amountCents },
+      });
+      // Another transfer set the total between the two writes: add to it.
+      if (first.count === 0) {
+        await db.savingsGoals.updateMany({
+          where: { id: transfer.goal.id, manualSavedCents: { not: null } },
+          data: { manualSavedCents: { increment: transfer.amountCents } },
+        });
+      }
+    }
+  } catch (error) {
+    // Counted but never added would be lost to every retry: the claim is taken back.
+    await db.goalTransfers.deleteMany({ where: { transactionId } }).catch(() => undefined);
+    throw error;
+  }
   const goal = await db.savingsGoals.findFirstOrThrow({
     where: { id: transfer.goal.id },
     select: { manualSavedCents: true, targetCents: true },
   });
-  const savedCents = (goal.manualSavedCents ?? 0) + transfer.amountCents;
-  await db.savingsGoals.updateMany({
-    where: { id: transfer.goal.id },
-    data: { manualSavedCents: savedCents },
-  });
+  const savedCents = goal.manualSavedCents ?? transfer.amountCents;
   await track(userId, "goal_transfer_counted", { by });
   return {
     amountCents: transfer.amountCents,

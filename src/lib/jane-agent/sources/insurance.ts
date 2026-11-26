@@ -11,7 +11,7 @@ import { checkupBody } from "../insurance/checkup-words";
 import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
-import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
+import { DEPENDANTS_QUESTION, sizedActions, sizedBody, sizedRefs } from "../insurance/life-words";
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risk-signals";
 import { riskActions, riskQuestion } from "../insurance/risk-words";
@@ -244,7 +244,7 @@ function benefitMessages(insurance: InsuranceSnapshot): Candidate[] {
       {
         kind: "decision",
         body: foundBody(found),
-        refs: {},
+        refs: { benefitIds: found.map((b) => b.id) },
         actions: [
           { id: "benefits.confirm_all", label: "Yes, they're right", kind: "primary" },
           { ...BENEFITS_LINK, label: "Review them" },
@@ -308,7 +308,7 @@ function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
     {
       kind: "decision",
       body: sizedBody(life, asOf),
-      refs: { lifeApplicationId: life.id, advice: true },
+      refs: sizedRefs(life, asOf),
       actions: sizedActions(life, asOf),
       dedupeKey: `life:${life.id}:${life.amountCents}:${life.termYears}`,
       priority: MESSAGE_PRIORITY.life_sized,
@@ -390,7 +390,7 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
           {
             kind: "decision" as const,
             body: sameCoverBody(same, insurance.policies, insurance.advice),
-            refs: { savingGroup: "same", advice: true as const },
+            refs: { savingGroup: "same", savingIds: same.map((s) => s.id), advice: true as const },
             actions: sameCoverActions(same),
             dedupeKey: `savings:same:${same
               .map((s) => s.id)

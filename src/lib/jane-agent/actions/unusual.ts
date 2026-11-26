@@ -33,7 +33,7 @@ function handler(id: "unusual.me" | "unusual.not_me", answer: "me" | "not_me"): 
           ...(out.steps.length > 0
             ? { body: `${out.note} ${out.steps.map((s, i) => `${i + 1}. ${s}`).join(" ")}` }
             : {}),
-          actions: out.answer === "not_me" ? [openLink("See the dispute card", "/plan")] : [],
+          actions: out.disputeCard ? [openLink("See the dispute card", "/plan")] : [],
         };
       } catch (error) {
         if (error instanceof UnusualError) throw answeredElsewhere(error.message);

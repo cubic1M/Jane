@@ -61,6 +61,8 @@ import {
   decisionStep,
   NOT_NEEDED,
   sizedActions,
+  sizedRefs,
+  askingRefs,
   sizedBody,
 } from "../insurance/life-words";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
@@ -263,8 +265,13 @@ export const insuranceClaimClose: ActionHandler = {
 export const benefitsConfirmAll: ActionHandler = {
   id: "benefits.confirm_all",
   on: "open",
-  async run({ userId, action, client }) {
-    const n = await confirmAllFound(userId, { client });
+  async run({ userId, message, action, client }) {
+    // Only the benefits the card listed: one found since was never shown.
+    const { benefitIds } = message.refs;
+    if (!benefitIds || benefitIds.length === 0) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
+    const n = await confirmAllFound(userId, { client, only: benefitIds });
     if (n === 0) throw answeredElsewhere("You've already answered these.");
     return {
       answeredWith: action.label,
@@ -378,7 +385,7 @@ async function lifeStep<T>(run: () => Promise<T>): Promise<T> {
 const dependants = (id: ActionHandler["id"], n: number): ActionHandler => ({
   id,
   on: "open",
-  async run({ userId, message, action, client, now }) {
+  async run({ userId, action, client, now }) {
     await saveDependants(userId, n, { client });
     const sized = await sizeLife(userId, { client, now });
     if (sized.kind === "sized") {
@@ -387,7 +394,7 @@ const dependants = (id: ActionHandler["id"], n: number): ActionHandler => ({
         status: "open",
         answeredWith: null,
         body: sizedBody(sized.application, asOf),
-        refs: { ...message.refs, lifeApplicationId: sized.application.id, advice: true },
+        refs: sizedRefs(sized.application, asOf),
         actions: sizedActions(sized.application, asOf),
       };
     }
@@ -410,10 +417,20 @@ export const lifeCoverApply: ActionHandler = {
   id: "lifecover.apply",
   on: "open",
   async run({ userId, message, client, now }) {
+    // The quote the button named, or none: never the next carrier in the list.
+    const { lifeQuoteId } = message.refs;
+    if (!lifeQuoteId) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
     const application = await lifeStep(() =>
-      startLifeApplication(userId, lifeId(message), null, { client, now }),
+      startLifeApplication(userId, lifeId(message), lifeQuoteId, { client, now }),
     );
-    return { status: "open", answeredWith: null, ...askingStep(application), refs: message.refs };
+    return {
+      status: "open",
+      answeredWith: null,
+      ...askingStep(application),
+      refs: askingRefs(message.refs, application),
+    };
   },
 };
 
@@ -423,11 +440,20 @@ const lifeAnswer = (id: ActionHandler["id"], yes: boolean): ActionHandler => ({
   async run({ userId, message, client }) {
     const application = await lifeStep(async () => {
       const current = await latestLife(userId, { client });
-      const key = current?.id === lifeId(message) ? nextLifeQuestion(current.answers) : null;
-      if (!key) throw new LifeError("That one's already been answered.");
-      return answerLifeQuestion(userId, current!.id, key, yes, { client });
+      const next = current?.id === lifeId(message) ? nextLifeQuestion(current.answers) : null;
+      // The question this message shows: a tap on one the application has moved past answers
+      // nothing.
+      if (!next || message.refs.lifeQuestion !== next) {
+        throw new LifeError("That one's already been answered.");
+      }
+      return answerLifeQuestion(userId, current!.id, next, yes, { client });
     });
-    return { status: "open", answeredWith: null, ...askingStep(application), refs: message.refs };
+    return {
+      status: "open",
+      answeredWith: null,
+      ...askingStep(application),
+      refs: askingRefs(message.refs, application),
+    };
   },
 });
 
@@ -589,8 +615,15 @@ async function savingStep<T>(run: () => Promise<T>): Promise<T> {
 export const savingApplyAll: ActionHandler = {
   id: "saving.apply_all",
   on: "open",
-  async run({ userId, action, client, now }) {
-    const offered = sameCover(await listSavings(userId, { client, status: "offered" }));
+  async run({ userId, message, action, client, now }) {
+    // Only the offers the card listed: one that appeared since was never shown.
+    const { savingIds } = message.refs;
+    if (!savingIds || savingIds.length === 0) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
+    const offered = sameCover(await listSavings(userId, { client, status: "offered" })).filter(
+      (s) => savingIds.includes(s.id),
+    );
     if (offered.length === 0) throw answeredElsewhere("You've already answered this.");
     const done: Saving[] = [];
     for (const s of offered) {
@@ -621,9 +654,14 @@ export const savingNo: ActionHandler = {
   id: "saving.no",
   on: "open",
   async run({ userId, message, action, client, now }) {
+    if (!message.refs.savingId && !message.refs.savingIds?.length) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
     const ids = message.refs.savingId
       ? [message.refs.savingId]
-      : sameCover(await listSavings(userId, { client, status: "offered" })).map((s) => s.id);
+      : sameCover(await listSavings(userId, { client, status: "offered" }))
+          .map((s) => s.id)
+          .filter((id) => message.refs.savingIds?.includes(id));
     if (ids.length === 0) throw answeredElsewhere("You've already answered this.");
     for (const id of ids) await savingStep(() => dismissSaving(userId, id, { client, now }));
     return { answeredWith: action.label, note: "Okay, I won't bring those up again." };

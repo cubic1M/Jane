@@ -139,10 +139,19 @@ export async function addPastEmployer(
 
 export async function loadOldAccounts(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    readOnly = false,
+  }: Options & {
+    // A lookup that changes nothing: no row for a past employer, no rollover moved on.
+    readOnly?: boolean;
+  } = {},
 ): Promise<OldAccountsView> {
-  await syncPastEmployers(userId, { client });
-  await settleRollovers(userId, { client, now });
+  if (!readOnly) {
+    await syncPastEmployers(userId, { client });
+    await settleRollovers(userId, { client, now });
+  }
   const db = scopedFor(userId, client);
   const countedWhere = await onlyCounted(db);
   const [advice, rows, demo, plans401k] = await Promise.all([

@@ -306,4 +306,56 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
       application: { status: "bought", amount: "$1,450,000.00", termYears: 20 },
     });
   });
+
+  describe("a tap is bound to what its message showed", () => {
+    async function sizedMessage() {
+      const me = await person();
+      await client.insurancePolicy.create({
+        data: { userId: me, kind: "auto", carrier: "GEICO", source: "typed", status: "active" },
+      });
+      let message;
+      for (let day = 0; day < 10 && !message; day += 1) {
+        await runJaneAgent(me, {
+          client,
+          now: new Date(NOW.getTime() + day * DAY),
+          trigger: "open",
+        });
+        message = (await client.janeMessage.findMany({ where: { userId: me } })).find((m) =>
+          m.dedupeKey.includes("life-dependants"),
+        );
+      }
+      const tap = async (id: Parameters<typeof takeChatAction>[2]) =>
+        (await takeChatAction(me, message!.id, id, opts())).message;
+      await tap("lifecover.dependants_2");
+      return { me, tap, message: message! };
+    }
+
+    it("Apply starts the quote it named, and asks again once that one has expired", async () => {
+      const { me, tap } = await sizedMessage();
+      const application = await client.lifeApplication.findFirstOrThrow({ where: { userId: me } });
+      const quotes = application.quotes as { expiresAt: string }[];
+      expect(quotes.length).toBeGreaterThan(1);
+      // The named quote runs out before the tap; the next one in the list is still live.
+      quotes[0].expiresAt = new Date(NOW.getTime() - DAY).toISOString();
+      await client.lifeApplication.update({ where: { id: application.id }, data: { quotes } });
+      await expect(tap("lifecover.apply")).rejects.toThrow();
+      expect(
+        (await client.lifeApplication.findUniqueOrThrow({ where: { id: application.id } })).status,
+      ).toBe("sized");
+    });
+
+    it("a Yes or No answers the question the message showed, not a later one", async () => {
+      const { me, tap } = await sizedMessage();
+      const now = await tap("lifecover.apply");
+      expect(parseRefs(now.refs).lifeQuestion).toBe("conditions");
+      const application = await client.lifeApplication.findFirstOrThrow({ where: { userId: me } });
+      // Question 1 is answered somewhere else: this message is now behind.
+      await answerLifeQuestion(me, application.id, "conditions", false, opts());
+      await expect(tap("lifecover.yes")).rejects.toThrow();
+      const after = await client.lifeApplication.findUniqueOrThrow({
+        where: { id: application.id },
+      });
+      expect(Object.keys(after.answers as object)).toEqual(["conditions"]);
+    });
+  });
 });

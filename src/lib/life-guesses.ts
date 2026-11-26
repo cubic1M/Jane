@@ -77,11 +77,37 @@ export async function runLifeChecklist(
   kind: LifeEventKind,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ChecklistRun> {
-  const eventId = await startLifeEvent(userId, kind, { client, now });
-  await record(userId, kind, "yes", client);
   const plan = LIFE_AUTOMATION[kind];
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
+  const note = `From your ${LIFE_EVENTS[kind].title.toLowerCase()} checklist.`;
+  const items = [...(plan.insurance ? [plan.insurance] : []), ...plan.reminders];
+  let eventId: string;
+  let ticked: readonly string[] = [];
+  // The reminders this checklist already made (none, for one just started).
+  let already: { title: string }[] = [];
+  try {
+    eventId = await startLifeEvent(userId, kind, { client, now });
+  } catch (error) {
+    if (!(error instanceof LifeEventError)) throw error;
+    // A Yes that stopped part-way (a reminder failed to save) leaves its checklist open with
+    // some reminders made. A retry finishes the missing ones, and makes none twice. A
+    // checklist with all of them already is one answered elsewhere.
+    const open = await db.lifeEvents.findFirst({
+      where: { kind, completedAt: null },
+      select: { id: true, checkedItems: true, startedOn: true },
+    });
+    if (!open) throw error;
+    // Made since it started (a day's slack for the person's own day), not by an earlier one.
+    already = await db.deadlines.findMany({
+      where: { note, createdAt: { gte: new Date(open.startedOn.getTime() - 86_400_000) } },
+      select: { title: true },
+    });
+    if (items.every((r) => already.some((d) => d.title === r.title))) throw error;
+    eventId = open.id;
+    ticked = open.checkedItems;
+  }
+  await record(userId, kind, "yes", client);
 
   // Budgets at a usual month, for the categories that don't have one yet.
   const [existing, transactions] = await Promise.all([
@@ -97,16 +123,17 @@ export async function runLifeChecklist(
     await setBudget(userId, category, centsToInput(cents), { client });
     budgets.push({ category, amountCents: cents });
   }
-  if (budgets.length > 0 || plan.budgets.some((c) => has.has(c))) {
+  if ((budgets.length > 0 || plan.budgets.some((c) => has.has(c))) && !ticked.includes("budget")) {
     await toggleLifeEventItem(userId, eventId, "budget", { client });
   }
 
   // Insurance to review and the dated items, on Deadlines.
   const reminders: ChecklistRun["reminders"] = [];
-  const note = `From your ${LIFE_EVENTS[kind].title.toLowerCase()} checklist.`;
-  for (const r of [...(plan.insurance ? [plan.insurance] : []), ...plan.reminders]) {
+  for (const r of items) {
     const dueOn = addDays(asOf, r.inDays);
-    await addDeadline(userId, { title: r.title, dueOn, kind: "other", note }, { client, now });
+    if (!already.some((d) => d.title === r.title)) {
+      await addDeadline(userId, { title: r.title, dueOn, kind: "other", note }, { client, now });
+    }
     reminders.push({ title: r.title, dueOn });
   }
   await track(userId, "life_event_started", { kind, source: "jane" });

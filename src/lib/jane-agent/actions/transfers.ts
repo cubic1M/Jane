@@ -40,7 +40,7 @@ export const transferDone: ActionHandler = {
       const t = await endTransfer(userId, id, "done", { client, now });
       return {
         answeredWith: action.label,
-        note: `Nice work: ${t.cardName} is paid off before the 0% ended. I've ticked it off your deadlines.`,
+        note: `Nice work: ${t.cardName} is paid off. I've ticked it off your deadlines.`,
       };
     } catch (error) {
       throw failed(error);

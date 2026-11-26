@@ -10,6 +10,8 @@ import {
   askingStep,
   decisionStep,
   sizedActions,
+  sizedRefs,
+  askingRefs,
   sizedBody,
 } from "./life-words";
 import { openLink } from "../types";
@@ -49,7 +51,7 @@ export async function lifeAnswer(
       return {
         body: sizedBody(sized.application, asOf),
         actions: sizedActions(sized.application, asOf),
-        refs: { lifeApplicationId: sized.application.id, advice: true },
+        refs: sizedRefs(sized.application, asOf),
       };
     case "in_progress": {
       const application = sized.application;
@@ -61,7 +63,11 @@ export async function lifeAnswer(
               await timezoneOf(userId, { client }),
               await adviceMode(userId, { client }),
             );
-      return { ...step, refs: { lifeApplicationId: application.id, advice: true } };
+      const refs = { lifeApplicationId: application.id, advice: true as const };
+      return {
+        ...step,
+        refs: application.status === "asking" ? askingRefs(refs, application) : refs,
+      };
     }
   }
 }

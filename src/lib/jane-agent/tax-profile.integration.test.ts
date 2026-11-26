@@ -166,6 +166,20 @@ describe.runIf(url)("the tax profile against a real database", () => {
     );
   }, 180_000); // Runs Jane's whole day up to 21 times: past 60s on busy CI runners (about 9s locally).
 
+  it("saves the income the question showed, not what Jane finds by the time of the tap", async () => {
+    const userId = await demoPerson("tax-shown");
+    await talkUntil(userId, "taxes:profile");
+    const message = await profileMessage(userId);
+    expect(parseRefs(message.refs).taxFound).toBe("investment,w2");
+    // What the question showed is not what is found now (a stub changed what Jane reads).
+    await client.janeMessage.update({
+      where: { id: message.id },
+      data: { refs: { ...parseRefs(message.refs), taxFound: "w2" } },
+    });
+    await expect(tap(userId, message.id, "tax.found_yes")).rejects.toThrow();
+    expect(await client.taxProfile.count({ where: { userId } })).toBe(0);
+  }, 180_000);
+
   it("refuses another person's tap, and a button the message doesn't offer", async () => {
     const userId = await demoPerson("tax-owner");
     const otherId = await person("tax-other");

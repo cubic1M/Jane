@@ -1,4 +1,4 @@
-import { SideIncomeError, saveSideIncomeAnswers, loadSideIncome } from "@/lib/side-income";
+import { SideIncomeError, saveSideIncomeKind } from "@/lib/side-income";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Hobby or business from the chat (spec step 173): the person's own answer, which changes
@@ -10,21 +10,10 @@ const choose = (
 ): ActionHandler => ({
   id,
   on: "open",
-  async run({ userId, action, client, now }) {
+  async run({ userId, action, client }) {
     try {
-      // Keep the rental details already given.
-      const view = await loadSideIncome(userId, { client, now });
-      await saveSideIncomeAnswers(
-        userId,
-        {
-          rental:
-            view.rental?.priceCents && view.rental.placedOn
-              ? { priceCents: view.rental.priceCents, placedOn: view.rental.placedOn }
-              : null,
-          kind,
-        },
-        { client, now, via: "chat" },
-      );
+      // Only the kind is written: the rental details stay as they are.
+      await saveSideIncomeKind(userId, kind, { client, via: "chat" });
     } catch (error) {
       if (error instanceof SideIncomeError) throw new ChatActionError("failed", error.message);
       throw error;

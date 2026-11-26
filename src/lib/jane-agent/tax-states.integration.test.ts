@@ -230,6 +230,29 @@ describe.runIf(url)("state and local taxes against a real database", { timeout: 
     );
   });
 
+  it("keeps the year's earlier moves when another is confirmed", async () => {
+    const userId = await movedPerson("tax-two-moves");
+    const first = (
+      await sendToJane(userId, "I moved from California to New York on August 3rd", {
+        client,
+        now: later(),
+      })
+    ).reply;
+    await takeChatAction(userId, first.id, "tax.move_set", { client, now: later() });
+    const second = (
+      await sendToJane(userId, "I moved from New York to New Jersey on October 5th", {
+        client,
+        now: later(),
+      })
+    ).reply;
+    expect(parseRefs(second.refs).taxMove).toEqual({ date: "2026-10-05", from: "NY", to: "NJ" });
+    await takeChatAction(userId, second.id, "tax.move_set", { client, now: later() });
+    expect((await loadResidency(userId, 2026, { client })).told).toEqual([
+      { date: "2026-08-03", from: "CA", to: "NY" },
+      { date: "2026-10-05", from: "NY", to: "NJ" },
+    ]);
+  });
+
   it("answers typed moves, an out-of-state employer and state taxes, and gives Claude it", async () => {
     const userId = await movedPerson("tax-states-chat");
     const move = (
