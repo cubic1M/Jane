@@ -27,10 +27,16 @@ type Hook = (call: {
 function hookFor(userId: string) {
   let hook!: Hook;
   const client = {
+    // The last hook made is the one kept: the ordinary scoped client's, which switches to the user
+    // with each query (the transaction's own client is made first, and shares nothing:
+    // db-scoped-transaction-reads.test.ts).
     $extends: (extension: { query: { $allModels: { $allOperations: Hook } } }) => {
       hook = extension.query.$allModels.$allOperations;
       return {};
     },
+    $executeRawUnsafe: async () => 0,
+    $executeRaw: async () => 0,
+    $transaction: (statements: Promise<unknown>[]) => Promise.all(statements),
   } as unknown as PrismaClient;
   scopedFor(userId, client);
   const rows = [{ id: "a1", balance: 100 }];

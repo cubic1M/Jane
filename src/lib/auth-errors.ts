@@ -24,5 +24,6 @@ const FALLBACK = "Something went wrong signing you in. Please try again.";
 export function authErrorMessage(code: string | string[] | undefined): string | null {
   if (!code) return null;
   const first = Array.isArray(code) ? code[0] : code;
-  return MESSAGES[first] ?? FALLBACK;
+  // Only a code of ours: the address can say anything, "constructor" included.
+  return Object.hasOwn(MESSAGES, first) ? MESSAGES[first]! : FALLBACK;
 }

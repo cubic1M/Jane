@@ -84,12 +84,13 @@ export function scopeArgs(operation: string, args: Args | undefined, userId: str
   return scoped;
 }
 
-// Each query: the user's id ANDed on (scopeArgs), shared reads within a render, and `run`, which
-// sends it to the database.
+// Each query: the user's id ANDed on (scopeArgs), reads shared within a render when `shareReads`,
+// and `run`, which sends it to the database.
 function scopedQueries(
   client: PrismaClient,
   userId: string,
   run: (query: () => Prisma.PrismaPromise<unknown>, operation: string) => Promise<unknown>,
+  shareReads = true,
 ) {
   return client.$extends({
     query: {
@@ -114,7 +115,7 @@ function scopedQueries(
           }
           // Inside a read cache (src/lib/read-cache.ts) every read must reach it, which notes the
           // tables each cached value came from; it shares repeated reads itself.
-          if (inReadCache()) return send();
+          if (inReadCache() || !shareReads) return send();
           return memoRead(memoKey(userId, model, operation, scopedArgs), send);
         },
       },
@@ -124,6 +125,10 @@ function scopedQueries(
 
 export function scopedFor(userId: string, client: PrismaClient = db) {
   if (!userId) throw new Error("scopedFor needs a user id");
+  // Inside an interactive transaction the transaction itself is switched to the user once. Its reads
+  // are never shared with the render's: they may see rows that are rolled back, and are asked to
+  // see the rows as they are now.
+  const inTransaction = scopedQueries(client, userId, (query) => query(), false);
   // Every query is also its own short transaction as the user, so the database's row-level
   // security (src/lib/rls.ts) checks it too: a query that scopeArgs somehow let through still
   // can't see or change another person's rows.
@@ -144,9 +149,6 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
       () => rlsSwitchFails(asUserFlight([asUser(client, userId)])),
     ),
   );
-  // Inside an interactive transaction the transaction itself is switched to the user once.
-  const inTransaction = scopedQueries(client, userId, (query) => query());
-
   // Only user-owned tables are exposed; users, audit_log and analytics have their own helpers.
   return {
     // An interactive transaction over the same scoped tables.
@@ -173,7 +175,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
           askConversations: tx.askConversation,
         }),
       )
-        // Reads made inside it may have seen rows that were rolled back.
+        // What was read before it may have changed.
         .finally(() => forgetReads()),
     userId,
     // The person's own row, read only. A write goes through systemDb, with a reason.
