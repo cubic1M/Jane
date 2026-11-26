@@ -243,7 +243,15 @@ describe("the nightly record (CodeRabbit sweep)", () => {
       reason: 'Says what it shouldn\'t: "…you will certainly earn $9…".',
     }));
     const entry = entryOf(
-      { mode: "full", promptVersion: "p", score: 10, graded: 45, skipped: 0, costCents: 0, results } as never,
+      {
+        mode: "full",
+        promptVersion: "p",
+        score: 10,
+        graded: 45,
+        skipped: 0,
+        costCents: 0,
+        results,
+      } as never,
       "2026-11-04",
     );
     expect(entry.failed).toHaveLength(30);

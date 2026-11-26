@@ -78,7 +78,8 @@ export async function ask(
     error = e instanceof Error ? e.message : String(e);
     return null;
   });
-  if (error) return { text, understood: true, answer: `(rule failed: ${error.slice(0, 120)})`, error };
+  if (error)
+    return { text, understood: true, answer: `(rule failed: ${error.slice(0, 120)})`, error };
   return {
     text,
     understood: Boolean(reply?.body),
@@ -103,8 +104,7 @@ export function inputFor(tool: string, topic: string): Record<string, string> {
 // instead of sending {} and reporting the "Unknown figure" the chat would never produce.
 export function unfilledInputs(tool: string, input: Record<string, string>): string[] {
   const schema = CHAT_TOOLS.find((t) => t.name === tool)?.input_schema as
-    | { required?: string[] }
-    | undefined;
+    { required?: string[] } | undefined;
   return (schema?.required ?? []).filter((field) => input[field] === undefined);
 }
 

@@ -110,7 +110,9 @@ export function parseScenarioFiles(texts: readonly string[]): {
         const scenario = checkScenario(item, index);
         // "<id>.2" names a scenario's second message: no scenario may be called that.
         if (/\.\d+$/.test(scenario.id)) {
-          throw new Error(`the id "${scenario.id}" ends in .number, which names a follow-up message`);
+          throw new Error(
+            `the id "${scenario.id}" ends in .number, which names a follow-up message`,
+          );
         }
         if (seen.has(scenario.id)) throw new Error(`the id "${scenario.id}" is used twice`);
         seen.add(scenario.id);

@@ -64,7 +64,9 @@ export async function createCheckPerson({
     // AW, src/lib/practice/demo-start.ts); this only fills in if that didn't. Practice money only.
     if (
       !person &&
-      !(await scopedFor(user.id, client).practicePortfolios.findFirst({ where: { userId: user.id } }))
+      !(await scopedFor(user.id, client).practicePortfolios.findFirst({
+        where: { userId: user.id },
+      }))
     )
       await seedPractice(user.id, client, now);
     if (ownAccount) {
