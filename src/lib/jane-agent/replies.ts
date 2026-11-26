@@ -482,7 +482,7 @@ export function spendingReply(
       [openLink("Add your accounts", "/connect")],
     );
   }
-  if (intent.perMonth && intent.category) {
+  if (intent.perMonth && intent.category && !intent.shortPeriod) {
     const usual = usualMonthLine(intent.category, transactions, asOf);
     if (usual) return reply(usual, open);
   }

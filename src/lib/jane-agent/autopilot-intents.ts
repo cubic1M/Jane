@@ -24,6 +24,10 @@ const ASK =
 // "don't let Jane handle insurance" asks it to stop, never to take over.
 const NEGATED =
   /\b(?:don'?t|do not|never|no longer|not)\b[^.?!;]*\b(?:let|allow)\b|\b(?:don'?t|do not) want (?:jane|you) to\b/;
+// "don't pay my bills by yourself": a refusal beside an autonomy phrase is a stop, whatever else
+// the sentence grants (the stricter reading wins).
+const NEGATED_AUTONOMY =
+  /\b(?:don'?t|do not|never|no longer|not|stop)\b[^.?!;]*\b(?:by (?:her|your)self|on (?:her|your) own|automatically|without (?:asking|checking|me))\b/;
 const MONTHLY = /\b(?:a|per|each|every) month\b|\bmonthly\b/;
 const EACH = /\b(?:each|per|a) (?:time|payment|switch|transfer|bill)\b|\bat a time\b/;
 
@@ -40,7 +44,7 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   const sector = sectorIn(text);
   if (!sector) return null;
   const level: SectorLevel | null =
-    ASK.test(text) || NEGATED.test(text)
+    ASK.test(text) || NEGATED.test(text) || NEGATED_AUTONOMY.test(text)
       ? "ask"
       : SAFE.test(text)
         ? "safe"
@@ -55,7 +59,9 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   let actionCapCents: number | null = null;
   let monthlyCapCents: number | null = null;
   // A comma inside an amount ("$1,200") is not a break between clauses.
-  for (const part of text.split(/\band\b|(?<!\d),|,(?!\d{3}(?!\d))|;|\bbut\b|\bwith\b/)) {
+  for (const part of text.split(
+    /\band\b|(?<!\d),|,(?!\d{3}(?!\d))|;|\bbut\b|\bwith\b(?!\s+(?:each|every|a|per)\b)/,
+  )) {
     const amount = parseAmount(part);
     if (amount === null) continue;
     // The period belongs to the amount: what follows it. "monthly bills up to $200 per payment" is

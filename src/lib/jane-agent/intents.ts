@@ -973,7 +973,7 @@ export function parseIntent(
       kind: "spending",
       category: target && !/^(?:month|week|year)$/.test(target) ? target : null,
       month: month ?? asOf.slice(0, 7),
-      ...(perMonth ? { perMonth: true as const } : {}),
+      ...(perMonth && !shortPeriod ? { perMonth: true as const } : {}),
       ...(sinceStart ? { sinceStart: true as const } : {}),
       ...(shortPeriod && month === null ? { shortPeriod: true as const } : {}),
     };

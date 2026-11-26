@@ -186,6 +186,8 @@ describe("parseIntent", () => {
       shortPeriod: true,
     });
     expect(parse("how much did I spend this month")).not.toHaveProperty("shortPeriod");
+    // A week asked for is never the usual month.
+    expect(parse("how much do I spend on groceries this week")).not.toHaveProperty("perMonth");
   });
 
   it("keeps a week or a day out of the all-history answer", () => {

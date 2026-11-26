@@ -555,11 +555,13 @@ export function findDebt(debts: readonly Debt[], query: string): Debt | null {
   const generic = new Set([
     ...Object.values(KIND_WORDS).flatMap((words) => words.flatMap((w) => w.split(" "))),
     ...["current", "new", "old", "other", "main", "existing", "first", "second", "total", "own"],
+    // Words every bank's card has: the provider's own words are what tell cards apart.
+    ...["bank", "the", "and", "usa", "financial"],
   ]);
   const named = q.split(" ").filter((w) => w.length > 2 && !generic.has(w));
   if (
     named.length > 0 &&
-    !ofKind.some((d) => named.some((w) => d.name.toLowerCase().includes(w)))
+    !ofKind.some((d) => named.every((w) => d.name.toLowerCase().includes(w)))
   ) {
     return null;
   }

@@ -207,7 +207,22 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
 // An amount that is the down payment or closing costs, not the home's price: "$60,000 down payment",
 // "a down payment of $60k". "A $400,000 home with no down payment" keeps its price.
 const AMOUNT_PUT_DOWN =
-  /\$?\s?\d[\d,.]*\s?[km]?\s*(?:as |for |in |towards? )?(?:a |the |my |our )?(?:down\s?payment|down\b|closing costs?)|\b(?:down\s?payment|closing costs?)\s*(?:of|is|are|at|:|would be|will be)?\s*\$?\s?\d/;
+  /\$?\s?\d[\d,.]*\s?[km]?\s*(?:enough |okay |ok |fine )?(?:as |for |in |towards? )?(?:a |the |my |our )?(?:down\s?payment|down\b|closing costs?)|\b(?:down\s?payment|closing costs?)\s*(?:of|is|are|at|:|would be|will be)?\s*\$?\s?\d/;
+
+// Whether the amount that was read (in cents) is the one the down payment or closing costs name.
+function isPutDown(text: string, amountCents: number | null): boolean {
+  if (amountCents === null) return AMOUNT_PUT_DOWN.test(text);
+  const all = new RegExp(AMOUNT_PUT_DOWN.source, "g");
+  for (const m of text.matchAll(all)) {
+    const num = /(\d[\d,.]*)\s?([km])?/i.exec(m[0]);
+    if (!num) continue;
+    const value =
+      Number(num[1]!.replace(/,/g, "")) *
+      (/k/i.test(num[2] ?? "") ? 1_000 : /m/i.test(num[2] ?? "") ? 1_000_000 : 1);
+    if (Math.round(value * 100) === amountCents) return true;
+  }
+  return false;
+}
 
 export function decisionFor(text: string): DecisionId | null {
   const student = STUDENT_DEBT.test(text);
@@ -569,7 +584,7 @@ export function parseDebtIntent(
     (amountCents === null || amountCents >= 5_000_000)
   ) {
     // "with a $60,000 down payment" is what is put down, not what the home costs.
-    const putDown = AMOUNT_PUT_DOWN.test(text);
+    const putDown = isPutDown(text, amountCents);
     return { kind: "home_afford", priceCents: putDown ? null : amountCents };
   }
   if (
@@ -579,7 +594,7 @@ export function parseDebtIntent(
     !HOME_NOT.test(text)
   ) {
     // "$60,000 down payment": what's put down, not what the home costs.
-    const notThePrice = AMOUNT_PUT_DOWN.test(text);
+    const notThePrice = isPutDown(text, amountCents);
     return { kind: "home_afford", priceCents: notThePrice ? null : amountCents };
   }
   if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {

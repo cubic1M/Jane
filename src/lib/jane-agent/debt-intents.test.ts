@@ -217,6 +217,15 @@ describe("debt questions", () => {
       kind: "home_afford",
       priceCents: null,
     });
+    // The amount is the one the down payment names, not any amount in the question.
+    expect(intent("can i afford a $400,000 home with a $60,000 down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: 40_000_000,
+    });
+    expect(intent("is $60,000 enough for a down payment?")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
     // With no down payment, the amount is still the home's price.
     expect(intent("Can I afford a $400,000 home with no down payment?")).toEqual({
       kind: "home_afford",
