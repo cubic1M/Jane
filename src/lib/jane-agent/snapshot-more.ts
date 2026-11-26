@@ -53,6 +53,9 @@ export type SnapshotAgentStep = {
   url: string | null;
   // The plan the person is switching to.
   switchName: string | null;
+  // The newest message of the action's mail thread: each time a company asks, it is a new one, so
+  // the same question asked twice is two questions.
+  lastMessageId: string | null;
 };
 
 export type MoreSnapshot = {
@@ -169,6 +172,7 @@ export async function loadMore(
         decision: {
           select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
         },
+        agentMessages: { select: { id: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
     }),
@@ -230,6 +234,7 @@ export async function loadMore(
           todo: text(action.userTodo),
           url: safeLink(action.selfServiceUrl),
           switchName: switchOf(action.decision.options)?.name ?? null,
+          lastMessageId: action.agentMessages[0]?.id ?? null,
         },
       ];
     }),

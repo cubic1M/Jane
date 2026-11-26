@@ -73,7 +73,7 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
     expect(m.extra!.scenarios.map((s) => s.extraCents)).toEqual([10_000, 25_000, 50_000]);
     const messages = await fromSource();
     expect(messages.map((x) => x.dedupeKey)).toEqual([
-      `mortgage:escrow:${m.loan.accountId}:219831`,
+      `mortgage:escrow:${m.loan.accountId}:${m.escrow!.on}:219831`,
     ]);
     expect(messages[0].body).toMatch(
       /^Your mortgage payment went up \$56\.77, from \$2,141\.54 to \$2,198\.31\./,

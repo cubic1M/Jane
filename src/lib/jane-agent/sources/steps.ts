@@ -33,7 +33,7 @@ function candidate(s: SnapshotAgentStep): Candidate {
         body: `I need your answer on "${s.title}". ${withoutPageHint(s.todo) || `${s.company} asked something I can't answer for you.`} Tap Answer and I'll send it on.`,
         refs: { actionId: s.actionId, step: s.step },
         actions: [openLink("Answer", detailsHref(s)), snoozeButton()],
-        dedupeKey: `question:${s.actionId}:${shortHash(s.todo ?? "")}`,
+        dedupeKey: `question:${s.actionId}:${shortHash(s.todo ?? "")}:${s.lastMessageId ?? ""}`,
         priority: PRIORITY,
       };
     case "offer":

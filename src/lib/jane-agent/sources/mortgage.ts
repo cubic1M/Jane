@@ -19,7 +19,7 @@ export const mortgageSource: MessageSource = {
         body: `Your mortgage payment went ${m.escrow.changeCents > 0 ? "up" : "down"} ${formatCents(Math.abs(m.escrow.changeCents))}, from ${formatCents(m.escrow.fromCents)} to ${formatCents(m.escrow.toCents)}. Your rate is fixed, so it's escrow: usually property taxes or home insurance. Your servicer's escrow statement says which${m.escrow.changeCents > 0 ? ", and a home insurance quote could bring it back down" : ""}.`,
         refs: {},
         actions: [MORTGAGE_PAGE],
-        dedupeKey: `escrow:${m.loan.accountId}:${m.escrow.toCents}`,
+        dedupeKey: `escrow:${m.loan.accountId}:${m.escrow.on}:${m.escrow.toCents}`,
         priority: MESSAGE_PRIORITY.mortgage_escrow,
       });
     }
