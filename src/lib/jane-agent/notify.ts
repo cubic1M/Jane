@@ -1,6 +1,7 @@
 import {
   CHAT_EMAIL_AFTER_MINUTES,
   CHAT_EMAIL_MAX_MESSAGES,
+  CHAT_PUSH_SETTLE_MINUTES,
   CHAT_EMAILS_PER_DAY,
   CHAT_URGENT_FROM_PRIORITY,
   CHAT_NOTIFY_DAILY_LIMIT,
@@ -320,6 +321,14 @@ export async function deliverChatNotifications(
   for (const m of due) {
     if (batch.length >= CHAT_EMAIL_MAX_MESSAGES) break;
     if (pushedIds.has(m.id) || m.createdAt.getTime() > unreadSince) continue;
+    // Another delivery's push may still be on its way: wait for the next run.
+    if (
+      m.notifiedVia === "push" &&
+      m.notifiedAt &&
+      m.notifiedAt.getTime() > now.getTime() - CHAT_PUSH_SETTLE_MINUTES * MINUTE_MS
+    ) {
+      continue;
+    }
     // One email a day of this kind: while the daily report is reaching them, the morning brief isn't
     // also emailed (it stays in the app). The report carries what it would say: bills due, new
     // suggestions, and how many decisions wait for an answer in the chat, with a link.

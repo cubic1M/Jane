@@ -531,6 +531,26 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(sent.every((m) => m.notifiedVia === "both")).toBe(true);
     });
 
+    // CodeRabbit #2284: a push claimed moments ago may still be on its way; the email waits, so a
+    // failed email never restores a push marker for a push that did not arrive.
+    it("does not email a message whose push was claimed moments ago", async () => {
+      const userId = await withMessages("notify-push-settle", { channel: "both" });
+      await client.janeMessage.updateMany({
+        where: { userId },
+        data: { notifiedVia: "push", notifiedAt: at(2 * HOUR - 30_000) },
+      });
+      const { push, send } = fakes();
+      const now = await deliverChatNotifications(userId, { client, now: at(2 * HOUR), push, send });
+      expect(now.emailed).toBe(0);
+      const later = await deliverChatNotifications(userId, {
+        client,
+        now: at(2 * HOUR + 5 * MINUTE),
+        push,
+        send,
+      });
+      expect(later.emailed).toBeGreaterThan(0);
+    });
+
     // CodeRabbit part 2: a push that throws leaves nothing claimed but never sent.
     it("gives the messages back when the push throws, so the retry sends them", async () => {
       const userId = await withMessages("notify-push-throws");

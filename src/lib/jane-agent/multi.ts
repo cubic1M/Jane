@@ -114,11 +114,23 @@ async function savingsAccount(userId: string, words: string, client: PrismaClien
     select: { id: true, name: true },
     orderBy: [{ currentBalanceCents: "desc" }, { id: "asc" }],
   });
-  const named = (words.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(
+  const named = wordsOf(words).filter(
     (w) => !/^(?:my|the|our|a|an|to|saving|savings|account|accounts)$/.test(w),
   );
   if (named.length === 0) return accounts[0] ?? null;
-  return accounts.find((a) => named.every((w) => a.name.toLowerCase().includes(w))) ?? null;
+  // Whole words, accents folded: "cafe savings" is "Café Savings", and "van" is not "Vacation".
+  return accounts.find((a) => named.every((w) => wordsOf(a.name).includes(w))) ?? null;
+}
+
+// Lowercase words with accents folded ("Café" is "cafe"), so a name matches however it was typed.
+function wordsOf(text: string): string[] {
+  return (
+    text
+      .normalize("NFKD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu) ?? []
+  );
 }
 
 // Without a money-movement partner Jane can't move money in someone's bank, and neither can

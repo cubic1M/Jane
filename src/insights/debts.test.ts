@@ -230,6 +230,21 @@ describe("every debt in one place", () => {
     ).debts;
     expect(findDebt(hawaii, "my Bank of America card")).toBeNull();
     expect(findDebt(hawaii, "my Bank of Hawaii card")).not.toBeNull();
+    // CodeRabbit #2283: with another card saved, the card that carries the name is the one returned.
+    const card = ACCOUNTS.find((a) => a.name.includes("Card")) ?? ACCOUNTS[0]!;
+    const two = debtBook(
+      {
+        accounts: [
+          { ...card, id: "amex", name: "Amex Credit Card" },
+          { ...card, id: "boa", name: "Bank of America Credit Card" },
+        ],
+        plans: [],
+        typed: [],
+      },
+      AS_OF,
+    ).debts;
+    expect(findDebt(two, "my Bank of America card")?.name).toBe("Bank of America Credit Card");
+    expect(findDebt(two, "my Wells Fargo card")).toBeNull();
     // The biggest card when there are several.
     expect(findDebt(debts, "credit card")?.key).toBe("account:card");
     expect(findDebt(debts, "boat")).toBeNull();

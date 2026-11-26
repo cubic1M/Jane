@@ -207,7 +207,7 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
 // An amount that is the down payment or closing costs, not the home's price: "$60,000 down payment",
 // "a down payment of $60k". "A $400,000 home with no down payment" keeps its price.
 const AMOUNT_PUT_DOWN =
-  /\$?\s?\d[\d,.]*\s?[km]?\s*(?:enough |okay |ok |fine )?(?:as |for |in |towards? )?(?:a |the |my |our )?(?:down\s?payment|down\b|closing costs?)|\b(?:down\s?payment|closing costs?)\s*(?:of|is|are|at|:|would be|will be)?\s*\$?\s?\d/;
+  /\$?\s?\d[\d,.]*(?:\s?[km](?![a-z]))?\s*(?:enough |okay |ok |fine )?(?:as |for |in |towards? )?(?:a |the |my |our )?(?:down\s?payment|down\b|closing costs?)|\b(?:down\s?payment|closing costs?)\s*(?:of|is|are|at|:|would be|will be)?\s*\$?\s?\d[\d,.]*(?:\s?[km](?![a-z]))?/;
 
 // Whether the amount that was read (in cents) is the one the down payment or closing costs name.
 function isPutDown(text: string, amountCents: number | null): boolean {
