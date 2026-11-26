@@ -44,6 +44,7 @@ export function AppHeader({
   chatMessageId,
   opened,
   bare = false,
+  scanWasRunning = false,
 }: {
   user: { id: string; email?: string | null };
   chatMessageId?: string | null;
@@ -52,6 +53,8 @@ export function AppHeader({
   // Nothing linked yet (/connect): no area tabs, chat button or side chat, which would all lead
   // to empty pages (beta walk 11-12, from the debugger: "empty account, full app").
   bare?: boolean;
+  // The first scan was still running when the page read its data (src/components/scan-bar-gate.tsx).
+  scanWasRunning?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-3 text-sm">
@@ -83,7 +86,7 @@ export function AppHeader({
       <div id="page-loading" />
       {/* The first scan's loading bar, under the top bar of every page while it runs. */}
       <Suspense>
-        <ScanBarGate userId={user.id} />
+        <ScanBarGate userId={user.id} wasRunning={scanWasRunning} />
       </Suspense>
       <Suspense>
         <DemoBanner userId={user.id} />

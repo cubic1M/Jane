@@ -12,6 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
+import { yearlyAndOnce } from "@/lib/report-state";
 import { planFor, planOnceCents, planTotalCents } from "@/lib/plan";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { savingsLine } from "@/lib/savings-text";
@@ -42,6 +43,18 @@ const STATUS_ORDER: Record<ActionStatus, number> = {
   done: 3,
   failed: 4,
 };
+
+// "To decide" beside its heading. Mid-scan an empty list isn't "nothing": Jane hasn't looked yet.
+export function decideSummary(
+  decide: { total: number; totalSavingsCents: number; onceCents: number },
+  scanning: boolean,
+): string {
+  if (decide.total === 0) return scanning ? "still reading your accounts" : "nothing right now";
+  const things = `${decide.total} ${decide.total === 1 ? "thing" : "things"} to look at`;
+  if (decide.totalSavingsCents <= 0) return things;
+  const worth = yearlyAndOnce({ cents: decide.totalSavingsCents, onceCents: decide.onceCents });
+  return `${things}, worth up to about ${worth}`;
+}
 
 // Jane's pick from the comparison, as one short line.
 export function pickLine(comparison: Comparison | null): string | null {

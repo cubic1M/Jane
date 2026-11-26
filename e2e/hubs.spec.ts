@@ -37,9 +37,11 @@ test("the hubs gather every page, with live numbers from the demo bank @critical
   for (const name of ["To decide", "In progress", "Done", "Alerts"]) {
     await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
   }
+  // The first scan is still going when the chat opens, and takes longer than the default wait on a
+  // busy runner: until it ends the page says Jane is still reading, then reads itself again.
   await expect(
     page.getByText(/things to look at, worth up to about \$[\d,]+\.\d{2} a year/),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 60_000 });
   // What matters now is open; every other section is folded to its heading and one line
   // (docs/design/area-pages.md), opened with a tap. (In progress opens when something is
   // underway while /actions is hidden: e2e/decisions.spec.ts; Alerts when there are new ones.)

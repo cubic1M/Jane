@@ -1,4 +1,3 @@
-import { yearlyAndOnce } from "@/lib/report-state";
 import { doneSummary, savedSoFarLine } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
@@ -8,7 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { markAlertsRead } from "@/lib/alerts";
 import { lastControllerRun } from "@/lib/controller-log";
-import { loadJaneHub } from "@/lib/hubs/jane";
+import { decideSummary, loadJaneHub } from "@/lib/hubs/jane";
 import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { TOP_THINGS } from "@/config/priorities";
@@ -16,6 +15,7 @@ import { checkedLine } from "@/lib/jane-agent/replies-checked";
 import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadTimeline } from "@/lib/timeline";
+import { scanInProgress } from "@/lib/scan";
 import { requireUser } from "@/lib/session";
 import { timezoneOf } from "@/lib/today";
 import { momentLabel } from "@/lib/day-label";
@@ -109,6 +109,9 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
+  // Read before anything the page shows: a first scan still running now can end while the rest is
+  // read, and the page must then read it again (the header's scan bar does).
+  const scanning = await scanInProgress(user.id);
   const [hub, accounts, lastRun, snapshot, timeline, timezone] = await Promise.all([
     loadJaneHub(user.id),
     db.accounts.count(),
@@ -122,7 +125,9 @@ async function JaneContent() {
   const { decide, inProgress, done, alerts } = hub;
   // Read once shown, after the page is sent, so this visit still says they're new.
   const shownNew = alerts.items.filter((a) => a.isNew).map((a) => a.id);
-  if (shownNew.length > 0) after(() => markAlertsRead(user.id, { ids: shownNew }));
+  // Not while the scan runs: this render is read again when it ends, and alerts marked read by
+  // now would fold their section away under the person.
+  if (!scanning && shownNew.length > 0) after(() => markAlertsRead(user.id, { ids: shownNew }));
   // Under Done only once something is finished or confirmed: a yes alone isn't done.
   const savedLine =
     done.items.length > 0 || done.confirmedCents > 0
@@ -131,7 +136,7 @@ async function JaneContent() {
 
   return (
     <>
-      <AppHeader user={user} />
+      <AppHeader user={user} scanWasRunning={scanning} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">
           {snapshot?.concierge === false
@@ -242,15 +247,7 @@ async function JaneContent() {
 
       <Section
         title="To decide"
-        summary={
-          decide.total === 0
-            ? "nothing right now"
-            : `${decide.total} ${decide.total === 1 ? "thing" : "things"} to look at${
-                decide.totalSavingsCents > 0
-                  ? `, worth up to about ${yearlyAndOnce({ cents: decide.totalSavingsCents, onceCents: decide.onceCents })}`
-                  : ""
-              }`
-        }
+        summary={decideSummary(decide, scanning)}
         links={[
           { href: "/plan", label: "See the full plan" },
           { href: "/report", label: "All findings" },
@@ -258,7 +255,9 @@ async function JaneContent() {
       >
         {decide.items.length === 0 ? (
           <p className={MUTED}>
-            {accounts === 0 ? (
+            {scanning ? (
+              "Jane is still reading your accounts. What it finds shows here."
+            ) : accounts === 0 ? (
               <>
                 Nothing to decide yet.{" "}
                 <Link href="/connect" className={LINK}>
