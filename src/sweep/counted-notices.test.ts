@@ -81,12 +81,15 @@ describe("the warning on a file from a linked bank", () => {
     { name: "CHASE SAVINGS", institution: "Chase", mask: "1111", kind: "savings" },
   ];
 
-  it("names no account when more than one fits, and promises nothing about counting", () => {
-    const note = linkedAccountNote(linked, [
-      { file: "savings.csv", bank: "Chase", kind: "checking", mask: null },
-    ]);
+  it("names no account when more than one fits", () => {
+    const note = linkedAccountNote(linked, [{ file: "savings.csv", bank: "Chase", mask: null }]);
     expect(note?.text).toBe(
-      "If savings.csv is from one of your linked Chase accounts, skip it: their transactions already come in by themselves.",
+      `Jane can't yet tell whether savings.csv is one of your linked Chase accounts. Until it can, savings.csv is left out of net worth; "This is a different account" on this page counts it.`,
     );
+    // A file of a kind: only the linked account of that kind fits (a savings file is no checking's).
+    const one = linkedAccountNote(linked, [
+      { file: "savings.csv", bank: "Chase", kind: "savings", mask: null },
+    ]);
+    expect(one?.text).toContain("is your linked CHASE SAVINGS ····1111");
   });
 });
