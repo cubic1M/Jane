@@ -31,7 +31,9 @@ describe("tax identity actions", () => {
       await identityAction(null, form({ intent: "open", sign: "unknown_form" })),
     ).toMatchObject({ ok: true });
     expect(openCase).toHaveBeenCalledWith("u1", "unknown_form", "told");
-    expect(await identityAction(null, form({ intent: "step", step: "form_14039", case: "c1" }))).toEqual({
+    expect(
+      await identityAction(null, form({ intent: "step", step: "form_14039", case: "c1" })),
+    ).toEqual({
       ok: true,
       message: "Noted.",
     });

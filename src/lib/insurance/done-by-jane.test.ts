@@ -127,7 +127,7 @@ describe("in the chat", () => {
 
   it("shows the draft before anything is filed", () => {
     expect(draftBody(claim).split("\n")).toEqual([
-      "Here's the claim I'd file with Bluepeak Mutual (demo). Nothing goes until you tap File it.",
+      "Here's the claim I'd file with Bluepeak Mutual (demo). Nothing happens until you confirm.",
       "- What happened: Dropped my phone and the screen cracked.",
       "- On: 2026-10-17",
       "- Claiming: $329.00",

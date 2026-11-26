@@ -346,7 +346,7 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
 
     it("a Yes or No answers the question the message showed, not a later one", async () => {
       const { me, tap } = await sizedMessage();
-      let now = await tap("lifecover.apply");
+      const now = await tap("lifecover.apply");
       expect(parseRefs(now.refs).lifeQuestion).toBe("conditions");
       const application = await client.lifeApplication.findFirstOrThrow({ where: { userId: me } });
       // Question 1 is answered somewhere else: this message is now behind.

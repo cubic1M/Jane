@@ -385,7 +385,7 @@ async function lifeStep<T>(run: () => Promise<T>): Promise<T> {
 const dependants = (id: ActionHandler["id"], n: number): ActionHandler => ({
   id,
   on: "open",
-  async run({ userId, message, action, client, now }) {
+  async run({ userId, action, client, now }) {
     await saveDependants(userId, n, { client });
     const sized = await sizeLife(userId, { client, now });
     if (sized.kind === "sized") {

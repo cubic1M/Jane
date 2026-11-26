@@ -15,7 +15,9 @@ export const COSTLY_LINK: MessageAction = openLink(
 export function productLine(p: ProductView): string {
   const cost =
     p.kind === "annuity"
-      ? `Your ${p.name} costs about ${formatCents(p.yearlyCostCents ?? 0)} a year (${(p.feeBps ?? 0) / 100}% of ${formatCents(p.valueCents)}).`
+      ? p.yearlyCostCents === null || p.feeBps === null
+        ? `Your ${p.name} is worth ${formatCents(p.valueCents)}. I don't have its yearly fee, so I can't say what it costs.`
+        : `Your ${p.name} costs about ${formatCents(p.yearlyCostCents)} a year (${p.feeBps / 100}% of ${formatCents(p.valueCents)}).`
       : `Your ${p.name} takes ${formatCents(p.premiumYearlyCents)} a year in premiums, and its cash value is ${formatCents(p.valueCents)}.`;
   const sur = p.surrender
     ? ` Leaving now would carry a ${p.surrender.pctNow}% surrender charge (${formatCents(p.surrender.cents)}), which reaches zero on ${dayLabel(p.surrender.endsOn, { year: true })}.`

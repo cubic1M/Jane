@@ -27,8 +27,10 @@ export const DEPENDANTS_QUESTION: { body: string; actions: MessageAction[] } = {
   ],
 };
 
+// A quote is offered only on days before the day it expires (asOf is a day, and a quote that ran
+// out at noon is not shown at 6pm as live).
 export const bestQuote = (application: Pick<LifeApplication, "quotes">, asOf: string) =>
-  application.quotes.find((q) => q.expiresAt > asOf) ?? null;
+  application.quotes.find((q) => q.expiresAt.slice(0, 10) > asOf.slice(0, 10)) ?? null;
 
 const chosenQuote = (application: Pick<LifeApplication, "quotes" | "quoteId">) =>
   application.quotes.find((q) => q.partnerQuoteId === application.quoteId) ?? null;
