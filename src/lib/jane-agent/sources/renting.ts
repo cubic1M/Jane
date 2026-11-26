@@ -36,7 +36,8 @@ export const rentingSource: MessageSource = {
         body: `Your rent went up from ${formatCents(d.rise.beforeCents)} to ${formatCents(d.rise.nowCents)}, ${formatCents(d.rise.yearlyExtraCents)} more a year, against a usual ${(d.rise.usualBps / 100).toFixed(0)}% rise. It's worth asking your landlord whether it can be less.`,
         refs: {},
         actions: [RENTING_PAGE, snoozeButton()],
-        dedupeKey: `rent-rise:${d.rise.nowCents}`,
+        // Once a year, whatever the amounts (and a later year's rise to an amount seen before still shows).
+        dedupeKey: `rent-rise:${year}`,
         priority: MESSAGE_PRIORITY.rent_rise,
       });
     }

@@ -36,6 +36,14 @@ export const payoffSource: MessageSource = {
     }
     if (!stored.status || stored.expectedCents === null || stored.actualCents === null) return [];
     const when = stored.debtFreeMonth ? monthLabel(stored.debtFreeMonth, { long: true }) : null;
+    // The stored plan covers only the debts it includes: say so when others are left out.
+    const leftOut = payoff.summary.leftOut;
+    const scope =
+      leftOut.length > 0
+        ? ` Not in this plan: ${leftOut.map((l) => l.name).join(", ")}.`
+        : "";
+    const these = leftOut.length > 0 ? "the debts in your plan add up" : "your debts add up";
+    const finish = leftOut.length > 0 ? "done with these" : "debt-free";
     if (stored.status === "off_track") {
       const was =
         stored.previousDebtFreeMonth && stored.previousDebtFreeMonth !== stored.debtFreeMonth
@@ -44,7 +52,7 @@ export const payoffSource: MessageSource = {
       return [
         {
           kind: "heads_up" as const,
-          body: `Your payoff plan is off track: your debts add up to ${formatCents(stored.actualCents)}, and the plan expected ${formatCents(stored.expectedCents)} by now, ${formatCents(stored.actualCents - stored.expectedCents)} behind. ${when ? `At this pace you'd be debt-free by ${when}${was}.` : "At this pace it wouldn't finish."} New charges on a card or a missed payment usually explain it.`,
+          body: `Your payoff plan is off track: ${these} to ${formatCents(stored.actualCents)}, and the plan expected ${formatCents(stored.expectedCents)} by now, ${formatCents(stored.actualCents - stored.expectedCents)} behind. ${when ? `At this pace you'd be ${finish} by ${when}${was}.` : "At this pace it wouldn't finish."}${scope} New charges on a card or a missed payment usually explain it.`,
           refs: {},
           actions: [planner],
           dedupeKey: `check:${stored.checkedOn}`,
@@ -55,7 +63,7 @@ export const payoffSource: MessageSource = {
     return [
       {
         kind: "done" as const,
-        body: `I checked your payoff plan: you're on track, with ${formatCents(stored.actualCents)} left${when ? `, debt-free by ${when}` : ""}. I've updated it from your new balances.`,
+        body: `I checked your payoff plan: you're on track, with ${formatCents(stored.actualCents)} left${when ? `, ${finish} by ${when}` : ""}.${scope} I've updated it from your new balances.`,
         refs: {},
         actions: [planner],
         dedupeKey: `check:${stored.checkedOn}`,

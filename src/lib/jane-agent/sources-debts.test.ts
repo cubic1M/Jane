@@ -216,6 +216,28 @@ describe("Jane's payoff plan messages", () => {
     );
   });
 
+  // CodeRabbit part 2: a plan that leaves a debt out does not call the person debt-free.
+  it("says which debts a stored plan leaves out, and not that the person is debt-free", () => {
+    const left = payoff({
+      stored: STORED,
+      summary: {
+        ...payoffSummary(book.debts, { extraCents: 0, advice: true }),
+        leftOut: [{ name: "Demo Home Loan", reason: "no_payment" }],
+      } as never,
+    });
+    const [off] = fromPayoff(left);
+    expect(off.body).toContain("the debts in your plan add up to $2,300.00");
+    expect(off.body).toContain("you'd be done with these by September 2027");
+    expect(off.body).toContain("Not in this plan: Demo Home Loan.");
+    expect(off.body).not.toContain("debt-free");
+    const [on] = fromPayoff({
+      ...left,
+      stored: { ...STORED, status: "on_track" },
+    } as Payoff);
+    expect(on.body).toContain("done with these by September 2027.");
+    expect(on.body).toContain("Not in this plan: Demo Home Loan.");
+  });
+
   it("says when it's on track, and nothing before the first check or without debts", () => {
     const [message] = fromPayoff(payoff({ stored: { ...STORED, status: "on_track" } }));
     expect(message).toMatchObject({ kind: "done", priority: MESSAGE_PRIORITY.payoff_on_track });
