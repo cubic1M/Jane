@@ -87,6 +87,23 @@ describe("affordReply", () => {
     });
   });
 
+  // CodeRabbit part 2: a purchase after payday that makes a month's shortfall worse does not "fit".
+  it("does not say yes to a purchase that deepens a month checking is already short", () => {
+    const short: AffordNumbers = {
+      ...numbers,
+      flows: [
+        { date: "2026-10-30", amountCents: 250_000 },
+        { date: "2026-12-05", amountCents: -900_000 },
+      ],
+    };
+    const body = affordReply(
+      intent("can I afford $500 for a trip in December", "afford"),
+      short,
+    ).body;
+    expect(body).not.toMatch(/^Yes/);
+    expect(body).toMatch(/worse than it already is/);
+  });
+
   it("asks for an amount, and keeps to the next 12 months", () => {
     expect(affordReply(intent("can I afford a trip", "afford"), numbers).body).toMatch(
       /^How much is it\?/,
@@ -196,6 +213,12 @@ describe("affordReply for a category", () => {
     expect(reply.actions[0]).toMatchObject({
       href: "/afford?kind=more&amount=400.00&month=2026-10",
     });
+  });
+
+  // CodeRabbit part 2: months before the statements start are not months of $0.00.
+  it("averages only the months the statements cover", () => {
+    const fromSeptember = transactions.filter((t) => t.date >= "2026-09-01");
+    expect(categoryContext("food", fromSeptember, [], TODAY)?.usualMonthCents).toBe(43_450);
   });
 
   it("finds no category for words that aren't one, and no usual month without history", () => {
@@ -470,6 +493,13 @@ describe("actReply", () => {
       target: "Review your Hulu subscription",
       findingId: "f1",
     });
+  });
+
+  // CodeRabbit part 2: no promise of a refund over a finding that is not one.
+  it("does not lead with a refund promise over a finding of another kind", () => {
+    const reply = actReply(intent("refund my Verizon bill", "act"), snapshot({ findings }));
+    expect(reply.refs).toMatchObject({ findingId: "f2" });
+    expect(reply.body).not.toMatch(/ask for that money back/);
   });
 
   it("finds a bill by its kind, with Jane's pick", () => {

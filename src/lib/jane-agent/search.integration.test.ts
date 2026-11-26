@@ -10,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { createCheckPerson, deleteCheckPerson } from "./checks/person";
 import { pinnedMessages, setPinned } from "./messages";
 import { runJaneAgent } from "./run";
+import { CHAT_SEARCH_RESULTS } from "@/config/agent-chat";
 import { searchChat } from "./search";
 import { sendToJane } from "./typing";
 
@@ -64,6 +65,40 @@ describe.runIf(url)("history and search against a real database", () => {
     });
     expect(found.length).toBeGreaterThan(0);
     expect(await searchChat(userId, "Oct 17 netflix", { client, now: at(5) })).toEqual([]);
+  });
+
+  // CodeRabbit part 2: messages of the next day must not fill the limit before the day is cut.
+  it("finds a day even when many messages of the days beside it match", async () => {
+    const person = await createCheckPerson({ client, now: NOW });
+    try {
+      const nextDay = new Date("2026-10-19T08:00:00Z");
+      await client.janeMessage.createMany({
+        data: [
+          {
+            userId: person,
+            kind: "reply",
+            body: "pumpkin soup",
+            dedupeKey: "t:pumpkin-day",
+            createdAt: new Date("2026-10-18T20:00:00Z"),
+          },
+          ...Array.from({ length: CHAT_SEARCH_RESULTS * 3 }, (_, i) => ({
+            userId: person,
+            kind: "reply",
+            body: "pumpkin pie",
+            dedupeKey: `t:pumpkin-next-${i}`,
+            createdAt: new Date(nextDay.getTime() + i * 60_000),
+          })),
+        ],
+      });
+      const found = await searchChat(person, "Oct 18 pumpkin", {
+        client,
+        now: at(5),
+        timezone: "America/Los_Angeles",
+      });
+      expect(found.map((r) => r.body)).toEqual(["pumpkin soup"]);
+    } finally {
+      await deleteCheckPerson(person, { client });
+    }
   });
 
   it("answers a typed search with the newest few (no search page any more)", async () => {

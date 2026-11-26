@@ -185,12 +185,16 @@ export function categoryContext(
   const spentIn = (m: string) =>
     insights.categoriesByMonth[m]?.find((c) => c.category === category)?.cents ?? 0;
   const month = months.at(-1)!;
-  const past = months.slice(0, -1);
+  // Only the months the statements cover in full: a month with no data is not a month of $0.00.
+  const past = fullMonths(months.slice(0, -1), transactions);
   return {
     category,
     month,
     spentCents: spentIn(month),
-    usualMonthCents: Math.round(past.reduce((sum, m) => sum + spentIn(m), 0) / past.length),
+    usualMonthCents:
+      past.length === 0
+        ? 0
+        : Math.round(past.reduce((sum, m) => sum + spentIn(m), 0) / past.length),
     budgetCents: budgets.find((b) => b.category === category)?.amountCents ?? null,
   };
 }
@@ -246,6 +250,11 @@ function affordVerdict(result: AffordResult, what: string, asOf: string): string
   }
   if (firstShort?.after && firstShort.after !== firstShort.before) {
     return `It would be tight: with ${what}, checking would go below zero in ${monthLabel(firstShort.after)}.`;
+  }
+  // A month already short that this makes shorter is not "fits".
+  const deeper = result.months?.find((m) => m.afterCents < 0 && m.afterCents < m.beforeCents);
+  if (deeper) {
+    return `It would make checking worse than it already is: with ${what}, ${monthLabel(deeper.month)} would end ${fmt(-deeper.afterCents)} below zero${deeper.beforeCents < 0 ? `, up from ${fmt(-deeper.beforeCents)}` : ""}.`;
   }
   return `Yes: ${what} fits${firstShort?.before ? "" : ", and checking stays above zero every month"}.`;
 }
@@ -1186,7 +1195,10 @@ export function actReply(
       ),
     );
   }
-  return findingReply(ranked[0].finding, ACT_LEAD[intent.verb], snapshot.concierge);
+  // The lead promises the command's own kind of action: a finding of another kind (rank past the
+  // kinds that fit) shows its own words and buttons without it.
+  const fits = ranked[0].rank < VERB_TYPES[intent.verb].length;
+  return findingReply(ranked[0].finding, fits ? ACT_LEAD[intent.verb] : null, snapshot.concierge);
 }
 
 // Spec step 89: the answer to "cancel Hulu" comes first: yes, Jane can, once they tap.
