@@ -23,7 +23,7 @@ export const creditGoalSource: MessageSource = {
             ...todo.map((i) => `- ${i.text}`),
             "These scores are estimates from the stand-in simulator.",
           ].join("\n"),
-          refs: { advice: true, creditGoalId: g.id ?? undefined },
+          refs: { advice: true, creditGoalId: g.id ?? undefined, creditGoalMonth: g.currentMonth },
           actions: [doneButton(), GOAL_PAGE, snoozeButton()],
           dedupeKey: `creditgoal:${g.id}:${g.currentMonth}`,
           priority: MESSAGE_PRIORITY.credit_goal_month,

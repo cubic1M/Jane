@@ -90,6 +90,8 @@ export function creditGoalReply(
       ESTIMATE_NOTE,
     ].join("\n"),
     actions: todo.length ? [doneButton(), GOAL_PAGE] : [GOAL_PAGE],
-    refs: todo.length ? { advice: true, creditGoalId: g.id ?? undefined } : { advice: true },
+    refs: todo.length
+      ? { advice: true, creditGoalId: g.id ?? undefined, creditGoalMonth: g.currentMonth }
+      : { advice: true },
   };
 }

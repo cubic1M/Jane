@@ -78,14 +78,20 @@ export function buildCreditReply(data: CreditBuilding): Reply {
     );
   }
   if (lines.length === 0) {
-    lines.push("Your card use is low and your payments are on time: keep doing just that.");
+    // Only what the loader shows: with no report or no history it can't say card use is low or
+    // payments on time.
+    lines.push("I don't see anything to act on in your credit right now.");
   }
   const refs: MessageRefs = { advice: true };
   const actions: MessageAction[] = [];
   const s = data.statement;
   if (s && !s.scheduled && s.suggested && s.canPay) {
     actions.push(payButton());
-    refs.creditStatement = { accountId: s.accountId, closesOn: s.closesOn };
+    refs.creditStatement = {
+      accountId: s.accountId,
+      closesOn: s.closesOn,
+      amountCents: s.suggested.amountCents,
+    };
   } else if (data.thin && data.builders[0]) {
     actions.push(builderButton(data.builders[0].name));
     refs.creditBuilder = { productId: data.builders[0].id };

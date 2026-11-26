@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { creditPartnerFor } from "@/lib/credit";
 import type { CreditRequest } from "@/lib/credit/partner";
 import { db as defaultClient } from "@/lib/db";
+import { formatCents } from "@/lib/money";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
@@ -261,7 +262,7 @@ export async function runCreditBuilding(
 // The person tapped Pay: the suggested amount before the statement closes.
 export async function payBeforeStatement(
   userId: string,
-  target: { accountId: string; closesOn: string },
+  target: { accountId: string; closesOn: string; amountCents?: number },
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ amountCents: number; runOn: string; cardName: string; closesOn: string }> {
   const data = await loadCreditBuilding(userId, { client, now });
@@ -277,6 +278,13 @@ export async function payBeforeStatement(
   if (!s.suggested) {
     throw new CreditBuildingError(
       "Checking can't spare it right now without going under its cushion.",
+    );
+  }
+  // Only the amount the person saw: if the suggestion has moved since, nothing is paid and the
+  // card is looked at again.
+  if (target.amountCents !== undefined && target.amountCents !== s.suggested.amountCents) {
+    throw new CreditBuildingError(
+      `The amount has changed since you saw this: it is now ${formatCents(s.suggested.amountCents)}. Open your credit page to check it.`,
     );
   }
   try {
