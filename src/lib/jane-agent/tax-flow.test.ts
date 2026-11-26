@@ -83,7 +83,7 @@ describe("the tax profile questions", () => {
     expect(q?.body).toBe(
       "You live in California, going by your settings. Is that the state you'll file in for 2026?",
     );
-    expect(q?.refs).toEqual({ taxField: "state" });
+    expect(q?.refs).toEqual({ taxField: "state", taxFound: "CA" });
   });
 
   it("skips what needs the page and sends the person there at the end", () => {
