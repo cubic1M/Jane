@@ -793,7 +793,8 @@ function autoInvestCards({ inv, snapshot }: In): Candidate[] {
     out.push({
       kind: "decision",
       body: `Automatic investing has been paused since ${momentLabel(auto.plan.updatedAt, validTimezone(snapshot.timezone))}. Want me to start again from your next paycheck? ${AUTO_PROMISE}`,
-      refs: {},
+      // A recommendation: it carries the demo advice label (only shown when inv.advice).
+      refs: { advice: true },
       actions: [resumeButton(), AUTO_LINK, snoozeButton()],
       dedupeKey: `auto:paused:${auto.plan.updatedAt.toISOString().slice(0, 10)}`,
       priority: MESSAGE_PRIORITY.auto_invest_offer,
@@ -860,8 +861,14 @@ export const investmentsSource: MessageSource = {
   key: "investments",
   gather(snapshot) {
     const inv = snapshot.investments;
-    if (!inv || inv.holdingCount === 0) return [];
+    if (!inv) return [];
+    // With no holdings only what does not need them is said: the HSA receipts vault and a
+    // beneficiary missing on an account.
+    const topics =
+      inv.holdingCount === 0
+        ? TOPICS.filter((t) => t === hsaCards || t === beneficiaryCards)
+        : TOPICS;
     const year = new Date(snapshot.asOf).getUTCFullYear();
-    return TOPICS.flatMap((topic) => topic({ inv, snapshot, year }) ?? []);
+    return topics.flatMap((topic) => topic({ inv, snapshot, year }) ?? []);
   },
 };

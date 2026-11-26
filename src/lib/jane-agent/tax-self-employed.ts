@@ -11,15 +11,23 @@ import { dayLabel } from "@/lib/day-label";
 
 export type Said = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
-// The next payment within QUARTERLY.remindDays of today, if any.
+// The next payment within QUARTERLY.remindDays of today, if any. The federal and the state plan
+// are worked out apart, so owing the state alone (federal under the minimum) still reminds.
 export function nextQuarter(view: SelfEmployedView, today: string) {
-  if (!view.active || !view.federal.needed) return null;
-  const next = view.federal.payments.find((p) => p.date >= today);
-  if (!next) return null;
-  const days = (Date.parse(`${next.date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY_MS;
+  if (!view.active) return null;
+  const upcoming = (payments: { date: string; cents: number }[]) =>
+    payments.find((p) => p.date >= today) ?? null;
+  const federal = view.federal.needed ? upcoming(view.federal.payments) : null;
+  const state = view.state?.needed ? upcoming(view.state.payments) : null;
+  const date = [federal?.date, state?.date].filter((d): d is string => !!d).sort()[0];
+  if (!date) return null;
+  const days = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY_MS;
   if (days > QUARTERLY.remindDays) return null;
-  const state = view.state?.payments.find((p) => p.date === next.date) ?? null;
-  return { ...next, stateCents: state?.cents ?? 0 };
+  return {
+    date,
+    cents: federal?.date === date ? federal.cents : 0,
+    stateCents: state?.date === date ? state.cents : 0,
+  };
 }
 
 export function quarterMessage(
@@ -31,11 +39,15 @@ export function quarterMessage(
     q.stateCents > 0 && state
       ? `, and about ${formatWholeDollars(q.stateCents)} to ${stateName(state.code)}`
       : "";
+  const amounts =
+    q.cents > 0
+      ? `about ${formatWholeDollars(q.cents)} federal${statePart}`
+      : `about ${formatWholeDollars(q.stateCents)} to ${state ? stateName(state.code) : "your state"}`;
   return {
-    body: `Estimated tax is due ${dayLabel(q.date)}: about ${formatWholeDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
+    body: `Estimated tax is due ${dayLabel(q.date)}: ${amounts} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. ${q.cents > 0 ? "Pay it with IRS Direct Pay and tell me when it's done." : "Pay it through your state's own page and tell me when it's done."}`,
     actions: [
       { id: "tax.quarter_paid", label: "I've paid it", kind: "primary" },
-      openLink("IRS Direct Pay", IRS_DIRECT_PAY_URL),
+      ...(q.cents > 0 ? [openLink("IRS Direct Pay", IRS_DIRECT_PAY_URL)] : []),
     ],
     refs: { advice: true, taxQuarter: q, taxYear: view.year },
   };

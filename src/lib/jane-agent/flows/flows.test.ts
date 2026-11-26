@@ -38,13 +38,15 @@ const demo: FlowDef<{ colours: string[] }> = {
 describe("stepMessage", () => {
   it("asks the first question with an answer button each, and Cancel", () => {
     const message = stepMessage(demo, { step: 0, answers: {} }, { colours: [] });
-    expect(message.body).toBe("Testing, 1 of 2: Which colour?");
+    expect(message.body).toBe("Testing, 1 of 2: Which colour? Showing the first 5 of 6.");
     expect(message.actions.map((a) => a.id)).toEqual([...PICK_IDS, "flow.cancel"]);
     expect(message.refs.flow).toEqual({
       id: "goal",
       step: 0,
       answers: {},
       options: ["red", "green", "blue", "cyan", "pink"],
+      // Each drawing of the question has its own showing.
+      shown: expect.stringMatching(/^[0-9a-f-]{12}$/),
     });
   });
 

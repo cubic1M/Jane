@@ -83,7 +83,10 @@ export async function runTaxTool(
     case "tax_profile": {
       const { view, taxes } = await loadWorkingProfile(userId, { client, now });
       return out({
-        filingStatus: view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : null,
+        // The label and whether the person said it or Jane found it (as `state` below).
+        filingStatus: view.filingStatus.value
+          ? { name: FILING_STATUSES[view.filingStatus.value], status: view.filingStatus.status }
+          : null,
         dependants:
           view.dependants.status === "yours"
             ? {
@@ -784,7 +787,8 @@ export async function runTaxTool(
                 creditAllowed: c ? money(c.allowedCents) : null,
                 advanceCredit: money(v.marketplace.advanceYearCents),
                 advanceCreditToldByPerson: v.marketplace.told,
-                wouldBeRepaid: c ? (c.repayKnown ? money(c.repayCents) : null) : money(0),
+                // Unknown (null) when the reader has no check: never $0 for Claude to repeat.
+                wouldBeRepaid: c?.repayKnown ? money(c.repayCents) : null,
                 repaymentCap: c?.capCents == null ? null : money(c.capCents),
               },
         hsa: {

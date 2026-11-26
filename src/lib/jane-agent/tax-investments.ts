@@ -99,12 +99,13 @@ export function investmentsReply(
       : "";
   const first = view.harvest[0];
   // The saving holds only if the sale is not a wash sale: say what has to happen first.
+  const afterSale = ` That holds only if you do not buy it again, or something substantially identical, within ${WASH_SALE_DAYS} days after selling.`;
   const washFirst = first?.washRisk.reinvests
     ? ` That holds only if you turn off its dividend reinvestment first; buying it again within ${WASH_SALE_DAYS} days either side would make it a wash sale.`
     : first?.washRisk.boughtRecently
-      ? ` That holds only once your recent purchase of it is more than ${WASH_SALE_DAYS} days past; until then it would be a wash sale.`
+      ? ` That holds only once your recent purchase of it is more than ${WASH_SALE_DAYS} days past, and only if you do not buy it, or something substantially identical, again within ${WASH_SALE_DAYS} days after selling; until then it would be a wash sale.`
       : first
-        ? ` That holds only if you do not buy it again, or something substantially identical, within ${WASH_SALE_DAYS} days after selling.`
+        ? afterSale
         : "";
   const harvest =
     advice && first

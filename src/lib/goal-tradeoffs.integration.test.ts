@@ -135,6 +135,31 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     expect(view.current!.order).toEqual([kitchen.id, trip.id]);
     // The year plan was kept again on the tap.
     expect(await client.yearPlan.count({ where: { userId } })).toBe(1);
+    // One goal goes: with a single goal left there is no suggestion, and the saved order for two
+    // no longer counts.
+    await client.savingsGoal.delete({ where: { id: trip.id } });
+    expect((await loadTradeoffs(userId, { client, now: NOW }))!.chosen).toBeNull();
+  });
+
+  it("keeps the pick when another goal has been reached", async () => {
+    const userId = await couple("tradeoffs-reached");
+    await client.savingsGoal.create({
+      data: {
+        userId,
+        name: "Done already",
+        targetCents: 100_000,
+        targetDate: new Date("2027-06-01T00:00:00Z"),
+        manualSavedCents: 100_000,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
+    const goals = await listGoals(userId, { client, now: NOW });
+    const kitchen = goals.find((g) => g.name === "Kitchen remodel")!;
+    const trip = goals.find((g) => g.name === "Trip to Japan")!;
+    const picked = await chooseGoalOrder(userId, [kitchen.id, trip.id], { client, now: NOW });
+    expect(picked.order).toHaveLength(3);
+    const view = (await loadTradeoffs(userId, { client, now: NOW }))!;
+    expect(view.chosen).toEqual(picked.order);
   });
 
   it("is in the chat: the rule answer, Claude's tool, the message and its button", async () => {

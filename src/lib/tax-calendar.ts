@@ -308,7 +308,12 @@ const ESTIMATE_TITLES = (["estimated_1", "estimated_2", "estimated_3", "estimate
 export async function payEstimate(
   userId: string,
   dueOn: string,
-  { client = defaultClient, now = new Date(), via }: Options & { via: "autopilot" | "tap" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+    expectedCents,
+  }: Options & { via: "autopilot" | "tap"; expectedCents?: number },
 ): Promise<{ cents: number; confirmation: string }> {
   const today = iso(now);
   const partner = await taxPaymentPartnerFor(userId, { client });
@@ -325,6 +330,12 @@ export async function payEstimate(
     today,
   )[0];
   if (!planned) throw new TaxCalendarError("That payment isn't due yet, or it isn't needed.");
+  // A tap pays what its card showed, not whatever the plan has become since.
+  if (expectedCents !== undefined && planned.cents !== expectedCents) {
+    throw new TaxCalendarError(
+      `The payment changed from ${formatCents(expectedCents)} to ${formatCents(planned.cents)} since you saw it, so I paid nothing. Open your tax calendar to see the current one.`,
+    );
+  }
   if (via === "autopilot") {
     const may = await mayAct(
       userId,

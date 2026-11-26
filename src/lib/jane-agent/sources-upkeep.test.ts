@@ -210,7 +210,7 @@ describe("the weekly review", () => {
       lastWeek: { start: "2026-10-19", asked: 5, yes: 2, no: 1, done: 1 },
     });
     const line =
-      'The week of Oct 19: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; $34.00 came back or agreed; we covered 5 questions you asked and 3 decisions (2 yes, 1 no).';
+      'The last 7 days: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; $34.00 came back or agreed; in the week of Oct 19 we covered 5 questions you asked and 3 decisions (2 yes, 1 no).';
     const [brief] = from(s, "brief", MONDAY);
     expect(brief.body.split("\n")).toContain(line);
     // The day as one agenda message (spec step 184) carries it too.
@@ -219,7 +219,7 @@ describe("the weekly review", () => {
     expect(agenda.body.split("\n")).toContain(line);
     // Only on the first day of the week.
     const [tuesday] = from(s, "brief", new Date(MONDAY.getTime() + DAY));
-    expect(tuesday.body).not.toContain("The week of");
+    expect(tuesday.body).not.toContain("The last 7 days");
   });
 
   it("leaves the brief alone after a week with nothing in it", () => {
@@ -228,7 +228,7 @@ describe("the weekly review", () => {
       lastWeek: { start: "2026-10-19", asked: 0, yes: 0, no: 0, done: 0 },
     });
     const [brief] = from(quiet, "brief", MONDAY);
-    expect(brief.body).not.toContain("The week of");
+    expect(brief.body).not.toContain("The last 7 days");
     expect(brief.body).not.toContain("Last week");
   });
 

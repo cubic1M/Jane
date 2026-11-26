@@ -186,6 +186,16 @@ describe("the whole-picture answer", () => {
     expect(lines).toContain("Due before the month ends: Netflix $17.99 in 3 days.");
   });
 
+  // CodeRabbit part 2: nothing ranked is not "nothing due"; the due line lists what is.
+  it("does not say nothing needs doing while the month has bills due", () => {
+    const lines = answer(snapshot(), "month").body.split("\n");
+    expect(lines[0]).toMatch(/^No priority needs doing this month beyond what is due\./);
+    expect(lines).toContain("Due before the month ends: Netflix $17.99 in 3 days.");
+    expect(answer(snapshot({ comingUp: [] }), "month").body).toMatch(
+      /^Nothing needs doing this month\./,
+    );
+  });
+
   it("asks for a bank when there's nothing to look at", () => {
     expect(wholePictureReply(null, [], "now").actions[0]).toMatchObject({ href: "/connect" });
   });

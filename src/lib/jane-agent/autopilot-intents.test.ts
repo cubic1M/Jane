@@ -48,6 +48,14 @@ describe("sector autopilot intents", () => {
       null,
       null,
     ],
+    // CodeRabbit #2298: a condition beside the safe things is still ask-first.
+    [
+      "handle only the safe things for my bills, only after I approve them",
+      "bills",
+      "ask",
+      null,
+      null,
+    ],
     // An opt-out is still a grant.
     ["let jane pay my bills unless I say otherwise", "bills", "all", null, null],
     ["let jane pay my bills by herself only if I say yes first", "bills", "ask", null, null],
@@ -66,6 +74,13 @@ describe("sector autopilot intents", () => {
       level,
       actionCapCents,
       monthlyCapCents,
+    });
+  });
+
+  // A question about the past is not a setting, whatever condition it names (#2294 review).
+  it("does not read a question about paid bills as a setting", () => {
+    expect(parse("which bills were paid only after I approved them")).not.toMatchObject({
+      kind: "autopilot_sector",
     });
   });
 

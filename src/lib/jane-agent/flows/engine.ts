@@ -30,6 +30,9 @@ export type FlowDef<D> = {
   // Said instead of the first question when there's nothing to do.
   none(data: D): string | null;
   steps: { key: string; ask(answers: Answers, data: D): FlowQuestion }[];
+  // Extra answers taken when a step is answered, from what is shown then (a finding's fingerprint),
+  // so the end can tell that what was confirmed is what is there now.
+  stamp?(key: string, answers: Answers, data: D): Answers;
   // The last answer: the feature's own code. Returns what happened, in a line.
   finish(answers: Answers, data: D, context: FlowContext): Promise<string>;
 };
@@ -44,6 +47,13 @@ export type FlowState = {
   // The values behind this step's buttons, in order (flow.pick.1, flow.pick.2…).
   options: string[];
   typed?: FlowQuestion["typed"];
+  // When this step's question was shown (ISO): an answer tapped within CHAT_FLOW_SETTLE_MS of it
+  // is refused.
+  at?: string;
+  // Who this showing of the step is: new every time the question is drawn. A tap carries the one
+  // on the button it came from, so a button of an earlier showing (a stale tab, a double tap on
+  // the step before) answers nothing.
+  shown?: string;
 };
 
 export const PICK_IDS = Array.from(
@@ -56,9 +66,14 @@ export function stepMessage<D>(
   flow: FlowDef<D>,
   state: Pick<FlowState, "step" | "answers">,
   data: D,
+  shownAt?: Date,
 ): { body: string; actions: MessageAction[]; refs: MessageRefs } {
   const ask = flow.steps[state.step].ask(state.answers, data);
   const options = ask.options.slice(0, CHAT_FLOW_OPTIONS);
+  const cutOff =
+    ask.options.length > options.length
+      ? ` Showing the first ${options.length} of ${ask.options.length}.`
+      : "";
   const hint =
     ask.typed === "amount"
       ? " Or type an amount."
@@ -66,7 +81,7 @@ export function stepMessage<D>(
         ? " Or type your own."
         : "";
   return {
-    body: `${flow.title}, ${state.step + 1} of ${flow.steps.length}: ${ask.question}${hint}`,
+    body: `${flow.title}, ${state.step + 1} of ${flow.steps.length}: ${ask.question}${hint}${cutOff}`,
     actions: [
       ...options.map((o, i): MessageAction => ({
         id: PICK_IDS[i],
@@ -85,6 +100,8 @@ export function stepMessage<D>(
         answers: state.answers,
         options: options.map((o) => o.value),
         ...(ask.typed ? { typed: ask.typed } : {}),
+        ...(shownAt ? { at: shownAt.toISOString() } : {}),
+        shown: crypto.randomUUID().slice(0, 12),
       },
     },
   };

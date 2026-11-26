@@ -36,7 +36,7 @@ export function flaggedMessage(f: CollectedForm, year: number): MessageParts {
 
 // The forms collected that check out. At the levels that let Jane act they're already
 // ticked off; otherwise one tap does it.
-export function collectedMessage(view: TaxDocumentsView, acts: boolean): MessageParts | null {
+export function collectedMessage(view: TaxDocumentsView): MessageParts | null {
   const good = view.forms.filter((f) => f.document && f.usable);
   if (good.length === 0) return null;
   const waiting = good.filter((f) => !f.received);
@@ -45,7 +45,9 @@ export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message
   const checked = good.every((f) => f.check?.status === "matches")
     ? "They match your accounts."
     : "The ones I could check match your accounts.";
-  if (acts || waiting.length === 0) {
+  // "Ticked off" only when they are (the taxes sector's own setting decides that, not the overall
+  // level), else the card keeps its button.
+  if (waiting.length === 0) {
     return {
       body: `I collected ${n} tax ${n === 1 ? "form" : "forms"} for ${view.year}: ${list}. ${checked} I've ticked ${n === 1 ? "it" : "them"} off.`,
       refs: { taxYear: view.year },

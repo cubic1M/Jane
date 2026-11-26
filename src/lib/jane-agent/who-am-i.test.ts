@@ -87,6 +87,12 @@ describe("who am I", () => {
     expect(guess.body).toMatch(/I'm not sure, but you may have a pet/);
   });
 
+  it("says a recent move in a clause that fits every confidence", () => {
+    const { body } = whoAmI(profileOf("renter", { moved_recently: true }));
+    expect(body).toMatch(/You told me you have moved recently/);
+    expect(body).not.toMatch(/you moved recently|may moved/);
+  });
+
   it("is short, warm and points to the profile to correct it", () => {
     const { body } = whoAmI(profileOf("family"));
     expect(body.split(/[.!?]\s/).length).toBeLessThanOrEqual(6);

@@ -199,6 +199,9 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
               className="flex flex-wrap gap-2"
             >
               <input type="hidden" name="messageId" value={message.id} />
+              {message.flowShown && (
+                <input type="hidden" name="flowShown" value={message.flowShown} />
+              )}
               {buttons.map((b) => (
                 <button
                   key={b.id}

@@ -112,7 +112,9 @@ describe("tax answers, as far as the view says", () => {
         },
       ],
     } as never;
-    expect(investmentsReply(recent, estimate, true).body).toMatch(/is more than 30 days past/);
+    expect(investmentsReply(recent, estimate, true).body).toMatch(
+      /is more than 30 days past, and only if you do not buy it, or something substantially identical, again within 30 days after selling/,
+    );
     const none = {
       ...(view as object),
       harvest: [

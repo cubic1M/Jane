@@ -1,3 +1,4 @@
+import { REVIEW_DAYS } from "@/config/plan-upkeep";
 import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import { formatCents } from "@/lib/money";
 import type { LocalTime } from "../quiet-hours";
@@ -27,9 +28,12 @@ export function lastWeekLine(snapshot: Snapshot, local: LocalTime, now: Date): s
   const parts = [
     did.length > 0 ? `I ${did.join("; ")}` : null,
     savedCents > 0 ? `${formatCents(savedCents)} came ${BACK_OR_AGREED}` : null,
-    covered.length > 0 ? `we covered ${covered.join(" and ")}` : null,
+    covered.length > 0
+      ? `${week ? `in the week of ${dayLabel(week.start)}` : "last week"} we covered ${covered.join(" and ")}`
+      : null,
   ].filter(Boolean);
   if (parts.length === 0) return null;
-  const since = week ? `The week of ${dayLabel(week.start)}` : "Last week";
-  return `${since}: ${parts.join("; ")}.`;
+  // What Jane did and what came back are counted over the last REVIEW_DAYS days from now (the
+  // weekly review's own window), not over the calendar week the questions and decisions cover.
+  return `The last ${REVIEW_DAYS} days: ${parts.join("; ")}.`;
 }

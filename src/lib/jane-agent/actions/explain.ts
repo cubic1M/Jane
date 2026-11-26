@@ -41,7 +41,12 @@ async function explain(context: ActionContext, what: "why" | "options"): Promise
     userId,
     {
       ...reply,
-      refs: { ...message.refs, topic: { kind: "act", target: card.title, findingId } },
+      // The reply's own refs (the comparison table) are kept beside the message's.
+      refs: {
+        ...message.refs,
+        ...reply.refs,
+        topic: { kind: "act", target: card.title, findingId },
+      },
     },
     { client, at: new Date(now.getTime() + 1) },
   );

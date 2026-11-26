@@ -198,6 +198,8 @@ describe("the changes source", () => {
     expect(ids(message)).toEqual(["change.budget", "open", "change.expected"]);
     // Rounded up like the budget suggestions.
     expect(message.refs.change).toMatchObject({ category: "Shopping", budgetCents: 10_000 });
+    // The offer keeps how sure Jane is (every heads-up says so).
+    expect(message.refs.confidence).toBeDefined();
 
     const budgeted = snapshot([pace], {
       budgetProgress: [

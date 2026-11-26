@@ -212,8 +212,30 @@ describe("Jane's payoff plan messages", () => {
       priority: MESSAGE_PRIORITY.payoff_off_track,
     });
     expect(message.body).toBe(
-      "Your payoff plan is off track: your debts add up to $2,300.00, and the plan expected $2,000.00 by now, $300.00 behind. At this pace you'd be debt-free by September 2027 instead of August 2027. New charges on a card or a missed payment usually explain it.",
+      "Your payoff plan is off track: the debts in your plan add up to $2,300.00, and the plan expected $2,000.00 by now, $300.00 behind. At this pace you'd be done with these by September 2027 instead of August 2027. New charges on a card or a missed payment usually explain it.",
     );
+  });
+
+  // CodeRabbit part 2: a plan that leaves a debt out does not call the person debt-free.
+  it("says which debts a stored plan leaves out, and not that the person is debt-free", () => {
+    const left = payoff({
+      stored: STORED,
+      summary: {
+        ...payoffSummary(book.debts, { extraCents: 0, advice: true }),
+        leftOut: [{ name: "Demo Home Loan", reason: "no_payment" }],
+      } as never,
+    });
+    const [off] = fromPayoff(left);
+    expect(off.body).toContain("the debts in your plan add up to $2,300.00");
+    expect(off.body).toContain("you'd be done with these by September 2027");
+    expect(off.body).toContain("Not in this plan: Demo Home Loan.");
+    expect(off.body).not.toContain("debt-free");
+    const [on] = fromPayoff({
+      ...left,
+      stored: { ...STORED, status: "on_track" },
+    } as Payoff);
+    expect(on.body).toContain("done with these by September 2027.");
+    expect(on.body).toContain("Not in this plan: Demo Home Loan.");
   });
 
   it("says when it's on track, and nothing before the first check or without debts", () => {

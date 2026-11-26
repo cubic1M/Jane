@@ -100,6 +100,29 @@ describe.runIf(url)("the right button against a real database", () => {
     expect(ids(again.reply)).not.toContain("budget.set");
   });
 
+  // CodeRabbit part 2 (actions-01): a card offered with no budget does not replace one set since.
+  it("leaves a budget set after the card was offered as it is", async () => {
+    await client.budget.deleteMany({ where: { userId } });
+    const { reply } = await sendToJane(userId, "how much did I spend on food last month", {
+      client,
+      now: at(13),
+    });
+    const budget = reply.refs.budget!;
+    expect(budget).toBeDefined();
+    await client.budget.upsert({
+      where: { userId_category: { userId, category: budget.category } },
+      create: { userId, category: budget.category, amountCents: budget.amountCents + 5_000 },
+      update: { amountCents: budget.amountCents + 5_000 },
+    });
+    await expect(
+      takeChatAction(userId, reply.id, "budget.set", { client, now: at(14) }),
+    ).rejects.toMatchObject({ code: "not_open" });
+    expect(
+      (await client.budget.findFirstOrThrow({ where: { userId, category: budget.category } }))
+        .amountCents,
+    ).toBe(budget.amountCents + 5_000);
+  });
+
   it("says what happens next after Yes, and hides an answer until tomorrow on request", async () => {
     const cancel = await sendToJane(userId, "cancel Hulu", { client, now: at(20) });
     const { message } = await takeChatAction(userId, cancel.reply.id, "finding.yes", {

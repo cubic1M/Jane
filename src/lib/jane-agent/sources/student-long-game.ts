@@ -20,7 +20,9 @@ export const studentLongGameSource: MessageSource = {
       [g.certifyOn, "certify your employer for Public Service Loan Forgiveness", "certify"],
       [g.recertifyOn, "recertify your income-driven student loan plan", "recertify"],
     ] as const) {
-      if (!on || daysBetween(asOf, on) > LONG_GAME.remindDays) continue;
+      // A date still ahead and near; one that has passed is not "(-1 days)".
+      if (!on || daysBetween(asOf, on) < 0 || daysBetween(asOf, on) > LONG_GAME.remindDays)
+        continue;
       out.push({
         kind: "heads_up",
         body: `Your student loan paperwork is due: ${what} by ${dayLabel(on, { year: true })} (${daysBetween(asOf, on)} days). ${key === "certify" ? "The PSLF Help Tool at studentaid.gov takes a few minutes." : "Missing it can raise your payment."} It's on your deadlines.`,

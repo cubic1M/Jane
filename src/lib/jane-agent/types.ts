@@ -647,6 +647,8 @@ export type MessageRefs = {
   propertyExemption?: string;
   // Spec step 223: the estimated-tax due date a message is about.
   estimateDue?: string;
+  // The amount the estimate card showed; the tap pays only that.
+  estimateCents?: number;
   // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
   // message is about.
   identitySign?: string;

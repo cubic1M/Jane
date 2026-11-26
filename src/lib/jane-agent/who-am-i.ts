@@ -58,7 +58,7 @@ export function whoAmI(profile: Profile): WhoAmI {
   }
   if (f.housing.value === "own") say("housing", "own your home");
   else if (f.housing.value === "rent") say("housing", "rent your home");
-  if (isTrue(f.moved_recently)) say("moved_recently", "moved recently");
+  if (isTrue(f.moved_recently)) say("moved_recently", "have moved recently");
 
   // --- Work and pay -----------------------------------------------------------------------
   if (f.life_stage.value === "retired") say("life_stage", "are retired");

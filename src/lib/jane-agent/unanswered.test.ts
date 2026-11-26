@@ -17,14 +17,17 @@ describe("unansweredByKind", () => {
         },
       },
       { properties: { intent: "about", source: "claude_blocked", issues: "tax_or_legal_advice" } },
+      // The limit text with no answer is not answered either.
+      { properties: { intent: "unknown", source: "capped" } },
       { properties: null },
     ];
     expect(unansweredByKind(events)).toEqual({
-      asked: 7,
-      notAnswered: 5,
+      asked: 8,
+      notAnswered: 6,
       byKind: [
         { intent: "unknown", how: "fallback", count: 2 },
         { intent: "about", how: "claude_blocked", count: 1 },
+        { intent: "unknown", how: "capped", count: 1 },
         { intent: "unknown", how: "claude_blocked", count: 1 },
         { intent: "unknown", how: "claude_unavailable", count: 1 },
       ],

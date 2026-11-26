@@ -24,8 +24,9 @@ export const creditCardsSource: MessageSource = {
       out.push({
         kind: "heads_up",
         body: `Your ${card.name}'s ${formatCents(fee.feeCents)} annual fee doesn't pay for itself: it earns about ${formatCents(fee.earnsCents)} a year on your spending, ${formatCents(fee.netCents)} after the fee. The ${fee.noFee.card.name}, with no fee, would earn ${formatCents(fee.noFee.earnsCents)} on the same spending.`,
-        refs: best ? { advice: true, creditCard: { productId: best.card.id } } : { advice: true },
-        actions: [...(best ? [applyButton(best)] : []), CARDS_PAGE, snoozeButton()],
+        // The tap applies for the card the message names, not for another card's ranking.
+        refs: { advice: true, creditCard: { productId: fee.noFee.card.id } },
+        actions: [applyButton(fee.noFee), CARDS_PAGE, snoozeButton()],
         dedupeKey: `fee:${fee.cardId}:${year}`,
         priority: MESSAGE_PRIORITY.card_fee,
       });

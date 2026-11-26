@@ -226,6 +226,28 @@ describe("the investments message", () => {
   });
 });
 
+describe("with no holdings", () => {
+  it("still says the HSA receipts it saved, which need no holdings", () => {
+    const investments = demoInvestmentSnapshot({ totalCents: 100, holdingCount: 0, accounts: [] });
+    const messages = investmentsSource.gather(
+      {
+        ...base,
+        investments: {
+          ...investments,
+          hsa: { ...investments.hsa, receipts: 2, savedCents: 12_000 },
+        },
+      },
+      {} as never,
+    );
+    const keys = messages.map((m) => m.dedupeKey);
+    expect(keys).toContain("hsa:receipts:2");
+    // The source's keys are raw ("holdings"), so a holdings card is looked for by its own key;
+    // every other one belongs to the HSA or the beneficiary topics.
+    expect(keys).not.toContain("holdings");
+    expect(keys.every((k) => k.startsWith("hsa:") || k.startsWith("beneficiar"))).toBe(true);
+  });
+});
+
 describe("Claude's holdings tool", () => {
   it("is offered in the chat, with a page to link to", () => {
     expect(CHAT_TOOLS.map((t) => t.name)).toEqual(
@@ -1262,6 +1284,8 @@ describe("the monthly note, drift and the paused nudge in Jane's messages", () =
       c.dedupeKey.startsWith("auto:paused:"),
     )!;
     expect(nudge).toMatchObject({ kind: "decision", dedupeKey: "auto:paused:2026-09-01" });
+    // A recommendation: it carries the demo advice label.
+    expect(nudge.refs.advice).toBe(true);
     expect(nudge.body).toMatch(
       /^Automatic investing has been paused since Sep 1\. Want me to start again/,
     );

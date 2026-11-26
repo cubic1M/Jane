@@ -115,6 +115,11 @@ describe.runIf(url)("credit card rewards against a real database", { timeout: 12
     });
     expect(found[0].actions[0]).toMatchObject({ id: "credit_card.apply" });
     expect(found[0].actions[0].label).toMatch(/hard credit check/);
+    // CodeRabbit part 2: the tap applies for the card the message names (the no-fee one).
+    const fee = (await loadCreditCards(userId, opts())).cards.find((c) => c.fee?.noFee)!.fee!;
+    expect(found[0].body).toContain(fee.noFee!.card.name);
+    expect(found[0].refs.creditCard?.productId).toBe(fee.noFee!.card.id);
+    expect(found[0].actions[0].label).toContain(fee.noFee!.card.name);
   });
 
   it("answers which card to use, whether the fee is worth it and the best card, from the rules", async () => {
