@@ -45,6 +45,7 @@ export async function loadNetWorthInputs(
         mask: true,
         createdAt: true,
       },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
     db.balanceSnapshots.findMany({
       ...(since ? { where: { date: { gte: new Date(`${since}T00:00:00Z`) } } } : {}),

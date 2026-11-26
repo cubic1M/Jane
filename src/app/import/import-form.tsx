@@ -60,7 +60,7 @@ export function ImportForm({
   linked = [],
 }: {
   accounts: AccountOption[];
-  // A linked bank's accounts: a file from one of them would count it twice.
+  // A linked bank's accounts, whose transactions come in by themselves.
   linked?: LinkedAccount[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -354,15 +354,20 @@ export function ImportForm({
         >
           <p>
             {preview.alreadyIn.rows} of these {preview.alreadyIn.ofRows} rows are already in{" "}
-            {preview.alreadyIn.name}. A new account would count them twice.
+            {preview.alreadyIn.name}.{" "}
+            {preview.alreadyIn.linked
+              ? "Your bank fills that account by itself, so there's no need to import them."
+              : "Add them there, so they're in one account."}
           </p>
-          <button
-            type="button"
-            onClick={() => setAccount(preview.alreadyIn!.accountId)}
-            className="self-start font-medium underline underline-offset-2 hover:no-underline"
-          >
-            Add them to {preview.alreadyIn.name}
-          </button>
+          {!preview.alreadyIn.linked && (
+            <button
+              type="button"
+              onClick={() => setAccount(preview.alreadyIn!.accountId)}
+              className="self-start font-medium underline underline-offset-2 hover:no-underline"
+            >
+              Add them to {preview.alreadyIn.name}
+            </button>
+          )}
         </div>
       )}
       {ready && oldNewest && (

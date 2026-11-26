@@ -1,4 +1,3 @@
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
@@ -9,17 +8,18 @@ import { monthsEnding } from "@/insights/spending";
 import {
   fromFirstKnown,
   loansNotCounted,
-  netWorth,
   netWorthLine,
   notCounting,
   NO_BANK_SEEN,
   owedIsKnown,
 } from "@/insights/net-worth";
-import { scopedDb } from "@/lib/db-scoped";
-import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
+import {
+  loadMaybeSame,
+  loadNetWorthInputs,
+  loansSeenWithoutBalance,
+} from "@/lib/net-worth-history";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
-import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
 import { BooksNotice } from "@/components/books-notice";
@@ -31,50 +31,22 @@ import { CARD, CARD_TIGHT } from "@/components/card";
 async function NetWorthContent() {
   const user = await requireUser();
   await connection();
-  const db = await scopedDb();
   const asOf = await todayOf(user.id);
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
-  const [listedAccounts, snapshots, ownedRows, crypto, copies] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
-      orderBy: { name: "asc" },
-    }),
-    db.balanceSnapshots.findMany({
-      where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
-      select: { accountId: true, date: true, balanceCents: true },
-    }),
-    // Things you own, at your values (spec step 67).
-    db.ownedAssets.findMany({
-      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
-    }),
-    // Crypto, read-only (spec step 161).
-    cryptoTotal(user.id),
-    accountCopies(db),
+  // Read the way every surface reads it: only the accounts counted, and only their balances.
+  const [{ accounts, snapshots, owned, worth: today }, maybeSame] = await Promise.all([
+    loadNetWorthInputs(user.id, { since: `${first}-01` }),
+    loadMaybeSame(user.id),
   ]);
-  // An account linked twice counts once (src/lib/account-copies.ts).
-  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
-  const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
-  const today = netWorth(
-    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-    owned,
-    crypto,
-  );
   // The same line as the hub's, ending at today's net worth.
-  const months = netWorthLine(
-    accounts,
-    snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
-    owned,
-    asOf,
-    NET_WORTH_MONTHS,
-    today.netCents,
-  );
+  const months = netWorthLine(accounts, snapshots, owned, asOf, NET_WORTH_MONTHS, today.netCents);
   const listed = fromFirstKnown(months);
   const left = notCounting(today.unbalanced);
   const loansSeen = await loansSeenWithoutBalance(user.id);
   const loansLeft = loansNotCounted(loansSeen);
   const prompts = assetPrompts(
     accounts,
-    ownedRows.map((o) => o.loanAccountId),
+    owned.map((o) => o.loanAccountId),
   );
   const max = Math.max(1, ...months.map((m) => Math.abs(m.netCents ?? 0)));
 
@@ -144,6 +116,16 @@ async function NetWorthContent() {
           {left.sentence}{" "}
           <Link href="/import" className="underline">
             Add a balance
+          </Link>
+        </p>
+      )}
+
+      {/* What is left out so nothing counts twice, in the words Home and Money use. */}
+      {maybeSame && (
+        <p data-net-worth-maybe-same="" className="text-sm font-medium">
+          {maybeSame.words}{" "}
+          <Link href={maybeSame.href} className="underline">
+            See them
           </Link>
         </p>
       )}

@@ -7,8 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { stubTestKeys } from "@/lib/__fixtures__/env";
-import { runBooksCheck } from "@/lib/books";
-import { booksFix } from "@/lib/books-fix";
+import { openBooks, runBooksCheck } from "@/lib/books";
 import { encrypt } from "@/lib/crypto";
 import { scopedFor } from "@/lib/db-scoped";
 import { keepAccountSeparate, undoKeepSeparate } from "@/lib/import/separate";
@@ -16,7 +15,8 @@ import { loadMaybeSame, loadNetWorthInputs } from "@/lib/net-worth-history";
 
 // The founder's rule, 11-24: net worth matches what Plaid sends. A Wells Fargo-style upload has no
 // last four, so it can't be told from the same account once linked; it is left out, and the person
-// is told under net worth and on the books notice, with one tap to say it is another account.
+// is told under net worth, with one tap to say it is another account. The books check raises no
+// issue of its own about it.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-24T18:00:00Z");
@@ -81,7 +81,7 @@ describe.runIf(url)(
       vi.unstubAllEnvs();
     });
 
-    it("leaves the upload out, says why under net worth and on the books notice", async () => {
+    it("leaves the upload out and says why under net worth, with no books issue", async () => {
       const { worth } = await loadNetWorthInputs(userId!, { client });
       // The link's balance and the savings upload that can't be a copy of it; not the checking upload.
       expect(worth.netCents).toBe(8_000_000 + 100_000);
@@ -94,12 +94,14 @@ describe.runIf(url)(
         "Wells Fargo checking (uploaded) looks like a copy of Everyday Checking (linked), and there was not enough in their lines to be sure, so Jane left it out of net worth.",
       );
       const books = await runBooksCheck(userId!, { client, now: NOW });
-      const issue = books.open.find((i) => i.kind === "maybe_same")!;
-      expect(issue.words).toBe(said?.words);
-      expect(booksFix({ ...issue } as never)).toEqual({
-        label: "See it",
-        href: "/import",
+      expect(books.open.map((i) => i.kind)).not.toContain("maybe_same");
+      // A row stored before this, whose words may no longer be true, is never shown.
+      await client.booksIssue.create({
+        data: { userId: userId!, key: "same:stale", kind: "maybe_same", detail: { words: "x" } },
       });
+      expect((await openBooks(userId!, { client })).open.map((i) => i.kind)).not.toContain(
+        "maybe_same",
+      );
     });
 
     it("counts it, and says nothing, once the person says it is a different account", async () => {

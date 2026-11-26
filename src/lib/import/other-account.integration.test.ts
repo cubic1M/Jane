@@ -70,6 +70,7 @@ describe.runIf(url)("rows already in another account", () => {
       name: "PNC checking",
       rows: 10,
       ofRows: 10,
+      linked: false,
     });
   });
 

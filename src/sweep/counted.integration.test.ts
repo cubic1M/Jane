@@ -20,10 +20,11 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { loadNetWorthHistory, loadNetWorthInputs } from "@/lib/net-worth-history";
-import { uploadsClearedByEvidence } from "@/lib/account-copies";
+import { accountsNotCounted, leftOutNotes, uploadsClearedByEvidence } from "@/lib/account-copies";
+import { maybeSamePair } from "@/insights/net-worth";
 import { EVERYONE, makePerson, type OwnRows } from "./__fixtures__/people";
 import { atLocal } from "./diff";
-import { countingProblems } from "./counted";
+import { countingProblems, historyProblems, noticeProblems } from "./counted";
 
 // Class 12 over real rows (the founder, 11-24): for every sweep person, and one person per way an
 // account got in twice, what net worth counts holds each account once (./counted.ts), and Home's
@@ -68,12 +69,33 @@ describe.runIf(url)("what net worth counts holds each account once", { timeout: 
     const all = await db.accounts.findMany({ select: { id: true, source: true } });
     const source = new Map(all.map((a) => [a.id, a.source]));
     const bank = new Map(items.map((i) => [i.id, i.institutionName]));
-    return countingProblems(
-      accounts.map((a) => ({ ...a, source: source.get(a.id) ?? null })),
-      (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
-      new Set(said.map((p) => p.key.replace("account:", ""))),
-      cleared,
-    );
+    const [left, notes, inputs, history] = await Promise.all([
+      accountsNotCounted(db),
+      leftOutNotes(db),
+      loadNetWorthInputs(userId, { client }),
+      loadNetWorthHistory(userId, { client, now: NOW }),
+    ]);
+    return [
+      ...countingProblems(
+        accounts.map((a) => ({ ...a, source: source.get(a.id) ?? null })),
+        (a) => (a.itemId ? (bank.get(a.itemId) ?? null) : null),
+        new Set(said.map((p) => p.key.replace("account:", ""))),
+        cleared,
+      ),
+      ...noticeProblems(
+        new Set(accounts.map((a) => a.id)),
+        notes.map((n) => ({
+          leftId: n.id,
+          withId: left.get(n.id)!.sameAs.id,
+          words: maybeSamePair(n),
+        })),
+      ),
+      // Things owned count from the first balance too, so the accounts' days are enough.
+      ...historyProblems(
+        history?.months ?? [],
+        inputs.snapshots.map((s) => s.date),
+      ),
+    ];
   }
 
   // The one figure, as every surface reads it.

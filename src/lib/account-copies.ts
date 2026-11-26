@@ -226,14 +226,27 @@ export async function uploadsClearedByEvidence(db: Db): Promise<Set<string>> {
 // (src/insights/net-worth.ts): not the certain copies, which the books check says, and only accounts
 // with a balance, since one without is not counted anyway.
 export async function leftOutNotes(db: Db): Promise<(MaybeSame & { id: string })[]> {
+  return (await leftOutView(db)).notes;
+}
+
+// The same, with the accounts left out that the words are about, from one read.
+export async function leftOutView(db: Db) {
   const { accounts, left } = await readCounting(db);
   const byId = new Map(accounts.map((a) => [a.id, a]));
-  return [...left].flatMap(([id, { reason, sameAs }]) => {
+  const notes: (MaybeSame & { id: string })[] = [...left].flatMap(([id, { reason, sameAs }]) => {
     const account = byId.get(id);
     return reason === "copy" || !account || account.currentBalanceCents === null
       ? []
-      : [{ id, reason, left: { name: account.name }, with: { name: sameAs.name } }];
+      : [
+          {
+            id,
+            reason,
+            left: { name: account.name },
+            with: { name: sameAs.name, counted: !left.has(sameAs.id) },
+          },
+        ];
   });
+  return { notes, left: new Set(left.keys()) };
 }
 
 // The ids of the accounts to leave out.

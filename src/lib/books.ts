@@ -16,8 +16,7 @@ import {
 } from "@/planning/books";
 import { addDays, isoDay as iso } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
-import { maybeSameWords } from "@/insights/net-worth";
-import { accountCopies, leftOutNotes } from "@/lib/account-copies";
+import { accountCopies } from "@/lib/account-copies";
 
 // Books that balance (spec step 238): every day Jane checks that balances agree with their
 // transactions, finds the same account linked twice (and merges it, only when both copies are
@@ -241,7 +240,10 @@ export async function runBooksCheck(
   const txByAccount = new Map<string, Tx[]>();
   for (const t of txns.map(asTx))
     txByAccount.set(t.accountId, [...(txByAccount.get(t.accountId) ?? []), t]);
-  for (const account of accounts) {
+  // A copy left out of the figures is in none of them, so nothing about it is checked or said to
+  // be in doubt: not its balances, its file's end, or its transfers.
+  const copies = await accountCopies(db);
+  for (const account of accounts.filter((a) => !copies.has(a.id))) {
     const mine = snaps
       .filter((s) => s.accountId === account.id)
       .map((s) => ({ date: iso(s.date), balanceCents: s.balanceCents }));
@@ -289,7 +291,6 @@ export async function runBooksCheck(
   }
   // An imported account's data ends where its file did: said plainly, with a fresh import.
   // Not a copy left out of the figures (a statement kept beside its link): it can't be an old import.
-  const copies = await accountCopies(db);
   const imported = accounts.filter((a) => a.source === "csv" && !copies.has(a.id));
   const newest =
     imported.length === 0
@@ -328,19 +329,6 @@ export async function runBooksCheck(
       // Readable dates and fewer words (round-2 pass: "(3)'s data ends on 2026-10-12, the last
       // day in the file you imported, so I can't see anything after it…").
       words: `${a.name}'s file ends on ${a.lastDate ? dayLabel(a.lastDate, { year: true }) : "an earlier day"}. Import a newer one and I'll pick up from there.`,
-    });
-  }
-  // Accounts left out because they may be one already counted, which nothing can prove: said, never
-  // merged, with where the person settles it (src/lib/account-copies.ts).
-  for (const note of await leftOutNotes(db)) {
-    // Proven the same by what each shows: left out, said under net worth, nothing asked.
-    if (note.reason === "same_account") continue;
-    found.push({
-      kind: "maybe_same",
-      key: `same:${note.id}`,
-      accountId: note.id,
-      detail: { reason: note.reason },
-      words: maybeSameWords([note]) ?? "",
     });
   }
   // A copy left out of the figures is left out of transfer matching too: its spare lines would
@@ -397,7 +385,9 @@ export async function openBooks(
   const db = scopedFor(userId, client);
   const [rows, accounts] = await Promise.all([
     db.booksIssues.findMany({
-      where: { status: "open" },
+      // "maybe_same" is no longer raised: what net worth leaves out is said under it, from the
+      // counting itself (src/lib/account-copies.ts), never from a stored sentence that can go stale.
+      where: { status: "open", kind: { not: "maybe_same" } },
       orderBy: [{ createdAt: "asc" }, { key: "asc" }],
       select: { id: true, kind: true, accountId: true, itemId: true, detail: true },
     }),
