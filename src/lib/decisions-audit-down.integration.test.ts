@@ -5,16 +5,21 @@ import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+vi.mock("@/lib/jobs", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/jobs")>();
+  return { ...real, enqueueJob: vi.fn(real.enqueueJob) };
+});
 
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "./__fixtures__/findings";
 import { CARD_SELECT, buildCard, cardHash } from "./cards";
 import { recordDecision } from "./decisions";
+import { enqueueJob } from "@/lib/jobs";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
 
-describe.runIf(url)("a yes whose audit record can't be written", () => {
+describe.runIf(url)("a yes when a step after it fails", () => {
   let client: PrismaClient;
   let userId: string;
 
@@ -66,5 +71,32 @@ describe.runIf(url)("a yes whose audit record can't be written", () => {
       SELECT count(*) AS count FROM jobs
       WHERE kind = 'agent_step' AND payload->>'actionId' = ${action.id}`;
     expect(Number(count)).toBe(1);
+  });
+
+  it("is still recorded when Jane's job can't be queued", async () => {
+    const f = findingOfType("price_increase");
+    const finding = await client.finding.create({
+      data: {
+        userId,
+        type: f.type,
+        key: f.key,
+        title: f.title,
+        annualSavingsCents: f.annualSavingsCents,
+        amountCents: f.amountCents,
+        confidence: f.confidence,
+        evidence: f.evidence as Prisma.InputJsonObject,
+      },
+      select: { ...CARD_SELECT, status: true },
+    });
+    vi.mocked(logAudit).mockClear();
+    vi.mocked(enqueueJob).mockRejectedValueOnce(new Error("queue down"));
+    await expect(
+      recordDecision(
+        userId,
+        { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
+        { client },
+      ),
+    ).rejects.toThrow("queue down");
+    expect(vi.mocked(logAudit).mock.calls.map((c) => c[1])).toContain("decision_made");
   });
 });
