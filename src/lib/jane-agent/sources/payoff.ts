@@ -37,11 +37,14 @@ export const payoffSource: MessageSource = {
     if (!stored.status || stored.expectedCents === null || stored.actualCents === null) return [];
     const when = stored.debtFreeMonth ? monthLabel(stored.debtFreeMonth, { long: true }) : null;
     // The stored plan covers only the debts it includes: say so when others are left out.
-    const leftOut = payoff.summary.leftOut;
-    const scope =
-      leftOut.length > 0 ? ` Not in this plan: ${leftOut.map((l) => l.name).join(", ")}.` : "";
-    // The stored plan does not record which debts it covers, so a debt added since it was made
-    // is not known to be in it: its figures are said of "the debts in your plan", never of all.
+    const covered = stored.debtIds ? new Set(stored.debtIds) : null;
+    // Debts that came after the plan was made are not in it (a plan with no record of its debts
+    // cannot say which: its figures are said of "the debts in your plan", never of all).
+    const added = covered
+      ? payoff.summary.cards.filter((c) => !covered.has(c.id)).map((c) => c.name)
+      : [];
+    const outside = [...payoff.summary.leftOut.map((l) => l.name), ...added];
+    const scope = outside.length > 0 ? ` Not in this plan: ${outside.join(", ")}.` : "";
     const these = "the debts in your plan add up";
     const finish = "done with these";
     if (stored.status === "off_track") {
