@@ -1,9 +1,9 @@
 import { ACCESS_EVENTS, FAILED_EVENTS, type AccessEvent } from "@/config/access-log";
-import type { ActorType, Prisma } from "@/generated/prisma/client";
+import type { ActorType } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { currentRequestDetails, detailsFrom } from "@/lib/request-details";
 import { scrubSecrets } from "@/lib/scrub";
-import { systemDb } from "@/lib/system-db";
+import { systemDb, type SystemTx } from "@/lib/system-db";
 
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
@@ -400,7 +400,7 @@ export async function logAudit(
   target: AuditTarget,
   metadata: AuditMetadata = {},
   // `tx`: a system transaction to write it in, so it commits with what it records or not at all.
-  { headers, tx }: { headers?: Headers; tx?: Pick<Prisma.TransactionClient, "auditLog"> } = {},
+  { headers, tx }: { headers?: Headers; tx?: SystemTx } = {},
 ): Promise<void> {
   const access = isAccessEvent(event)
     ? {
