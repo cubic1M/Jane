@@ -72,6 +72,15 @@ async function readBody(response: Response): Promise<string> {
   return text;
 }
 
+// A metadata file's answer as a route's: what it returns, as the body Next.js would send.
+function metadata(make: unknown) {
+  if (typeof make !== "function") return undefined;
+  return async () => {
+    const made = await (make as () => unknown)();
+    return made instanceof Response ? made : Response.json(made);
+  };
+}
+
 export type RouteOptions = { headers?: Record<string, string>; rawBody?: string };
 
 // One thing to call: built once, run with each attacker.
@@ -97,8 +106,11 @@ async function routeCalls(
   const body = Object.fromEntries(
     bodyFields(source).map((field) => [field, valueForField(field, target, literals)]),
   );
-  return METHODS.flatMap((method) => {
-    const handler = mod[method];
+  // manifest.ts, sitemap.ts and the image files answer from their default export.
+  const answers = METHODS.some((method) => typeof mod[method] === "function")
+    ? METHODS.map((method) => [method, mod[method]] as const)
+    : [["GET", metadata(mod.default)] as const];
+  return answers.flatMap(([method, handler]) => {
     if (typeof handler !== "function") return [];
     const name = `${method} ${path}`;
     const run = async (): Promise<Answer> => {

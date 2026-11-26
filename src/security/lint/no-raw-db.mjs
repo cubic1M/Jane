@@ -44,6 +44,23 @@ function create(context) {
   const uses = [];
   const seenVariables = new Set();
 
+  // The variable a name means where `node` is.
+  function named(node, name) {
+    let scope = sourceCode.getScope(node);
+    while (scope && !scope.set.has(name)) scope = scope.upper;
+    return scope?.set.get(name);
+  }
+
+  // `const { user } = db`: each thing taken out is a use; what's left (`...rest`) is still the client.
+  function takenOut(pattern, node) {
+    for (const property of pattern.properties) {
+      if (property.type !== "RestElement") uses.push(node);
+      else if (property.argument.type === "Identifier") {
+        follow(named(pattern, property.argument.name));
+      }
+    }
+  }
+
   // Every reference to a variable, and through any name it is given.
   function follow(variable) {
     if (!variable || seenVariables.has(variable)) return;
@@ -54,13 +71,14 @@ function create(context) {
       const parent = node.parent;
       if (parent?.type === "MemberExpression" && parent.object === node) uses.push(node);
       if (parent?.type === "VariableDeclarator" && parent.init === node) {
-        for (const alias of sourceCode.getDeclaredVariables(parent)) follow(alias);
-      } else if (parent?.type === "AssignmentPattern" && parent.right === node) {
-        if (parent.left.type === "Identifier") {
-          let scope = sourceCode.getScope(parent);
-          while (scope && !scope.set.has(parent.left.name)) scope = scope.upper;
-          follow(scope?.set.get(parent.left.name));
-        }
+        if (parent.id.type === "ObjectPattern") takenOut(parent.id, node);
+        else for (const alias of sourceCode.getDeclaredVariables(parent)) follow(alias);
+      } else if (
+        (parent?.type === "AssignmentPattern" || parent?.type === "AssignmentExpression") &&
+        parent.right === node
+      ) {
+        if (parent.left.type === "Identifier") follow(named(parent, parent.left.name));
+        else if (parent.left.type === "ObjectPattern") takenOut(parent.left, node);
       }
     }
   }
@@ -80,10 +98,16 @@ function create(context) {
       }
     },
     ExportNamedDeclaration(node) {
-      if (node.source && DB_MODULE.test(String(node.source.value))) uses.push(node);
+      if (!node.source || node.exportKind === "type") return;
+      const source = String(node.source.value);
+      if (DRIVER_MODULE.test(source)) context.report({ node, messageId: "driver" });
+      else if (DB_MODULE.test(source)) uses.push(node);
     },
     ExportAllDeclaration(node) {
-      if (DB_MODULE.test(String(node.source.value))) uses.push(node);
+      if (node.exportKind === "type") return;
+      const source = String(node.source.value);
+      if (DRIVER_MODULE.test(source)) context.report({ node, messageId: "driver" });
+      else if (DB_MODULE.test(source)) uses.push(node);
     },
     ImportExpression(node) {
       if (node.source.type !== "Literal") return;
@@ -98,7 +122,9 @@ function create(context) {
       const [why] = node.arguments;
       const isWords = (n) =>
         (n?.type === "Literal" && typeof n.value === "string" && n.value.trim() !== "") ||
-        (n?.type === "TemplateLiteral" && n.expressions.length === 0);
+        (n?.type === "TemplateLiteral" &&
+          n.expressions.length === 0 &&
+          String(n.quasis[0]?.value.cooked).trim() !== "");
       if (isWords(why)) return;
       if (why?.type === "Identifier") {
         let scope = sourceCode.getScope(node);

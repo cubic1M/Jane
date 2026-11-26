@@ -87,9 +87,13 @@ export function judge(seen: Observation): string[] {
   if (shouldRefuse && !refused(answer, SHUT[access as Exclude<AccessKind, "public">])) {
     problems.push(`not refused (${access}): ${describe(answer)}`);
   }
-  if (shouldRefuse && writes.length > 0 && !seen.allowedWrites?.length) {
-    problems.push(`wrote without access: ${writes.map((w) => w.tbl).join(", ")}`);
+  // An exception names tables: it lets nothing else be written.
+  const unlisted = writes.filter((w) => !seen.allowedWrites?.includes(w.tbl));
+  if (shouldRefuse && unlisted.length > 0) {
+    problems.push(`wrote without access: ${unlisted.map((w) => w.tbl).join(", ")}`);
   }
+  // Nothing was judged: its work may still be going, into the next call's record.
+  if (answer.threw?.startsWith("timed out:")) problems.push(`never answered: ${answer.threw}`);
   return problems;
 }
 
