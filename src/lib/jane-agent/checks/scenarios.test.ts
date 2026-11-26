@@ -236,3 +236,18 @@ describe("the per-category report", () => {
     expect(twice).not.toContain("why a.2");
   });
 });
+
+describe("scenario ids (CodeRabbit sweep)", () => {
+  it("leaves out an id that ends in .number: it would be a follow-up's id", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { scenarios, skipped } = parseScenarioFiles([
+      JSON.stringify([
+        { id: "rent", category: "x", messages: ["a", "b"] },
+        { id: "rent.2", category: "x", messages: ["c"] },
+      ]),
+    ]);
+    warn.mockRestore();
+    expect(scenarios.map((s) => s.id)).toEqual(["rent"]);
+    expect(skipped.map((s) => s.id)).toEqual(["rent.2"]);
+  });
+});

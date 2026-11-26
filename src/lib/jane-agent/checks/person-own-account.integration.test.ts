@@ -37,4 +37,17 @@ describe.runIf(url)("a check person with an account of their own", () => {
     expect(await adviceMode(own, { client })).toBe(false);
     expect(await adviceMode(demo, { client })).toBe(true);
   }, 120_000);
+
+  it("removes the throwaway person when setup fails, and says why", async () => {
+    const uuid = crypto.randomUUID();
+    const spy = vi.spyOn(crypto, "randomUUID").mockReturnValueOnce(uuid as never);
+    const now = new Date("2026-11-12T18:00:00Z");
+    await expect(
+      createCheckPerson({ client, now, person: "no_such_person" as never }),
+    ).rejects.toThrow();
+    spy.mockRestore();
+    expect(await client.user.count({ where: { email: `answer-checks-${uuid}@example.com` } })).toBe(
+      0,
+    );
+  }, 120_000);
 });

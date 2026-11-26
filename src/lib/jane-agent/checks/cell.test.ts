@@ -21,6 +21,8 @@ describe("a cell's files", () => {
   });
 
   it.each([
+    [null, /is an object with accounts/],
+    [[], /is an object with accounts/],
     [{}, /at least one account/],
     [{ accounts: [{ kind: "checking", files: ["a.csv"] }] }, /needs a name/],
     [{ accounts: [{ name: "A", kind: "brokerage", files: ["a.csv"] }] }, /upload account kind/],

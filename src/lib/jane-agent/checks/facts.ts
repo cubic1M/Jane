@@ -8,6 +8,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { dollarFigures } from "@/lib/guardrails";
 import { withReadCache } from "@/lib/read-cache";
+import { chatToday } from "@/lib/today";
 import { CHAT_TOOLS, runChatTool } from "../claude-tools";
 import { loadSnapshot } from "../snapshot";
 
@@ -51,7 +52,8 @@ async function loadFactsWork(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Facts> {
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as the chat has it: not the UTC date, which differs near midnight.
+  const asOf = await chatToday(userId, { client, now });
   const [snapshot, input, transactions, lookups, advice] = await Promise.all([
     loadSnapshot(userId, { client, now }),
     loadDetectionInput(userId, { client, now }),

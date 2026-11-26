@@ -3,6 +3,7 @@ import { GRADER_MODEL } from "@/config/answer-checks";
 import { finishedText } from "@/lib/anthropic";
 import type { Facts } from "./facts";
 import { log } from "@/lib/log";
+import { dollarFigures } from "@/lib/guardrails";
 import { formatCents } from "@/lib/money";
 
 // Claude's grade for one of Jane's answers (spec step 87), against a written rubric for what
@@ -59,9 +60,22 @@ export type GradeInput = {
   answer: string;
   buttons: readonly string[];
   facts: Facts;
+  // The figures Jane's tools gave on this turn: a figure from them is not invented.
+  figures?: readonly number[];
   // The scenario's own rules for the judge.
   rules?: { mustDo?: string[]; mustNot?: string[] };
 };
+
+// Every figure the lookups gave, as dollars, capped at FIGURES_CAP. The turn's own figures and
+// any the answer cites go first, so the cap can never drop the amount the judge is checking.
+const FIGURES_CAP = 400;
+export function figuresForJudge(input: GradeInput): string[] {
+  const cited = new Set(dollarFigures(input.answer).map((f) => f.cents));
+  const turn = (input.figures ?? []).map((c) => Math.abs(c));
+  const all = [...turn, ...input.facts.allowedCents.map((c) => Math.abs(c))];
+  const ordered = [...all.filter((c) => cited.has(c)), ...turn, ...all];
+  return [...new Set(ordered.map((c) => formatCents(c)))].slice(0, FIGURES_CAP);
+}
 
 // Null when Claude couldn't grade it (an error, a refusal, bad output).
 export async function gradeWithClaude(
@@ -88,9 +102,7 @@ export async function gradeWithClaude(
         (r) =>
           `${r.merchant}: ${formatCents(r.lastCents)} last charge, ${formatCents(r.yearCents)} a year`,
       ),
-      figuresFromTheirData: [
-        ...new Set(input.facts.allowedCents.map((c) => formatCents(Math.abs(c)))),
-      ].slice(0, 400),
+      figuresFromTheirData: figuresForJudge(input),
     },
   });
   let response: Anthropic.Message;

@@ -1,5 +1,6 @@
 import type { RealPathRun } from "./real-path";
 import type { CheckRun } from "./run";
+import { DAY_MS } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 
 // The nightly scores over time (spec step 195): kept in docs/chat-quality-history.json, one
@@ -75,6 +76,9 @@ export type NightEntry = {
   firstWordsMs: number | null;
   // Understood, right figures, follow-ups and timings (older nights have none).
   metrics?: Metrics;
+  // How many questions scored under FAIL_BELOW (failed keeps the worst 30 of them); older
+  // nights have none and count what failed lists.
+  failedCount?: number;
   // Questions that scored under FAIL_BELOW, worst first.
   failed: { id: string; text: string; score: number; reason: string }[];
 };
@@ -83,6 +87,18 @@ export const FAIL_BELOW = 80;
 // A score that falls by more than this since the last run in the same mode is a drop.
 const DROP_THRESHOLD = 2;
 const KEEP_NIGHTS = 120;
+
+// The avoids check quotes the answer's own words; the history keeps scores and question ids
+// only, so that quote is dropped from a reason.
+export const withoutAnswerWords = (reason: string) =>
+  reason.replace(/(Says what it shouldn't:) "[^"]*"/g, "$1 (see the run)");
+
+const FAILED_KEPT = 30;
+
+const failedOf = (all: NightEntry["failed"]) => ({
+  failedCount: all.length,
+  failed: all.slice(0, FAILED_KEPT),
+});
 
 export function entryOf(run: CheckRun, date: string): NightEntry {
   return {
@@ -95,11 +111,17 @@ export function entryOf(run: CheckRun, date: string): NightEntry {
     costCents: run.costCents,
     firstWordsMs: run.firstWordsMs?.median ?? null,
     metrics: metricsOf(run.results),
-    failed: run.results
-      .filter((r) => r.status === "graded" && (r.score ?? 100) < FAIL_BELOW)
-      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-      .slice(0, 30)
-      .map((r) => ({ id: r.id, text: r.text, score: r.score!, reason: r.reason.slice(0, 200) })),
+    ...failedOf(
+      run.results
+        .filter((r) => r.status === "graded" && (r.score ?? 100) < FAIL_BELOW)
+        .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+        .map((r) => ({
+          id: r.id,
+          text: r.text,
+          score: r.score!,
+          reason: withoutAnswerWords(r.reason).slice(0, 200),
+        })),
+    ),
   };
 }
 
@@ -115,10 +137,11 @@ export function entryOfRealPath(run: RealPathRun, date: string, promptVersion: s
     skipped: 0,
     costCents: 0,
     firstWordsMs: null,
-    failed: run.results
-      .filter((r) => !r.ok)
-      .slice(0, 30)
-      .map((r) => ({ id: r.id, text: r.text, score: 0, reason: r.failed.join(", ") })),
+    ...failedOf(
+      run.results
+        .filter((r) => !r.ok)
+        .map((r) => ({ id: r.id, text: r.text, score: 0, reason: r.failed.join(", ") })),
+    ),
   };
 }
 
@@ -157,7 +180,14 @@ export function nightlyTable(history: readonly NightEntry[]): string {
   if (rows.length === 0) return "No nightly run has been recorded yet.";
   const full = rows.filter((r) => r.mode === "full");
   const lastThree = full.slice(0, 3);
-  const streak = lastThree.length === 3 && lastThree.every((r) => meetsBar(r.metrics));
+  // Three nights in a row: consecutive dates, newest first, not three records spread over a week.
+  const dayGap = (newer: string, older: string) =>
+    Math.round((Date.parse(newer) - Date.parse(older)) / DAY_MS);
+  const streak =
+    lastThree.length === 3 &&
+    lastThree.every((r) => meetsBar(r.metrics)) &&
+    dayGap(lastThree[0].date, lastThree[1].date) === 1 &&
+    dayGap(lastThree[1].date, lastThree[2].date) === 1;
   return [
     `**The depth bar**: understood at least ${BAR.understood}%, figures right ${BAR.figures}%, follow-ups and two-part questions at least ${BAR.followUps}%, three nights in a row. ${streak ? "Met for the last three nights." : "Not met yet."}`,
     "",
@@ -165,7 +195,7 @@ export function nightlyTable(history: readonly NightEntry[]): string {
     "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :-: |",
     ...rows.map(
       (r) =>
-        `| ${r.date} | ${modeLabel(r.mode)} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failed.length} | ${formatCents(r.costCents)} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
+        `| ${r.date} | ${modeLabel(r.mode)} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failedCount ?? r.failed.length} | ${formatCents(r.costCents)} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
     ),
   ].join("\n");
 }

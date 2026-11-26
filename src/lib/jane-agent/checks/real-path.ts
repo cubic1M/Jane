@@ -111,8 +111,16 @@ type Played = {
   // How many times it has written, and what the chat asked it on each later try.
   writes: number;
   asked: string[];
+  // The expected tool was offered to the model and the played model called it.
+  called: boolean;
 };
-export const newPlayed = (): Played => ({ toolResults: [], focus: null, writes: 0, asked: [] });
+export const newPlayed = (): Played => ({
+  toolResults: [],
+  focus: null,
+  writes: 0,
+  asked: [],
+  called: false,
+});
 
 const usage = { input_tokens: 0, output_tokens: 0 } as Anthropic.Usage;
 const textBlock = (text: string) =>
@@ -183,6 +191,7 @@ export function playbackClaude(
           );
           let message: Partial<Anthropic.Message>;
           if (tool && results.length === 0) {
+            played.called = true;
             message = {
               stop_reason: "tool_use",
               usage,
@@ -314,6 +323,16 @@ export async function runRealPath(
           failed.push("tool_said_error");
         }
         if (question.tool && !routedTo(played.focus, question.tool)) failed.push("not_routed");
+        // A question that names a tool must have had it offered and called: otherwise the playback
+        // answers without one and a broken tool choice would pass.
+        if (
+          question.tool &&
+          !NEEDS_A_REAL_CHOICE.has(question.tool) &&
+          source === "claude" &&
+          !played.called
+        ) {
+          failed.push("tool_not_called");
+        }
         results.push({
           id: round === "plain" ? question.id : `${question.id}#${round}`,
           text: question.text,

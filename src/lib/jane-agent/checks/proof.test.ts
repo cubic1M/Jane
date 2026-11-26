@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+vi.mock("../answer", () => ({
+  answerByRules: vi.fn(async () => {
+    throw new Error("loader down");
+  }),
+}));
 
-import { formatProof, inputFor, type PersonProof } from "./proof";
+import { ask, formatProof, inputFor, unfilledInputs, type PersonProof } from "./proof";
 
 // Spec step 266: the proof's write-up, one table for everyone and a section each.
 
@@ -82,5 +87,25 @@ describe("inputFor", () => {
     expect(inputFor("loan_fit", "consolidation")).toEqual({ need: "consolidation" });
     expect(inputFor("loan_fit", "employer_match")).toEqual({});
     expect(inputFor("subscriptions", "subscriptions")).toEqual({});
+  });
+});
+
+describe("unfilledInputs", () => {
+  it("names a required input the card's topic cannot supply, so the probe skips the tool", () => {
+    expect(unfilledInputs("explain_figure", {})).toEqual(["figure"]);
+    expect(unfilledInputs("loan_fit", { need: "consolidation" })).toEqual([]);
+    expect(unfilledInputs("subscriptions", {})).toEqual([]);
+  });
+});
+
+describe("ask", () => {
+  it("a rule that throws on a recognised question is a failed probe, not a missing answer", async () => {
+    const q = await ask("u1", "how much can I spend", {
+      client: {} as never,
+      now: new Date("2026-11-12T18:00:00Z"),
+    });
+    expect(q.understood).toBe(true);
+    expect(q.error).toBe("loader down");
+    expect(q.answer).toContain("rule failed");
   });
 });

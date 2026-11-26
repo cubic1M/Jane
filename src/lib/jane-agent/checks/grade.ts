@@ -36,7 +36,22 @@ const FILLER =
 const BARE_BUTTON = /\btap (?:the |a )?(?:button|yes|below)\b/i;
 // Money says "$17.99 a month", not "/mo" or "per month".
 const MONEY_STYLE = /\$[\d,.]+\s*(?:\/\s?(?:mo|month|yr|year)\b|per (?:month|year)\b)/i;
+// A figure written as a loss: "-$42", "($42)", or a word that says the money is owed.
+const NEGATIVE_SIGN = /[-−–]\s?\$|\(\s?\$/;
+const NEGATIVE_WORDS =
+  /\b(?:owe|owed|owing|overdrawn|overdraft|negative|below zero|minus|in the red|in debt)\b/i;
 const NOT_ANSWERED = [unknownReply().body, CHAT_UNAVAILABLE_TEXT, ASK_BLOCKED_REPLY];
+
+// True when the reply only points at a button: once the "tap the button" sentences are taken
+// out, fewer than three words are left. "You can save $20. Tap the button." is an answer.
+export function onlyPointsAtButton(body: string): boolean {
+  if (!BARE_BUTTON.test(body)) return false;
+  const rest = body
+    .split(/(?<=[.!?])\s+|\n/)
+    .filter((sentence) => !BARE_BUTTON.test(sentence))
+    .join(" ");
+  return rest.split(/\s+/).filter(Boolean).length < 3;
+}
 
 // The first sentence, up to its full stop, question mark or line end.
 export function firstSentence(body: string): string {
@@ -69,14 +84,16 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
       ? fail("answered", "Jane didn't answer: it fell back to what it can do.")
       : answer.source === "claude_blocked"
         ? fail("answered", "The guardrails blocked Jane's answer.")
-        : pass("answered"),
+        : answer.source === "capped"
+          ? fail("answered", "Jane didn't answer: the question hit the daily limit.")
+          : pass("answered"),
   );
 
   // Chat architecture (docs/spec.md): every reply is written words, at least a real sentence;
   // a button or a card is never the whole reply.
   const words = body.split(/\s+/).filter(Boolean).length;
   checks.push(
-    words >= 3 && !(BARE_BUTTON.test(body) && body.length < 80)
+    words >= 3 && !onlyPointsAtButton(body)
       ? pass("written")
       : fail(
           "written",
@@ -98,11 +115,14 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
   const shown = new Set(dollarFigures(body).map((f) => f.cents));
   const wanted = (expect.figures?.(facts) ?? []).filter((c): c is number => c !== null);
   if (wanted.length > 0) {
-    const missing = wanted.filter((c) => !shown.has(Math.abs(c)));
+    // dollarFigures reads magnitudes: a debt of $42 must also be written as one, or "$42" could
+    // be money the person has.
+    const losing = NEGATIVE_SIGN.test(body) || NEGATIVE_WORDS.test(body);
+    const missing = wanted.filter((c) => !shown.has(Math.abs(c)) || (c < 0 && !losing));
     checks.push(
       missing.length === 0
         ? pass("figures")
-        : fail("figures", `Missing ${missing.map((c) => formatCents(Math.abs(c))).join(", ")}.`),
+        : fail("figures", `Missing ${missing.map((c) => formatCents(c)).join(", ")}.`),
     );
   }
 
@@ -132,7 +152,7 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
   if (/:$/.test(first) || /^if\b/i.test(first))
     shape.push("the first sentence leads in instead of answering");
   if (first.length > ANSWER_FIRST_SENTENCE_MAX) shape.push("the first sentence is too long");
-  if (BARE_BUTTON.test(body) && body.length < 80) shape.push("it only points at a button");
+  if (onlyPointsAtButton(body)) shape.push("it only points at a button");
   const listLines = body.split("\n").filter((l) => /^\s*(?:-|\d+\.)\s/.test(l)).length;
   if (listLines > 0 && !expect.list) shape.push("it's a list where an answer fits");
   checks.push(shape.length === 0 ? pass("shape") : fail("shape", `Shape: ${shape.join("; ")}.`));
