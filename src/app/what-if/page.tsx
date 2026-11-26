@@ -18,9 +18,13 @@ async function WhatIfContent({
   searchParams: PageProps<"/what-if">["searchParams"];
 }) {
   const user = await requireUser();
-  const { s } = await searchParams;
+  const { s, m } = await searchParams;
   const scenario = isScenario(s) ? s : null;
-  const run = scenario ? await whatIf(user.id, scenario) : null;
+  // The months a chat reply ran for ("job loss for 6 months"), whole and in range.
+  const months = typeof m === "string" && /^\d{1,3}$/.test(m) ? Number(m) : undefined;
+  const run = scenario
+    ? await whatIf(user.id, scenario, months === undefined ? {} : { months })
+    : null;
   return (
     <>
       <AppHeader user={user} />

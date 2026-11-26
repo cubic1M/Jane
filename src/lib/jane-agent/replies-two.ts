@@ -8,7 +8,11 @@ import { openLink } from "./types";
 // waiting for a tap, and the monthly money date. Only what was shared, never the partner's
 // own money.
 
-const percent = (bps: number) => `${Math.round(bps / 100)}%`;
+// Whole percents that add up to 100: one is rounded, the other is what is left.
+const shares = (myShareBps: number) => {
+  const mine = Math.min(100, Math.max(0, Math.round(myShareBps / 100)));
+  return { mine: `${mine}%`, partner: `${100 - mine}%` };
+};
 
 export function moneyForTwoReply(view: MoneyForTwoView | null): Reply {
   if (!view) {
@@ -20,7 +24,7 @@ export function moneyForTwoReply(view: MoneyForTwoView | null): Reply {
   }
   const split =
     view.rule === "income"
-      ? `Shared bills split by income: you pay ${percent(view.myShareBps)}, ${view.partnerName} ${percent(10_000 - view.myShareBps)}.`
+      ? `Shared bills split by income: you pay ${shares(view.myShareBps).mine}, ${view.partnerName} ${shares(view.myShareBps).partner}.`
       : `Shared bills split half each.${view.chosen ? "" : ` By income it would be ${sharesWords(view.incomeMyShareBps)} (you first).`}`;
   const lines = [
     split,

@@ -52,6 +52,14 @@ describe("a charge by its amount", () => {
     );
   });
 
+  // CodeRabbit part 2: a purchase of the same amount is not the fee charged twice.
+  it("asks which one when a purchase and a fee share the amount", () => {
+    const purchase = line("2026-11-01", 3_400, "TARGET #1234", "GENERAL_MERCHANDISE_SUPERSTORES");
+    const body = chargeReply(3_400, null, ctx([purchase, NSF])).body;
+    expect(body).toMatch(/^More than one charge was \$34\.00: .*insufficient funds fee on Nov 2/);
+    expect(body).not.toMatch(/charged 2 times/);
+  });
+
   it("finds it on the day asked, and not on another", () => {
     const overdraft = line(
       "2026-10-28",
@@ -114,6 +122,19 @@ describe("the fees paid", () => {
     const back = line("2026-08-01", -3_500, "OVERDRAFT FEE REVERSAL", "BANK_FEES_OVERDRAFT_FEES");
     expect(feesPaidReply(false, 12, ctx([...year, back])).body).toMatch(
       /^You paid \$104\.00 in 6 fees/,
+    );
+  });
+
+  // CodeRabbit part 2: the list is what the headline counts, never a fee that was given back.
+  it("lists the same fees the headline adds up, and what was given back", () => {
+    const back = line("2026-08-01", -3_500, "OVERDRAFT FEE REVERSAL", "BANK_FEES_OVERDRAFT_FEES");
+    const reply = feesPaidReply(false, 12, ctx([...year, back])).body;
+    expect(reply).toBe(
+      "You paid $104.00 in 6 fees in the last 12 months: one overdraft fee ($35.00, Feb 2), 4 monthly maintenance fees ($40.00), one late fee ($29.00, Aug 30).",
+    );
+    const part = line("2026-09-03", -500, "FEE REFUND", "BANK_FEES_OTHER_BANK_FEES");
+    expect(feesPaidReply(false, 12, ctx([...year, part])).body).toMatch(
+      /^You paid \$134\.00 in 7 fees .*, less \$5\.00 given back\.$/,
     );
   });
 

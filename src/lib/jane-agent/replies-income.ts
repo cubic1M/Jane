@@ -39,6 +39,14 @@ const ESTIMATE_UNDER_MONTHS = 3;
 export function incomeReply(period: "month" | "year", facts: IncomeFacts): Reply {
   const actions = [openLink("See how it's worked out", "/figures/monthly_income")];
   const { monthCents, told, schedules, months, yearGrossCents, taxYear, statementsEnd } = facts;
+  if ((monthCents === null || monthCents <= 0) && period === "year" && yearGrossCents > 0) {
+    // The tax cards know the year before tax even where no monthly take-home is seen.
+    return {
+      body: `I can't say what you take home a month yet, but your pay before tax for ${taxYear} is about ${formatCents(yearGrossCents)}, the figure the tax cards use.`,
+      actions,
+      refs: {},
+    };
+  }
   if (monthCents === null || monthCents <= 0) {
     return {
       body: statementsEnd
@@ -78,9 +86,12 @@ export function incomeReply(period: "month" | "year", facts: IncomeFacts): Reply
       refs: {},
     };
   }
+  // Pay beyond the paychecks (a bonus) is not in a month: a year adds it once.
+  const extraCents = schedules.reduce((sum, s) => sum + s.extraCents, 0);
+  const extra = extraCents > 0 ? `, plus ${formatCents(extraCents)} of extra pay` : "";
   const body =
     period === "month"
       ? `You take home about ${month} a month: ${source}.${when}`
-      : `You take home about ${formatCents(monthCents * 12)} a year (${month} a month: ${source})${gross}.${when}`;
+      : `You take home about ${formatCents(monthCents * 12 + extraCents)} a year (${month} a month: ${source}${extra})${gross}.${when}`;
   return { body, actions, refs: {} };
 }

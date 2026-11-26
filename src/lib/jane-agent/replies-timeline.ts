@@ -25,7 +25,9 @@ function when(entry: TimelineEntry, asOf: string): string {
 const line = (e: TimelineEntry, asOf: string) =>
   `${when(e, asOf)}: ${e.what.replace(/[.]$/, "")}${e.cents ? ` (${formatCents(e.cents)})` : ""}`;
 
-export function timelineReply(entries: TimelineEntry[], why: boolean, asOf: string): Reply {
+export function timelineReply(all: TimelineEntry[], why: boolean, asOf: string): Reply {
+  // What Jane did: the person's own taps are on the page too, but not "everything I've done".
+  const entries = all.filter((e) => e.by === "jane");
   const open = openLink("Everything Jane did", "/jane#activity");
   if (entries.length === 0) {
     return {

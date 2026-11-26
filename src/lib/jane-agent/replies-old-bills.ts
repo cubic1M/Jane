@@ -1,4 +1,5 @@
-import { BILL_KINDS } from "@/config/agent-chat";
+import { BILL_KINDS, MONTHLY_GAP_DAYS } from "@/config/agent-chat";
+import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { merchantOf } from "@/detection/streams";
@@ -53,7 +54,15 @@ export function fromOldStatementsReply(
   if (!last) return null;
   const name = nameOf(last) ?? target;
   const same = charges.filter((t) => nameOf(t) === nameOf(last));
-  const monthly = same.length >= 2 && same.every((t) => t.amountCents === last.amountCents);
+  // A month apart as well as the same amount: two equal charges a week apart are not "a month".
+  const monthly =
+    same.length >= 2 &&
+    same.every((t) => t.amountCents === last.amountCents) &&
+    same.every((t, i) => {
+      if (i === 0) return true;
+      const gap = daysBetween(same[i - 1]!.date, t.date);
+      return gap >= MONTHLY_GAP_DAYS.from && gap <= MONTHLY_GAP_DAYS.to;
+    });
   return {
     body: `In your statements, which end ${dayLabel(statementsEnd)}, ${name} was ${formatCents(last.amountCents)}${
       monthly ? " a month" : ""
