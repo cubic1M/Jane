@@ -1,8 +1,9 @@
-import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, recordDecision } from "@/lib/decisions";
+import { partnerForUser } from "@/lib/referrals";
 import type { Options } from "./action";
 
 // A company charged after a cancellation the person approved: Jane asks for that money
@@ -26,7 +27,14 @@ export async function refundChargesAfterCancel(
         {
           findingId: finding.id,
           choice: "yes",
-          cardHash: cardHash(buildCard(finding)),
+          // As recordDecision builds it, with the referral partner: without it the hashes differ
+          // wherever a partner is active, and the refund request is skipped without a word.
+          cardHash: cardHash(
+            buildCard(
+              finding,
+              await partnerForUser(userId, ACTION_FOR_FINDING[finding.type], { client }),
+            ),
+          ),
           source: "auto",
           ruleKey: "charge_after_cancel",
         },
