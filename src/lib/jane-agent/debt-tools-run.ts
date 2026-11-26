@@ -24,6 +24,8 @@ import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting } from "@/lib/renting";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
 import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
+import { HomeEquityError } from "@/lib/home-equity";
+import { todayOf } from "@/lib/today";
 import { loadFamilyCredit } from "@/lib/family-credit";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
@@ -133,13 +135,19 @@ export async function runDebtTool(
       return out(
         costlyBorrowingToolOutput(await loadCostlyBorrowing(userId, { client, now }), money),
       );
-    case "credit_monthly":
+    case "credit_monthly": {
+      // The saved check-up counts only for the person's current month: last month's items are
+      // not this month's answer.
+      const saved = await loadCreditMonthly(userId, { client });
+      const thisMonth = (await todayOf(userId, { client, now })).slice(0, 7);
       return out(
         creditMonthlyToolOutput(
-          (await loadCreditMonthly(userId, { client })) ??
-            (await computeCreditMonthly(userId, { client, now })),
+          saved && saved.month === thisMonth
+            ? saved
+            : await computeCreditMonthly(userId, { client, now }),
         ),
       );
+    }
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
       return out(
@@ -238,7 +246,11 @@ export async function runDebtTool(
                 years: typeof args.years === "number" ? args.years : PROJECT_YEARS_DEFAULT,
               },
               { client, now },
-            ).catch(() => null)
+            ).catch((error: unknown) => {
+              // A rejected amount or term says why; anything else is not "no amount given".
+              if (error instanceof HomeEquityError) return { error: error.message };
+              throw error;
+            })
           : null;
       return out(
         homeEquityToolOutput(await loadHomeEquity(userId, { client, now }), project, money),
@@ -259,7 +271,8 @@ export async function runDebtTool(
     case "medical_bills":
       return out(medicalToolOutput(await loadMedicalBills(userId, { client, now }), money));
     case "home_purchase": {
-      await ensureBorrowingChecked(userId, { client, now });
+      // The borrowing comparison is extra: without it the home figures still stand.
+      await ensureBorrowingChecked(userId, { client, now }).catch(() => {});
       const price = (input as { price_cents?: unknown } | null)?.price_cents;
       return out(
         homeToolOutput(
@@ -269,14 +282,23 @@ export async function runDebtTool(
             { client, now },
           ),
           money,
-          mortgageOf((await loadBorrowingPower(userId, { client, now })).figures),
+          await loadBorrowingPower(userId, { client, now }).then(
+            (power) => mortgageOf(power.figures),
+            () => null,
+          ),
         ),
       );
     }
     case "car_purchase": {
       const i = (input ?? {}) as Record<string, unknown>;
       const num = (v: unknown) => (typeof v === "number" && v > 0 ? v : undefined);
-      const apr = num(i.dealer_apr_percent);
+      // A 0% dealer rate is a real quote: only a missing or negative one is not.
+      const apr =
+        typeof i.dealer_apr_percent === "number" &&
+        Number.isFinite(i.dealer_apr_percent) &&
+        i.dealer_apr_percent >= 0
+          ? i.dealer_apr_percent
+          : undefined;
       const months = num(i.dealer_months);
       const car = await loadCar(
         userId,

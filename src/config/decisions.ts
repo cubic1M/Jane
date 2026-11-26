@@ -25,6 +25,6 @@ export const SECTOR_DECISIONS: readonly { item: string; pattern: RegExp }[] = [
   {
     item: "loan",
     pattern:
-      /^(?!.*\$\s?\d).*\b(?:consolidat\w*|personal loan|payday (?:loan|advance|lender)s?|cash advance|close (?:a |an |my |this |that )?(?:credit )?card|pay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt)|student (?:loans?|debt)\b.*\b(?:early|faster|ahead)|buy now,? pay later|bnpl|klarna|afterpay|affirm|(?:use|using|take|tap) (?:my )?(?:savings|cash|emergency fund)\b.*\b(?:debt|cards?|loans?))\b/,
+      /^(?!.*(?:\$\s?\d|\b\d[\d,.]*\s?(?:k|dollars|bucks|usd)\b)).*\b(?:consolidat\w*|personal loan|payday (?:loan|advance|lender)s?|cash advance|close (?:a |an |my |this |that )?(?:credit )?card|pay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt)|student (?:loans?|debt)\b.*\b(?:early|faster|ahead)|buy now,? pay later|bnpl|klarna|afterpay|affirm|(?:use|using|take|tap) (?:my )?(?:savings|cash|emergency fund)\b.*\b(?:debt|cards?|loans?))\b/,
   },
 ];

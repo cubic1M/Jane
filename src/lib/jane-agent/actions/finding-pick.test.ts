@@ -27,14 +27,14 @@ vi.mock("@/lib/db-scoped", () => ({
   }),
 }));
 
-import type { ChatMessage, MessageAction } from "../types";
+import type { ActionId, ChatMessage, MessageAction } from "../types";
 import type { ActionContext } from "./handler";
 import { findingNo, findingPick } from "./finding";
 
 const NOW = new Date("2026-11-01T12:00:00Z");
 
 function context(id: string): ActionContext {
-  const action: MessageAction = { id: id as MessageAction["id"], label: "Do it", kind: "primary" };
+  const action: MessageAction = { id: id as ActionId, label: "Do it", kind: "primary" };
   return {
     userId: "u1",
     message: {

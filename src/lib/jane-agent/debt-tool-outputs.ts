@@ -200,7 +200,9 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
         ? {
             payOffFromCashInstead: {
               saves: money(c.cashPayoffCents),
-              keepsTheEmergencyCushion: true,
+              // The verdict is as of the check's date, not of today's cash.
+              keptTheEmergencyCushionAtTheLastCheck: true,
+              cushionCheckedOn: refi.checkedOn,
             },
           }
         : {}),
@@ -989,7 +991,7 @@ export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) 
 
 export function homeEquityToolOutput(
   data: HomeEquity,
-  project: ProjectComparison | null,
+  project: ProjectComparison | { error: string } | null,
   money: (cents: number) => string,
 ) {
   if (!data.available) return { note: "No mortgage with a balance." };
@@ -1030,21 +1032,23 @@ export function homeEquityToolOutput(
         ? data.advice
           ? "Give project_cents to compare."
           : "Only for the demo bank."
-        : {
-            project: money(project.projectCents),
-            years: project.years,
-            standInLenderTermsNotOffers: true,
-            options: project.options.map((o) => ({
-              product: o.label,
-              available: o.available,
-              why: o.why,
-              ratePercent: o.aprBps / 100,
-              years: o.years,
-              monthly: money(o.monthlyCents),
-              upFront: money(o.upfrontCents),
-              totalCost: money(o.totalCostCents),
-            })),
-          },
+        : "error" in project
+          ? { couldNotCompare: project.error }
+          : {
+              project: money(project.projectCents),
+              years: project.years,
+              standInLenderTermsNotOffers: true,
+              options: project.options.map((o) => ({
+                product: o.label,
+                available: o.available,
+                why: o.why,
+                ratePercent: o.aprBps / 100,
+                years: o.years,
+                monthly: money(o.monthlyCents),
+                upFront: money(o.upfrontCents),
+                totalCost: money(o.totalCostCents),
+              })),
+            },
   };
 }
 
