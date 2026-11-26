@@ -101,6 +101,12 @@ async function checkCode(
   return true;
 }
 
+// A whole set is replaced inside one transaction, behind this lock: two replacements at once each
+// cleared the old set before the other's was written, and both sets stayed usable.
+const codesLock = (userId: string) => `mfa-codes:${userId}`;
+const codeRows = (userId: string, codes: string[]) =>
+  codes.map((code) => ({ userId, codeHash: hashBackupCode(code) }));
+
 // Replaces any backup codes with new ones and returns them (to show once).
 async function replaceBackupCodes(
   userId: string,
@@ -111,13 +117,9 @@ async function replaceBackupCodes(
   await personTransaction(
     userId,
     async (tx) => {
-      // One replacement at a time for a person: two at once each cleared the old set before the
-      // other's was written, and both sets stayed usable.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mfa-codes:${userId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${codesLock(userId)}))`;
       await tx.mfaBackupCode.deleteMany({ where: { userId } });
-      await tx.mfaBackupCode.createMany({
-        data: codes.map((code) => ({ userId, codeHash: hashBackupCode(code) })),
-      });
+      await tx.mfaBackupCode.createMany({ data: codeRows(userId, codes) });
     },
     client,
   );
@@ -145,26 +147,34 @@ export async function verifySessionCode(
   }
   let backupCodes: string[] | undefined;
   // Of two first codes at once, one turns it on: the other only verifies its session.
-  const turnedOn =
-    !user.mfaEnabledAt &&
-    (
-      await systemDb(WHY, client).user.updateMany({
-        where: { id: userId, mfaEnabledAt: null, mfaSecretEncrypted: user.mfaSecretEncrypted },
-        data: { mfaEnabledAt: now },
-      })
-    ).count > 0;
-  if (turnedOn) {
-    // Whoever else is signed in is out: someone who got into the account is what two-factor is for,
-    // and any session could have read the secret before this first code.
-    await systemDb(
+  if (!user.mfaEnabledAt) {
+    const codes = generateBackupCodes();
+    // One change: on, everyone else out and the backup codes written, or none of it, so a code
+    // given after a failure does it all again. Whoever else is signed in is out because someone who
+    // got into the account is what two-factor is for, and any session could have read the secret
+    // before this first code.
+    const turnedOn = await systemTransaction(
       "Starting two-factor signs out the person's other sessions",
+      async (tx) => {
+        const { count } = await tx.user.updateMany({
+          where: { id: userId, mfaEnabledAt: null, mfaSecretEncrypted: user.mfaSecretEncrypted },
+          data: { mfaEnabledAt: now },
+        });
+        if (count === 0) return false;
+        await tx.session.deleteMany({ where: { userId, sessionToken: { not: sessionToken } } });
+        await tx.pushSubscription.deleteMany({ where: { userId } });
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${codesLock(userId)}))`;
+        await tx.mfaBackupCode.deleteMany({ where: { userId } });
+        await tx.mfaBackupCode.createMany({ data: codeRows(userId, codes) });
+        return true;
+      },
       client,
-    ).session.deleteMany({
-      where: { userId, sessionToken: { not: sessionToken } },
-    });
-    await scopedFor(userId, client).pushSubscriptions.deleteMany({ where: { userId } });
-    await logAudit(actor, eventFor(user, "enrolled"), target);
-    backupCodes = await replaceBackupCodes(userId, user, client);
+    );
+    if (turnedOn) {
+      await logAudit(actor, eventFor(user, "enrolled"), target);
+      await logAudit(actor, "mfa_backup_codes_created", target);
+      backupCodes = codes;
+    }
   }
   await scopedFor(userId, client).sessions.updateMany({
     where: { sessionToken, userId },
