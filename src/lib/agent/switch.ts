@@ -140,6 +140,8 @@ async function lookFor(
         r.amountCents > 0 &&
         sw.monthlyCents !== null &&
         r.amountCents <= sw.monthlyCents + SWITCH_PRICE_TOLERANCE_CENTS &&
+        // The old price again is not a switch: the charge has to be below what was paid before.
+        (sw.fromMonthlyCents === null || r.amountCents < sw.fromMonthlyCents) &&
         matches(keyOf(r.merchantName ?? r.description), want),
     );
     if (!cheaper) return null;
@@ -214,6 +216,8 @@ export async function confirmSwitches({
     const action = await loadAction(userId, id, client);
     const sw = action ? switchOf(action.decision.options) : null;
     if (!action || !sw || !action.startedAt) continue;
+    // A switch whose Yes was undone is not watched any more.
+    if (action.decision.choice !== "yes" || action.decision.undoneAt !== null) continue;
     const seen = await lookFor(userId, action, sw, action.startedAt, client);
     if (seen?.kind === "done") {
       await setStatus(
