@@ -9,8 +9,9 @@ import { balanceOnOrBefore, compareAccounts, type Verdict } from "@/planning/sam
 // against the linked account's, by src/planning/same-account.ts. The note follows it instead of
 // guessing from the bank's name (walk 23: a savings file was told "skip it" for a linked checking
 // account, which would have left $5,120.00 of savings out of net worth).
-// The result: for each file, the verdict against each linked account of its bank, by account id.
-export type LinkedVerdicts = Record<string, Record<string, Verdict>>;
+// The result: for each file by its position (two files can share a name), the verdict against each
+// linked account of its bank, by account id.
+export type LinkedVerdicts = Record<string, Verdict>[];
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -18,16 +19,16 @@ export async function linkedVerdicts(
   db: Pick<ScopedDb, "accounts" | "transactions" | "balanceSnapshots">,
   files: readonly CsvFile[],
 ): Promise<LinkedVerdicts> {
-  const read = files.flatMap((f) => {
+  const read = files.flatMap((f, index) => {
     const r = readCsvFile(f);
-    return r.ok && r.format.bank ? [{ ...r, bank: r.format.bank }] : [];
+    return r.ok && r.format.bank ? [{ ...r, bank: r.format.bank, index }] : [];
   });
-  if (read.length === 0) return {};
+  if (read.length === 0) return [];
   const links = await db.accounts.findMany({
     where: { source: "plaid" },
     select: { id: true, item: { select: { institutionName: true } } },
   });
-  const out: LinkedVerdicts = {};
+  const out: LinkedVerdicts = [];
   for (const file of read) {
     const near = links.filter(
       (l) => l.item?.institutionName && namesBank(l.item.institutionName, file.bank),
@@ -57,7 +58,7 @@ export async function linkedVerdicts(
         closing: last ? { date: last.date, cents: last.balanceCents } : null,
         linkBalanceOn: (date) => balanceOnOrBefore(history, date, SAME_ACCOUNT_BALANCE_SLACK_DAYS),
       });
-      (out[file.file] ??= {})[link.id] = verdict;
+      (out[file.index] ??= {})[link.id] = verdict;
     }
   }
   return out;

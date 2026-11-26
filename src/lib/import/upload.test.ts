@@ -299,9 +299,26 @@ describe("saveUpload into a new account", () => {
     expect(result).toEqual({
       ok: false,
       error:
-        "Nothing new was added: these 2 transactions are already in Chase card, which Jane leaves out of net worth because it matches Plaid Checking.",
+        "Nothing was added: these 2 transactions are already in Chase card, which Jane leaves out of net worth because it matches Plaid Checking.",
     });
     expect(accountsCreate).not.toHaveBeenCalled();
+  });
+
+  it("counts only the rows that are there, and does not call an unsure match a match", async () => {
+    const two = CHASE_CARD + "10/14/2026,10/15/2026,Blue Bottle,Food & Drink,Sale,-5.50,\n";
+    // One of two rows is in the left-out account: half is enough to stop the upload.
+    transactionsFind.mockImplementation(async ({ where }) => [
+      { accountId: "acct_1", dedupeKey: where.dedupeKey.in[0] },
+    ]);
+    accountsNotCounted.mockResolvedValue(
+      new Map([["acct_1", { reason: "maybe_same", sameAs: { id: "l1", name: "Plaid Checking" } }]]),
+    );
+    const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv", two)] }));
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Nothing was added: 1 of these 2 transactions are already in Chase card, which Jane leaves out of net worth because it can't tell it from Plaid Checking.",
+    });
   });
 
   it("makes the account when only a few rows overlap another account", async () => {

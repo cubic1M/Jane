@@ -42,19 +42,24 @@ const SECONDARY_BUTTON =
 // What each previewed file says about its account; a layout the person mapped has no kind to go by.
 function factsOf(
   files: Extract<PreviewResult, { ok: true }>["files"],
-  verdicts: Extract<PreviewResult, { ok: true }>["verdicts"] = {},
+  verdicts: Extract<PreviewResult, { ok: true }>["verdicts"] = [],
   // The type of the account the files go into, when the person has said (it settles checking from
-  // savings, which a file often cannot).
+  // savings, which a file often cannot; never a card for a bank account or the other way round).
   into?: AccountKind | null,
 ) {
-  return files.flatMap((f) =>
+  return files.flatMap((f, index) =>
     f.ok
       ? [
           {
             file: f.file,
             bank: f.bank,
-            kind: f.formatId === "custom" ? undefined : (into ?? f.account.kind),
-            verdicts: verdicts[f.file],
+            kind:
+              f.formatId === "custom"
+                ? undefined
+                : into && (into === "credit_card") === (f.account.kind === "credit_card")
+                  ? into
+                  : f.account.kind,
+            verdicts: verdicts[index],
             mask: f.mask,
           },
         ]

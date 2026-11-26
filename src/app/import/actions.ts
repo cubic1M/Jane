@@ -99,7 +99,7 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
     formData.get("accountId") === NEW_ACCOUNT_ID
       ? await alreadyInAnotherAccount(db, files).catch(() => null)
       : null;
-  const verdicts = await linkedVerdicts(db, files).catch(() => ({}));
+  const verdicts = await linkedVerdicts(db, files).catch(() => []);
   return { ok: true, files: previews, alreadyIn, verdicts };
 }
 

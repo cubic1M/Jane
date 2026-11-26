@@ -42,23 +42,39 @@ function read(amounts: number[]) {
 describe("linkedVerdicts", () => {
   it("says same for a statement whose lines are the linked account's", async () => {
     read(AMOUNTS);
-    expect(await linkedVerdicts(db(lines(AMOUNTS)), [file])).toEqual({
-      "f.csv": { l1: "same" },
-    });
+    expect(await linkedVerdicts(db(lines(AMOUNTS)), [file])).toEqual([{ l1: "same" }]);
+  });
+
+  it("keeps two files of one name apart, by position", async () => {
+    readCsvFile
+      .mockReturnValueOnce({
+        ok: true,
+        file: "f.csv",
+        format: { bank: "Chase" },
+        transactions: lines(AMOUNTS),
+      })
+      .mockReturnValueOnce({
+        ok: true,
+        file: "f.csv",
+        format: { bank: "Chase" },
+        transactions: lines(AMOUNTS.map((a) => a - 12_345)),
+      });
+    expect(await linkedVerdicts(db(lines(AMOUNTS)), [file, file])).toEqual([
+      { l1: "same" },
+      { l1: "different" },
+    ]);
   });
 
   it("says different for a statement that shares none of them", async () => {
     read(AMOUNTS);
     const other = lines(AMOUNTS.map((a) => a - 12_345));
-    expect(await linkedVerdicts(db(other), [file])).toEqual({ "f.csv": { l1: "different" } });
+    expect(await linkedVerdicts(db(other), [file])).toEqual([{ l1: "different" }]);
   });
 
   it("says unknown with too few lines, and nothing for a file with no known bank", async () => {
     read(AMOUNTS.slice(0, 2));
-    expect(await linkedVerdicts(db(lines(AMOUNTS)), [file])).toEqual({
-      "f.csv": { l1: "unknown" },
-    });
+    expect(await linkedVerdicts(db(lines(AMOUNTS)), [file])).toEqual([{ l1: "unknown" }]);
     readCsvFile.mockReturnValue({ ok: true, file: "f.csv", format: {}, transactions: [] });
-    expect(await linkedVerdicts(db([]), [file])).toEqual({});
+    expect(await linkedVerdicts(db([]), [file])).toEqual([]);
   });
 });

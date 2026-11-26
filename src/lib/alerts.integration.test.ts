@@ -204,7 +204,7 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
 
   it("retires a large-charge alert once a later scan asks 'Was this you?' about the same charge", async () => {
     // Walk 23: one $744 charge in the dock twice, from a short first sync and a longer later one.
-    const user = await person();
+    const user = await person({ large_charge: "app" });
     const charge = `tx_${crypto.randomUUID()}`;
     const other = `tx_${crypto.randomUUID()}`;
     await raiseAlerts(user.id, [alert({ key: charge }), alert({ key: other })], {
@@ -230,6 +230,21 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
         ["unusual_activity", `new_merchant:internal-revenue-service:${charge}`],
       ].sort(),
     );
+  });
+
+  it("keeps a retired large-charge alert that was emailed, as a read row", async () => {
+    // So the day's email count and the history stay as they were.
+    const user = await person();
+    const charge = `tx_${crypto.randomUUID()}`;
+    await raiseAlerts(user.id, [alert({ key: charge })], { client, now: NOW, send });
+    await raiseAlerts(
+      user.id,
+      [alert({ type: "unusual_activity", key: `new_merchant:irs:${charge}` })],
+      { client, now: NOW, send },
+    );
+    const large = (await alertsOf(user.id)).find((r) => r.type === "large_charge");
+    expect(large?.emailedAt).not.toBeNull();
+    expect(large?.readAt).not.toBeNull();
   });
 
   it("emails a bill reminder only when it's urgent", async () => {

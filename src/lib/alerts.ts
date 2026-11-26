@@ -76,15 +76,6 @@ export async function raiseAlerts(
   const wanted = onePerCharge(asked);
   if (wanted.length === 0) return { raised: 0, emailed: 0 };
 
-  // A large-charge alert an earlier scan stored, from a shorter history, for a charge this scan asks
-  // about in its own way ("Was this you?", "Charged twice?"): retired, so the charge is one card
-  // (walk 23: a $744 charge in the dock twice, "a first charge" beside "far above usual").
-  const answered = [...chargesAnsweredElsewhere(wanted)];
-  if (answered.length > 0)
-    await scopedFor(userId, client).alerts.deleteMany({
-      where: { type: "large_charge", key: { in: answered } },
-    });
-
   const created = await scopedFor(userId, client).alerts.createManyAndReturn({
     data: wanted.map(({ confidence, ...a }) => ({
       userId,
@@ -97,6 +88,17 @@ export async function raiseAlerts(
     skipDuplicates: true,
     select: { type: true },
   });
+  // A large-charge alert an earlier scan stored, from a shorter history, for a charge this scan asks
+  // about in its own way ("Was this you?", "Charged twice?"): retired once the new one is stored, so
+  // the charge is one card (walk 23: a $744 charge in the dock twice). One already emailed stays as
+  // a read row, so the day's email count and the history are kept.
+  const answered = [...chargesAnsweredElsewhere(wanted)];
+  if (answered.length > 0) {
+    const stale = { type: "large_charge" as const, key: { in: answered } };
+    const mine = scopedFor(userId, client).alerts;
+    await mine.deleteMany({ where: { ...stale, emailedAt: null } });
+    await mine.updateMany({ where: { ...stale, readAt: null }, data: { readAt: now } });
+  }
   if (created.length > 0) {
     const byType = Object.fromEntries(ALERT_TYPES.map((t) => [t, 0])) as Record<AlertType, number>;
     for (const row of created) byType[row.type] += 1;

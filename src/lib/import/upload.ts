@@ -240,10 +240,20 @@ export async function saveUpload(
       // An account Jane leaves out of net worth takes no new rows to pick: nothing was added, and
       // nothing is asked (walk 23: "Pick Chase checking above" for a left-out upload).
       const leftOut = (await accountsNotCounted(db)).get(already.id);
+      const inIt =
+        already.rows === already.of
+          ? `these ${already.of} transactions are`
+          : `${already.rows} of these ${already.of} transactions are`;
+      // Said as a match only where Jane has decided it is one; else as not able to tell them apart.
+      const why = leftOut
+        ? leftOut.reason === "maybe_same"
+          ? `because it can't tell it from ${leftOut.sameAs.name}`
+          : `because it matches ${leftOut.sameAs.name}`
+        : "";
       return {
         ok: false,
         error: leftOut
-          ? `Nothing new was added: these ${already.of} transactions are already in ${already.name}, which Jane leaves out of net worth because it matches ${leftOut.sameAs.name}.`
+          ? `Nothing was added: ${inIt} already in ${already.name}, which Jane leaves out of net worth ${why}.`
           : `${already.rows} of these ${already.of} transactions are already in ${already.name}. Pick ${already.name} above, so only the new ones are added.`,
       };
     }
