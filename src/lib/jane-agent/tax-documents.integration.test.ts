@@ -58,7 +58,10 @@ describe.runIf(url)(
         trigger: "open",
       });
     async function post(userId: string, dedupeKey: string, now: Date) {
-      const candidate = (await gather(userId, now)).find((c) => c.dedupeKey === dedupeKey);
+      // A key ending in ":" is a prefix: the collected-forms card is keyed on which forms.
+      const candidate = (await gather(userId, now)).find((c) =>
+        dedupeKey.endsWith(":") ? c.dedupeKey.startsWith(dedupeKey) : c.dedupeKey === dedupeKey,
+      );
       expect(candidate, dedupeKey).toBeDefined();
       return client.janeMessage.create({
         data: {
@@ -147,7 +150,7 @@ describe.runIf(url)(
       expect(view.forms.find((f) => f.formKey === "brokerage")!.document).toBeNull();
       expect(view.flagged).toEqual([]);
 
-      const message = await post(userId, "docs:2026:3", FEB);
+      const message = await post(userId, "docs:2026:", FEB);
       expect(message.body).toBe(
         "I collected 3 tax forms for 2026: W-2 from ACME CORP PAYROLL, 1098 from Demo Home Loan and 1098-E from Demo Student Loan. The ones I could check match your accounts. Tick them off?",
       );
@@ -226,7 +229,7 @@ describe.runIf(url)(
         collected: 2,
         ticked: 2,
       });
-      expect((await post(userId, "docs:2026:2", FEB)).body).toMatch(
+      expect((await post(userId, "docs:2026:", FEB)).body).toMatch(
         /^I collected 2 tax forms for 2026: .+ They match your accounts\. I've ticked them off\.$|^I collected 2 tax forms for 2026: .+ I've ticked them off\.$/,
       );
 

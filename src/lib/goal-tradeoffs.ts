@@ -42,6 +42,10 @@ function goalOrderOf(prefs: readonly Preference[]): string[] | null {
   return parseGoalOrder(fact?.value.order);
 }
 
+// Whether a saved order is for exactly these goals (in any order): replace a goal and it is not.
+export const orderFits = (saved: readonly string[], goals: readonly string[]) =>
+  saved.length === goals.length && saved.every((id) => goals.includes(id));
+
 export async function loadTradeoffs(
   userId: string,
   { client = defaultClient, now = new Date(), input }: Options = {},
@@ -56,7 +60,9 @@ export async function loadTradeoffs(
   const open = goals.flatMap((g) => tradeGoalOf(g) ?? []);
   const capacity = roomFromPlan(plan.months, startMonth);
   const view = tradeoffs(open, capacity, startMonth);
-  const chosen = goalOrderOf(prefs);
+  // A saved order counts only for the goals now competing: replace one and it no longer does.
+  const saved = goalOrderOf(prefs);
+  const chosen = saved && view.suggested && !orderFits(saved, view.suggested.order) ? null : saved;
   // listGoals already puts the goals in the order in force.
   const current =
     open.length > 0

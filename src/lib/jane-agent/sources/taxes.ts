@@ -512,7 +512,8 @@ function calendarCards({ tax }: In): Candidate[] {
       card(
         "decision",
         estimateDueMessage(d, calendar.year),
-        `estimate_due:${d.dueOn}`,
+        // A new amount is a new card (the old one's tap would refuse its stale amount).
+        `estimate_due:${d.dueOn}:${d.cents}`,
         P.estimate_due,
       ),
     );
@@ -791,12 +792,18 @@ function documentCards({ tax, acts }: In): Candidate[] {
   );
   const collected = collectedMessage(docs, acts);
   if (collected) {
-    const n = docs.forms.filter((f) => f.document && f.usable).length;
+    // Keyed on which forms were collected, not how many: one stopping being usable as another
+    // becomes usable is a different collection.
+    const usable = docs.forms
+      .filter((f) => f.document && f.usable)
+      .map((f) => f.key)
+      .sort()
+      .join(",");
     out.push(
       card(
         collected.actions.some((a) => a.id === "tax.docs_tick") ? "decision" : "done",
         collected,
-        `docs:${docs.year}:${n}`,
+        `docs:${docs.year}:${usable}`,
         P.doc_collected,
       ),
     );

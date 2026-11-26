@@ -13,11 +13,11 @@ import { logAudit } from "@/lib/audit";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
-import { loadSelfEmployed } from "@/lib/self-employed";
 import { TAX_PLAN } from "@/config/tax-plan";
 import { TaxCalendarError, loadTaxCalendar, payEstimate, runTaxCalendar } from "@/lib/tax-calendar";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
+import { loadSelfEmployed, recordTaxPayment } from "@/lib/self-employed";
 import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
@@ -232,7 +232,23 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     expect(message.body).toMatch(
       /^Your estimated tax payment of \$[\d,.]+ is due Sep 15, 2026\. That would take me over what I may pay in a month on my own, so it's your tap\. Pay it now\?/,
     );
-    const done = (await takeChatAction(userId, message.id, "tax.estimate_pay", { client, now }))
+    // CodeRabbit part 2: the tap pays what the card showed. A payment recorded since moves the
+    // plan, so the old card pays nothing, and the plan's new amount is a card of its own.
+    expect(message.refs.estimateCents).toBe(
+      (await loadTaxCalendar(userId, { client, now })).due[0].cents,
+    );
+    await recordTaxPayment(
+      userId,
+      { date: "2026-09-12", cents: 10_000, to: "federal" },
+      { client, now, via: "chat" },
+    );
+    await expect(
+      takeChatAction(userId, message.id, "tax.estimate_pay", { client, now }),
+    ).rejects.toMatchObject({ code: "failed", message: expect.stringContaining("changed from") });
+    expect(await client.taxPayment.count({ where: { userId } })).toBe(0);
+    const fresh = (await messageFrom(userId, now, "estimate_due:"))!;
+    expect(fresh.refs).not.toMatchObject({ estimateCents: message.refs.estimateCents });
+    const done = (await takeChatAction(userId, fresh.id, "tax.estimate_pay", { client, now }))
       .message;
     expect(done.refs.note).toMatch(
       /^Done: \$[\d,.]+ paid \(confirmation DEMO-20260915-[0-9A-F]{8}\)\. This is the practice payment: no real money moved\.$/,

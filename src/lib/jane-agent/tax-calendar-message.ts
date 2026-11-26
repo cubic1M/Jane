@@ -19,7 +19,7 @@ export function estimateDueMessage(d: DueEstimate, year: number): MessageParts {
         : "That's more than I pay on my own for taxes, so";
   return {
     body: `Your estimated tax payment of ${formatCents(d.cents)} is due ${dayLabel(d.dueOn, { year: true })}. ${why} it's your tap. Pay it now?`,
-    refs: { taxYear: year, estimateDue: d.dueOn },
+    refs: { taxYear: year, estimateDue: d.dueOn, estimateCents: d.cents },
     actions: [
       { id: "tax.estimate_pay", label: `Pay ${formatCents(d.cents)}`, kind: "primary" },
       openLink("See my tax calendar", CALENDAR_HREF),

@@ -11,9 +11,13 @@ export const taxEstimatePay: ActionHandler = {
   on: "open",
   async run({ userId, message, action, client, now }) {
     const dueOn = message.refs.estimateDue;
-    if (!dueOn) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
+    const shown = message.refs.estimateCents;
+    if (!dueOn || typeof shown !== "number") {
+      throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
+    }
     try {
-      const r = await payEstimate(userId, dueOn, { client, now, via: "tap" });
+      // Only the amount the card showed: if the plan has moved, nothing is paid.
+      const r = await payEstimate(userId, dueOn, { client, now, via: "tap", expectedCents: shown });
       return {
         answeredWith: action.label,
         note: `Done: ${formatCents(r.cents)} paid (confirmation ${r.confirmation}). This is the practice payment: no real money moved.`,
