@@ -33,12 +33,12 @@ export const creditGoalDone: ActionHandler = {
     const id = message.refs.creditGoalId;
     if (!id)
       throw new ChatActionError("failed", "Something went wrong. Open your credit plan instead.");
+    // A card saved before the month was kept on it: never tick off a month the card didn't show.
+    const month = message.refs.creditGoalMonth;
+    if (!month)
+      throw new ChatActionError("expired", "This card is out of date. Open your credit plan.");
     try {
-      const n = await completeGoalItems(userId, id, "all", {
-        client,
-        now,
-        month: message.refs.creditGoalMonth,
-      });
+      const n = await completeGoalItems(userId, id, "all", { client, now, month });
       return {
         answeredWith: action.label,
         note: `Ticked off ${n} ${n === 1 ? "item" : "items"} for this month.`,

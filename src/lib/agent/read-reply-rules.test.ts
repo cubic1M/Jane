@@ -18,6 +18,21 @@ describe("reading a company's reply by rules", () => {
         .outcome,
     ).toBe("unclear");
     expect(readReplyByRules("We have closed your ticket.").outcome).toBe("unclear");
+    expect(
+      readReplyByRules(
+        "We have applied a new temporary hold while we investigate your refund request.",
+      ).outcome,
+    ).toBe("unclear");
+  });
+
+  it("reads a qualified fee or price as done", () => {
+    for (const text of [
+      "We have reversed the annual fee.",
+      "We've reversed the duplicate charge.",
+      "We have applied a lower rate to your plan.",
+    ]) {
+      expect(readReplyByRules(text).outcome, text).toBe("done");
+    }
   });
 
   it("still reads a confirmation as done", () => {

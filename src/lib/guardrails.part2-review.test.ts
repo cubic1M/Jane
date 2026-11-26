@@ -20,6 +20,12 @@ describe("a credential request with emphasis in it", () => {
       "credential_request",
     );
   });
+
+  it("is still a request when a warning sits on the line above", () => {
+    expect(issuesOf("Never share your PIN\n👉 Send your password here.")).toContain(
+      "credential_request",
+    );
+  });
 });
 
 describe("Jane said to be federally insured", () => {

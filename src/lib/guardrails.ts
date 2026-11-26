@@ -1554,7 +1554,8 @@ function scan(
     matched.push("link");
   }
   // Normalised like the rest, so emphasis marks can't split "one-time **code**".
-  if (asksForCredentials(forChecking(original))) {
+  // A line at a time: a warning on one line must not excuse a request on the next.
+  if (original.split("\n").some((line) => asksForCredentials(forChecking(line)))) {
     issues.push("credential_request");
     matched.push("credentials");
   }

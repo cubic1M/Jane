@@ -57,6 +57,15 @@ describe("facts from the chat", () => {
     expect(said("I'm saving for a car")).toEqual({ "goal:car": "car" });
   });
 
+  it("keeps a goal only when every word of it is ordinary", () => {
+    expect(said("I'm saving for an epilepsy treatment fund")).toEqual({});
+    expect(said("I want to pay off my daughter's tutor")).toEqual({});
+    expect(said("I'm saving for a down payment on a house")).toEqual({
+      "goal:down_payment_on_a_house": "down payment on a house",
+    });
+    expect(said("I rent a small apartment")).toEqual({ housing: "rent" });
+  });
+
   it("labels each fact in plain words", () => {
     expect(factsFromChat("I rent")[0]).toEqual({
       key: "housing",

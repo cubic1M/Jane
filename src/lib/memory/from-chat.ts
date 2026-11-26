@@ -23,15 +23,42 @@ const slug = (text: string) =>
 
 type Rule = { pattern: RegExp; facts: (m: RegExpExecArray) => Draft[] };
 
-const ORDINARY_GOAL =
-  /\b(?:vacation|holiday|trip|travel|honeymoon|wedding|car|truck|bike|motorcycle|boat|house|home|condo|apartment|down ?payment|deposit|emergency|rainy day|cushion|retire\w*|college|school|tuition|degree|laptop|computer|phone|furniture|renovation|remodel|move|moving|business|startup|gift|holidays|christmas|savings?|fund)\b/i;
+const GOAL_NOUN =
+  /^(?:vacations?|holidays?|trips?|travel|honeymoon|wedding|cars?|trucks?|bikes?|motorcycle|boat|house|home|condo|apartment|downpayments?|deposit|emergency|cushion|retire\w*|college|school|tuition|degree|laptop|computer|phone|furniture|renovation|remodel|move|moving|business|startup|gifts?|christmas|savings?|fund|payments?)$/i;
+// Filler that can sit between them ("a used car", "the down payment on a house").
+const GOAL_FILLER =
+  /^(?:a|an|the|my|our|new|used|first|big|down|dream|family|summer|winter|rainy|day|emergency|savings?|fund|for|on|of|to|and|in)$/i;
+// The whole phrase must be ordinary: one named word outside these ("epilepsy treatment fund") and
+// the goal is not kept, whatever else the phrase holds.
+function isOrdinaryGoal(phrase: string): boolean {
+  const words = phrase.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+  return (
+    words.length > 0 &&
+    words.some((w) => GOAL_NOUN.test(w)) &&
+    words.every((w) => GOAL_NOUN.test(w) || GOAL_FILLER.test(w))
+  );
+}
+
+// The same for a debt to pay off: a card, a loan, a mortgage, and only those words.
+function isOrdinaryDebt(phrase: string): boolean {
+  const words = phrase.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+  return (
+    words.length > 0 &&
+    words.every((w) =>
+      /^(?:credit|card|cards|student|car|auto|personal|home|loan|loans|debt|debts|mortgage|balance|balances|all|of|my|our|the)$/.test(
+        w,
+      ),
+    ) &&
+    words.some((w) => /^(?:card|cards|loan|loans|debt|debts|mortgage|balance|balances)$/.test(w))
+  );
+}
 
 const RULES: Rule[] = [
   // Home.
   {
     // "I rent" or "I rent my apartment", not "I rent a car for work": a home, or nothing said.
     pattern:
-      /\bi(?: currently)? (?:rent|am renting|'m renting)(?=\s*(?:$|[.,!?;])|\s+(?:in|from|at|near|with|for|here|there|monthly|since|now|and|but|because|so)\b|\s+(?:(?:my|our|a|an|the)\s+)?(?:own\s+)?(?:home|house|place|apartment|flat|condo|room|studio|townhouse|basement|unit)\b)/,
+      /\bi(?: currently)? (?:rent|am renting|'m renting)(?=\s*(?:$|[.,!?;])|\s+(?:in|from|at|near|with|for|here|there|monthly|since|now|and|but|because|so)\b|\s+(?:(?:my|our|a|an|the)\s+)?(?:own\s+|small\s+|tiny\s+|studio\s+|one-bedroom\s+|two-bedroom\s+|furnished\s+|shared\s+|little\s+|nice\s+|cheap\s+)*(?:home|house|place|apartment|flat|condo|room|studio|townhouse|basement|unit)\b)/,
     facts: () => [{ key: "housing", value: "rent", label: "You rent your home" }],
   },
   {
@@ -108,7 +135,7 @@ const RULES: Rule[] = [
     // Only what Jane can recognise as an ordinary goal: a free-text one can name a diagnosis, and
     // the health filter can't know every word for one (src/lib/memory/sensitive.ts).
     facts: (m) =>
-      ORDINARY_GOAL.test(m[1])
+      isOrdinaryGoal(m[1])
         ? [
             {
               key: `goal:${slug(m[1])}`,
@@ -121,13 +148,16 @@ const RULES: Rule[] = [
   {
     pattern:
       /\b(?:i want to|i'm trying to|i am trying to|my goal is to) (pay off|get out of|pay down) (?:my |the |our )?([a-z0-9' -]{2,40}?)(?: by\b| in\b| this\b|[.,!?]|$)/,
-    facts: (m) => [
-      {
-        key: `goal:${slug(`${m[1]} ${m[2]}`)}`,
-        value: tidy(`${m[1]} ${m[2]}`),
-        label: `You want to ${tidy(`${m[1]} ${m[2]}`)}`,
-      },
-    ],
+    facts: (m) =>
+      isOrdinaryDebt(m[2])
+        ? [
+            {
+              key: `goal:${slug(`${m[1]} ${m[2]}`)}`,
+              value: tidy(`${m[1]} ${m[2]}`),
+              label: `You want to ${tidy(`${m[1]} ${m[2]}`)}`,
+            },
+          ]
+        : [],
   },
   // How they like to do things.
   {

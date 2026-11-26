@@ -66,8 +66,8 @@ const RULES: { outcome: ReplyOutcome; patterns: RegExp[] }[] = [
       /\bkeep (your|the) (previous|old|current) price\b/i,
       // What was done, not only that something was: "applied a temporary hold" isn't a refund and
       // "closed your ticket" isn't a cancelled account.
-      /\bwe('ve| have) applied (a|the|your) (credit|refund|discount|adjustment|price|lower|reduced|new)\b/i,
-      /\bwe('ve| have) reversed (the|your|a|that) (charge|fee|payment|renewal)\b/i,
+      /\bwe('ve| have) applied (a|the|your) (credit|refund|discount|adjustment|price|rate|(new|lower|reduced) (price|rate|fee|charge))\b/i,
+      /\bwe('ve| have) reversed (the|your|a|that) (annual |duplicate |monthly |late |extra |double |renewal |service )?(charge|fee|payment|renewal)\b/i,
       /\bwe('ve| have) credited (your|the) (account|card|balance|refund)\b/i,
       /\bwe('ve| have) (cancell?ed|closed) (your|the) (account|subscription|membership|plan|service)\b/i,
       /\b(subscription|account|membership) (has been|was|is now) (cancell?ed|closed)\b/i,
