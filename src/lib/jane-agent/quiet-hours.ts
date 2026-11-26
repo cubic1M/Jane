@@ -26,6 +26,36 @@ export function localTime(now: Date, timezone: string | null | undefined): Local
   };
 }
 
+// The instant the person's calendar month began: midnight of its first day on their own clock
+// (not UTC's midnight, which is hours into, or before, their first day).
+export function localMonthStart(now: Date, timezone: string | null | undefined): Date {
+  const zone = validTimezone(timezone);
+  const [year, month] = localTime(now, zone).date.split("-").map(Number) as [number, number];
+  const wall = Date.UTC(year, month - 1, 1);
+  // What a clock in the zone reads at an instant, as if that reading were UTC.
+  const reading = (at: number) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: zone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      })
+        .formatToParts(new Date(at))
+        .map((part) => [part.type, part.value]),
+    );
+    return Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour! % 24, +p.minute!, +p.second!);
+  };
+  let at = wall - (reading(wall) - wall);
+  // Once more: the offset at the answer can differ from the one at the first guess (a clock change).
+  at = at - (reading(at) - wall);
+  return new Date(at);
+}
+
 // Quiet from QUIET_START_HOUR (9pm) until QUIET_END_HOUR (8am) local time. A window that
 // doesn't cross midnight works too.
 // Someone who opened the chat or just uploaded a file is there to read what Jane says, whatever

@@ -8,6 +8,7 @@ import {
   CHAT_CLAUDE_RETRY_MS,
   CHAT_CLAUDE_HISTORY,
   CHAT_CLAUDE_TOTAL_MS,
+  CHAT_FINDING_PRELOAD_MS,
   CHAT_CLAUDE_MAX_TOKENS,
   CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
@@ -472,9 +473,9 @@ export function answerLimit(question: string, hasCard = false): number {
 const TAP_YES =
   /^\s*(?:tap(?:ping)?|press(?:ing)?|click(?:ing)?|hit(?:ting)?)\s+(?:the\s+)?(?:yes|no)\b/i;
 // "Change / switch / lower my car insurance": a request Jane shops for. Not a question about
-// whether to ("should I switch…") or what it is.
+// whether to ("should I switch…") or what it is, and never a refusal ("don't switch my…").
 const SHOP_REQUEST =
-  /^(?!.*\b(?:should i|do i need|how much|why|what is|what(?:'|’)?s|is it worth)\b).*\b(?:change|switch|lower|reduce|cut|shop|cheaper|better (?:price|rate|deal)|save (?:money )?on)\b.*\b(?:insurance|policy|coverage)\b/i;
+  /^(?!.*\b(?:should i|do i need|how much|why|what is|what(?:'|’)?s|is it worth|don(?:'|’)?t|do not|never|not|without)\b).*\b(?:change|switch|lower|reduce|cut|shop|cheaper|better (?:price|rate|deal)|save (?:money )?on)\b.*\b(?:insurance|policy|coverage)\b/i;
 const SHOP_KINDS: [RegExp, PolicyKind][] = [
   [/\b(?:car|auto|vehicle)\b/i, "auto"],
   [/\b(?:home|house|homeowners?)\b/i, "home"],
@@ -600,7 +601,13 @@ export async function askClaudeInChat(
   let outcome = "error";
   try {
     // Names go to Claude as tags, and come back as names in all the person reads.
-    const mask = options.mask ?? (await payeeMask(userId, options.client).catch(() => NO_MASK));
+    // A mask that can't be built fails closed: the names it would hide must not reach Claude, so
+    // the person gets the answer from their own data instead.
+    const mask = options.mask ?? (await payeeMask(userId, options.client).catch(() => null));
+    if (!mask) {
+      outcome = "unavailable";
+      return unavailable();
+    }
     const { onEvent } = options;
     const shown = await askClaude(
       userId,
@@ -811,12 +818,14 @@ async function upFront(
   if (topic?.findingId) {
     const lookedUp = Date.now();
     try {
-      const detail = await runChatTool(
-        userId,
-        "finding_details",
-        { finding_id: topic.findingId },
-        { client, now },
-      );
+      // Bounded: a slow lookup here must not use up the time Claude's own answer needs.
+      let lateTimer: ReturnType<typeof setTimeout> | undefined;
+      const detail = await Promise.race([
+        runChatTool(userId, "finding_details", { finding_id: topic.findingId }, { client, now }),
+        new Promise<never>((_, reject) => {
+          lateTimer = setTimeout(() => reject(new Error("preload_slow")), CHAT_FINDING_PRELOAD_MS);
+        }),
+      ]).finally(() => clearTimeout(lateTimer));
       timing.tools.push({ name: "finding_details (up front)", ms: Date.now() - lookedUp });
       allowedCents.push(...detail.cents, ...dollarFigures(detail.content).map((f) => f.cents));
       ledger.addToolResult(detail.content);
@@ -1281,6 +1290,9 @@ async function askClaude(
     let stopped = false;
     // Whether anything at all came back from Claude in this round.
     let heard = false;
+    // The latest usage Claude reported for this attempt (cumulative, never summed): a stream that
+    // then fails or times out still used these tokens, and they count against the cap.
+    let reported: Anthropic.Usage | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       // No time left for another round: the rules answer, and no stream is ever started.
@@ -1314,6 +1326,19 @@ async function askClaude(
         .on("streamEvent", (event) => {
           heard = true;
           timing.firstEventMs ??= Date.now() - timing.startedAt;
+          if (event.type === "message_start" && event.message?.usage) {
+            reported = { ...event.message.usage };
+          }
+          if (event.type === "message_delta" && reported && event.usage) {
+            // Every field the delta reports (iterations too); null means "not reported", so the
+            // earlier value stays.
+            const fields = Object.fromEntries(
+              Object.entries(event.usage).filter(
+                ([, value]) => value !== null && value !== undefined,
+              ),
+            );
+            reported = { ...reported, ...fields } as Anthropic.Usage;
+          }
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {
             clearTimeout(timer);
@@ -1364,6 +1389,15 @@ async function askClaude(
         ms: Date.now() - turnStarted,
       });
     } catch (error) {
+      // What this attempt used before it failed is paid for once, here.
+      const used = reported as Anthropic.Usage | null;
+      if (used) {
+        reported = null;
+        await recordUsage({ usage: used } as Anthropic.Message, userId, timing, {
+          client,
+          now,
+        }).catch(() => {});
+      }
       // Our own abort can surface as any error type: it is "too slow", never a crash.
       if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
       // The API turned down the request with the refusal fallback: once more without it. If that
@@ -1444,8 +1478,10 @@ async function askClaude(
       );
     if (response.stop_reason === "tool_use") {
       if (!decorationOnly) {
-        // Any text so far led into the lookup; the answer comes after it.
+        // Any text so far led into the lookup; the answer comes after it. What was carried from
+        // an earlier rewrite was on the screen too, and goes with it.
         draft.reset();
+        carried = "";
         onEvent({ type: "reset" });
         messages.push({ role: "assistant", content });
       }
@@ -1477,10 +1513,13 @@ async function askClaude(
       }
     }
 
-    // A safety classifier stopped the answer (11-01): its partial draft is never shown, and Claude
-    // answers once more without it, so the person gets Claude's own words, not a canned line.
+    // A safety classifier stopped the answer (11-01): its partial draft is withdrawn (a sentence
+    // that passed the checks may already have been on the screen: "reset" takes it off again, it
+    // cannot unsee it), and Claude answers once more without it, so the person gets Claude's own
+    // words, not a canned line.
     if (response.stop_reason === "refusal") {
       draft.reset();
+      carried = "";
       onEvent({ type: "reset" });
       if (refusalRetries === 0) return fail("stop_refusal");
       refusalRetries -= 1;
@@ -1520,7 +1559,10 @@ async function askClaude(
     // "Tap Yes and the team does it" belongs only where there is a Yes to tap.
     const talkless = withoutButtonTalk(text);
     const spoken = hasButtons ? talkless : withoutTapYes(talkless);
-    if (!spoken || (talkless !== text && talkless.length < 80 && !/\d/.test(talkless))) {
+    // Only a sentence taken out counts, not the blank line between two paragraphs becoming a space.
+    const flat = (t: string) => t.replace(/\s+/g, " ").trim();
+    const removed = flat(talkless) !== flat(text);
+    if (!spoken || (removed && talkless.length < 80 && !/\d/.test(talkless))) {
       // Not an answer, only a word about a button: once, Claude writes the answer from the
       // lookups it already has (text only: a button call here got no tool_result).
       // Still no answer after that: the answer from the data instead, even over what was shown,

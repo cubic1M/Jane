@@ -74,6 +74,19 @@ describe("/api/chat/act", () => {
     });
   });
 
+  // CodeRabbit part 2: counting the tap fails after it was taken: the answer still goes back.
+  it("answers even when counting the tap fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: { kind: "decision", answeredWith: "Yes", refs: {} },
+      agentJobIds: [],
+    } as never);
+    vi.mocked(track).mockRejectedValueOnce(new Error("analytics down"));
+    const response = await call({ messageId: "m1", actionId: "finding.yes" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ answeredWith: "Yes", note: null });
+  });
+
   it("refuses another person's message, one already answered, or a button it doesn't offer", async () => {
     const cases = [
       [new ChatActionError("not_found", "That message isn't there anymore."), 404],

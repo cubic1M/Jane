@@ -274,6 +274,15 @@ describe("percents", () => {
     "$2,410.50 of $20,430.50 is about 12%.",
   ])("passes %j", (text) => expect(kinds(ledger, text)).toEqual([]));
 
+  // CodeRabbit part 2: two amounts that happen to make the same percent don't vouch for a rate.
+  it("checks a stated rate even when two amounts beside it make the same percent", () => {
+    expect(kinds(ledger, "Your rate is 25%. You paid $125.00 on a $500.00 balance.")).toEqual([
+      "unsupported_percent",
+    ]);
+    expect(kinds(ledger, "You paid $125.00 on a $500.00 balance, which is 25%.")).toEqual([]);
+    expect(kinds(ledger, "$125.00 of your $500.00 payment went to interest (25%).")).toEqual([]);
+  });
+
   it("allows a rule of thumb Jane's instructions state", () => {
     const fresh = ledgerOf(DEBTS);
     fresh.addRulesOfThumb("A common target is to save 20% of what you take home.");
@@ -401,6 +410,16 @@ describe("numbers sent up front", () => {
 
 describe("the calculator's inputs", () => {
   const onFile = [1549, 241050];
+
+  // CodeRabbit part 2: $15.99 is not the $15.49 on file; a whole-dollar $15 is that, rounded.
+  it("matches cents exactly, and a whole dollar only as the file amount rounded", () => {
+    expect(calculatorInputsNotOnFile({ operation: "per_year", amount: 15.99 }, [1549])).toEqual([
+      15.99,
+    ]);
+    expect(calculatorInputsNotOnFile({ operation: "per_year", amount: 15.49 }, [1549])).toEqual([]);
+    expect(calculatorInputsNotOnFile({ operation: "per_year", amount: 15 }, [1549])).toEqual([]);
+    expect(calculatorInputsNotOnFile({ operation: "per_year", amount: 16 }, [1549])).toEqual([16]);
+  });
 
   it("refuses an amount nothing supports", () => {
     expect(

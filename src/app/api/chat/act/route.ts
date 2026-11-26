@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { runAgentNow } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
+import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 
@@ -43,11 +44,17 @@ export async function POST(request: Request) {
     const { message, agentJobIds } = await takeChatAction(user.id, messageId, actionId);
     // The agent's first step, after the response (src/lib/agent/run.ts).
     after(() => runAgentNow(agentJobIds));
-    await track(user.id, "chat_notification_answered", {
-      channel: "push",
-      action: actionId,
-      kind: message.kind,
-    });
+    // The tap is done: a failure to count it never turns the answer into an error (a retry would
+    // be told it is already answered).
+    try {
+      await track(user.id, "chat_notification_answered", {
+        channel: "push",
+        action: actionId,
+        kind: message.kind,
+      });
+    } catch (error) {
+      log.error("Counting a chat tap failed", { error: String(error) });
+    }
     return NextResponse.json({
       answeredWith: message.answeredWith,
       note: message.refs.note ?? null,

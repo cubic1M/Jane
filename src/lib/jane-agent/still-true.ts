@@ -211,7 +211,9 @@ async function factsFor(
     !withChanges &&
     !withGaps &&
     findingIds.length === 0 &&
-    alerts.length === 0 &&
+    // The ids, not the rows found: a card whose alert was deleted has an id and no row, and must
+    // still be looked at (and retired).
+    alertIds.length === 0 &&
     suggestionKeys.length === 0 &&
     proposalKeys.length === 0
   ) {

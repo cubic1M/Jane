@@ -153,6 +153,21 @@ export async function loadTaxSnapshot(
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
   ]);
   const noticeViews = await listTaxNotices(userId, { client });
+  // The return's state first (a submitted one may turn out rejected as it is read): the identity
+  // candidates below read the same state, so an e-file rejection shows on this load, not the next.
+  const filing = await (async () => {
+    const fy = filingYear(today);
+    const [partner, ret] = await Promise.all([
+      filingPartnerFor(userId, { client }),
+      loadReturn(userId, fy, { client, now }),
+    ]);
+    return {
+      year: fy,
+      inSeason: inFilingSeason(fy, today),
+      available: partner !== null,
+      return: ret,
+    };
+  })();
   const [equity, identity, sideIncome, home, input] = await Promise.all([
     loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
     loadIdentity(userId, { client, now }),
@@ -179,19 +194,7 @@ export async function loadTaxSnapshot(
       withholding: checkFrom(estimate),
       savings: savings.savings,
       selfEmployed,
-      filing: await (async () => {
-        const fy = filingYear(today);
-        const [partner, ret] = await Promise.all([
-          filingPartnerFor(userId, { client }),
-          loadReturn(userId, fy, { client, now }),
-        ]);
-        return {
-          year: fy,
-          inSeason: inFilingSeason(fy, today),
-          available: partner !== null,
-          return: ret,
-        };
-      })(),
+      filing,
       investments: await loadInvestmentTaxes(userId, estimate.year, { client, now }),
       january:
         today.slice(5) >= JANUARY_READY.from && today.slice(5) <= JANUARY_READY.until

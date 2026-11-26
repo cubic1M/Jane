@@ -79,6 +79,7 @@ import { maskFor } from "./payee-mask";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
 import { areaTools, chatTools, toolsFor } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
+import { addSpend } from "./spend";
 
 // Spec step 84: free questions go to Claude with read-only tools over the person's own data
 // (here a fake client). A tool call works; propose_action only offers buttons from the
@@ -234,6 +235,58 @@ describe("askClaudeInChat", () => {
     expect(events.join("")).toBe("Your rent goes to Daniel Smith each month.");
   });
 
+  it("sends Claude nothing when the payee mask can't be built, and answers from the data", async () => {
+    create.mockResolvedValue(final("You sent Daniel Smith $50.00."));
+    // Not the empty stand-in: a client that is there but fails the lookup.
+    const broken = { transactions: {}, $transaction: () => Promise.reject(new Error("db down")) };
+    const result = await askClaudeInChat("u1", [], "how much did I send Daniel Smith?", {
+      ...options,
+      client: broken as unknown as PrismaClient,
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(result.kind).toBe("unavailable");
+    expect(result.reply.body).toBe(CHAT_UNAVAILABLE_TEXT);
+  });
+
+  it("counts the tokens a stream reported before it failed, once", async () => {
+    const failing = () =>
+      ({
+        messages: {
+          stream: () => {
+            const listeners: Record<string, Listener[]> = {};
+            const stream = {
+              on(name: string, fn: Listener) {
+                (listeners[name] ??= []).push(fn);
+                return stream;
+              },
+              async finalMessage() {
+                const emit = (e: object) => (listeners.streamEvent ?? []).forEach((fn) => fn(e));
+                emit({
+                  type: "message_start",
+                  message: { usage: { input_tokens: 5000, output_tokens: 1 } },
+                });
+                // Cumulative: the later figure replaces the first, it is not added to it.
+                emit({
+                  type: "message_delta",
+                  usage: { output_tokens: 40, cache_read_input_tokens: 300, input_tokens: null },
+                });
+                throw new Error("connection reset");
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    vi.mocked(addSpend).mockClear();
+    await askClaudeInChat("u1", [], "how am I doing?", { ...options, claude: failing }).catch(
+      () => null,
+    );
+    const used = vi.mocked(addSpend).mock.calls.map((c) => c[1]);
+    expect(used).toHaveLength(1);
+    // A null in the delta is "not reported": the input from the start stays.
+    expect(used[0]).toMatchObject({ inputTokens: 5000, outputTokens: 40, cacheReadTokens: 300 });
+  });
+
   it("writes the answer again in words when the last one was only about a button", async () => {
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "open", page: "plan" }))
@@ -249,6 +302,16 @@ describe("askClaudeInChat", () => {
     // The rewrite request is text only: no tool_use without its tool_result.
     const last = create.mock.calls[create.mock.calls.length - 1][0].messages.at(-2);
     expect(JSON.stringify(last)).not.toContain("tool_use");
+  });
+
+  // CodeRabbit part 2: a blank line between two paragraphs is not a removed sentence.
+  it("keeps a short answer in two paragraphs, with nothing taken out of it", async () => {
+    create.mockResolvedValueOnce(final("Your bills are paid.\n\nNothing is due this week."));
+    const before = create.mock.calls.length;
+    const result = await askClaudeInChat("u1", [], "anything due", options);
+    expect(create.mock.calls.length - before).toBe(1);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toContain("Nothing is due this week.");
   });
 
   it("offers a finding's button from the saved snapshot, never a fresh 10-second build", async () => {
@@ -566,6 +629,10 @@ describe("askClaudeInChat", () => {
     expect(shopKindOf("should I switch car insurance")).toBe(false);
     expect(shopKindOf("what is my car insurance")).toBe(false);
     expect(shopKindOf("how am i doing")).toBe(false);
+    // CodeRabbit part 2: a refusal is not a request to shop.
+    expect(shopKindOf("Don't switch my car insurance")).toBe(false);
+    expect(shopKindOf("never change my car insurance")).toBe(false);
+    expect(shopKindOf("Switch my car insurance")).toBe("auto");
     // A list that was asked for may run to 700; others stop at 600.
     expect(answerLimit("what are my options")).toBe(700);
     expect(answerLimit("how am i doing")).toBe(600);

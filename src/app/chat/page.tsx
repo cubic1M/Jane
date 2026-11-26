@@ -52,6 +52,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   if (!embed) redirect(chatRedirect(params));
   // Each sign-in starts the chat empty: older conversations stay, unseen (src/lib/chat-start.ts).
   const since = await currentChatStart();
+  // What is read below is what the person sees: nothing newer is marked read (markChatRead).
+  const readAt = new Date();
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
   const [chat, pinned, stackedFirst, practice] = await Promise.all([
     openChat(user.id, { pages, since }),
@@ -84,7 +86,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // folded "Jane · N for you"), with no card or gap here. The stack is still read so that a card
   // floating in the dock is never also listed, and the dock beside it reloads when it changes.
   const listed = chatList(chat.messages, stacked);
-  after(() => markChatRead(user.id));
+  after(() => markChatRead(user.id, { before: readAt }));
 
   return (
     <>

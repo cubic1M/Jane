@@ -37,7 +37,7 @@ export async function answerByRules(
   ) {
     resolved = { kind: "why_finding", findingId: cardTopic.findingId };
   }
-  if (resolved.kind === "which") return whichReply(userId, { client, now });
+  if (resolved.kind === "which") return whichReply(userId, typed, { client, now });
   const reply = await byIntent(userId, resolved, { client, now });
   if (reply) {
     const about = topicOf(resolved);
@@ -49,8 +49,9 @@ export async function answerByRules(
 }
 
 // "Cancel it" with nothing to point back to: which of the biggest savings?
-async function whichReply(
+export async function whichReply(
   userId: string,
+  typed: Intent,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply> {
   const snapshot = await loadSnapshotFast(userId, { client, now });
@@ -58,7 +59,11 @@ async function whichReply(
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))
     .map((f) => ({
       label: f.title,
-      intent: { kind: "about" as const, target: f.title, findingId: f.findingId },
+      // A tap carries on with what was typed: "Cancel it" then Netflix cancels Netflix.
+      intent:
+        typed.kind === "act"
+          ? { kind: "act" as const, verb: typed.verb, target: f.title, findingId: f.findingId }
+          : { kind: "about" as const, target: f.title, findingId: f.findingId },
     }));
   return top.length > 0
     ? clarifyReply("Which one do you mean?", top)

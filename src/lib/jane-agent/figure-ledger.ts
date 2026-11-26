@@ -139,6 +139,8 @@ const COUNT = new RegExp(
 
 const WHOLE_DOLLARS_CHECKED_FROM_CENTS = 10_000;
 const RATE_WORDS = /\b(?:rate|apr|interest)\b/i;
+// A percent attributed as a rate: the word rate or APR, or the percent right before "interest".
+const STATED_RATE = /\b(?:rates?|apr)\b|%\s*(?:a year |annual |yearly )?interest\b/i;
 
 const TOTAL_CLAIM =
   /\b(?:you|they) (?:have|hold|pay for|are paying for) (?:\w+ )?\S+(?: \w+)? \w+$/i;
@@ -584,13 +586,20 @@ export class FigureLedger {
         // As exact as it's written: 5.25% isn't 5.24%, and 23% can be 22.99%.
         const decimals = m[1].split(".")[1]?.length ?? 0;
         const tolerance = decimals === 0 ? 0.51 : 0.51 / 10 ** decimals;
-        // A whole number on file may have more digits behind it.
+        // A whole number on file may have more digits behind it (an existing test pins this:
+        // a recorded 391% and the 391.07% worked out from it).
         const matches = this.facts.filter(
           (f) =>
             f.kind === "percent" &&
             Math.abs(f.value - value) <= (Number.isInteger(f.value) ? 0.51 : tolerance),
         );
-        if (value === 0 || value === 100 || isRatioOf(value, tolerance, moneySaid)) continue;
+        // A rate said as a rate is checked against the ledger, even when two amounts beside it
+        // happen to make the same percent ("Your APR is 25%. You paid $125 on $500.").
+        const sayingARate = RATE_WORDS.test(clauseAt(sentence, m.index ?? 0));
+        // Said as a rate ("APR", "rate", "25% interest"), not "$125 of your $500 went to interest (25%)".
+        const statedAsRate = STATED_RATE.test(clauseAt(sentence, m.index ?? 0));
+        if (value === 0 || value === 100) continue;
+        if (!statedAsRate && isRatioOf(value, tolerance, moneySaid)) continue;
         if (matches.length === 0) {
           problems.push({
             kind: "unsupported_percent",
@@ -601,7 +610,6 @@ export class FigureLedger {
         }
         // A round percent is often a general one ("investing has returned 4% to 8%", "about 60
         // percent of pay"), near someone's rate by chance, unless it's said to be a rate.
-        const sayingARate = RATE_WORDS.test(clauseAt(sentence, m.index ?? 0));
         if (decimals === 0 && !sayingARate) continue;
         const problem = check(matches, said, m.index ?? 0, null, "percent");
         if (problem) problems.push(problem);
@@ -744,6 +752,10 @@ export function calculatorInputsNotOnFile(
   ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   return dollars.filter((amount) => {
     const cents = Math.round(Math.abs(amount) * 100);
-    return !allowedCents.some((a) => Math.abs(Math.abs(a) - cents) < 100);
+    // The exact cents, or a whole-dollar amount that is a file amount rounded to the dollar.
+    return !allowedCents.some((a) => {
+      const onFile = Math.abs(a);
+      return onFile === cents || (cents % 100 === 0 && Math.round(onFile / 100) * 100 === cents);
+    });
   });
 }

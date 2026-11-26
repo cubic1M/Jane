@@ -71,6 +71,24 @@ describe("POST /api/chat/send", () => {
     expect(vi.mocked(sendToJane).mock.calls[0][2]?.since).toEqual(SINCE);
   });
 
+  // CodeRabbit part 2: the reader closing the chat must not cut the message being answered short.
+  it("finishes the message when the reader has gone", async () => {
+    let finished = false;
+    vi.mocked(sendToJane).mockImplementation(async (_u, _t, options) => {
+      options?.onEvent?.({ type: "status", text: "Checking…" });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Written to a reader that has gone: must not throw out of the message being saved.
+      options?.onEvent?.({ type: "text", text: "Here you go." });
+      finished = true;
+      return {} as never;
+    });
+    const response = await post({ message: "how's my food budget" });
+    const reader = response.body!.getReader();
+    await reader.read();
+    await reader.cancel();
+    await vi.waitFor(() => expect(finished).toBe(true));
+  });
+
   it("says what's wrong with the message, and nothing more when something else fails", async () => {
     vi.mocked(sendToJane).mockRejectedValueOnce(
       new ChatInputError("too_long", "Keep it under 500 characters."),

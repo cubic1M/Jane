@@ -39,10 +39,22 @@ export async function POST(request: Request) {
   const since = await currentChatStart();
 
   const encoder = new TextEncoder();
+  // The reader went away (the chat closed, the connection dropped): nothing more is written to
+  // it, but the message being answered is still saved and answered, not cut off half way.
+  let gone = false;
   const stream = new ReadableStream({
+    cancel() {
+      gone = true;
+    },
     async start(controller) {
-      const send = (line: object) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
+      const send = (line: object) => {
+        if (gone) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
+        } catch {
+          gone = true;
+        }
+      };
       try {
         await sendToJane(user.id, text, { onEvent: send, since });
         send({ type: "done" });
@@ -56,7 +68,13 @@ export async function POST(request: Request) {
           send({ type: "error", text: "Something went wrong. Try again." });
         }
       } finally {
-        controller.close();
+        if (!gone) {
+          try {
+            controller.close();
+          } catch {
+            // Closed by the reader in the meantime.
+          }
+        }
       }
     },
   });

@@ -152,24 +152,34 @@ async function letGo(counters: readonly Counter[], amount: number, client: Prism
 // Holds the amount on every counter, or on none. The cap is read and the amount added in one
 // statement, so calls at once see each other: charging only afterwards let 20 uploads at once all
 // pass a cap the first two would have reached. As before, a call under the cap may run over it.
-async function holdOn(counters: readonly Counter[], amount: number, client: PrismaClient) {
+export async function holdOn(counters: readonly Counter[], amount: number, client: PrismaClient) {
   const held: Counter[] = [];
-  for (const counter of counters) {
-    const { key, windowStart, capCents } = counter;
-    const rows = await systemDb("Rate limits are the system's own counters", client).$queryRaw<
-      unknown[]
-    >`
+  try {
+    for (const counter of counters) {
+      const { key, windowStart, capCents } = counter;
+      const rows = await systemDb("Rate limits are the system's own counters", client).$queryRaw<
+        unknown[]
+      >`
       INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${amount})
       ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}
       WHERE rate_limits.count < ${capCents * 100}
       RETURNING count`;
-    if (rows.length === 0) {
-      await letGo(held, amount, client);
-      return false;
+      if (rows.length === 0) {
+        const taken = held.splice(0);
+        await letGo(taken, amount, client);
+        return false;
+      }
+      held.push(counter);
     }
-    held.push(counter);
+    return true;
+  } catch (error) {
+    // A counter that fails after others took the hold: the hold goes back, or it would sit on the
+    // month's total (shared by all of Claude) until the window ends.
+    await letGo(held, amount, client).catch((e: unknown) =>
+      log.error("Claude budget: hold not released", { error: String(e) }),
+    );
+    throw error;
   }
-  return true;
 }
 
 async function countersFor(userId: string, client: PrismaClient, now: Date): Promise<Counter[]> {
@@ -199,6 +209,8 @@ export function meteredClaude(
   return (() => ({
     messages: {
       create: async (...args: Parameters<Anthropic["messages"]["create"]>) => {
+        // A stream has no usage to charge: it is refused here rather than run free of the cap.
+        if ((args[0] as { stream?: unknown }).stream) throw new Error("metered_stream_unsupported");
         const at = now ?? new Date();
         const blocked = await backgroundCapHit(userId, { client, now: at }).catch(() => true);
         if (blocked) throw capped();

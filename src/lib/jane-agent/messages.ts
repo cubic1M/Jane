@@ -337,13 +337,14 @@ function answeredWhere(source: DecisionSource): string {
   }
 }
 
-// Seeing the chat marks Jane's messages read.
+// Seeing the chat marks Jane's messages read: the ones that were there when it was read (`before`),
+// never one that came in after, which the person has not seen.
 export async function markChatRead(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), before }: Options & { before?: Date } = {},
 ): Promise<void> {
   await scopedFor(userId, client).janeMessages.updateMany({
-    where: { readAt: null },
+    where: { readAt: null, ...(before ? { createdAt: { lte: before } } : {}) },
     data: { readAt: now },
   });
 }

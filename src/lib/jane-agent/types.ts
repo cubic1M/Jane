@@ -784,7 +784,17 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 
 // Reads the JSON columns back, dropping anything malformed.
 export function parseRefs(value: unknown): MessageRefs {
-  return isObject(value) ? (value as MessageRefs) : {};
+  if (!isObject(value)) return {};
+  const { tightItem, ...rest } = value;
+  if (tightItem === undefined) return value as MessageRefs;
+  // A malformed one is dropped: a refresh would call string methods on it.
+  const ok =
+    isObject(tightItem) &&
+    typeof tightItem.id === "string" &&
+    (tightItem.shortfallOn === undefined ||
+      (typeof tightItem.shortfallOn === "string" &&
+        /^\d{4}-\d{2}-\d{2}/.test(tightItem.shortfallOn)));
+  return (ok ? value : rest) as MessageRefs;
 }
 
 export function parseActions(value: unknown): MessageAction[] {

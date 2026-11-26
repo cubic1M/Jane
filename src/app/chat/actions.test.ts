@@ -24,6 +24,8 @@ vi.mock("@/lib/jane-agent/actions", async () => {
 });
 
 import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
+import { conciergeMode } from "@/lib/concierge-mode";
+import { timezoneOf } from "@/lib/today";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import type { ChatMessage } from "@/lib/jane-agent/types";
 import { toView } from "@/lib/jane-agent/view";
@@ -125,6 +127,23 @@ describe("tapButton", () => {
     expect(runQueuedFor).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
     expect(runQueuedFor).toHaveBeenCalledWith(["a1", "a2"]);
+  });
+
+  // CodeRabbit part 2: the tap has committed when the timezone and mode are read; a failure there
+  // must not show the buttons again nor lose the agent's first step.
+  it("still answers and runs the agent when the timezone and mode can't be read", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: ["job1"],
+      agentActionIds: [],
+      posted: false,
+    });
+    vi.mocked(timezoneOf).mockRejectedValueOnce(new Error("lookup failed"));
+    vi.mocked(conciergeMode).mockRejectedValueOnce(new Error("lookup failed"));
+    const state = await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }));
+    expect(state.error).toBeNull();
+    for (const callback of afterCallbacks) await callback();
+    expect(runAgentNow).toHaveBeenCalledWith(["job1"]);
   });
 
   it("shows why a tap was refused and leaves the message as it was", async () => {
