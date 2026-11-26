@@ -123,12 +123,16 @@ const newestLine = (input: DetectionInput, accountId: string) =>
     .filter((t) => t.accountId === accountId && t.date <= input.asOf)
     .reduce((day, t) => (t.date > day ? t.date : day), "") || input.asOf;
 
+// With a payday on the calendar somewhere, a paycheck among these isn't pay with no schedule: a
+// salary that moved to another account, or a job that ended, isn't coming here again.
 function unevenDeposits(input: DetectionInput, accountId: string) {
   const newest = newestLine(input, accountId);
   const since = addDays(newest, -UNEVEN_PAY_LOOKBACK_DAYS);
+  const scheduled = nextPayday(input, FORECAST_DAYS) !== null;
   return input.transactions.filter(
     (t) =>
       t.accountId === accountId &&
+      !(scheduled && isPaycheck(t)) &&
       t.amountCents < 0 &&
       t.pfcPrimary === "INCOME" &&
       !UNEVEN_PAY_NOT_PAY.includes(t.pfcDetailed ?? "") &&
@@ -155,8 +159,21 @@ function monthsSeen(input: DetectionInput, accountId: string): number {
 // for a freelancer, $8,461.89 against $5,868.06, two windows with neither said).
 export const unevenPayMonths = monthsSeen;
 
-export function unevenPay(input: DetectionInput, accountId: string): number | null {
-  if (nextPayday(input, FORECAST_DAYS)) return null;
+// A payday on the calendar into one of these accounts. Pay into another account is nothing these
+// can count on, so it says nothing about their pay.
+const paydayInto = (input: DetectionInput, accountIds: readonly string[]) =>
+  expectedPaydays(input, addDays(input.asOf, FORECAST_DAYS)).some((p) =>
+    p.shares.some((s) => s.amountCents > 0 && accountIds.includes(s.accountId)),
+  );
+
+// About what comes in a month into an account with no payday to count on. `asked`: the accounts
+// looked at together, when more than this one (a payday into any of them is pay to count on).
+export function unevenPay(
+  input: DetectionInput,
+  accountId: string,
+  asked: readonly string[] = [accountId],
+): number | null {
+  if (paydayInto(input, asked)) return null;
   // Data this old expects no payday because it's old, not because the pay is uneven.
   const account = input.accounts.find((a) => a.id === accountId);
   if (account && staleBalanceFrom(account, input.asOf)) return null;
@@ -194,13 +211,14 @@ export function otherMoneyIn(input: DetectionInput, accountId: string): number |
 }
 
 // The day by when uneven pay into these accounts is likely to have come again, when it comes often
-// enough to count on (a gig driver's payouts); null otherwise, or when a payday is on the calendar.
+// enough to count on (a gig driver's payouts); null otherwise, or when a payday into one of them is
+// on the calendar (CodeRabbit sweep, open 46: a paycheck into savings hid the cutoff for checking,
+// and an overdraft was reported that the next payout would have covered).
 export function nextUnevenPayBy(
   input: DetectionInput,
   accountIds: readonly string[],
 ): string | null {
-  if (nextPayday(input, FORECAST_DAYS)) return null;
-  if (!accountIds.some((id) => unevenPay(input, id) !== null)) return null;
+  if (!accountIds.some((id) => unevenPay(input, id, accountIds) !== null)) return null;
   const days = new Set(accountIds.flatMap((id) => unevenDeposits(input, id).map((t) => t.date)));
   const gap = Math.ceil(UNEVEN_PAY_LOOKBACK_DAYS / days.size);
   return gap <= UNEVEN_PAY_STEADY_GAP_DAYS ? addDays(input.asOf, gap) : null;
