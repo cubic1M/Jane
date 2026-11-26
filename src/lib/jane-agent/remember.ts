@@ -11,7 +11,7 @@ import { ordinal } from "@/planning/due-dates";
 const ORDINAL = "(\\d{1,2})(?:st|nd|rd|th)?";
 const PAYDAY = new RegExp(
   `^(?:my )?pay ?days? (?:is|are) (?:on )?(?:the )?${ORDINAL}(?:(?: and|,| &) (?:the )?${ORDINAL})?(?: of (?:the|each|every) month)?$` +
-    `|^i (?:get|am|'m) paid (?:on )?(?:the )?${ORDINAL}(?:(?: and|,| &) (?:the )?${ORDINAL})?(?: of (?:the|each|every) month)?$`,
+    `|^i(?: (?:get|am)|'m) paid (?:on )?(?:the )?${ORDINAL}(?:(?: and|,| &) (?:the )?${ORDINAL})?(?: of (?:the|each|every) month)?$`,
 );
 const KEEP =
   /^i (?:really )?(?:need|use|love|want to keep|can'?t live without|keep using) (?:my |the |our )?(.+)$|^(?:don'?t|never|stop) (?:cancel(?:ling)?|suggest(?:ing)?(?: (?:cancell?ing|that i cancel|i cancel))?) (?:my |the |our )?(.+)$|^keep (?:my |the |our )?(.+)$/;

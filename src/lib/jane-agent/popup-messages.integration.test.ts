@@ -55,4 +55,26 @@ describe.runIf(url)("the messages that pop up", () => {
       MORNING_BRIEF ? ["open", "back again"] : ["open", "bundled", "back again"],
     );
   });
+
+  // CodeRabbit part 2: a heads-up a scan posts between a question and Jane's answer is not the answer.
+  it("keeps a heads-up posted before the answer in the pop-ups, and leaves the answer out", async () => {
+    const other = (
+      await client.user.create({ data: { email: `popups2-${crypto.randomUUID()}@example.com` } })
+    ).id;
+    try {
+      const at = (min: number) => new Date(NOW.getTime() - min * 60_000);
+      const post = (kind: string, key: string, min: number) =>
+        client.janeMessage.create({
+          data: { userId: other, kind, body: key, dedupeKey: key, createdAt: at(min) },
+        });
+      await post("user", "typed", 4);
+      await post("heads_up", "scan-heads-up", 3);
+      await post("decision", "the-answer", 2);
+      const shown = (await openPopupMessages(other, { client, now: NOW })).map((m) => m.body);
+      expect(shown).toContain("scan-heads-up");
+      expect(shown).not.toContain("the-answer");
+    } finally {
+      await client.user.deleteMany({ where: { id: other } });
+    }
+  });
 });

@@ -105,7 +105,8 @@ async function transferStep(
   };
 }
 
-// The person's savings account, when the words say savings ("savings", "my savings account").
+// The person's savings account, when the words say savings ("savings", "my savings account"). A
+// name besides ("Vacation Savings") must be in the account's name: another savings account is not it.
 async function savingsAccount(userId: string, words: string, client: PrismaClient) {
   if (!/\bsavings?\b/i.test(words)) return null;
   const accounts = await scopedFor(userId, client).accounts.findMany({
@@ -113,7 +114,11 @@ async function savingsAccount(userId: string, words: string, client: PrismaClien
     select: { id: true, name: true },
     orderBy: [{ currentBalanceCents: "desc" }, { id: "asc" }],
   });
-  return accounts[0] ?? null;
+  const named = (words.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(
+    (w) => !/^(?:my|the|our|a|an|to|saving|savings|account|accounts)$/.test(w),
+  );
+  if (named.length === 0) return accounts[0] ?? null;
+  return accounts.find((a) => named.every((w) => a.name.toLowerCase().includes(w))) ?? null;
 }
 
 // Without a money-movement partner Jane can't move money in someone's bank, and neither can

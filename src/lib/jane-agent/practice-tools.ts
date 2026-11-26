@@ -225,10 +225,10 @@ export async function proposePracticeChange(
   }
   const lines = describeChanges(before, result.preferences, result.changed);
   const extra =
-    warning + result.changed.includes("avoid") &&
-    result.preferences.avoid.some((k) => k in EXCLUSIONS)
+    warning +
+    (result.changed.includes("avoid") && result.preferences.avoid.some((k) => k in EXCLUSIONS)
       ? `\n${BROAD_FUND_NOTE}`
-      : "";
+      : "");
   const line = `Change your practice settings:\n${lines.map((l) => `- ${l}`).join("\n")}${extra}`;
   const practicePrefs = Object.fromEntries(
     result.changed.map((f) => [f, result.preferences[f]]),

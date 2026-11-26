@@ -1792,7 +1792,12 @@ export async function refreshPrimer(userId: string, options: Options): Promise<v
   );
   const stamp = await dataStamp(userId, options.client);
   const primer = await computePrimer(userId, options);
-  keepPrimer(userId, options.now, primer);
+  keepPrimer(
+    userId,
+    options.now,
+    primer,
+    await timezoneOf(userId, { client: options.client }).catch(() => null),
+  );
   await writeStoredPrimer(userId, primer, { ...options, stamp });
 }
 
@@ -1813,7 +1818,7 @@ export async function chatPrimer(
     timezoneOf(userId, { client }).catch(() => null),
   ]);
   if (stored && stored.primer.text !== "" && usablePrimer(stored, stamp, now, timezone)) {
-    keepPrimer(userId, now, stored.primer);
+    keepPrimer(userId, now, stored.primer, timezone);
     if (isStale(stored.at, now) && !refreshing.has(userId)) {
       refreshing.add(userId);
       void refreshPrimer(userId, { client, now })
@@ -1823,7 +1828,7 @@ export async function chatPrimer(
     return stored.primer;
   }
   const primer = await computePrimer(userId, { client, now });
-  keepPrimer(userId, now, primer);
+  keepPrimer(userId, now, primer, timezone);
   await writeStoredPrimer(userId, primer, { client, now, stamp });
   return primer;
 }

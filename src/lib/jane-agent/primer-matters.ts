@@ -1,5 +1,6 @@
 import { dollarFigures } from "@/lib/guardrails";
 import { formatCents } from "@/lib/money";
+import { isRefund } from "@/lib/savings-text";
 import { rankedFor } from "./priorities";
 import type { Snapshot } from "./snapshot";
 
@@ -50,7 +51,11 @@ export function mattersBlock(snapshot: Snapshot | null): { text: string; cents: 
       count: findings.length,
       top: findings.slice(0, TOP).map((f) => ({
         title: trim(f.title),
-        saves: f.annualSavingsCents === null ? null : `${formatCents(f.annualSavingsCents)} a year`,
+        // A refund comes back once, whatever column holds it.
+        saves:
+          f.annualSavingsCents === null
+            ? null
+            : `${formatCents(f.annualSavingsCents)}${isRefund(f.type) ? " once" : " a year"}`,
       })),
     })}`,
   ];

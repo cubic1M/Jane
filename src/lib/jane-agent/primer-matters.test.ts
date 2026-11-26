@@ -85,4 +85,19 @@ describe("what matters most, for the primer", () => {
     expect(first.match(/Stop paying overdraft/g)).toHaveLength(1);
     expect(block.cents).toEqual(expect.arrayContaining([10_500]));
   });
+
+  // CodeRabbit part 2: a refund comes back once, not a year.
+  it("says a refund finding's amount once, not a year", () => {
+    const base = snap();
+    const f = base.findings[0]!;
+    const block = mattersBlock(
+      snap({
+        findings: [
+          { ...f, findingId: "f2", type: "duplicate_charge", title: "Get a duplicate back" },
+        ],
+      } as never),
+    );
+    expect(block.text).toContain("$215.88 once");
+    expect(block.text).not.toContain("$215.88 a year");
+  });
 });

@@ -1,5 +1,5 @@
 import { CHAT_PRIMER_STORED_MINUTES } from "@/config/agent-chat";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { sameData } from "@/lib/data-stamp";
 import { localDate } from "@/lib/today";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
@@ -101,18 +101,23 @@ export async function markPrimerStale(
   // rebuild on the real clock would settle what is due by then (a rollover) ahead of the caller.
   await staleAndRefreshSnapshot(userId, { client, now });
   try {
-    const row = await scopedFor(userId, client).janePreferences.findUnique({
-      where: { userId_kind_key: { userId, kind: "system", key: KEY } },
-      select: { value: true },
-    });
-    if (!row) return;
-    const value = row.value as { at?: string; builtAt?: string };
-    await scopedFor(userId, client).janePreferences.update({
-      where: { userId_kind_key: { userId, kind: "system", key: KEY } },
-      data: {
-        value: { ...value, at: new Date(0).toISOString(), builtAt: value.builtAt ?? value.at },
-      },
-    });
+    // Marked over the value just read; a primer saved meanwhile is read again and marked too (not
+    // written over with the older one, and never left fresh).
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const row = await scopedFor(userId, client).janePreferences.findUnique({
+        where: { userId_kind_key: { userId, kind: "system", key: KEY } },
+        select: { value: true },
+      });
+      if (!row) return;
+      const value = row.value as { at?: string; builtAt?: string };
+      const { count } = await scopedFor(userId, client).janePreferences.updateMany({
+        where: { kind: "system", key: KEY, value: { equals: row.value as Prisma.InputJsonValue } },
+        data: {
+          value: { ...value, at: new Date(0).toISOString(), builtAt: value.builtAt ?? value.at },
+        },
+      });
+      if (count > 0) return;
+    }
   } catch {
     // Nothing saved yet, or no database: nothing to mark.
   }

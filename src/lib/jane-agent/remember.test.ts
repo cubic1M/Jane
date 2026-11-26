@@ -96,4 +96,12 @@ describe("reading preferences", () => {
     expect(keeps(prefs)).toEqual(["car"]);
     expect(paydayDays([])).toBeNull();
   });
+
+  // CodeRabbit part 2: the contracted "i'm paid".
+  it('reads "i\'m paid on the 15th" as a payday', () => {
+    expect(parseFact("i'm paid on the 15th")).toMatchObject({
+      key: "payday",
+      value: { days: [15] },
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cachedPrimer, forgetPrimer, keepPrimer } from "./primer-cache";
 import { usablePrimer } from "./primer-store";
 
 // Gate C (11-16): the numbers saved for Claude were today's by UTC's day, as the chat's snapshot was
@@ -33,5 +34,15 @@ describe("the saved numbers for Claude", () => {
         "Asia/Kolkata",
       ),
     ).toBe(true);
+  });
+
+  // CodeRabbit part 2: the memory copy is dropped at the person's own midnight, not by its age alone.
+  it("drops the copy in memory past the person's midnight", () => {
+    const primer = { text: "today: Nov 11", cents: [] };
+    // Stored 30 seconds before midnight in Los Angeles: inside the cache's age at midnight itself.
+    keepPrimer("u-midnight", new Date("2026-11-12T07:59:30Z"), primer, ZONE);
+    expect(cachedPrimer("u-midnight", new Date("2026-11-12T07:59:59.999Z"))).toBe(primer);
+    expect(cachedPrimer("u-midnight", new Date("2026-11-12T08:00:00.000Z"))).toBeNull();
+    forgetPrimer("u-midnight");
   });
 });

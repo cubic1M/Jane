@@ -91,8 +91,8 @@ export function sectorChangeReply(
       sectorChange: {
         sector: intent.sector,
         level: intent.level,
-        ...(intent.actionCapCents !== null ? { actionCapCents: intent.actionCapCents } : {}),
-        ...(intent.monthlyCapCents !== null ? { monthlyCapCents: intent.monthlyCapCents } : {}),
+        // The caps the preview showed, as shown: the tap sets these, not whatever is stored by then.
+        ...(intent.level !== "ask" ? { actionCapCents: action, monthlyCapCents: monthly } : {}),
       },
     },
   };

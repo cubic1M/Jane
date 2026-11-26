@@ -3,13 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
-import {
-  forgetFactsFrom,
-  preferenceRef,
-  recordFact,
-  type FactDraft,
-  type FactValue,
-} from "@/lib/memory/facts";
+import { preferenceRef, recordFact, type FactDraft, type FactValue } from "@/lib/memory/facts";
 
 // What Jane remembers about the person (spec step 91), in jane_preferences. Only ever saved
 // on the person's own tap: "Don't suggest again" on a suggestion, or "Remember this" under
@@ -132,10 +126,13 @@ export async function deletePreference(
     where: { id },
     select: { kind: true, key: true },
   });
-  const { count } = await db.janePreferences.deleteMany({ where: { id } });
+  // What Jane knew from it goes with it, in one transaction: both happen or neither does.
+  const count = await db.transaction(async (tx) => {
+    if (row)
+      await tx.userFacts.deleteMany({ where: { sourceRef: preferenceRef(row.kind, row.key) } });
+    return (await tx.janePreferences.deleteMany({ where: { id } })).count;
+  });
   if (count > 0) {
-    // And what Jane knew from it.
-    if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client });
     await logAudit(
       { type: "user", id: userId },
       "preference_deleted",

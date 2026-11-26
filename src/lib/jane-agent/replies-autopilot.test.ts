@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SECTORS } from "@/config/autopilot-sectors";
-import { byHerself, sectorLine } from "./replies-autopilot";
+import { byHerself, sectorChangeReply, sectorLine } from "./replies-autopilot";
 
 // One sentence per area for what Jane does on its own, at the area's own level (spec step 141).
 // Insurance, investing and taxes end their own "on autopilot" answers and pages with it, so
@@ -34,5 +34,34 @@ describe("byHerself", () => {
         expect(sectorLine(at(level, sector)).startsWith(said.split(" is set to")[0])).toBe(true);
       }
     }
+  });
+
+  // CodeRabbit part 2: the tap sets the caps the preview showed, even those not typed.
+  it("carries the previewed caps to the tap", () => {
+    const current = {
+      sector: "bills" as const,
+      level: "safe" as const,
+      actionCapCents: 10_000,
+      monthlyCapCents: 40_000,
+      source: "set" as const,
+      usedThisMonthCents: 0,
+    };
+    const reply = sectorChangeReply(
+      {
+        kind: "autopilot_sector",
+        sector: "bills",
+        level: "all",
+        actionCapCents: null,
+        monthlyCapCents: null,
+      },
+      current,
+      "safe",
+    );
+    expect(reply.refs.sectorChange).toEqual({
+      sector: "bills",
+      level: "all",
+      actionCapCents: 10_000,
+      monthlyCapCents: 40_000,
+    });
   });
 });
