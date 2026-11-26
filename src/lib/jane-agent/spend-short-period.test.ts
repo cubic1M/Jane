@@ -80,6 +80,29 @@ describe("spending for a day or a week", () => {
     );
   });
 
+  // The days count back from the person's own today, across a month and a year turn.
+  it("crosses a month turn and a year turn", () => {
+    const turn = [
+      t("2026-12-30", 1_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2026-12-31", 2_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2027-01-01", 4_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2027-01-02", 8_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+    ];
+    const at = (today: string, text: string) => {
+      const intent = parseIntent(text, today);
+      if (intent.kind !== "spending") throw new Error(intent.kind);
+      return spendingReply(intent, turn, today).body;
+    };
+    expect(at("2027-01-02", "how much did I spend this week")).toMatch(
+      /^You spent \$150\.00 in the last 7 days \(Dec 27 to Jan 2\)/,
+    );
+    expect(at("2027-01-02", "how much did I spend yesterday")).toBe("You spent $40.00 yesterday.");
+    expect(at("2027-01-06", "how much did I spend last week")).toBe(
+      "You spent $10.00 last week (Dec 24 to Dec 30).",
+    );
+    expect(at("2026-12-31", "how much did I spend yesterday")).toBe("You spent $10.00 yesterday.");
+  });
+
   it("says when what it has ends before the days do", () => {
     const old = rows.filter((r) => r.date <= "2026-11-12");
     const intent = parseIntent("how much did I spend this week", TODAY);
