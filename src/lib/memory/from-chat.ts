@@ -23,10 +23,15 @@ const slug = (text: string) =>
 
 type Rule = { pattern: RegExp; facts: (m: RegExpExecArray) => Draft[] };
 
+const ORDINARY_GOAL =
+  /\b(?:vacation|holiday|trip|travel|honeymoon|wedding|car|truck|bike|motorcycle|boat|house|home|condo|apartment|down ?payment|deposit|emergency|rainy day|cushion|retire\w*|college|school|tuition|degree|laptop|computer|phone|furniture|renovation|remodel|move|moving|business|startup|gift|holidays|christmas|savings?|fund)\b/i;
+
 const RULES: Rule[] = [
   // Home.
   {
-    pattern: /\bi(?: currently)? (?:rent|am renting|'m renting)\b(?! out)/,
+    // "I rent" or "I rent my apartment", not "I rent a car for work": a home, or nothing said.
+    pattern:
+      /\bi(?: currently)? (?:rent|am renting|'m renting)(?=\s*(?:$|[.,!?;])|\s+(?:in|from|at|near|with|for|here|there|monthly|since|now|and|but|because|so)\b|\s+(?:(?:my|our|a|an|the)\s+)?(?:own\s+)?(?:home|house|place|apartment|flat|condo|room|studio|townhouse|basement|unit)\b)/,
     facts: () => [{ key: "housing", value: "rent", label: "You rent your home" }],
   },
   {
@@ -76,7 +81,7 @@ const RULES: Rule[] = [
   },
   {
     pattern:
-      /\b(?:side (?:gig|hustle|business)|i (?:drive|deliver) for (?:uber|lyft|doordash|instacart))\b/,
+      /\bi (?:have|got|run|started|do|work) (?:a |an |my )?(?:small )?side (?:gig|hustle|business)\b|\bmy side (?:gig|hustle|business)\b|\bi (?:drive|deliver) for (?:uber|lyft|doordash|instacart)\b/,
     facts: () => [{ key: "side_gig", value: true, label: "You have a side gig" }],
   },
   {
@@ -100,9 +105,18 @@ const RULES: Rule[] = [
   {
     pattern:
       /\b(?:i(?:'m| am) saving (?:up )?for|i want to save (?:up )?for|my goal is to (?:save for|buy)) (?:a |an |my |our |the )?([a-z0-9' -]{2,40}?)(?: by\b| in\b| next\b| this\b|[.,!?]|$)/,
-    facts: (m) => [
-      { key: `goal:${slug(m[1])}`, value: tidy(m[1]), label: `You're saving for ${tidy(m[1])}` },
-    ],
+    // Only what Jane can recognise as an ordinary goal: a free-text one can name a diagnosis, and
+    // the health filter can't know every word for one (src/lib/memory/sensitive.ts).
+    facts: (m) =>
+      ORDINARY_GOAL.test(m[1])
+        ? [
+            {
+              key: `goal:${slug(m[1])}`,
+              value: tidy(m[1]),
+              label: `You're saving for ${tidy(m[1])}`,
+            },
+          ]
+        : [],
   },
   {
     pattern:
