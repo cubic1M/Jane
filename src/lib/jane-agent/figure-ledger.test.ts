@@ -280,6 +280,7 @@ describe("percents", () => {
       "unsupported_percent",
     ]);
     expect(kinds(ledger, "You paid $125.00 on a $500.00 balance, which is 25%.")).toEqual([]);
+    expect(kinds(ledger, "$125.00 of your $500.00 payment went to interest (25%).")).toEqual([]);
   });
 
   it("allows a rule of thumb Jane's instructions state", () => {

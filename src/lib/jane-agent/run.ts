@@ -90,6 +90,9 @@ async function runJaneAgentWork(
     // Loans and debt (spec Phase Y): what Jane keeps current on its own, before it looks.
     await refreshDebts(userId, { client, now });
   }
+  // The stamp from before the bank data is read: a change during the run makes the saved copy
+  // old at once.
+  const stamp = await dataStamp(userId, client);
   // The bank data, loaded once for what follows.
   // (The early run's light snapshot reads none of it.)
   const input = early ? undefined : await loadDetectionInput(userId, { client, now });
@@ -149,8 +152,6 @@ async function runJaneAgentWork(
   if ((await scopedFor(userId, client).janeMessages.count()) === 0) {
     await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
   }
-  // The stamp from before the build: a change during it makes the saved copy old at once.
-  const stamp = await dataStamp(userId, client);
   const snapshot = await loadSnapshot(userId, { client, now, input, light: early });
   // Kept for the chat: its first question reads this instead of building it. Never the early
   // run's light one: the scan's last run keeps the whole thing.
@@ -357,8 +358,8 @@ export async function keepFullSnapshot(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<void> {
   try {
-    const input = await loadDetectionInput(userId, { client, now });
     const stamp = await dataStamp(userId, client);
+    const input = await loadDetectionInput(userId, { client, now });
     await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input }), {
       client,
       now,

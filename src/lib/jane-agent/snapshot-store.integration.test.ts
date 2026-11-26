@@ -15,7 +15,7 @@ import {
   beginBuild,
   loadSnapshotFast,
   markSnapshotStale,
-  mayPublish,
+  publishBuild,
   reviveDates,
   saveSnapshot,
 } from "./snapshot-store";
@@ -41,16 +41,24 @@ describe("reviving dates", () => {
 // CodeRabbit part 2: an older build that finishes after a newer one has published must not write
 // the older snapshot back over it.
 describe("overlapping builds", () => {
-  it("lets the newer build's snapshot stand when the older one finishes last", () => {
+  it("lets the newer build's snapshot stand when the older one finishes last", async () => {
     const older = beginBuild("overlap-user");
     const newer = beginBuild("overlap-user");
-    expect(mayPublish("overlap-user", newer)).toBe(true);
-    expect(mayPublish("overlap-user", older)).toBe(false);
+    const wrote: string[] = [];
+    await publishBuild("overlap-user", newer, async () => !!wrote.push("newer"));
+    await publishBuild("overlap-user", older, async () => !!wrote.push("older"));
+    expect(wrote).toEqual(["newer"]);
   });
-  it("lets an older build publish while no newer one has", () => {
+  it("lets an older build publish when the newer one's write failed", async () => {
     const older = beginBuild("overlap-user-2");
-    beginBuild("overlap-user-2");
-    expect(mayPublish("overlap-user-2", older)).toBe(true);
+    const newer = beginBuild("overlap-user-2");
+    const wrote: string[] = [];
+    await publishBuild("overlap-user-2", newer, async () => {
+      wrote.push("newer");
+      return false;
+    });
+    await publishBuild("overlap-user-2", older, async () => !!wrote.push("older"));
+    expect(wrote).toEqual(["newer", "older"]);
   });
 });
 

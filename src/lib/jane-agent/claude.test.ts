@@ -266,7 +266,10 @@ describe("askClaudeInChat", () => {
                   message: { usage: { input_tokens: 5000, output_tokens: 1 } },
                 });
                 // Cumulative: the later figure replaces the first, it is not added to it.
-                emit({ type: "message_delta", usage: { output_tokens: 40 } });
+                emit({
+                  type: "message_delta",
+                  usage: { output_tokens: 40, cache_read_input_tokens: 300, input_tokens: null },
+                });
                 throw new Error("connection reset");
               },
             };
@@ -280,7 +283,8 @@ describe("askClaudeInChat", () => {
     );
     const used = vi.mocked(addSpend).mock.calls.map((c) => c[1]);
     expect(used).toHaveLength(1);
-    expect(used[0]).toMatchObject({ inputTokens: 5000, outputTokens: 40 });
+    // A null in the delta is "not reported": the input from the start stays.
+    expect(used[0]).toMatchObject({ inputTokens: 5000, outputTokens: 40, cacheReadTokens: 300 });
   });
 
   it("writes the answer again in words when the last one was only about a button", async () => {

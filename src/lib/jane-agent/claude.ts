@@ -1330,7 +1330,14 @@ async function askClaude(
             reported = { ...event.message.usage };
           }
           if (event.type === "message_delta" && reported && event.usage) {
-            reported = { ...reported, output_tokens: event.usage.output_tokens };
+            // Every field the delta reports (iterations too); null means "not reported", so the
+            // earlier value stays.
+            const fields = Object.fromEntries(
+              Object.entries(event.usage).filter(
+                ([, value]) => value !== null && value !== undefined,
+              ),
+            );
+            reported = { ...reported, ...fields } as Anthropic.Usage;
           }
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {

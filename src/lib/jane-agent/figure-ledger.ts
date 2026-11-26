@@ -139,6 +139,8 @@ const COUNT = new RegExp(
 
 const WHOLE_DOLLARS_CHECKED_FROM_CENTS = 10_000;
 const RATE_WORDS = /\b(?:rate|apr|interest)\b/i;
+// A percent attributed as a rate: the word rate or APR, or the percent right before "interest".
+const STATED_RATE = /\b(?:rates?|apr)\b|%\s*(?:a year |annual |yearly )?interest\b/i;
 
 const TOTAL_CLAIM =
   /\b(?:you|they) (?:have|hold|pay for|are paying for) (?:\w+ )?\S+(?: \w+)? \w+$/i;
@@ -594,8 +596,10 @@ export class FigureLedger {
         // A rate said as a rate is checked against the ledger, even when two amounts beside it
         // happen to make the same percent ("Your APR is 25%. You paid $125 on $500.").
         const sayingARate = RATE_WORDS.test(clauseAt(sentence, m.index ?? 0));
+        // Said as a rate ("APR", "rate", "25% interest"), not "$125 of your $500 went to interest (25%)".
+        const statedAsRate = STATED_RATE.test(clauseAt(sentence, m.index ?? 0));
         if (value === 0 || value === 100) continue;
-        if (!sayingARate && isRatioOf(value, tolerance, moneySaid)) continue;
+        if (!statedAsRate && isRatioOf(value, tolerance, moneySaid)) continue;
         if (matches.length === 0) {
           problems.push({
             kind: "unsupported_percent",
