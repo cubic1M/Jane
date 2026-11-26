@@ -101,6 +101,37 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
     ]);
   });
 
+  // CodeRabbit #2293: the person's own entries, newer, must not use up the slots of what Jane did.
+  it("reads only what Jane did before the cap, whatever newer entries of the person's there are", async () => {
+    const userId = await person("timeline-by");
+    await recordAct(userId, "bills", 1_000, "Did the old thing", {
+      client,
+      now: new Date(Date.UTC(2026, 9, 1)),
+    });
+    const account = await client.account.create({
+      data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
+    });
+    for (let i = 0; i < 3; i += 1) {
+      await client.moneyTransfer.create({
+        data: {
+          userId,
+          fromAccountId: account.id,
+          toName: `Fund ${i}`,
+          amountCents: 1_000,
+          purpose: "goal",
+          sector: "goals",
+          runOn: new Date("2026-10-25T00:00:00Z"),
+          partner: "stand-in",
+          by: "person",
+        },
+      });
+    }
+    const mixed = await loadTimeline(userId, { client, limit: 2 });
+    expect(mixed.some((e) => e.by === "jane")).toBe(false);
+    const jane = await loadTimeline(userId, { client, limit: 2, by: "jane" });
+    expect(jane.map((e) => e.what)).toEqual(["Did the old thing"]);
+  });
+
   // Debugger 11-02: on the path founders record, /jane said "Everything Jane did: nothing yet"
   // right after a Yes, with an action underway and money saved.
   it("includes what Jane did after a person's yes", async () => {

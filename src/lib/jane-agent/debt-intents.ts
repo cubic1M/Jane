@@ -383,7 +383,7 @@ const STUDENT_LONG =
 // Spec step 226: money lent to or borrowed from family and friends.
 // Spec step 249. Helping someone with credit; a past co-signed loan is still family loans.
 // Spec step 251: the monthly credit check-up.
-const CREDIT_MONTHLY =
+export const CREDIT_MONTHLY =
   /\b(?:monthly |this month'?s )?credit check-?up\b|\bwhat did (?:you|jane) (?:check|do|find)\b[^.]*\b(?:credit|loans?|debts?)\b[^.]*\bthis month\b|\b(?:credit|loans?|debts?) on autopilot\b.*\bmonth|\bmonthly (?:credit|loan|debt) check\b/;
 // Spec step 250: what could I borrow, and at what rate?
 const BORROWING_POWER =
@@ -423,6 +423,7 @@ const DEBT_TROUBLE =
 // Spec step 248. Rent reporting, a rent increase, and a security deposit.
 const RENTING =
   /\b(?:report|reporting|reported)\b.*\b(?:my )?rent\b|\brent\b.*\b(?:credit (?:report|score|file|bureaus?)|build(?:ing)? (?:my )?credit)\b|\b(?:my )?rent (?:went up|is going up|increase\w*|hike|raised)\b|\brent (?:is|got) (?:too )?(?:high|raised)\b|\b(?:security|rental) deposit\b|\bdeposit back\b|\blandlord\b.*\bdeposit\b/;
+const PAST_COST = /\b(?:did|have|has|had|ever|so far)\b/;
 const COSTLY =
   /\bpayday (?:loans?|lenders?|advances?)\b|\bcash advances?\b|\bpay(?:check)? advance apps?\b|\b(?:earnin|brigit|moneylion|klover)\b|\bhigh[- ]cost (?:loans?|borrowing)\b|\bsmall[- ]dollar loans?\b|\bpayday alternative\b|\bcostly (?:short[- ]term )?borrowing\b|\boverdrafts?\b.*\b(?:keep|keeps|again|repeated|every month|so often|a lot|cost me|add up)\b|\b(?:keep|keeps|stop|always)\b.*\boverdraft\w*/;
 // Spec step 246.
@@ -532,7 +533,8 @@ export function parseDebtIntent(
   if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   // "Should I get a payday loan?" is the decision; "how much have payday loans cost me?" is the history.
-  if (COSTLY.test(text) && decisionFor(text) === "payday_loan") {
+  // A question in the past ("how much did getting a payday loan cost me?") is the history.
+  if (COSTLY.test(text) && decisionFor(text) === "payday_loan" && !PAST_COST.test(text)) {
     return { kind: "debt_decision", which: "payday_loan" };
   }
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };

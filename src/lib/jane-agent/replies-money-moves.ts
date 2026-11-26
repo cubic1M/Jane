@@ -50,8 +50,9 @@ const historyMonths = (lines: readonly MoveLine[]) => {
 };
 // "to ... savings" with no "from" before the savings: a transfer into it. "TRANSFER FROM SAVINGS TO
 // CHECKING" is money coming out.
-const INTO_SAVINGS = /\bto\s+(?:(?!from\b)[\w&'.-]+\s+){0,5}savings\b/i;
-const OUT_OF_SAVINGS = /\bfrom\s+(?:(?!to\b)[\w&'.-]+\s+){0,5}savings\b/i;
+// A masked account number ("****1234", "x1234", "#1234") can sit before the word.
+const INTO_SAVINGS = /\bto\s+(?:(?!from\b)[\w&'.*#-]+\s+){0,5}savings\b/i;
+const OUT_OF_SAVINGS = /\bfrom\s+(?:(?!to\b)[\w&'.*#-]+\s+){0,5}savings\b/i;
 const oldestFirst = (a: MoveLine, b: MoveLine) => a.date.localeCompare(b.date);
 const list = (days: string[]) =>
   days.length <= 1

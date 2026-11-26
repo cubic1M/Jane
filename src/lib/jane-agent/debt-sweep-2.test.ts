@@ -39,6 +39,24 @@ describe("debt questions, routed", () => {
     });
   });
 
+  // CodeRabbit #2293: past tense is the history, whatever the verb before "payday loan".
+  it("keeps 'how much did getting a payday loan cost me' on the history", () => {
+    expect(parseDebtIntent("how much did getting a payday loan cost me?", null, AS_OF)).toEqual({
+      kind: "costly_borrowing",
+    });
+    expect(parseDebtIntent("should i get a payday loan?", null, AS_OF)).toEqual({
+      kind: "debt_decision",
+      which: "payday_loan",
+    });
+  });
+
+  it("reaches the monthly credit answer through the public parser, not 'what did you check'", () => {
+    expect(intent("what did you check on my credit this month?")).toEqual({
+      kind: "credit_monthly",
+    });
+    expect(intent("what did you check")).toEqual({ kind: "checked" });
+  });
+
   it("reads a bare GAP on a car loan", () => {
     expect(intent("do i have gap on my car loan?")).toEqual({ kind: "car_loan" });
   });

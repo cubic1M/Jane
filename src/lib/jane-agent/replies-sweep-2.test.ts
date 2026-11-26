@@ -65,6 +65,11 @@ describe("money into savings", () => {
     expect(body).toMatch(/\$200\.00 in 2 transfers/);
   });
 
+  it("counts a transfer to a masked savings account", () => {
+    const masked = [move("2026-01-10", 10_000, "TRANSFER TO ****1234 SAVINGS"), pay];
+    expect(savingsTransfersReply(masked).body).toMatch(/^You move about \$100\.00 a month into savings/);
+  });
+
   it("averages over the months of history, the empty ones too", () => {
     // January to March: $200 over three months, not two.
     expect(savingsTransfersReply(lines).body).toMatch(/about \$66\.67 a month/);

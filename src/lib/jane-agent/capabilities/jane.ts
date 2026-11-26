@@ -156,7 +156,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return checkedReply(await lastControllerRun(userId, { client, now }));
     // Spec step 187.
     case "timeline":
-      return timelineReply(await loadTimeline(userId, { client, limit: 20 }), intent.why, asOf);
+      return timelineReply(
+        await loadTimeline(userId, { client, limit: 20, by: "jane" }),
+        intent.why,
+        asOf,
+      );
     case "what_did":
       return whatDidReply(await whatJaneDid(userId, { client, now }));
     case "act":
