@@ -121,6 +121,15 @@ export async function ensureDemoOptions({
     data: DEMO_OPTIONS.map((o) => ({ ...o, demo: true, checkedAt })),
     skipDuplicates: true,
   });
+  // A price corrected in the list reaches rows made earlier (skipDuplicates leaves them as they were).
+  await Promise.all(
+    DEMO_OPTIONS.map((o) =>
+      systemDb(WHY, client).switchOption.updateMany({
+        where: { id: o.id, demo: true, monthlyCents: { not: o.monthlyCents } },
+        data: { monthlyCents: o.monthlyCents },
+      }),
+    ),
+  );
   // Only ever forward: these rows are shared, and one caller's older date would make every option
   // read as stale for everyone else (debugger 11-02).
   await systemDb(WHY, client).switchOption.updateMany({

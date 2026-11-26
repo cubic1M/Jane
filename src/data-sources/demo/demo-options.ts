@@ -1,3 +1,4 @@
+import { CHEAPER_PLANS } from "@/config/student-money";
 import type { Prisma } from "@/generated/prisma/client";
 
 // Example options for the demo bank (spec step 76): made-up providers and prices, so the
@@ -89,7 +90,9 @@ export const DEMO_OPTIONS: Omit<Prisma.SwitchOptionCreateManyInput, "checkedAt">
     merchantKey: "netflix",
     provider: "Netflix",
     name: "Netflix Standard with ads",
-    monthlyCents: 799,
+    // The list price the cheaper-plan card uses (src/config/student-money.ts), so the card, the
+    // Subscriptions page and the switch flow state one saving (walk 11-26: $78 against $90).
+    monthlyCents: CHEAPER_PLANS[0].cents,
     includes: "The same shows in HD on two screens",
     givesUp: "Has ads",
     signUpUrl: `${EXAMPLE}/netflix-plans`,

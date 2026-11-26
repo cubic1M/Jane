@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CHEAPER_PLANS } from "@/config/student-money";
+import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import { checkGuardrails } from "@/lib/guardrails";
 import { compareOptions, optionLabel, type CompareOption } from "./compare";
 
@@ -79,6 +81,26 @@ describe("comparing options", () => {
     expect(result.pick.option.id).toBe("ads");
     expect(result.pick.notes).toEqual(["Has ads"]);
     expect(result.runnersUp).toEqual([]);
+  });
+
+  // Walk 11-26: the card said "save $78/yr" (Netflix at $15.49, Standard with ads $8.99) and the
+  // switch flow "saves $90.00" (the demo option was $7.99). By hand: (1549 - 899) x 12 = $7,800 cents.
+  it("saves the same amount in the switch flow as the cheaper-plan card says", () => {
+    const demo = DEMO_OPTIONS.find((o) => o.id === "demo-opt-netflix-ads")!;
+    const result = compareOptions(
+      { kind: "bill", monthlyCents: 1_549, category: null, merchantKey: "netflix" },
+      [
+        option({
+          id: demo.id,
+          kind: "tier",
+          merchantKey: "netflix",
+          monthlyCents: demo.monthlyCents!,
+        }),
+      ],
+    )!;
+    const card = (1_549 - CHEAPER_PLANS[0].cents) * 12;
+    expect(card).toBe(7_800);
+    expect(result.pick.savingCents).toBe(card);
   });
 
   it("ignores options that save too little to be worth a switch", () => {

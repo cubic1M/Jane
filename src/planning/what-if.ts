@@ -177,9 +177,13 @@ export function runScenario(
       title: "Pause extra debt payments and pause moving money to goals",
       detail: "Keep the minimums; pick it back up when the margin returns.",
     });
+  }
+  // Only when spending really sits above income once this settles: a step worth $0 is not a step
+  // (walk 11-26: "Trim spending by $0.00 a month" after a lapse that ends with the margin back).
+  if (after.marginCents < 0) {
     plan.push({
       key: "trim",
-      title: `Trim spending by ${formatCents(Math.max(0, -after.marginCents))} a month`,
+      title: `Trim spending by ${formatCents(-after.marginCents)} a month`,
       detail: "That is how far spending sits above what comes in once this settles.",
     });
   }
