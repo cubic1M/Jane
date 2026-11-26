@@ -154,7 +154,11 @@ const goal: FlowDef<null> = {
 
 // The fingerprint of the finding picked, taken when it is picked; the end refuses a finding that
 // has changed since (the freshness contract on MessageRefs.fingerprint).
-const stampFinding = (key: string, answers: Answers, data: { findings: SnapshotFinding[] }) =>
+const stampFinding = (
+  key: string,
+  answers: Answers,
+  data: { findings: SnapshotFinding[] },
+): Answers =>
   key === "finding"
     ? { fingerprint: data.findings.find((f) => f.findingId === answers.finding)?.fingerprint ?? "" }
     : {};

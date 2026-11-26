@@ -761,7 +761,7 @@ function homeCards({ tax }: In): Candidate[] {
 // Spec step 166: with a document partner, Jane collects the forms itself: a form that
 // doesn't match the accounts, the ones collected, and one still missing a week after its
 // date. Without one (step 119), from late January it asks whether each form has arrived.
-function documentCards({ tax, acts }: In): Candidate[] {
+function documentCards({ tax }: In): Candidate[] {
   const docs = tax.documents;
   if (!docs?.collecting) {
     const due = tax.formsDue;
