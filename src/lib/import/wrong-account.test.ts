@@ -6,6 +6,23 @@ import {
   wrongAccountNote,
 } from "./wrong-account";
 
+describe("two files of one bank", () => {
+  it("are two accounts when their last digits differ, and one when they agree", () => {
+    const a = { file: "a.csv", bank: "Chase", kind: "checking", mask: "1234" };
+    expect(mixedFilesNote([a, { ...a, file: "b.csv", mask: "5678" }])).toMatch(/two different/);
+    expect(mixedFilesNote([a, { ...a, file: "b.csv", mask: "1234" }])).toBeNull();
+    expect(mixedFilesNote([a, { ...a, file: "b.csv", mask: null }])).toBeNull();
+  });
+
+  it("a linked account's short mask is never a sure match for a file's four digits", () => {
+    const linked = [{ name: "Checking", institution: "Chase", mask: "12", kind: "checking" }];
+    const file = { file: "c.csv", bank: "Chase", kind: "checking", mask: "3412" };
+    expect(linkedAccountNote(linked, [file])?.sure).not.toBe(true);
+    const four = [{ ...linked[0], mask: "3412" }];
+    expect(linkedAccountNote(four, [file])?.sure).toBe(true);
+  });
+});
+
 describe("wrongAccountNote", () => {
   it("says so when another bank's file is going into an account", () => {
     expect(
