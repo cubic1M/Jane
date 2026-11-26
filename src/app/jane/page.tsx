@@ -105,7 +105,7 @@ function Section({
   );
 }
 
-async function JaneContent() {
+async function JaneContent({ alertId }: { alertId?: string }) {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
@@ -113,7 +113,7 @@ async function JaneContent() {
   // read, and the page must then read it again (the header's scan bar does).
   const scanning = await scanInProgress(user.id);
   const [hub, accounts, lastRun, snapshot, timeline, timezone] = await Promise.all([
-    loadJaneHub(user.id),
+    loadJaneHub(user.id, { alertId }),
     db.accounts.count(),
     lastControllerRun(user.id),
     loadSnapshot(user.id),
@@ -399,7 +399,7 @@ async function JaneContent() {
         links={[]}
         summary={alerts.unread === 0 ? "none new" : `${alerts.unread} new`}
         // New ones show without a tap (demo-video list: the alerts were folded away).
-        open={alerts.unread > 0}
+        open={alerts.unread > 0 || (!!alertId && alerts.items.some((a) => a.id === alertId))}
       >
         {alerts.items.length === 0 ? (
           <p className={MUTED}>No new alerts. Jane tells you here when something needs a look.</p>
@@ -434,10 +434,13 @@ async function JaneContent() {
 // Never kept in the browser's memory (src/lib/page-cache.ts). Opening this page marks alerts read, and new ones arrive on their own.
 export const unstable_dynamicStaleTime = 0;
 
-export default function JanePage() {
+export default async function JanePage({ searchParams }: PageProps<"/jane">) {
+  // The alert a card's link is about (?alert=): shown in the list and the section opened.
+  const alert = (await searchParams).alert;
+  const alertId = typeof alert === "string" && /^[a-z0-9]{10,40}$/i.test(alert) ? alert : undefined;
   return (
     <PageShell layout="roomy">
-      <JaneContent />
+      <JaneContent alertId={alertId} />
     </PageShell>
   );
 }

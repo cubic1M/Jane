@@ -2,7 +2,8 @@
 // file into an existing account (a Wells Fargo file into "Chase card"; the page opens on the first
 // account), two accounts' files in one upload (they'd land in one account), or a new account for a
 // card Jane already has (two "Citi card"s). From the new-user passes. Client-safe: no server
-// imports.
+// imports (types only).
+import type { Verdict } from "@/planning/same-account";
 
 // Short names people give accounts, beside the bank's own.
 const SHORT_NAMES: Record<string, readonly string[]> = {
@@ -11,7 +12,7 @@ const SHORT_NAMES: Record<string, readonly string[]> = {
   "Wells Fargo": ["wf", "wells"],
 };
 
-function namesBank(accountName: string, bank: string): boolean {
+export function namesBank(accountName: string, bank: string): boolean {
   const name = accountName.toLowerCase();
   if (name.includes(bank.toLowerCase())) return true;
   const words = name.split(/[^a-z0-9]+/);
@@ -84,6 +85,7 @@ export function wrongAccountNote(
 // A linked bank's account: its institution (the Plaid Item's institution name, from Link) and
 // mask (Plaid: "the last 2-4 alphanumeric characters" of its number).
 export type LinkedAccount = {
+  id?: string;
   name: string;
   institution: string | null;
   mask: string | null;
@@ -97,14 +99,16 @@ const masksAgree = (a: string, b: string) => {
 };
 
 // A file from an account Jane already gets from a linked bank, whose transactions come in by
-// themselves. Sure when the bank and the last four agree, and then the import waits; else, the same
-// bank and kind with no number in the file, a warning, naming the account only when just one fits
-// (a file can't always say checking from savings). A different last four is another account, and
-// says nothing. It says nothing about what would be counted: that is decided once the file is in
-// (src/planning/books.ts accountsLeftOut).
+// themselves. Sure when the bank and the last four agree, and then the import waits. Otherwise the
+// same bank and kind: what the note says follows what net worth does with the file
+// (src/planning/same-account.ts, passed as `verdicts` by linked account id). "Different" says
+// nothing (the file is counted), "same" says it is left out by itself, and when that can't be told
+// it says the file is left out of net worth until it can, and how to count it. A savings file beside
+// a linked checking account is another account, as is a different last four. The decision itself is
+// made once the file is in (src/planning/books.ts accountsLeftOut).
 export function linkedAccountNote(
   linked: readonly LinkedAccount[],
-  files: readonly (FileFacts & { mask?: string | null })[],
+  files: readonly (FileFacts & { mask?: string | null; verdicts?: Record<string, Verdict> })[],
 ): { text: string; sure: boolean } | null {
   let maybe: { text: string; sure: boolean } | null = null;
   for (const f of files) {
@@ -113,7 +117,7 @@ export function linkedAccountNote(
       (l) =>
         l.institution &&
         namesBank(l.institution, f.bank!) &&
-        (!l.kind || !f.kind || isCard(l.kind) === isCard(f.kind)),
+        (!l.kind || !f.kind || l.kind === f.kind),
     );
     const label = (l: LinkedAccount) => `${l.name}${l.mask ? ` ····${l.mask}` : ""}`;
     const sure = f.mask ? same.find((l) => l.mask && masksAgree(l.mask, f.mask!)) : undefined;
@@ -123,16 +127,23 @@ export function linkedAccountNote(
         text: `You already link ${label(sure)} through ${sure.institution}, so its transactions come in by themselves. There's no need to import ${f.file}.`,
       };
     }
-    const [unsure, ...others] = same.filter((l) => !f.mask || !l.mask);
-    if (unsure && !maybe) {
-      maybe = {
-        sure: false,
-        text:
-          others.length === 0
-            ? `If ${f.file} is your linked ${label(unsure)}, skip it: its transactions already come in from ${unsure.institution}.`
-            : `If ${f.file} is from one of your linked ${unsure.institution} accounts, skip it: their transactions already come in by themselves.`,
-      };
-    }
+    const verdictOf = (l: LinkedAccount) => (l.id ? f.verdicts?.[l.id] : undefined) ?? "unknown";
+    const open = same.filter((l) => (!f.mask || !l.mask) && verdictOf(l) !== "different");
+    const [first, ...others] = open;
+    if (!first || maybe) continue;
+    const which =
+      others.length === 0
+        ? `your linked ${label(first)}`
+        : `one of your linked ${first.institution} accounts`;
+    maybe = open.some((l) => verdictOf(l) === "same")
+      ? {
+          sure: false,
+          text: `${f.file} matches ${which}, whose transactions already come in from ${first.institution}, so Jane leaves it out of net worth by itself.`,
+        }
+      : {
+          sure: false,
+          text: `Jane can't yet tell whether ${f.file} is ${which}. Until it can, ${f.file} is left out of net worth; "This is a different account" on this page counts it.`,
+        };
   }
   return maybe;
 }

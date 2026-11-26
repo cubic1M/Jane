@@ -55,6 +55,7 @@ async function ImportContent({
     db.accounts.findMany({
       where: { source: "plaid" },
       select: {
+        id: true,
         name: true,
         mask: true,
         type: true,
@@ -70,6 +71,7 @@ async function ImportContent({
     }),
   ]);
   const linked = linkedRows.map((a) => ({
+    id: a.id,
     name: a.name,
     institution: a.item?.institutionName ?? null,
     mask: a.mask,

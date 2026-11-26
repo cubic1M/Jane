@@ -22,7 +22,7 @@ import type { Comparison } from "@/planning/compare";
 // The Jane hub (spec step 80): what Jane found and is doing, in four short lists, each with
 // a "See all" to its full page. Reads only; seeing the hub doesn't mark cards or alerts seen.
 
-type Options = { client?: PrismaClient; now?: Date };
+type Options = { client?: PrismaClient; now?: Date; alertId?: string };
 
 export type DecideItem = { findingId: string; title: string; savings: string; pick: string | null };
 export type ProgressItem = {
@@ -96,7 +96,7 @@ export function orderInProgress<T extends { status: ActionStatus; createdAt: Dat
 
 export async function loadJaneHub(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), alertId }: Options = {},
 ) {
   const db = scopedFor(userId, client);
   const [plan, open, doneCount, done, saved, alerts, unread, verified] = await Promise.all([
@@ -124,7 +124,7 @@ export async function loadJaneHub(
       take: HUB_DONE_LIMIT,
     }),
     savedToDate(userId, { client }),
-    recentAlerts(userId, { client, now, limit: HUB_ALERTS_LIMIT }),
+    recentAlerts(userId, { client, now, limit: HUB_ALERTS_LIMIT, include: alertId }),
     unreadAlertCount(userId, { client }),
     // What the person's transactions confirm, as Home's Saved tile says it.
     verifiedSavings(userId, { client, now }),

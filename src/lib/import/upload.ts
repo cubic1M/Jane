@@ -11,6 +11,7 @@ import { mappingFromForm } from "@/data-sources/csv/column-mapping";
 import { CsvDataSource, CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { decodeStatement } from "@/data-sources/csv/decode";
 import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/types";
+import { accountsNotCounted } from "@/lib/account-copies";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -181,7 +182,7 @@ async function accountHoldingRows(
   db: ScopedDb,
   files: CsvFile[],
   fields: AccountFields,
-): Promise<{ name: string; rows: number; of: number } | null> {
+): Promise<{ id: string; name: string; rows: number; of: number } | null> {
   const batch = await new CsvDataSource(
     {
       ref: NEW_ACCOUNT_ID,
@@ -207,7 +208,7 @@ async function accountHoldingRows(
   const [top] = [...byAccount.entries()].sort((a, b) => b[1].size - a[1].size);
   if (!top || top[1].size < keys.length * NEW_ACCOUNT_SAME_ROWS_SHARE) return null;
   const account = await db.accounts.findUnique({ where: { id: top[0] }, select: { name: true } });
-  return account ? { name: account.name, rows: top[1].size, of: keys.length } : null;
+  return account ? { id: top[0], name: account.name, rows: top[1].size, of: keys.length } : null;
 }
 
 export async function saveUpload(
@@ -236,9 +237,24 @@ export async function saveUpload(
     const already = await accountHoldingRows(db, files, fields);
     if (already) {
       await uploadFailed(db.userId, "already_imported");
+      // An account Jane leaves out of net worth takes no new rows to pick: nothing was added, and
+      // nothing is asked (walk 23: "Pick Chase checking above" for a left-out upload).
+      const leftOut = (await accountsNotCounted(db)).get(already.id);
+      const inIt =
+        already.rows === already.of
+          ? `these ${already.of} transactions are`
+          : `${already.rows} of these ${already.of} transactions are`;
+      // Said as a match only where Jane has decided it is one; else as not able to tell them apart.
+      const why = leftOut
+        ? leftOut.reason === "maybe_same"
+          ? `because it can't tell it from ${leftOut.sameAs.name}`
+          : `because it matches ${leftOut.sameAs.name}`
+        : "";
       return {
         ok: false,
-        error: `${already.rows} of these ${already.of} transactions are already in ${already.name}. Pick ${already.name} above, so only the new ones are added.`,
+        error: leftOut
+          ? `Nothing was added: ${inIt} already in ${already.name}, which Jane leaves out of net worth ${why}.`
+          : `${already.rows} of these ${already.of} transactions are already in ${already.name}. Pick ${already.name} above, so only the new ones are added.`,
       };
     }
     accountId = (await createCsvAccountRow(db, fields)).id;

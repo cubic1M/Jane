@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { importCsvFiles, enqueueJob, keepFileBalances, keepGivenBalance } = vi.hoisted(() => ({
-  importCsvFiles: vi.fn(),
-  enqueueJob: vi.fn(),
-  keepFileBalances: vi.fn(),
-  keepGivenBalance: vi.fn(),
-}));
+const { importCsvFiles, enqueueJob, keepFileBalances, keepGivenBalance, accountsNotCounted } =
+  vi.hoisted(() => ({
+    accountsNotCounted: vi.fn(),
+    importCsvFiles: vi.fn(),
+    enqueueJob: vi.fn(),
+    keepFileBalances: vi.fn(),
+    keepGivenBalance: vi.fn(),
+  }));
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/account-copies", () => ({ accountsNotCounted }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/jobs", () => ({ enqueueJob }));
 vi.mock("@/lib/import/balances", () => ({ keepFileBalances, keepGivenBalance }));
@@ -60,6 +63,7 @@ const BALANCES = [{ date: "2026-10-13", balanceCents: 248451 }];
 beforeEach(() => {
   accountsCreate.mockReset().mockResolvedValue({ id: "acct_new" });
   accountsDelete.mockReset().mockResolvedValue({});
+  accountsNotCounted.mockReset().mockResolvedValue(new Map());
   accountsFind.mockReset().mockResolvedValue({ name: "Chase card" });
   transactionsFind.mockReset().mockResolvedValue([]);
   importCsvFiles.mockReset().mockResolvedValue({
@@ -277,6 +281,44 @@ describe("saveUpload into a new account", () => {
     expect(accountsCreate).not.toHaveBeenCalled();
     expect(importCsvFiles).not.toHaveBeenCalled();
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "already_imported" });
+  });
+
+  it("says nothing was added, and asks for nothing, when those rows are in a left-out upload", async () => {
+    // Walk 23: "Pick Chase checking above, so only the new ones are added" for an upload Jane
+    // leaves out of net worth, with nothing new to add.
+    const two = CHASE_CARD + "10/14/2026,10/15/2026,Blue Bottle,Food & Drink,Sale,-5.50,\n";
+    transactionsFind.mockImplementation(async ({ where }) =>
+      where.dedupeKey.in.map((key: string) => ({ accountId: "acct_1", dedupeKey: key })),
+    );
+    accountsNotCounted.mockResolvedValue(
+      new Map([
+        ["acct_1", { reason: "same_account", sameAs: { id: "l1", name: "Plaid Checking" } }],
+      ]),
+    );
+    const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv", two)] }));
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Nothing was added: these 2 transactions are already in Chase card, which Jane leaves out of net worth because it matches Plaid Checking.",
+    });
+    expect(accountsCreate).not.toHaveBeenCalled();
+  });
+
+  it("counts only the rows that are there, and does not call an unsure match a match", async () => {
+    const two = CHASE_CARD + "10/14/2026,10/15/2026,Blue Bottle,Food & Drink,Sale,-5.50,\n";
+    // One of two rows is in the left-out account: half is enough to stop the upload.
+    transactionsFind.mockImplementation(async ({ where }) => [
+      { accountId: "acct_1", dedupeKey: where.dedupeKey.in[0] },
+    ]);
+    accountsNotCounted.mockResolvedValue(
+      new Map([["acct_1", { reason: "maybe_same", sameAs: { id: "l1", name: "Plaid Checking" } }]]),
+    );
+    const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv", two)] }));
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Nothing was added: 1 of these 2 transactions are already in Chase card, which Jane leaves out of net worth because it can't tell it from Plaid Checking.",
+    });
   });
 
   it("makes the account when only a few rows overlap another account", async () => {

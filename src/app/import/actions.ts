@@ -22,6 +22,7 @@ import { runJob } from "@/lib/jobs";
 import { mayRescan } from "@/lib/trial-rescans";
 import { previewCsvFiles, type FilePreview } from "@/lib/import/import-csv";
 import { alreadyInAnotherAccount, type AlreadyIn } from "@/lib/import/other-account";
+import { linkedVerdicts, type LinkedVerdicts } from "@/lib/import/linked-verdicts";
 import {
   NOT_ALLOWED,
   accountFields,
@@ -65,7 +66,14 @@ export async function createCsvAccount(
 }
 
 export type PreviewResult =
-  { ok: true; files: FilePreview[]; alreadyIn?: AlreadyIn | null } | { ok: false; error: string };
+  | {
+      ok: true;
+      files: FilePreview[];
+      alreadyIn?: AlreadyIn | null;
+      // Per file, what comparing it with each linked account of its bank says.
+      verdicts?: LinkedVerdicts;
+    }
+  | { ok: false; error: string };
 
 export async function previewImport(formData: FormData): Promise<PreviewResult> {
   const db = await csvDb();
@@ -91,7 +99,8 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
     formData.get("accountId") === NEW_ACCOUNT_ID
       ? await alreadyInAnotherAccount(db, files).catch(() => null)
       : null;
-  return { ok: true, files: previews, alreadyIn };
+  const verdicts = await linkedVerdicts(db, files).catch(() => []);
+  return { ok: true, files: previews, alreadyIn, verdicts };
 }
 
 export type StartResult =

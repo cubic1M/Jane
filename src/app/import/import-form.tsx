@@ -40,14 +40,26 @@ const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
 // What each previewed file says about its account; a layout the person mapped has no kind to go by.
-function factsOf(files: Extract<PreviewResult, { ok: true }>["files"]) {
-  return files.flatMap((f) =>
+function factsOf(
+  files: Extract<PreviewResult, { ok: true }>["files"],
+  verdicts: Extract<PreviewResult, { ok: true }>["verdicts"] = [],
+  // The type of the account the files go into, when the person has said (it settles checking from
+  // savings, which a file often cannot; never a card for a bank account or the other way round).
+  into?: AccountKind | null,
+) {
+  return files.flatMap((f, index) =>
     f.ok
       ? [
           {
             file: f.file,
             bank: f.bank,
-            kind: f.formatId === "custom" ? undefined : f.account.kind,
+            kind:
+              f.formatId === "custom"
+                ? undefined
+                : into && (into === "credit_card") === (f.account.kind === "credit_card")
+                  ? into
+                  : f.account.kind,
+            verdicts: verdicts[index],
             mask: f.mask,
           },
         ]
@@ -186,13 +198,17 @@ export function ImportForm({
 
   const files = preview?.ok ? preview.files : [];
   const chosen = accounts.find((a) => a.id === account);
+  const suggested = files.find((f) => f.ok)?.account;
+  const into = account === NEW_ACCOUNT_ID ? (newKind ?? suggested?.kind) : chosen?.kind;
   const facts = factsOf(files);
   // Two accounts' files at once wait (they'd land in one account); else one line when the files
   // don't fit the chosen account, or are from one Jane already has.
   const mixed = mixedFilesNote(facts);
   // A file from a linked bank's account: the import waits when it's sure (same bank, same last
   // four), with a way to skip the file either way.
-  const fromLinked = mixed ? null : linkedAccountNote(linked, facts);
+  const fromLinked = mixed
+    ? null
+    : linkedAccountNote(linked, factsOf(files, preview?.ok ? preview.verdicts : undefined, into));
   const wrongAccount = fromLinked
     ? null
     : (mixed ?? (chosen ? wrongAccountNote(chosen, facts) : existingAccountNote(accounts, facts)));
@@ -206,7 +222,6 @@ export function ImportForm({
   }
   const ready = files.length > 0 && files.every((f) => f.ok) && files.some((f) => f.rowCount > 0);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
-  const suggested = files.find((f) => f.ok)?.account;
   const days = coveredDays(files);
   const oldNewest = oldUploadNewest(
     files.flatMap((f) => (f.ok ? [f] : [])),

@@ -7,7 +7,7 @@ import {
   URGENT_ALERT_TYPES,
   type AlertDelivery,
 } from "@/config/alerts";
-import { onePerCharge, type AlertCandidate } from "@/detection/alerts";
+import { chargesAnsweredElsewhere, onePerCharge, type AlertCandidate } from "@/detection/alerts";
 import type { AlertType, PrismaClient } from "@/generated/prisma/client";
 import { renderAlertEmail } from "@/lib/alert-email";
 import { track } from "@/lib/analytics";
@@ -88,6 +88,17 @@ export async function raiseAlerts(
     skipDuplicates: true,
     select: { type: true },
   });
+  // A large-charge alert an earlier scan stored, from a shorter history, for a charge this scan asks
+  // about in its own way ("Was this you?", "Charged twice?"): retired once the new one is stored, so
+  // the charge is one card (walk 23: a $744 charge in the dock twice). One already emailed stays as
+  // a read row, so the day's email count and the history are kept.
+  const answered = [...chargesAnsweredElsewhere(wanted)];
+  if (answered.length > 0) {
+    const stale = { type: "large_charge" as const, key: { in: answered } };
+    const mine = scopedFor(userId, client).alerts;
+    await mine.deleteMany({ where: { ...stale, emailedAt: null } });
+    await mine.updateMany({ where: { ...stale, readAt: null }, data: { readAt: now } });
+  }
   if (created.length > 0) {
     const byType = Object.fromEntries(ALERT_TYPES.map((t) => [t, 0])) as Record<AlertType, number>;
     for (const row of created) byType[row.type] += 1;
@@ -232,11 +243,27 @@ export async function recentAlerts(
     client = defaultClient,
     now = new Date(),
     limit,
-  }: Pick<Options, "client" | "now"> & { limit: number },
+    include,
+  }: Pick<Options, "client" | "now"> & {
+    limit: number;
+    // The alert a card's link points at: in the list even when it is older than the limit or the
+    // recent days (walk 23: "See alerts" opened a list without the $744 charge it was about).
+    include?: string;
+  },
 ) {
-  return scopedFor(userId, client).alerts.findMany({
+  const db = scopedFor(userId, client);
+  const types = await shownTypes(userId, client);
+  const select = {
+    id: true,
+    title: true,
+    body: true,
+    readAt: true,
+    confidencePercent: true,
+    confidenceReason: true,
+  } as const;
+  const rows = await db.alerts.findMany({
     where: {
-      type: { in: await shownTypes(userId, client) },
+      type: { in: types },
       OR: [
         { readAt: null },
         { createdAt: { gt: new Date(now.getTime() - ALERTS_RECENT_DAYS * DAY_MS) } },
@@ -244,15 +271,14 @@ export async function recentAlerts(
     },
     orderBy: [{ readAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }, { id: "asc" }],
     take: limit,
-    select: {
-      id: true,
-      title: true,
-      body: true,
-      readAt: true,
-      confidencePercent: true,
-      confidenceReason: true,
-    },
+    select,
   });
+  if (!include || rows.some((a) => a.id === include)) return rows;
+  const pointed = await db.alerts.findFirst({
+    where: { id: include, type: { in: types } },
+    select,
+  });
+  return pointed ? [pointed, ...rows] : rows;
 }
 
 export async function unreadAlertCount(

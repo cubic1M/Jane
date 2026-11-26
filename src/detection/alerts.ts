@@ -383,13 +383,22 @@ export function onePerCharge(alerts: AlertCandidate[]): AlertCandidate[] {
     const parsed = parseKey(a.key);
     return !(parsed?.rule === "double" && chargedTwice.has(parsed.transactionId));
   });
-  const wasThisYou = new Set(
-    kept.flatMap((a) =>
-      a.type === "unusual_activity" ? (parseKey(a.key)?.transactionId ?? []) : [],
+  const answered = chargesAnsweredElsewhere(kept);
+  return kept.filter((a) => !(a.type === "large_charge" && answered.has(a.key)));
+}
+
+// The charges (transaction ids) that another alert already asks about, so a large-charge alert for
+// them is not wanted: "Was this you?" and "Charged twice?". Also used to retire a large-charge
+// alert stored by an earlier, shorter scan, once a later scan asks about the same charge.
+export function chargesAnsweredElsewhere(alerts: readonly AlertCandidate[]): Set<string> {
+  return new Set(
+    alerts.flatMap((a) =>
+      a.type === "unusual_activity"
+        ? (parseKey(a.key)?.transactionId ?? [])
+        : a.type === "duplicate_charge"
+          ? [a.key]
+          : [],
     ),
-  );
-  return kept.filter(
-    (a) => !(a.type === "large_charge" && (wasThisYou.has(a.key) || chargedTwice.has(a.key))),
   );
 }
 
