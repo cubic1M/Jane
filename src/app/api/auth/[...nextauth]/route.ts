@@ -33,8 +33,10 @@ async function fromStatementTrial(request: Request): Promise<boolean> {
   if (!token) return false;
   const session = await systemDb("Auth: whose session this is, before anyone is signed in")
     .session.findUnique({ where: { sessionToken: token }, select: { userId: true } })
-    .catch(() => null);
-  return isStatementTrialUser(session?.userId);
+    .catch(() => undefined);
+  // Couldn't be read (a row that isn't there is null): the cookie that ends with the browser, which
+  // the next read that can tell sets as it should be.
+  return session === undefined || isStatementTrialUser(session?.userId);
 }
 
 // Sign-in requests (email links, OAuth callbacks) are rate limited per IP.

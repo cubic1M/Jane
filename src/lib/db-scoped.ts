@@ -162,6 +162,12 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         janePreferences: typeof inTransaction.janePreference;
         janeMessages: typeof inTransaction.janeMessage;
         askConversations: typeof inTransaction.askConversation;
+        // A linked brokerage and what a refresh of it saves (src/lib/robinhood/refresh.ts).
+        robinhoodConnections: typeof inTransaction.robinhoodConnection;
+        accounts: typeof inTransaction.account;
+        securities: typeof inTransaction.security;
+        holdings: typeof inTransaction.holding;
+        investmentTransactions: typeof inTransaction.investmentTransaction;
       }) => Promise<T>,
     ) =>
       asUserTransaction(inTransaction, userId, (tx) =>
@@ -173,6 +179,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
           janePreferences: tx.janePreference,
           janeMessages: tx.janeMessage,
           askConversations: tx.askConversation,
+          robinhoodConnections: tx.robinhoodConnection,
+          accounts: tx.account,
+          securities: tx.security,
+          holdings: tx.holding,
+          investmentTransactions: tx.investmentTransaction,
         }),
       )
         // What was read before it may have changed.

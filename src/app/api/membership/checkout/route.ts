@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { beforeTerms } from "@/lib/before-terms";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { track } from "@/lib/analytics";
@@ -20,6 +21,8 @@ export async function POST() {
       { status: 403 },
     );
   }
+  const unaccepted = beforeTerms(user);
+  if (unaccepted) return unaccepted;
   const limited = await limitOrNull("membership", user.id);
   if (limited) return limited;
   if (!stripeEnabled()) {
@@ -34,7 +37,12 @@ export async function POST() {
       priceCents,
       baseUrl: appBase(),
     });
-    await track(user.id, "membership_checkout_started", { price_cents: priceCents });
+    // The payment page exists now: failing to count it doesn't keep it from them.
+    try {
+      await track(user.id, "membership_checkout_started", { price_cents: priceCents });
+    } catch (error) {
+      log.error("Couldn't count a checkout start", { error: String(error) });
+    }
     return NextResponse.json({ url });
   } catch (error) {
     if (!(error instanceof StripeError)) throw error;

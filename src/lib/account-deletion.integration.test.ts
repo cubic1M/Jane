@@ -369,6 +369,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       "user_data_deleted",
       { type: "user", id: userId },
       { plaid_items_removed: 1 },
+      // Written inside the deletion's own transaction.
+      { tx: expect.anything() },
     );
   });
 

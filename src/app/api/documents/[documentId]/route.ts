@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/lib/session";
 // sandboxed; PDFs always download, because Chrome won't show a PDF in a sandboxed
 // document. ?download=1 saves an image too.
 
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
 // The name for the download header: plain ASCII for old browsers, the real name encoded.
 function disposition(type: "inline" | "attachment", fileName: string): string {
   const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
@@ -21,7 +23,8 @@ export async function GET(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { documentId } = await params;
-  const file = await openDocument(user.id, documentId);
+  // An id no document can have is a missing one: the database refuses a null character outright.
+  const file = ID_PATTERN.test(documentId) ? await openDocument(user.id, documentId) : null;
   if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const download =

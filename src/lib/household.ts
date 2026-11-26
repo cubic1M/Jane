@@ -175,39 +175,39 @@ export async function leaveHousehold(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  const left = await scopedFor(userId, client).householdMembers.findUnique({
-    where: { userId },
-    select: { householdId: true },
-  });
-  if (!left) return;
-  await systemTransaction(
+  const householdId = await systemTransaction(
     WHY,
     async (tx) => {
+      // The membership first, as account deletion takes it: taking the bills first, each could wait
+      // on the other. One that ended meanwhile leaves everything as it is.
+      const [membership] = await tx.$queryRaw<{ household_id: string }[]>`
+        SELECT household_id FROM household_members WHERE user_id = ${userId} FOR UPDATE`;
+      if (!membership) return null;
+      const inIt = { where: { householdId: membership.household_id } };
       // The shared balance ends with the pair; each person's own transactions stay.
-      await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
-      await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
+      await tx.sharedCharge.deleteMany(inIt);
+      await tx.settlement.deleteMany(inIt);
       // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
       // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
       // theirs when they invite someone new.
       await stopSharing(tx, userId);
       await tx.householdMember.delete({ where: { userId } });
-      if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
-        await tx.household.delete({ where: { id: left.householdId } });
+      if ((await tx.householdMember.count(inIt)) === 0) {
+        await tx.household.delete({ where: { id: membership.household_id } });
       } else {
         await tx.householdInvite.deleteMany({
-          where: { householdId: left.householdId, acceptedAt: null },
+          where: { householdId: membership.household_id, acceptedAt: null },
         });
       }
+      return membership.household_id;
     },
     client,
   );
+  if (!householdId) return;
   await logAudit(
     { type: "user", id: userId },
     "household_left",
-    {
-      type: "household",
-      id: left.householdId,
-    },
+    { type: "household", id: householdId },
     {},
   );
   await track(userId, "household_left", {});

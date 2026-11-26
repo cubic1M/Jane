@@ -1,5 +1,5 @@
 import { ROBINHOOD_LIMITS, robinhoodServer } from "@/config/robinhood";
-import { cappedText } from "./capped";
+import { cappedText } from "@/lib/capped-text";
 
 // The one way into Robinhood's MCP server (docs/setup/robinhood.md). Robinhood's only OAuth scope
 // also lets a connection trade, so being read-only is decided here: READ_TOOLS is every tool Jane

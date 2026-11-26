@@ -2,6 +2,7 @@ import { GIVING } from "@/config/giving";
 import { RECEIPT_MATCH_DAYS, RETENTION_YEARS_BACK } from "@/config/records";
 import { TAX_TAGS, type TaxTagKind } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -11,9 +12,10 @@ import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags, type TaxTagsView } from "@/lib/tax-organizer";
+import { todayOf } from "@/lib/today";
 import {
   buildAuditPack,
-  matchReceipt,
+  matchReceipts,
   retentionSchedule,
   type AuditItem,
   type AuditPack,
@@ -76,13 +78,20 @@ export async function loadAuditRecords(
 ): Promise<AuditRecordsView> {
   const db = scopedFor(userId, client);
   const today = iso(now);
-  const [estimate, tags, giving, home, docs, receipts, profile, first] = await Promise.all([
+  // The gifts and the home figures are worked out from the estimate of the year asked about.
+  const estimated =
     loaded.estimate?.year === year
-      ? loaded.estimate
-      : loadTaxEstimate(userId, { client, now, year }),
+      ? Promise.resolve(loaded.estimate)
+      : loadTaxEstimate(userId, { client, now, year });
+  const [estimate, tags, giving, home, docs, receipts, profile, first] = await Promise.all([
+    estimated,
     loaded.tags?.year === year ? loaded.tags : loadTaxTags(userId, year, { client }),
-    loaded.giving ?? loadGiving(userId, { client, now }),
-    loaded.home ?? loadHomeTaxes(userId, { client, now }),
+    loaded.giving ??
+      Promise.all([estimated, adviceMode(userId, { client })]).then(([of, advice]) =>
+        loadGiving(userId, { client, now, loaded: { estimate: of, advice } }),
+      ),
+    loaded.home ??
+      estimated.then((of) => loadHomeTaxes(userId, { client, now, loaded: { estimate: of } })),
     loaded.docs?.year === year ? loaded.docs : loadTaxDocuments(userId, year, { client, now }),
     db.documents.findMany({
       where: { kind: "receipt" },
@@ -106,6 +115,13 @@ export async function loadAuditRecords(
     cents: r.purchaseAmountCents,
   }));
   const receipted = new Set(giving.gifts.filter((g) => g.receipted).map((g) => g.transactionId));
+  const matched = matchReceipts(
+    tags.tagged
+      .filter((t) => TAG_ITEMS.includes(t.tag))
+      .map((t) => ({ id: t.id, date: t.date, cents: t.amountCents })),
+    vault,
+    RECEIPT_MATCH_DAYS,
+  );
   const candidates: AuditItem[] = [];
 
   // The tagged spending: each charge with the receipt in the vault that matches it.
@@ -114,7 +130,7 @@ export async function loadAuditRecords(
     const evidence: Evidence[] = [];
     const needs: string[] = [];
     for (const t of rows) {
-      const match = matchReceipt({ date: t.date, cents: t.amountCents }, vault, RECEIPT_MATCH_DAYS);
+      const match = matched.get(t.id);
       const confirmed = tag === "donation" && receipted.has(t.id);
       evidence.push({
         kind: "transaction",
@@ -256,8 +272,9 @@ export async function remindRetention(
   const view = await loadAuditRecords(userId, new Date(now).getUTCFullYear(), { client, now });
   const r = view.retention.find((x) => x.year === year);
   if (!r) throw new AuditRecordsError("That year isn't on your list.");
-  const today = iso(now);
-  const dueOn = r.status === "can_go" ? today : r.keepUntil;
+  // The day the reminder was promised, or the person's own today once that has passed.
+  const today = await todayOf(userId, { client, now });
+  const dueOn = r.remindOn > today ? r.remindOn : today;
   await addDeadline(
     userId,
     {

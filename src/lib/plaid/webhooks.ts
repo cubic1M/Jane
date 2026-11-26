@@ -12,6 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
 import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
+import { log } from "@/lib/log";
 import { recordOpsEvent } from "@/lib/ops-alerts";
 import { ITEM_STATUS, syncItem } from "./sync";
 import { systemDb } from "@/lib/system-db";
@@ -178,9 +179,15 @@ export async function firstDelivery(
     ],
     skipDuplicates: true,
   });
-  await systemDb(WHY, client).plaidWebhookEvent.deleteMany({
-    where: { receivedAt: { lt: new Date(now.getTime() - WEBHOOK_EVENT_DAYS * 86_400_000) } },
-  });
+  // Tidying: this delivery's record is written, so failing here would make Plaid's retry look like a
+  // repeat and the news would be lost. The next delivery clears them.
+  await systemDb(WHY, client)
+    .plaidWebhookEvent.deleteMany({
+      where: { receivedAt: { lt: new Date(now.getTime() - WEBHOOK_EVENT_DAYS * 86_400_000) } },
+    })
+    .catch((error: unknown) =>
+      log.error("Couldn't clear old Plaid webhook records", { error: String(error) }),
+    );
   return count === 1;
 }
 

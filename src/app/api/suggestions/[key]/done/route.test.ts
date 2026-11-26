@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TERMS_VERSION } from "@/config/legal";
 
 vi.mock("@/lib/rate-limit", () => ({
   limitOrNull: vi.fn(async () => null),
@@ -24,7 +25,7 @@ describe("POST /api/suggestions/[key]/done", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser)
       .mockReset()
-      .mockResolvedValue({ id: "user_1" } as never);
+      .mockResolvedValue({ id: "user_1", termsVersion: TERMS_VERSION } as never);
     vi.mocked(markSuggestionDone).mockClear();
   });
 

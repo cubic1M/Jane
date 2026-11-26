@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { TERMS_VERSION } from "@/config/legal";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/rate-limit", () => ({
@@ -30,7 +31,7 @@ import { POST as reserve } from "./reserve/route";
 beforeEach(() => {
   vi.mocked(getCurrentUser)
     .mockReset()
-    .mockResolvedValue({ id: "u1", email: "a@example.com" } as never);
+    .mockResolvedValue({ id: "u1", email: "a@example.com", termsVersion: TERMS_VERSION } as never);
   vi.mocked(reserveMembership).mockReset();
   vi.mocked(dismissOffer).mockReset();
   vi.mocked(recordPaidMembership).mockReset().mockResolvedValue(true);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cappedText } from "@/lib/capped-text";
 import { db } from "@/lib/db";
 import { describeClientError } from "@/lib/client-errors";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
     (await limitOrNull("clientError", ipKey(request.headers))) ??
     (await limitOrNull("errorReportsEveryone", "client"));
   if (limited) return limited;
-  const body = await request.text();
-  if (body.length > MAX_BODY) return NextResponse.json({ ok: false }, { status: 413 });
+  const body = await cappedText(request, MAX_BODY);
+  if (body === null) return NextResponse.json({ ok: false }, { status: 413 });
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);

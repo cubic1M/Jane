@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TERMS_VERSION } from "@/config/legal";
 
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/server")>()),
@@ -35,7 +36,7 @@ describe("/api/chat/act", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser)
       .mockReset()
-      .mockResolvedValue({ id: "u1" } as never);
+      .mockResolvedValue({ id: "u1", termsVersion: TERMS_VERSION } as never);
     vi.mocked(takeChatAction).mockReset();
   });
 

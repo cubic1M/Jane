@@ -44,12 +44,21 @@ const MAX_PATH = 300;
 const LINK_SECRET =
   /^(?:[A-Za-z0-9_-]{20,}(?:\.[a-z0-9]+)?|[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/;
 
+function decoded(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 export function scrubPath(path: string | null | undefined): string | null {
   if (!path) return null;
   const bare = path
     .split("?")[0]
     .split("/")
-    .map((segment) => (LINK_SECRET.test(segment) ? "[secret]" : segment))
+    // Read as the route would read it: the same secret written with percent escapes still opens it.
+    .map((segment) => (LINK_SECRET.test(decoded(segment)) ? "[secret]" : segment))
     .join("/");
   return scrub(bare.slice(0, MAX_PATH));
 }

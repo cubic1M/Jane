@@ -72,6 +72,45 @@ export function matchReceipt(
   return found ? { id: found.id, fileName: found.fileName } : null;
 }
 
+// Which receipt stands for each charge. One receipt stands for one charge: where more charges
+// than receipts could claim the same ones, none of them is called receipted.
+export function matchReceipts(
+  charges: { id: string; date: string; cents: number }[],
+  receipts: Parameters<typeof matchReceipt>[1],
+  days: number,
+): Map<string, { id: string; fileName: string }> {
+  // Earliest charge first, each taking its earliest free receipt: with one window length that gives
+  // as many charges a receipt as can have one, whatever order they arrived in.
+  const byDate = (a: { date: string | null }, b: { date: string | null }) =>
+    (a.date ?? "").localeCompare(b.date ?? "");
+  const dated = [...receipts].sort(byDate);
+  const options = new Map(
+    [...charges]
+      .sort(byDate)
+      .map((c) => [c.id, dated.filter((r) => matchReceipt(c, [r], days) !== null)]),
+  );
+  const heldBy = new Map<string, string>();
+  const matched = new Map<string, { id: string; fileName: string }>();
+  for (const [id, found] of options) {
+    const receipt = found.find((r) => !heldBy.has(r.id));
+    if (!receipt) continue;
+    heldBy.set(receipt.id, id);
+    matched.set(id, { id: receipt.id, fileName: receipt.fileName });
+  }
+  // A charge left without one competes with whoever holds a receipt it could claim, and they with
+  // whoever holds theirs: more charges than receipts, so none of that group is called receipted.
+  // (A set also walks what is added to it on the way.)
+  const short = new Set([...options.keys()].filter((id) => !matched.has(id)));
+  for (const id of short) {
+    for (const receipt of options.get(id)!) {
+      const holder = heldBy.get(receipt.id);
+      if (holder) short.add(holder);
+    }
+  }
+  for (const id of short) matched.delete(id);
+  return matched;
+}
+
 export type Retention = {
   year: number;
   key: keyof typeof RETENTION;

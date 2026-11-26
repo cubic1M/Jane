@@ -13,8 +13,9 @@ import { systemTransaction } from "@/lib/system-db";
 // "Delete all my data": every linked bank is removed at Plaid first, then the user row,
 // which takes every user-owned row with it (ON DELETE CASCADE), the beta's activity log
 // (activity_events) included. If Plaid can't be reached
-// nothing local is deleted, so the person can simply try again. Only the audit log keeps
-// a record (with the time, IP address and browser, like every access-log entry).
+// the account stays and the person can simply try again; banks already removed on the way stay
+// removed. Only the audit log keeps a record (with the time, IP address and browser, like every
+// access-log entry), and the account isn't deleted unless that record is written.
 export async function deleteAllData(
   userId: string,
   { client = defaultClient, api: given }: { client?: PrismaClient; api?: PlaidApi } = {},
@@ -29,12 +30,6 @@ export async function deleteAllData(
     await removePlaidItem(userId, item.id, "user_deleted_data", { client, api: given });
   }
   await removeConnection(userId, "user_deleted_data", { client });
-  // Shared bills belong to the household, not the user row, so they're ended here, as when
-  // someone leaves; the partner keeps the household and their own data.
-  const membership = await scopedFor(userId, client).householdMembers.findUnique({
-    where: { userId },
-    select: { householdId: true },
-  });
   // The closed beta's lists are keyed by email, not the user row: the invite they used and
   // any waitlist entry go too (a new account would need a new invite).
   const user = await scopedFor(userId, client).me.findUnique({
@@ -45,6 +40,8 @@ export async function deleteAllData(
   await systemTransaction(
     why,
     async (tx) => {
+      // Held to the end: a bank linked from another tab waits, and finds no account to join.
+      await tx.$executeRaw`SELECT 1 FROM users WHERE id = ${userId} FOR UPDATE`;
       // A bank linked since the list above would go with the user row and never be ended at Plaid.
       // Failing leaves everything in place, and trying again removes it.
       if ((await tx.plaidItem.count({ where: { userId } })) > 0) {
@@ -86,8 +83,13 @@ export async function deleteAllData(
         where: { sharedById: userId },
         data: { revokedAt: new Date(), sharedById: null, cardKind: null, cardValue: null },
       });
+      // Shared bills belong to the household, not the user row, so they're ended here, as when
+      // someone leaves; the partner keeps the household and their own data. Read and held here: a
+      // person who has just left takes none of the bills with them.
+      const [membership] = await tx.$queryRaw<{ household_id: string }[]>`
+        SELECT household_id FROM household_members WHERE user_id = ${userId} FOR UPDATE`;
       if (membership) {
-        const where = { where: { householdId: membership.householdId } };
+        const where = { where: { householdId: membership.household_id } };
         await tx.sharedCharge.deleteMany(where);
         await tx.settlement.deleteMany(where);
       }
@@ -107,15 +109,15 @@ export async function deleteAllData(
         },
       });
       await tx.user.delete({ where: { id: userId } });
+      // Last, and in the same transaction: it throws, and nothing is deleted.
+      await logAudit(
+        { type: "user", id: userId },
+        "user_data_deleted",
+        { type: "user", id: userId },
+        { plaid_items_removed: items.length },
+        { tx },
+      );
     },
     client,
-  );
-  await logAudit(
-    { type: "user", id: userId },
-    "user_data_deleted",
-    { type: "user", id: userId },
-    {
-      plaid_items_removed: items.length,
-    },
   );
 }

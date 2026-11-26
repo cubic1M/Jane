@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { beforeTerms } from "@/lib/before-terms";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { ItemNotFoundError, markItemRepaired } from "@/lib/plaid/link";
@@ -7,11 +8,16 @@ import { getCurrentUser } from "@/lib/session";
 
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 
+// The sync runs after the answer, and gets as long as the same one after a webhook.
+export const maxDuration = 300;
+
 // Link's update mode finished for one of the signed-in person's banks: it stops asking for a
 // sign-in (or for new accounts to be shared) and syncs after the response, one sync at a time.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const unaccepted = beforeTerms(user);
+  if (unaccepted) return unaccepted;
   const limited = await limitOrNull("plaid", user.id);
   if (limited) return limited;
 

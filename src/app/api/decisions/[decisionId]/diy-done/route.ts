@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { beforeTerms } from "@/lib/before-terms";
 import { limitOrNull } from "@/lib/rate-limit";
 import { markDiyDone } from "@/lib/decisions";
 import { getCurrentUser } from "@/lib/session";
@@ -11,6 +12,8 @@ export async function POST(
 ) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const unaccepted = beforeTerms(user);
+  if (unaccepted) return unaccepted;
   const limited = await limitOrNull("decisions", user.id);
   if (limited) return limited;
 
