@@ -125,7 +125,13 @@ export function statesReply(view: TaxEstimateView): MessageParts {
 // "I moved from California to New York in June": the move, to save with one tap. A month
 // later in the year than now means last year; a month without a day, the 1st.
 export function moveReply(
-  intent: { from: string | null; to: string; month: number | null; day: number | null },
+  intent: {
+    from: string | null;
+    to: string;
+    month: number | null;
+    day: number | null;
+    relativeYear?: "this" | "last";
+  },
   profileState: string | null,
   now: Date,
 ): MessageParts {
@@ -142,7 +148,14 @@ export function moveReply(
     return { body: `When did you move? Say it like ${example}.`, refs: {}, actions: [] };
   }
   const thisYear = now.getUTCFullYear();
-  const year = intent.month > now.getUTCMonth() + 1 ? thisYear - 1 : thisYear;
+  // A year said ("last year") wins over the month's guess.
+  const year = intent.relativeYear
+    ? intent.relativeYear === "last"
+      ? thisYear - 1
+      : thisYear
+    : intent.month > now.getUTCMonth() + 1
+      ? thisYear - 1
+      : thisYear;
   const last = new Date(Date.UTC(year, intent.month, 0)).getUTCDate();
   const day = Math.min(Math.max(intent.day ?? 1, 1), last);
   const date = `${year}-${String(intent.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

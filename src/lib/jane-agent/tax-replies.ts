@@ -412,10 +412,17 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, tod
   }
   const next = view.federal.payments.find((p) => p.date >= today);
   if (!next) {
+    // No federal payment left, but the state's estimate can have one still to come.
+    const stateNext = view.state?.payments.find((p) => p.date >= today && p.cents > 0);
+    const stateLine = stateNext
+      ? ` Your state estimate still has ${formatWholeDollars(stateNext.cents)} due ${dayLabel(stateNext.date)}.`
+      : "";
     return {
-      body: view.federal.needed
-        ? `No estimated payment dates are left for ${view.year}; I estimate about ${formatWholeDollars(view.federal.owedCents)} still to pay with your return.`
-        : `By my estimate you won't owe enough for ${view.year} to need estimated payments (under $1,000).`,
+      body: `${
+        view.federal.needed
+          ? `No estimated payment dates are left for ${view.year}; I estimate about ${formatWholeDollars(view.federal.owedCents)} still to pay with your return.`
+          : `By my estimate you won't owe enough for ${view.year} to need federal estimated payments (under $1,000).`
+      }${stateLine}`,
       actions: [page],
       refs: { advice: true },
     };
