@@ -145,7 +145,7 @@ describe.runIf(url)("audit-ready records against a real database", { timeout: 12
       })
       .find((c) => c.dedupeKey === "records:2022")!;
     expect(candidate.body).toBe(
-      "Your 2022 tax records can be thrown away after Apr 15 (3 years after the return was due or filed, whichever is later.). I never delete anything; want a reminder on your deadlines?",
+      "Your 2022 tax records can be thrown away after Apr 15, 2026 (3 years after the return was due or filed, whichever is later.). I never delete anything; want a reminder on your deadlines?",
     );
     const message = await client.janeMessage.create({
       data: {
