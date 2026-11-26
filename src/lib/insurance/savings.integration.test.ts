@@ -11,6 +11,7 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { runJaneAgent } from "@/lib/jane-agent/run";
 import { closeAnsweredElsewhere } from "@/lib/jane-agent/settled";
+import { savingToken } from "@/lib/jane-agent/shown";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { parseRefs } from "@/lib/jane-agent/types";
 import { listPolicies } from "./policies";
@@ -183,6 +184,44 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
     expect(
       (await listSavings(me.userId, { ...o(), status: "offered" })).map((s) => s.kind),
     ).toEqual([]);
+  });
+
+  it("a Yes on the deductible card applies only the terms the card showed", async () => {
+    const me = await person();
+    await refreshSavings(me.userId, o());
+    await runJaneAgent(me.userId, { client, now: NOW, trigger: "open" });
+    const card = (await client.janeMessage.findMany({ where: { userId: me.userId } })).find(
+      (m) => parseRefs(m.refs).savingId,
+    )!;
+    const refs = parseRefs(card.refs);
+    const shown = savingToken(refs.savingId!, refs.savingTerms![refs.savingId!]!);
+    const deductible = async () => (await listPolicies(me.userId, o()))[0].deductibleCents;
+
+    // A page that did not say what it showed, or showed something else: nothing happens.
+    await expect(takeChatAction(me.userId, card.id, "saving.apply", o())).rejects.toThrow();
+    await expect(
+      takeChatAction(me.userId, card.id, "saving.apply", { ...o(), shown: "saving:x:old" }),
+    ).rejects.toThrow(/out of date/);
+    // The premium moved after the card was drawn: the figures it showed are no longer true.
+    await client.insurancePolicy.update({
+      where: { id: me.policyId },
+      data: { premiumCents: 19_000 },
+    });
+    await expect(
+      takeChatAction(me.userId, card.id, "saving.apply", { ...o(), shown }),
+    ).rejects.toThrow(/figures changed/);
+    expect(await deductible()).toBe(100_000);
+    // Back to what it said: the tap applies.
+    await client.insurancePolicy.update({
+      where: { id: me.policyId },
+      data: { premiumCents: 14_200 },
+    });
+    const { message } = await takeChatAction(me.userId, card.id, "saving.apply", {
+      ...o(),
+      shown,
+    });
+    expect(message.status).toBe("answered");
+    expect(await deductible()).not.toBe(100_000);
   });
 
   it("Do all of these applies the offers the card listed, and Not now dismisses only those", async () => {

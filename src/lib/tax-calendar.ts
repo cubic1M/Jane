@@ -1,19 +1,20 @@
 import { TAX_PLAN } from "@/config/tax-plan";
 import { CALENDAR_ITEMS, YEAR_END_FROM_DAY, type CalendarKey } from "@/config/tax-calendar";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadGiving } from "@/lib/giving";
 import { loadMultiYear } from "@/lib/multi-year";
-import { mayAct, recordAct, autopilotFor } from "@/lib/sector-autopilot";
-import { loadSelfEmployed, recordTaxPayment, type SelfEmployedView } from "@/lib/self-employed";
+import { mayAct, autopilotFor } from "@/lib/sector-autopilot";
+import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { filingYear } from "@/lib/tax-filing";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
@@ -302,24 +303,88 @@ const ESTIMATE_TITLES = (["estimated_1", "estimated_2", "estimated_3", "estimate
   (k) => TAX_PLAN[k].title,
 );
 
-// What follows a payment the partner took: its reminder on the deadlines (the tax plan's "Pay
-// the … estimated tax payment", spec step 167) is done, so paying never leaves it open to remind
-// again (docs/feature-audit.md), and the quarterly plan counts it.
-async function finishEstimate(
+// What follows a payment the partner took, each part once however often it is run (a retry after
+// a failure part-way repairs only what is missing): its reminder on the deadlines (the tax plan's
+// "Pay the … estimated tax payment", spec step 167) is done, so paying never leaves it open to
+// remind again (docs/feature-audit.md); the quarterly plan counts it; and, for a payment Jane made
+// by itself, the autopilot's record of it, which the monthly cap adds up. The plan's entry and the
+// record are checked and written under one lock, and the entry names its payment (ref), so two
+// payments of the same amount are never taken for each other. Returns whether anything was missing.
+async function settleEstimate(
   userId: string,
-  dueOn: string,
-  paid: { cents: number; day: string },
+  payment: { id: string; dueOn: string; cents: number; via: string; createdAt: Date },
   { client, now }: { client: PrismaClient; now: Date },
-): Promise<void> {
-  await scopedFor(userId, client).deadlines.updateMany({
-    where: { dueOn: new Date(`${dueOn}T00:00:00Z`), doneAt: null, title: { in: ESTIMATE_TITLES } },
+): Promise<boolean> {
+  // The day it was accepted, not the retry's: the estimate counts entries by their day, and a
+  // repair after a tax-year boundary must stay in the year it was paid.
+  const at = payment.createdAt < now ? payment.createdAt : now;
+  const day = await todayOf(userId, { client, now: at });
+  const closed = await scopedFor(userId, client).deadlines.updateMany({
+    where: {
+      dueOn: new Date(`${payment.dueOn}T00:00:00Z`),
+      doneAt: null,
+      title: { in: ESTIMATE_TITLES },
+    },
     data: { doneAt: now },
   });
-  await recordTaxPayment(
+  const what = `Paid the ${payment.dueOn} estimated payment`;
+  const { entryAdded, actAdded } = await personTransaction(
     userId,
-    { date: paid.day, cents: paid.cents, to: "federal" },
-    { client, now, via: "chat" },
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tax-estimate:${userId}`}))`;
+      const profile = await tx.taxProfile.findFirst({
+        where: { userId },
+        select: { taxPayments: true },
+      });
+      const entries = parseTaxPayments(profile?.taxPayments);
+      // An entry made before payments named theirs: the same amount, on the same day.
+      const counted = entries.some(
+        (p) =>
+          p.to === "federal" &&
+          (p.ref === payment.id ||
+            (p.ref === undefined && p.cents === payment.cents && p.date === day)),
+      );
+      if (!counted) {
+        const list = [
+          ...entries,
+          { date: day, cents: payment.cents, to: "federal", ref: payment.id },
+        ] as unknown as Prisma.InputJsonArray;
+        await tx.taxProfile.upsert({
+          where: { userId },
+          create: { userId, taxPayments: list },
+          update: { taxPayments: list },
+        });
+      }
+      let recorded = payment.via !== "autopilot";
+      if (!recorded) {
+        recorded =
+          (await tx.autopilotAct.findFirst({ where: { userId, sector: "taxes", what } })) !== null;
+        if (!recorded) {
+          await tx.autopilotAct.create({
+            data: { userId, sector: "taxes", cents: payment.cents, what, createdAt: at },
+          });
+        }
+      }
+      return { entryAdded: !counted, actAdded: !recorded };
+    },
+    client,
   );
+  if (entryAdded) {
+    try {
+      await logAudit(
+        { type: "user", id: userId },
+        "tax_profile_changed",
+        { type: "user", id: userId },
+        { fields: "taxPayments", via: "chat" },
+      );
+      await track(userId, "tax_payment_recorded", { to: "federal", via: "chat" });
+    } catch (error) {
+      log.error("Estimated payment saved, but its audit or event failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return entryAdded || actAdded || closed.count > 0;
 }
 
 // Pays one estimated payment through the stand-in and records it where the quarterly plan
@@ -344,31 +409,13 @@ export async function payEstimate(
   const db = scopedFor(userId, client);
   const paid = await db.taxPayments.findFirst({
     where: { dueOn: new Date(`${dueOn}T00:00:00Z`) },
-    select: { cents: true, confirmation: true, createdAt: true },
+    select: { id: true, cents: true, confirmation: true, via: true, createdAt: true },
   });
   if (paid) {
-    // The partner took it, but a step after it failed: the missing entries are made now, and
-    // nothing is paid again. Once the plan counts every payment of that amount, it's
-    // simply paid.
-    const [profile, payments] = await Promise.all([
-      db.taxProfiles.findFirst({ select: { taxPayments: true } }),
-      db.taxPayments.count({ where: { cents: paid.cents } }),
-    ]);
-    const counted = parseTaxPayments(profile?.taxPayments).filter(
-      (p) => p.to === "federal" && p.cents === paid.cents,
-    ).length;
-    if (counted >= payments) throw new TaxCalendarError("That payment is already paid.");
-    await finishEstimate(
-      userId,
-      dueOn,
-      // The day it was accepted, not the retry's: the estimate counts entries by their day,
-      // and a repair after a tax-year boundary must stay in the year it was paid.
-      {
-        cents: paid.cents,
-        day: await todayOf(userId, { client, now: paid.createdAt < now ? paid.createdAt : now }),
-      },
-      { client, now },
-    );
+    // The partner took it, but a step after it failed: what is missing is made now, and nothing
+    // is paid again. Once every part is there, it's simply paid.
+    const missing = await settleEstimate(userId, { ...paid, dueOn }, { client, now });
+    if (!missing) throw new TaxCalendarError("That payment is already paid.");
     return { cents: paid.cents, confirmation: paid.confirmation };
   }
   const planned = inPayWindow(
@@ -392,7 +439,7 @@ export async function payEstimate(
     if (!may.ok) throw new TaxCalendarError("That's over what I pay by myself.");
   }
   const { confirmation } = await partner.pay({ userId, dueOn, cents: planned.cents });
-  await db.taxPayments.create({
+  const made = await db.taxPayments.create({
     data: {
       userId,
       year: Number(dueOn.slice(0, 4)),
@@ -402,19 +449,13 @@ export async function payEstimate(
       confirmation,
       via,
     },
+    select: { id: true, createdAt: true },
   });
-  await finishEstimate(
+  await settleEstimate(
     userId,
-    dueOn,
-    { cents: planned.cents, day: await todayOf(userId, { client, now }) },
+    { id: made.id, dueOn, cents: planned.cents, via, createdAt: made.createdAt },
     { client, now },
   );
-  if (via === "autopilot") {
-    await recordAct(userId, "taxes", planned.cents, `Paid the ${dueOn} estimated payment`, {
-      client,
-      now,
-    });
-  }
   await logAudit(
     via === "tap" ? { type: "user", id: userId } : { type: "system", id: null },
     "tax_payment_made",

@@ -50,6 +50,7 @@ import {
   type Saving,
 } from "@/lib/insurance/savings";
 import { appliedNote, sameCover } from "../insurance/saving-words";
+import { savingToken } from "../shown";
 import { RiskError, answerRisk, gapQuotes } from "@/lib/insurance/risks";
 import { gapQuotesLines, riskAnswerNote } from "../insurance/risk-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risks";
@@ -642,10 +643,17 @@ export const savingApplyAll: ActionHandler = {
 export const savingApply: ActionHandler = {
   id: "saving.apply",
   on: "open",
-  async run({ userId, message, action, client, now }) {
+  async run({ userId, message, action, client, now, shown }) {
     const id = message.refs.savingId;
-    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
-    const done = await savingStep(() => applySaving(userId, id, { client, now }));
+    const terms = id ? message.refs.savingTerms?.[id] : undefined;
+    if (!id || terms === undefined) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
+    // What the page showed must be what the card says, and the terms must still be those.
+    if (shown !== savingToken(id, terms)) {
+      throw answeredElsewhere("This card is out of date. Open it again.");
+    }
+    const done = await savingStep(() => applySaving(userId, id, { client, now, terms }));
     return { answeredWith: action.label, note: appliedNote([done]) };
   },
 };

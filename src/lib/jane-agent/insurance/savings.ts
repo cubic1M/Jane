@@ -2,7 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { partnerFor } from "@/lib/insurance/partner";
 import { listPolicies } from "@/lib/insurance/policies";
-import { listSavings, refreshSavings } from "@/lib/insurance/savings";
+import { listSavings, refreshSavings, termsOf } from "@/lib/insurance/savings";
 import type { Reply } from "../replies";
 import {
   deductibleActions,
@@ -50,7 +50,11 @@ export async function savingsAnswer(
     return {
       body: sameCoverBody(same, policies, true) + extra,
       actions: sameCoverActions(same),
-      refs: { savingGroup: "same", savingIds: same.map((s) => s.id), advice: true as const },
+      refs: {
+        savingGroup: "same",
+        savingIds: same.map((s) => s.id),
+        advice: true as const,
+      },
     };
   }
   if (lower[0]) {
@@ -60,7 +64,11 @@ export async function savingsAnswer(
         policies.find((p) => p.id === lower[0].policyId),
       ),
       actions: deductibleActions(),
-      refs: { savingId: lower[0].id, advice: true as const },
+      refs: {
+        savingId: lower[0].id,
+        savingTerms: { [lower[0].id]: termsOf(lower[0]) },
+        advice: true as const,
+      },
     };
   }
   return {

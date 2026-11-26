@@ -1,5 +1,6 @@
 import { SUGGESTED_GAP } from "@/lib/area-pages/insurance";
 import { openGaps } from "@/lib/insurance/gaps";
+import { termsOf } from "@/lib/insurance/savings";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
@@ -390,7 +391,11 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
           {
             kind: "decision" as const,
             body: sameCoverBody(same, insurance.policies, insurance.advice),
-            refs: { savingGroup: "same", savingIds: same.map((s) => s.id), advice: true as const },
+            refs: {
+              savingGroup: "same",
+              savingIds: same.map((s) => s.id),
+              advice: true as const,
+            },
             actions: sameCoverActions(same),
             dedupeKey: `savings:same:${same
               .map((s) => s.id)
@@ -406,7 +411,11 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
         s,
         insurance.policies.find((p) => p.id === s.policyId),
       ),
-      refs: { savingId: s.id, advice: true as const },
+      refs: {
+        savingId: s.id,
+        savingTerms: { [s.id]: termsOf(s) },
+        advice: true as const,
+      },
       actions: deductibleActions(),
       dedupeKey: `saving:${s.id}`,
       priority: MESSAGE_PRIORITY.saving_deductible,
