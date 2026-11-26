@@ -22,7 +22,7 @@ export function refundMessage(view: RefundView): {
 } {
   const r = view.refund;
   const landed = `Your ${r.to} tax refund of ${formatCents(r.cents)} landed on ${dayLabel(r.date)}.${matchLine(view)}`;
-  if (!view.plan || view.plan.items.length === 0) {
+  if (view.handled || !view.plan || view.plan.items.length === 0) {
     return {
       body: landed,
       actions: [openLink("See your taxes", "/taxes?focus=estimate:refund")],

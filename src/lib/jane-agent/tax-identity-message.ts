@@ -87,7 +87,7 @@ export function identityReply(view: IdentityView, sign: string | null): MessageP
   return {
     body: view.havePin
       ? `You have your IP PIN for ${view.year}. If a return is rejected because one was already filed, or you get a W-2 or 1099 from a payer you don't know, or an IRS letter about a return you didn't file, tell me and I'll give you the steps.`
-      : `The best protection is an IRS Identity Protection PIN: a six-digit number only you have, so no one else can file with your Social Security number. ${IP_PIN.who} If a return is rejected because one was already filed, or you get a W-2 or 1099 from a payer you don't know, or an IRS letter about a return you didn't file, tell me and I'll give you the steps.`,
+      : `The best protection is an IRS Identity Protection PIN: a six-digit number only you have, so no one else can file with your Social Security number. ${IP_PIN.who}${view.toolOpen === false ? ` ${IP_PIN_TOOL_DOWN}` : ""} If a return is rejected because one was already filed, or you get a W-2 or 1099 from a payer you don't know, or an IRS letter about a return you didn't file, tell me and I'll give you the steps.`,
     refs: {},
     actions: [openLink("Get my IP PIN", IP_PIN.url), openLink("My tax identity", IDENTITY_HREF)],
   };
