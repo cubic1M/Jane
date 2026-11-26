@@ -135,6 +135,10 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     expect(view.current!.order).toEqual([kitchen.id, trip.id]);
     // The year plan was kept again on the tap.
     expect(await client.yearPlan.count({ where: { userId } })).toBe(1);
+    // One goal goes: with a single goal left there is no suggestion, and the saved order for two
+    // no longer counts.
+    await client.savingsGoal.delete({ where: { id: trip.id } });
+    expect((await loadTradeoffs(userId, { client, now: NOW }))!.chosen).toBeNull();
   });
 
   it("is in the chat: the rule answer, Claude's tool, the message and its button", async () => {

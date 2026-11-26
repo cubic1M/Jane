@@ -239,8 +239,12 @@ describe("with no holdings", () => {
       },
       {} as never,
     );
-    expect(messages.map((m) => m.dedupeKey)).toContain("hsa:receipts:2");
-    expect(messages.some((m) => m.dedupeKey.startsWith("investments:"))).toBe(false);
+    const keys = messages.map((m) => m.dedupeKey);
+    expect(keys).toContain("hsa:receipts:2");
+    // The source's keys are raw ("holdings"), so a holdings card is looked for by its own key;
+    // every other one belongs to the HSA or the beneficiary topics.
+    expect(keys).not.toContain("holdings");
+    expect(keys.every((k) => k.startsWith("hsa:") || k.startsWith("beneficiar"))).toBe(true);
   });
 });
 

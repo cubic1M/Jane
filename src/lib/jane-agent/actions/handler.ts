@@ -14,6 +14,9 @@ export type ActionContext = {
   // What was chosen with it, for a button that carries a choice (option.pick: the option's
   // id). Checked by the handler against what the message offered.
   choice?: string;
+  // The showing of a guided flow's question the button was drawn with (refs.flow.shown), when the
+  // page sent it.
+  flowShown?: string;
   client: PrismaClient;
   now: Date;
 };

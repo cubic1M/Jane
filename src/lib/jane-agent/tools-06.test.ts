@@ -51,5 +51,7 @@ describe("a saved goal order", () => {
     expect(orderFits(["a", "b"], ["b", "a"])).toBe(true);
     expect(orderFits(["a", "b"], ["b", "c"])).toBe(false);
     expect(orderFits(["a", "b"], ["a", "b", "c"])).toBe(false);
+    // A repeated id is not an order of both goals.
+    expect(orderFits(["a", "a"], ["a", "b"])).toBe(false);
   });
 });

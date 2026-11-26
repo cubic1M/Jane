@@ -43,8 +43,11 @@ function goalOrderOf(prefs: readonly Preference[]): string[] | null {
 }
 
 // Whether a saved order is for exactly these goals (in any order): replace a goal and it is not.
+// Each goal exactly once: a repeated id is not an order of them.
 export const orderFits = (saved: readonly string[], goals: readonly string[]) =>
-  saved.length === goals.length && saved.every((id) => goals.includes(id));
+  saved.length === goals.length &&
+  new Set(saved).size === saved.length &&
+  saved.every((id) => goals.includes(id));
 
 export async function loadTradeoffs(
   userId: string,
@@ -62,7 +65,9 @@ export async function loadTradeoffs(
   const view = tradeoffs(open, capacity, startMonth);
   // A saved order counts only for the goals now competing: replace one and it no longer does.
   const saved = goalOrderOf(prefs);
-  const chosen = saved && view.suggested && !orderFits(saved, view.suggested.order) ? null : saved;
+  // With fewer than two open goals there is no suggestion, so it is tested against the open ones.
+  const competing = view.suggested ? view.suggested.order : open.map((g) => g.id);
+  const chosen = saved && !orderFits(saved, competing) ? null : saved;
   // listGoals already puts the goals in the order in force.
   const current =
     open.length > 0

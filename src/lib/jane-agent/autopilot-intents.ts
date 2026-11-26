@@ -53,7 +53,7 @@ export function parseSectorIntent(text: string): SectorIntent | null {
     ASK.test(text) ||
     NEGATED.test(text) ||
     NEGATED_AUTONOMY.test(text) ||
-    (CONDITIONAL.test(text) && ALL.test(text))
+    (CONDITIONAL.test(text) && (ALL.test(text) || SAFE.test(text)))
       ? "ask"
       : SAFE.test(text)
         ? "safe"

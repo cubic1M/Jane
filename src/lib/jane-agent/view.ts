@@ -41,6 +41,8 @@ export type MessageView = {
   block: DrawnBlock | null;
   // Spec step 96: pinned to the top of the chat.
   pinned: boolean;
+  // A guided flow's question as drawn (refs.flow.shown): sent back with each tap on its buttons.
+  flowShown?: string;
   // One of the day's suggestions (it can sit in the card stack).
   suggestion: boolean;
   // Options of one choice (refs.options), while the message is open: the floating pick card.
@@ -195,6 +197,7 @@ export function toView(
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
     block: drawn(message.refs.block),
     pinned: message.refs.pinned === true,
+    ...(message.refs.flow?.shown ? { flowShown: message.refs.flow.shown } : {}),
     suggestion: Boolean(message.refs.suggestion),
     options:
       message.status === "open" && message.refs.options?.options?.length

@@ -25,17 +25,27 @@ function moved(move: Awaited<ReturnType<typeof answerFlow>>, label: string | nul
   };
 }
 
+// A tap on a question that is no longer the one shown: by the showing it carries when the page sent
+// one, and otherwise (a tap from a notification) by how soon after the question it came.
+function stale(
+  state: NonNullable<ActionContext["message"]["refs"]["flow"]>,
+  { flowShown, now }: Pick<ActionContext, "flowShown" | "now">,
+) {
+  if (flowShown !== undefined && state.shown !== undefined) return flowShown !== state.shown;
+  return !!state.at && now.getTime() - Date.parse(state.at) < CHAT_FLOW_SETTLE_MS;
+}
+
 function pick(n: number): ActionHandler {
   return {
     id: `flow.pick.${n}` as ActionId,
     on: "open",
-    async run({ userId, message, action, client, now }: ActionContext) {
+    async run({ userId, message, action, client, now, flowShown }: ActionContext) {
       const state = message.refs.flow;
       const value = state?.options[n - 1];
       if (!state || value === undefined) throw wrong();
-      // The same button ids sit on every step: one tapped right after the question changed is
-      // the double tap on the one before, not an answer to this one.
-      if (state.at && now.getTime() - Date.parse(state.at) < CHAT_FLOW_SETTLE_MS) {
+      // The same button ids sit on every step: one drawn for the question before is a double
+      // tap on that one, not an answer to this one.
+      if (stale(state, { flowShown, now })) {
         throw new ChatActionError(
           "not_open",
           "That question just changed. Pick your answer to this one.",
@@ -58,9 +68,16 @@ export const FLOW_PICKS = {
 export const flowBack: ActionHandler = {
   id: "flow.back",
   on: "open",
-  async run({ userId, message, client, now }) {
+  async run({ userId, message, client, now, flowShown }) {
     const state = message.refs.flow;
     if (!state) throw wrong();
+    // Back from a question that is no longer the one shown goes back from the wrong one.
+    if (flowShown !== undefined && state.shown !== undefined && flowShown !== state.shown) {
+      throw new ChatActionError(
+        "not_open",
+        "That question just changed. Pick your answer to this one.",
+      );
+    }
     return moved(await backFlow(state, { userId, client, now }), null);
   },
 };

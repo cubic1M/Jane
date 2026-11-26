@@ -499,6 +499,8 @@ type Options = {
   defer?: (work: () => Promise<unknown>) => void;
   // What was chosen with the button (option.pick: the option's id); the handler checks it.
   choice?: string;
+  // The showing of a guided flow's question the tapped button was drawn with (refs.flow.shown).
+  flowShown?: string;
 };
 
 // A tap on a button. Checked here, whatever the page sent: the message is the person's
@@ -547,7 +549,7 @@ async function takeChatActionWork(
   userId: string,
   messageId: string,
   actionId: string,
-  { client = defaultClient, now = new Date(), defer, choice }: Options = {},
+  { client = defaultClient, now = new Date(), defer, choice, flowShown }: Options = {},
 ): Promise<TakenAction> {
   const db = scopedFor(userId, client);
   const row = await db.janeMessages.findFirst({
@@ -572,7 +574,7 @@ async function takeChatActionWork(
     throw new ChatActionError("expired", "It's too late to undo this one.");
   }
 
-  const outcome = await handler.run({ userId, message, action, client, now, choice });
+  const outcome = await handler.run({ userId, message, action, client, now, choice, flowShown });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
   // The handler's work is done: Claude's copy of the numbers going stale late must not leave the

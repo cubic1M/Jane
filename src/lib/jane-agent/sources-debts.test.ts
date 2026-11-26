@@ -212,7 +212,7 @@ describe("Jane's payoff plan messages", () => {
       priority: MESSAGE_PRIORITY.payoff_off_track,
     });
     expect(message.body).toBe(
-      "Your payoff plan is off track: your debts add up to $2,300.00, and the plan expected $2,000.00 by now, $300.00 behind. At this pace you'd be debt-free by September 2027 instead of August 2027. New charges on a card or a missed payment usually explain it.",
+      "Your payoff plan is off track: the debts in your plan add up to $2,300.00, and the plan expected $2,000.00 by now, $300.00 behind. At this pace you'd be done with these by September 2027 instead of August 2027. New charges on a card or a missed payment usually explain it.",
     );
   });
 

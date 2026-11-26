@@ -26,6 +26,8 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   const actionId = String(formData.get("actionId") ?? "");
   // A button that carries a choice (option.pick: the option's id).
   const choice = formData.get("choice");
+  // The showing of a guided flow's question the tapped button belongs to.
+  const flowShown = formData.get("flowShown");
   try {
     // The timezone is read alongside the tap, and what the answer doesn't need (audit,
     // analytics, closing the messages it settled) follows the response.
@@ -33,6 +35,9 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
       await Promise.all([
         takeChatAction(user.id, messageId, actionId, {
           ...(typeof choice === "string" && choice ? { choice: choice.slice(0, 80) } : {}),
+          ...(typeof flowShown === "string" && flowShown
+            ? { flowShown: flowShown.slice(0, 40) }
+            : {}),
           defer: (work) =>
             after(() =>
               work().catch((error) =>

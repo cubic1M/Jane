@@ -50,6 +50,10 @@ export type FlowState = {
   // When this step's question was shown (ISO): an answer tapped within CHAT_FLOW_SETTLE_MS of it
   // is refused.
   at?: string;
+  // Who this showing of the step is: new every time the question is drawn. A tap carries the one
+  // on the button it came from, so a button of an earlier showing (a stale tab, a double tap on
+  // the step before) answers nothing.
+  shown?: string;
 };
 
 export const PICK_IDS = Array.from(
@@ -97,6 +101,7 @@ export function stepMessage<D>(
         options: options.map((o) => o.value),
         ...(ask.typed ? { typed: ask.typed } : {}),
         ...(shownAt ? { at: shownAt.toISOString() } : {}),
+        shown: crypto.randomUUID().slice(0, 12),
       },
     },
   };

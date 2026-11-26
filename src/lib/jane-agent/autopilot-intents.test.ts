@@ -48,6 +48,14 @@ describe("sector autopilot intents", () => {
       null,
       null,
     ],
+    // CodeRabbit #2298: a condition beside the safe things is still ask-first.
+    [
+      "handle only the safe things for my bills, only after I approve them",
+      "bills",
+      "ask",
+      null,
+      null,
+    ],
     // An opt-out is still a grant.
     ["let jane pay my bills unless I say otherwise", "bills", "all", null, null],
     ["let jane pay my bills by herself only if I say yes first", "bills", "ask", null, null],

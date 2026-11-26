@@ -40,8 +40,10 @@ export const payoffSource: MessageSource = {
     const leftOut = payoff.summary.leftOut;
     const scope =
       leftOut.length > 0 ? ` Not in this plan: ${leftOut.map((l) => l.name).join(", ")}.` : "";
-    const these = leftOut.length > 0 ? "the debts in your plan add up" : "your debts add up";
-    const finish = leftOut.length > 0 ? "done with these" : "debt-free";
+    // The stored plan does not record which debts it covers, so a debt added since it was made
+    // is not known to be in it: its figures are said of "the debts in your plan", never of all.
+    const these = "the debts in your plan add up";
+    const finish = "done with these";
     if (stored.status === "off_track") {
       const was =
         stored.previousDebtFreeMonth && stored.previousDebtFreeMonth !== stored.debtFreeMonth

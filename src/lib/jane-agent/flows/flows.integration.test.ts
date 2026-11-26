@@ -10,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { ChatActionError, takeChatAction } from "../actions";
 import { createCheckPerson, deleteCheckPerson } from "../checks/person";
 import { sendToJane } from "../typing";
+import { setAside } from "./chat";
 import type { ChatMessage } from "../types";
 
 // Spec step 95 end to end, against a real, migrated Postgres and the demo bank: each flow
@@ -147,6 +148,46 @@ describe.runIf(url)("guided flows against a real database", () => {
     const second = await tap(first, first.actions[0].label);
     expect(second.body).toMatch(/Should I ask for it back\?$/);
     await tap(second, "Cancel");
+  });
+
+  // CodeRabbit part 2 (actions-02, O31): a button carries the showing of the question it was drawn
+  // with, so a stale tab or a double tap is refused however late it comes, and a tap on the question
+  // shown is accepted at once.
+  it("takes a tap by the showing of the question it was drawn with", async () => {
+    const first = await say("dispute a charge");
+    const shown = new Date(first.refs.flow!.at!);
+    const soon = { client, now: new Date(shown.getTime() + 100) };
+    // The right showing answers at once, with no waiting.
+    const second = (
+      await takeChatAction(userId, first.id, first.actions[0].id, {
+        ...soon,
+        flowShown: first.refs.flow!.shown,
+      })
+    ).message;
+    expect(second.body).toMatch(/Should I ask for it back\?$/);
+    // The same button again, from the first question's showing, a minute later: refused.
+    await expect(
+      takeChatAction(userId, first.id, first.actions[0].id, {
+        client,
+        now: new Date(shown.getTime() + 60_000),
+        flowShown: first.refs.flow!.shown,
+      }),
+    ).rejects.toMatchObject({ code: "not_open" });
+    await tap(second, "Cancel");
+  });
+
+  // CodeRabbit #2298: picking a flow up must not set aside a question a tap moved on meanwhile.
+  it("sets a question aside only if it is still the showing that was read", async () => {
+    const first = await say("dispute a charge");
+    const context = { userId, client, now: next() };
+    expect(await setAside(context, first.id, null, "an-earlier-showing")).toBe(false);
+    expect((await client.janeMessage.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "open",
+    );
+    expect(await setAside(context, first.id, null, first.refs.flow!.shown)).toBe(true);
+    expect((await client.janeMessage.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "dismissed",
+    );
   });
 
   // CodeRabbit part 2: the Yes acts on the finding that was picked, not on whatever it became.
