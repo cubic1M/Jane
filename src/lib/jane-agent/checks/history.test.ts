@@ -247,7 +247,7 @@ describe("the nightly record (CodeRabbit sweep)", () => {
         mode: "full",
         promptVersion: "p",
         score: 10,
-        graded: 45,
+        graded: 50,
         skipped: 0,
         costCents: 0,
         results,
@@ -257,6 +257,6 @@ describe("the nightly record (CodeRabbit sweep)", () => {
     expect(entry.failed).toHaveLength(30);
     expect(entry.failedCount).toBe(45);
     expect(JSON.stringify(entry)).not.toContain("certainly earn");
-    expect(nightlyTable([entry])).toContain("| 45 |");
+    expect(nightlyTable([entry])).toContain("| 50 | 45 |");
   });
 });

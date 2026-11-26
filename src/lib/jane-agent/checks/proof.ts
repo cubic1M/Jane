@@ -75,7 +75,7 @@ export async function ask(
   if (intent.kind === "unknown") return { text, understood: false, answer: "(for Claude)" };
   let error: string | undefined;
   const reply = await answerByRules(userId, intent, { client, now }).catch((e: unknown) => {
-    error = e instanceof Error ? e.message : String(e);
+    error = (e instanceof Error ? e.message : String(e)) || "Unknown rule error";
     return null;
   });
   if (error)

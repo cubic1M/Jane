@@ -207,6 +207,21 @@ describe("fixedChecks: sign, button-only and capped (CodeRabbit sweep)", () => {
     );
     expect(failed(long)).toEqual(expect.arrayContaining(["written", "shape"]));
   });
+  it("reads the sign in the sentence that holds the amount, and keeps a clause with its button", () => {
+    expect(
+      failed(
+        fixedChecks(owing, rules("Your balance is $42.00. You owe $10.00 on your card."), facts),
+      ),
+    ).toContain("figures");
+    const clause = fixedChecks(
+      q("x"),
+      rules("You can save $20 each month by cancelling the unused one; tap the button to do it."),
+      facts,
+    );
+    expect(failed(clause)).not.toContain("written");
+    const polite = fixedChecks(q("x"), rules("Tap the button below. Thanks for asking."), facts);
+    expect(failed(polite)).toEqual(expect.arrayContaining(["written", "shape"]));
+  });
   it("a capped turn is not answered", () => {
     const checks = fixedChecks(
       q("x"),

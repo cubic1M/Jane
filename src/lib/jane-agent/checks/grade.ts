@@ -40,15 +40,19 @@ const MONEY_STYLE = /\$[\d,.]+\s*(?:\/\s?(?:mo|month|yr|year)\b|per (?:month|yea
 const NEGATIVE_SIGN = /[-−–]\s?\$|\(\s?\$/;
 const NEGATIVE_WORDS =
   /\b(?:owe|owed|owing|overdrawn|overdraft|negative|below zero|minus|in the red|in debt)\b/i;
+// Politeness is no answer: "Tap the button below. Thanks for asking." says nothing.
+const COURTESY =
+  /\b(?:thanks|thank you|you're welcome|no problem|happy to help|hope that helps)\b/i;
 const NOT_ANSWERED = [unknownReply().body, CHAT_UNAVAILABLE_TEXT, ASK_BLOCKED_REPLY];
 
 // True when the reply only points at a button: once the "tap the button" sentences are taken
 // out, fewer than three words are left. "You can save $20. Tap the button." is an answer.
 export function onlyPointsAtButton(body: string): boolean {
   if (!BARE_BUTTON.test(body)) return false;
+  // Clause by clause: "Save $20 by cancelling it; tap the button." keeps its first clause.
   const rest = body
-    .split(/(?<=[.!?])\s+|\n/)
-    .filter((sentence) => !BARE_BUTTON.test(sentence))
+    .split(/(?<=[.!?])\s+|\n|[;,]\s+/)
+    .filter((clause) => !BARE_BUTTON.test(clause) && !COURTESY.test(clause))
     .join(" ");
   return rest.split(/\s+/).filter(Boolean).length < 3;
 }
@@ -117,8 +121,17 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
   if (wanted.length > 0) {
     // dollarFigures reads magnitudes: a debt of $42 must also be written as one, or "$42" could
     // be money the person has.
-    const losing = NEGATIVE_SIGN.test(body) || NEGATIVE_WORDS.test(body);
-    const missing = wanted.filter((c) => !shown.has(Math.abs(c)) || (c < 0 && !losing));
+    // The sign is read in the sentence that holds the amount, not anywhere in the reply.
+    const sentences = body.split(/(?<=[.!?])\s+|\n/);
+    const losing = (magnitude: number) =>
+      sentences.some(
+        (s) =>
+          dollarFigures(s).some((f) => f.cents === magnitude) &&
+          (NEGATIVE_SIGN.test(s) || NEGATIVE_WORDS.test(s)),
+      );
+    const missing = wanted.filter(
+      (c) => !shown.has(Math.abs(c)) || (c < 0 && !losing(Math.abs(c))),
+    );
     checks.push(
       missing.length === 0
         ? pass("figures")

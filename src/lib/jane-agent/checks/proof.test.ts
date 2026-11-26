@@ -108,4 +108,10 @@ describe("ask", () => {
     expect(q.error).toBe("loader down");
     expect(q.answer).toContain("rule failed");
   });
+  it("an empty error message is still a failure", async () => {
+    const { answerByRules } = await import("../answer");
+    vi.mocked(answerByRules).mockRejectedValueOnce(new Error(""));
+    const q = await ask("u1", "how much can I spend", { client: {} as never, now: new Date() });
+    expect(q.error).toBe("Unknown rule error");
+  });
 });
