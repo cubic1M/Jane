@@ -12,6 +12,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { dayLabel } from "@/lib/day-label";
+import { DETECTOR_RATES as R } from "@/config/detectors";
+import { subscriptionTrimSentence } from "@/lib/subscription-trim";
 
 const day = (iso: string | null) => (iso ? dayLabel(iso, { year: true }) : "–");
 
@@ -128,6 +130,11 @@ async function Subscriptions() {
             </span>
           )}
         </div>
+        {subscriptions.length >= R.subscriptionsMin && (
+          <p data-subscription-trim="" className="text-sm text-zinc-600 dark:text-zinc-400">
+            {subscriptionTrimSentence(total(subscriptions))}
+          </p>
+        )}
         {subscriptions.length === 0 ? (
           <EmptyState
             words="None found yet. Jane spots a subscription once it has charged you twice, so a few months of statements find the most."

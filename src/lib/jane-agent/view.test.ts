@@ -69,6 +69,22 @@ describe("toView", () => {
     expect(toView(message({ status: "dismissed" }), NOW, null).buttons).toEqual([]);
   });
 
+  it("keeps a plan's own Undo (multi.undo, paycheck.undo, tuneup.undo) on an answered message", () => {
+    for (const id of ["multi.undo", "paycheck.undo", "tuneup.undo"] as const) {
+      const answered = message({
+        status: "answered",
+        answeredWith: "Yes",
+        actions: [
+          { id, label: "Undo the transfer", kind: "secondary" },
+          { id: "finding.yes", label: "Yes", kind: "primary" },
+        ],
+      });
+      expect(toView(answered, NOW, null).buttons).toEqual([
+        { id, label: "Undo the transfer", kind: "secondary" },
+      ]);
+    }
+  });
+
   it("puts what the person typed on their side", () => {
     expect(toView(message({ kind: "user", actions: [] }), NOW, null)).toMatchObject({
       fromJane: false,

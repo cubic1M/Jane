@@ -291,6 +291,8 @@ describe("parseIntent", () => {
     ["undo", "undo"],
     ["Undo that", "undo"],
     ["take it back", "undo"],
+    ["undo the transfer", "undo"],
+    ["cancel my last transfer", "undo"],
     ["pause autopilot", "pause_autopilot"],
     ["stop the autopilot", "pause_autopilot"],
     ["turn off autopilot please", "pause_autopilot"],

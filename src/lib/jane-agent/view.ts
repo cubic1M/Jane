@@ -3,6 +3,7 @@ import { validTimezone } from "@/lib/digest/week";
 import { landing } from "@/lib/area-pages/landing";
 import type { OptionSet } from "@/lib/floating-cards";
 import { toOptionSet } from "@/lib/option-set";
+import { isUndoId } from "./undo-id";
 import { withFrom } from "./back-link";
 import { drawBlock, parseBlock, type DrawnBlock } from "./blocks";
 
@@ -119,7 +120,7 @@ function chosenOf(message: ChatMessage, concierge: boolean): MessageView["chosen
         kind: "secondary" as const,
       }))
     : (message.refs.previousActions ?? []).flatMap((a) =>
-        a.kind === "link" || a.id === "snooze" || a.id.startsWith("undo.")
+        a.kind === "link" || a.id === "snooze" || isUndoId(a.id)
           ? []
           : [
               {
@@ -151,7 +152,7 @@ export function toView(
     if (a.kind === "link") return [];
     if (a.id.startsWith("option.")) return [];
     if (!concierge && a.id === "plan.approve_safe") return [];
-    const isUndo = a.id.startsWith("undo.");
+    const isUndo = isUndoId(a.id);
     if (message.status === "dismissed") return [];
     if (isUndo && !undoOpen) return [];
     // A chosen message keeps Revert (and Done, for its card): src/lib/jane-agent/choices.ts.
@@ -192,7 +193,7 @@ export function toView(
     links: message.actions.flatMap((a) =>
       a.kind === "link" ? [{ label: a.label, href: withFrom(landing(a.href), message.id) }] : [],
     ),
-    undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
+    undoUntil: buttons.some((b) => isUndoId(b.id)) ? undoUntil : null,
     block: drawn(message.refs.block),
     pinned: message.refs.pinned === true,
     suggestion: Boolean(message.refs.suggestion),

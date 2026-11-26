@@ -1262,7 +1262,7 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
   if (!latest) {
     return reply(
-      "There's nothing I can undo from here right now. To take back a No, tap Undo on its message; anything else you said yes to is on your plan.",
+      "There's nothing I can undo from here right now. To take back a No, or a transfer a plan made while it is still pending, tap Undo on that message; anything else you said yes to is on your plan.",
       [openLink("Open the plan", "/plan")],
     );
   }
