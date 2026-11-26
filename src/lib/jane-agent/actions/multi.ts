@@ -6,6 +6,7 @@ import type { MultiResult, MultiStep } from "../types";
 import { ChatActionError, linksOf, type ActionContext, type ActionHandler } from "./handler";
 import { takeChatAction } from "./index";
 import { dayLabel } from "@/lib/day-label";
+import { planNote } from "../plan-undo";
 
 // Spec step 185: a plan of several steps (../multi.ts), confirmed once. The steps run in
 // order, each through its feature's own code: a feature's Yes on its own (hidden) message,
@@ -109,23 +110,12 @@ export const multiConfirm: ActionHandler = {
         results.push({ status: "failed", note: `Didn't happen: ${why}` });
       }
     }
-    const failed = results.findIndex((r) => r.status === "failed");
-    const lines = results.map(
-      (r, i) =>
-        `${i + 1}. ${r.status === "done" && !/^done\b/i.test(r.note) ? "Done. " : ""}${r.note}`,
-    );
-    const head =
-      failed < 0
-        ? "All done, in order."
-        : failed === 0
-          ? "I stopped at the first step, so nothing changed."
-          : `I stopped at step ${failed + 1}; the steps before it are done.`;
     const undo = results.some((r) => r.transferId)
       ? [{ id: "multi.undo" as const, label: "Undo the transfer", kind: "secondary" as const }]
       : [];
     return {
       answeredWith: context.action.label,
-      note: [head, ...lines].join("\n"),
+      note: planNote(results),
       refs: { ...context.message.refs, multi: { steps, results } },
       actions: [...undo, ...linksOf(context.message.actions)],
       agentJobIds,
@@ -170,11 +160,7 @@ export const multiUndo: ActionHandler = {
     }
     if (cancelled.size === 0)
       throw new ChatActionError("expired", why ?? "That can't be undone anymore.");
-    const parts = [
-      cancelled.size > 1
-        ? "Undone: those transfers won't happen."
-        : "Undone: the transfer won't happen.",
-    ];
+    const parts: string[] = [];
     if (gone.size > 0)
       parts.push(
         gone.size > 1
@@ -183,16 +169,29 @@ export const multiUndo: ActionHandler = {
       );
     if (retry.size > 0) parts.push("One couldn't be reached just now; tap Undo again to retry it.");
     // A transfer that is cancelled, or too late to cancel, is not offered again.
-    const settled = results.map((r) =>
-      r.transferId && !retry.has(r.transferId) ? { ...r, transferId: undefined } : r,
-    );
+    // The rest of the plan's record stays; only a cancelled transfer's line says it is undone.
+    const steps = message.refs.multi?.steps ?? [];
+    const settled = results.map((r, i): MultiResult => {
+      if (!r.transferId || retry.has(r.transferId)) return r;
+      const step = steps[i];
+      const where =
+        step?.kind === "transfer"
+          ? `${formatCents(step.amountCents)} to ${step.goalName}`
+          : "The transfer";
+      return cancelled.has(r.transferId)
+        ? { status: r.status, note: `Undone: ${where} won't happen.` }
+        : {
+            status: r.status,
+            note: r.note.replace(/; you can undo (?:it|the request) until then/, ""),
+          };
+    });
     return {
       status: "answered",
       answeredWith: message.answeredWith,
-      note: parts.join(" "),
+      note: [planNote(settled), ...parts].join("\n"),
       refs: {
         ...message.refs,
-        multi: { steps: message.refs.multi?.steps ?? [], results: settled },
+        multi: { steps, results: settled },
       },
       actions: [
         ...(retry.size > 0

@@ -650,11 +650,23 @@ describe("approveAllReply", () => {
 });
 
 describe("undoTransferReply", () => {
-  it("points to the plan's own Undo button and says when it works", () => {
-    const reply = undoTransferReply();
+  it("points to the plan's own Undo button only while a transfer is pending", () => {
+    const reply = undoTransferReply({ pending: 1, canMoveMoney: true });
     expect(reply.body).toContain("Undo the transfer");
     expect(reply.body).toContain("still pending");
-    expect(reply.actions.some((a) => a.id.startsWith("undo."))).toBe(false);
+  });
+
+  it("says there is nothing to take back when none is pending", () => {
+    const sample = undoTransferReply({ pending: 0, canMoveMoney: true });
+    expect(sample.body).not.toContain("Undo the transfer");
+    expect(sample.body).toContain("no transfer of mine");
+  });
+
+  it("tells a real account that Jane does not move money in its bank", () => {
+    const real = undoTransferReply({ pending: 0, canMoveMoney: false });
+    expect(real.body).toContain("I can't move money in your bank yet");
+    expect(real.body).not.toContain("Undo the transfer");
+    expect(real.actions).toEqual([]);
   });
 });
 

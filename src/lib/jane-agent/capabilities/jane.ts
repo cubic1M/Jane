@@ -27,6 +27,8 @@ import { rankedFor } from "../priorities";
 import { prioritiesReply } from "../replies-priorities";
 import { wholePictureReply } from "../whole-picture";
 import { planReply } from "../multi";
+import { undoablePlan } from "../plan-undo";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
@@ -169,7 +171,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "approve_all":
       return approveAllReply(await loadSnapshot(userId, { client, now }));
     case "undo":
-      if (intent.transfer) return undoTransferReply();
+      if (intent.transfer) {
+        return undoTransferReply({
+          pending: (await undoablePlan(userId, { client, now }))?.count ?? 0,
+          canMoveMoney: (await moneyPartnerFor(userId, { client })) !== null,
+        });
+      }
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));

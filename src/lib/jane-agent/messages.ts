@@ -8,6 +8,7 @@ import type {
   PrismaClient,
 } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
+import { closeSettledPlans } from "./plan-undo";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { CHAT_KINDS } from "./popups";
@@ -210,7 +211,9 @@ export async function closeSettled(
     (await closeAnsweredElsewhere(userId, { client, now })) +
     (await settleBundles(userId, { client, now })) +
     // Heads-ups whose deadline or charge is no longer in the data (./still-true.ts).
-    (await putAwayUntrue(userId, { client, now }));
+    (await putAwayUntrue(userId, { client, now })) +
+    // A plan whose transfers went through no longer offers its Undo (./plan-undo.ts).
+    (await closeSettledPlans(userId, { client, now }));
   const open = await db.janeMessages.findMany({
     where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },

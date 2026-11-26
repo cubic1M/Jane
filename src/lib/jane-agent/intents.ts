@@ -466,8 +466,10 @@ const CHECKED =
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
+// "undo the transfer", "cancel my last transfer", "undo the $50 transfer", "undo my transfer to
+// savings", "can I undo the transfer".
 const UNDO_TRANSFER =
-  /^(?:undo|cancel|take back) (?:the|my|that|this) (?:last |latest |pending |simulated )?(?:transfers?|moves?)$/;
+  /^(?:(?:can|could|may) i )?(?:undo|cancel|take back|reverse) (?:the|my|that|this|a) (?:last |latest |pending |simulated )?(?:\$?[\d,]+(?:\.\d+)?k? )?(?:transfers?|moves?)(?: (?:to|into|for) [\p{L}\d' -]+)?$/u;
 // Asking whether a purchase is OK without the word "afford": "can I spend $500 on food
 // this week", "should I buy a $1,200 laptop", "is it ok to spend 300 on clothes", "do I
 // have enough for a $900 trip". Only with an amount; without one, "how much can I spend"

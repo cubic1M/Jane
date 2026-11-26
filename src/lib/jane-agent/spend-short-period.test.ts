@@ -170,6 +170,8 @@ describe("spending for a day or a week", () => {
     if (intent.kind !== "spending") throw new Error("kind");
     expect(spendingReply(intent, old, TODAY).body).toMatch(/What I have ends on Nov 12\.$/);
     const stale = rows.filter((r) => r.date <= "2026-11-01");
-    expect(spendingReply(intent, stale, TODAY).body).toMatch(/can't see .*what I have ends on/);
+    expect(spendingReply(intent, stale, TODAY).body).toMatch(
+      /^I can't see the last 7 days \(Nov \d+ to Nov \d+\): what I have ends on Oct 20\.$/,
+    );
   });
 });
