@@ -141,6 +141,27 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     expect((await loadTradeoffs(userId, { client, now: NOW }))!.chosen).toBeNull();
   });
 
+  it("keeps the pick when another goal has been reached", async () => {
+    const userId = await couple("tradeoffs-reached");
+    await client.savingsGoal.create({
+      data: {
+        userId,
+        name: "Done already",
+        targetCents: 100_000,
+        targetDate: new Date("2027-06-01T00:00:00Z"),
+        manualSavedCents: 100_000,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
+    const goals = await listGoals(userId, { client, now: NOW });
+    const kitchen = goals.find((g) => g.name === "Kitchen remodel")!;
+    const trip = goals.find((g) => g.name === "Trip to Japan")!;
+    const picked = await chooseGoalOrder(userId, [kitchen.id, trip.id], { client, now: NOW });
+    expect(picked.order).toHaveLength(3);
+    const view = (await loadTradeoffs(userId, { client, now: NOW }))!;
+    expect(view.chosen).toEqual(picked.order);
+  });
+
   it("is in the chat: the rule answer, Claude's tool, the message and its button", async () => {
     const userId = await couple("tradeoffs-chat");
     expect(parseIntent("which goal should I save for first?", "2026-10-16")).toEqual({

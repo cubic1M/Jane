@@ -65,9 +65,17 @@ export async function loadTradeoffs(
   const view = tradeoffs(open, capacity, startMonth);
   // A saved order counts only for the goals now competing: replace one and it no longer does.
   const saved = goalOrderOf(prefs);
-  // With fewer than two open goals there is no suggestion, so it is tested against the open ones.
-  const competing = view.suggested ? view.suggested.order : open.map((g) => g.id);
-  const chosen = saved && !orderFits(saved, competing) ? null : saved;
+  // The pick names every goal (chooseGoalOrder keeps the ones not named after the ones that
+  // were), the reached ones too: it stands while it is for exactly the goals there are, whether
+  // or not two of them still compete.
+  const chosen =
+    saved &&
+    !orderFits(
+      saved,
+      goals.map((g) => g.id),
+    )
+      ? null
+      : saved;
   // listGoals already puts the goals in the order in force.
   const current =
     open.length > 0
