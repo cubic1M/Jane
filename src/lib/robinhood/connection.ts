@@ -135,16 +135,20 @@ export async function removeConnection(
     // A value that can't be opened can't be sent: it's still deleted below.
   }
   await db.robinhoodConnections.deleteMany({ where: { id: row.id } });
-  forgetPrimer(userId);
-  await removeOrphans(userId, { client });
-  await forgetSince(db, row.createdAt, "bank");
-  const revoked = robinhoodOffered() && (await revokeTokens(row.clientId, tokens));
-  await logAudit(
-    actor,
-    "robinhood_disconnected",
-    { type: "robinhood_connection", id: row.id },
-    { user_id: userId, reason, ended_at_robinhood: revoked },
-  );
+  try {
+    forgetPrimer(userId);
+    await removeOrphans(userId, { client });
+    await forgetSince(db, row.createdAt, "bank");
+  } finally {
+    // The stored tokens are gone, so this is the one chance to end them there, whatever failed above.
+    const revoked = robinhoodOffered() && (await revokeTokens(row.clientId, tokens));
+    await logAudit(
+      actor,
+      "robinhood_disconnected",
+      { type: "robinhood_connection", id: row.id },
+      { user_id: userId, reason, ended_at_robinhood: revoked },
+    );
+  }
   await track(userId, "robinhood_disconnected", { reason });
   return true;
 }

@@ -25,7 +25,10 @@ export function linkOnSite(link: string, env?: Record<string, string | undefined
   const origin = siteOrigin(env);
   if (!origin) return link;
   const from = new URL(link);
-  const on = new URL(`${from.pathname}${from.search}`, origin);
+  // Set on the site's own address, not resolved against it: a path starting "//" would name a host.
+  const on = new URL(origin);
+  on.pathname = from.pathname;
+  on.search = from.search;
   const back = on.searchParams.get("callbackUrl");
   if (back) {
     const path = URL.canParse(back) ? new URL(back) : null;

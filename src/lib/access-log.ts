@@ -75,6 +75,8 @@ export type AccessFilters = {
   page: number;
 };
 
+const LAST_PAGE = 1000;
+
 const one = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value)?.trim().slice(0, 200) || null;
 
@@ -97,7 +99,7 @@ export function parseFilters(params: Record<string, string | string[] | undefine
     outcome: outcome === "success" || outcome === "failure" ? outcome : null,
     from: day(one(params.from)),
     to: day(one(params.to), true),
-    page: Math.min(Math.max(Number.parseInt(one(params.page) ?? "1", 10) || 1, 1), 1000),
+    page: Math.min(Math.max(Number.parseInt(one(params.page) ?? "1", 10) || 1, 1), LAST_PAGE),
   };
 }
 
@@ -152,7 +154,8 @@ export async function searchAccessLog(
     take: ACCESS_LOG_PAGE_SIZE + 1,
   });
   return {
-    more: rows.length > ACCESS_LOG_PAGE_SIZE,
+    // No page past the last: asking for one shows the last again.
+    more: rows.length > ACCESS_LOG_PAGE_SIZE && filters.page < LAST_PAGE,
     entries: rows.slice(0, ACCESS_LOG_PAGE_SIZE).map((row) => {
       const meta = (row.metadata ?? {}) as Meta;
       return {

@@ -72,6 +72,30 @@ export function matchReceipt(
   return found ? { id: found.id, fileName: found.fileName } : null;
 }
 
+// Which receipt stands for each charge. One receipt stands for one charge: where more charges
+// than receipts could claim the same ones, none of them is called receipted.
+export function matchReceipts(
+  charges: { id: string; date: string; cents: number }[],
+  receipts: Parameters<typeof matchReceipt>[1],
+  days: number,
+): Map<string, { id: string; fileName: string }> {
+  const options = charges.map((c) => ({
+    id: c.id,
+    found: receipts.filter((r) => matchReceipt(c, [r], days) !== null),
+  }));
+  const used = new Set<string>();
+  const matched = new Map<string, { id: string; fileName: string }>();
+  for (const { id, found } of options) {
+    const rivals = options.filter((o) => o.found.some((r) => found.includes(r)));
+    if (rivals.length > new Set(rivals.flatMap((o) => o.found)).size) continue;
+    const receipt = found.find((r) => !used.has(r.id));
+    if (!receipt) continue;
+    used.add(receipt.id);
+    matched.set(id, { id: receipt.id, fileName: receipt.fileName });
+  }
+  return matched;
+}
+
 export type Retention = {
   year: number;
   key: keyof typeof RETENTION;

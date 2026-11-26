@@ -300,6 +300,13 @@ const backoffUntil = (failures: number, now: Date) =>
         HOUR_MS,
   );
 
+// The connection while this refresh still holds it: the lock is the time it started. A new sign-in
+// releases it, and from then nothing an older refresh read or was told is written.
+const held = (connectionId: string, lockedAt: Date) => ({
+  id: connectionId,
+  syncingSince: lockedAt,
+});
+
 // Asks for new tokens, and saves them at once: a server that rotates refresh tokens has already
 // retired the old one, so losing these would lose the connection.
 async function renew(
@@ -319,7 +326,7 @@ async function renew(
     refreshToken: tokens.refreshToken ?? secrets.refreshToken,
   };
   await db.robinhoodConnections.updateMany({
-    where: { id: connectionId },
+    where: held(connectionId, now),
     data: { secretsEncrypted: sealSecrets(next), accessExpiresAt: tokens.expiresAt },
   });
   return next;
@@ -371,9 +378,10 @@ export async function refreshConnection(
           : error;
       });
     }
+    if ((await db.robinhoodConnections.count({ where: held(row.id, now) })) === 0) return "busy";
     await saveEverything(db, row.id, secrets.accountKey, reads, now);
     await db.robinhoodConnections.updateMany({
-      where: { id: row.id },
+      where: held(row.id, now),
       data: {
         lastSyncedAt: now,
         lastErrorCode: null,
@@ -388,11 +396,11 @@ export async function refreshConnection(
     return "updated";
   } catch (error) {
     if (error instanceof RobinhoodSignedOutError || error instanceof RobinhoodGrantGoneError) {
-      await needsReconnect(db, row.id, row.secretsEncrypted, userId, now);
-      return "reconnect";
+      return (await needsReconnect(db, row.id, row.secretsEncrypted, userId, now))
+        ? "reconnect"
+        : "busy";
     }
-    await recordFailure(db, row.id, userId, error, now);
-    return "failed";
+    return (await recordFailure(db, row.id, userId, error, now)) ? "failed" : "busy";
   }
 }
 
@@ -410,8 +418,8 @@ async function needsReconnect(
     select: { secretsEncrypted: true },
   });
   const { accountKey } = openSecrets(fresh?.secretsEncrypted ?? sealed);
-  await db.robinhoodConnections.updateMany({
-    where: { id: connectionId },
+  const { count } = await db.robinhoodConnections.updateMany({
+    where: held(connectionId, now),
     data: {
       status: CONNECTION_STATUS.reconnect,
       secretsEncrypted: sealSecrets({ accessToken: null, refreshToken: null, accountKey }),
@@ -422,6 +430,7 @@ async function needsReconnect(
       syncingSince: null,
     },
   });
+  if (count === 0) return false;
   await logAudit(
     SYSTEM_ACTOR,
     "robinhood_reconnect_needed",
@@ -429,6 +438,7 @@ async function needsReconnect(
     { user_id: userId },
   );
   await track(userId, "robinhood_reconnect_needed");
+  return true;
 }
 
 async function recordFailure(
@@ -444,8 +454,8 @@ async function recordFailure(
     select: { failures: true },
   });
   const failures = (current?.failures ?? 0) + 1;
-  await db.robinhoodConnections.updateMany({
-    where: { id: connectionId },
+  const { count } = await db.robinhoodConnections.updateMany({
+    where: held(connectionId, now),
     data: {
       failures,
       nextTryAt: backoffUntil(failures, now),
@@ -454,6 +464,7 @@ async function recordFailure(
       syncingSince: null,
     },
   });
+  if (count === 0) return false;
   // The shape is field names only, what the first real connection needs to fix a wrong assumption.
   log.error("Robinhood refresh failed", {
     code,
@@ -465,6 +476,7 @@ async function recordFailure(
     { type: "robinhood_connection", id: connectionId },
     { user_id: userId, code, failures },
   );
+  return true;
 }
 
 export type RefreshRun = {

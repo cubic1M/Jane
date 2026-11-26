@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { beforeTerms } from "@/lib/before-terms";
 import { runAgentNow } from "@/lib/agent/run";
 import { limitOrNull } from "@/lib/rate-limit";
 import { recordDecision } from "@/lib/decisions";
@@ -15,6 +16,8 @@ const OPTION_PATTERN = /^[a-z0-9-]{1,60}$/i;
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const unaccepted = beforeTerms(user);
+  if (unaccepted) return unaccepted;
   const limited = await limitOrNull("decisions", user.id);
   if (limited) return limited;
 

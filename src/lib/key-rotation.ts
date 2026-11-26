@@ -252,7 +252,9 @@ export async function keyReport({
   const keys = [...ring.keys.keys()].map((id) => {
     const values = totals.get(id) ?? 0;
     const current = id === ring.current;
-    return { id, values, current, retirable: !current && values === 0 };
+    // A value whose key can't be told may be this one's: no key is safe to remove until it's read.
+    const retirable = !current && values === 0 && !totals.has(UNREADABLE);
+    return { id, values, current, retirable };
   });
   const missing = [...totals]
     .filter(([id]) => !ring.keys.has(id))

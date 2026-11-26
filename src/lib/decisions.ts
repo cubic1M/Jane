@@ -259,6 +259,13 @@ export async function recordDecision(
       throw error;
     });
 
+  // The agent works the action itself when it can (src/lib/agent/run.ts).
+  // A switch to a picked option is the agent's too, whatever the action (spec step 77).
+  // First after the answer is saved: it can't be given again, so a later step that fails must not
+  // leave the action with nobody to work it.
+  if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {
+    result.agentJobId = await startAgent(userId, result.actionId, { client, source });
+  }
   await keepAnswerAboutThePrice(db, finding, choice);
   await logAudit(
     { type: "user", id: userId },
@@ -281,11 +288,6 @@ export async function recordDecision(
       { topic: card.findingType, acted: choice !== "no", ref: `decision:${result.decisionId}` },
       { client },
     );
-  }
-  // The agent works the action itself when it can (src/lib/agent/run.ts).
-  // A switch to a picked option is the agent's too, whatever the action (spec step 77).
-  if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {
-    result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
   await retireAnsweredTopics(userId, client);
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;

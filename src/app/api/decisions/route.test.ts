@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TERMS_VERSION } from "@/config/legal";
 
 // Work after the response (the agent's first step) isn't part of these tests.
 vi.mock("next/server", async (importOriginal) => ({
@@ -21,7 +22,12 @@ import { getCurrentUser } from "@/lib/session";
 import { POST } from "./route";
 
 const HASH = "a".repeat(64);
-const signedIn = { id: "user_1", email: "a@example.com", role: "user" as const };
+const signedIn = {
+  id: "user_1",
+  email: "a@example.com",
+  role: "user" as const,
+  termsVersion: TERMS_VERSION,
+};
 
 const post = (body: unknown) =>
   POST(

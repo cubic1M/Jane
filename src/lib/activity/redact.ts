@@ -8,9 +8,16 @@ const EMAIL = /[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]+/g;
 // Any figure: amounts, account and card digits, dates, counts. "$1,200.50", "••1234", "12%".
 const NUMBER = /[$€£¥]?\d(?:[\d,.:/-]*\d)?%?/g;
 
+// The database refuses a null character, and one in a batch failed the whole write.
+const withoutNulls = (text: string) => text.replaceAll("\u0000", "");
+
 // Visible text made safe to store: emails and numbers replaced, whitespace squeezed, cut short.
 export function redactText(text: string, max: number = ACTIVITY.maxLabel): string {
-  const clean = text.replace(EMAIL, "[email]").replace(NUMBER, "#").replace(/\s+/g, " ").trim();
+  const clean = withoutNulls(text)
+    .replace(EMAIL, "[email]")
+    .replace(NUMBER, "#")
+    .replace(/\s+/g, " ")
+    .trim();
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
 }
 
@@ -28,7 +35,7 @@ export function cleanName(name: string): string {
 const ID_LIKE = /^(?=.*\d)[\w-]{8,}$|^[\w-]{20,}$/;
 
 export function normalizePath(path: string): string {
-  const bare = path.split(/[?#]/)[0] || "/";
+  const bare = withoutNulls(path).split(/[?#]/)[0] || "/";
   const segments = bare
     .split("/")
     .map((s) => (ID_LIKE.test(s) ? ":id" : s.slice(0, 40)))

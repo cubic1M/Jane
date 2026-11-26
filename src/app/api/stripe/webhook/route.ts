@@ -9,6 +9,11 @@ type CheckoutSession = {
   payment_status?: unknown;
 };
 
+const PAID_EVENTS = new Set<unknown>([
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+]);
+
 // Stripe's webhook. Nothing is read or changed until the signature checks out.
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -23,9 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // A payment method that takes days completes the checkout unpaid and says when the money is in.
   const session = event.data?.object;
   if (
-    event.type === "checkout.session.completed" &&
+    PAID_EVENTS.has(event.type) &&
     session?.payment_status === "paid" &&
     typeof session.id === "string" &&
     typeof session.client_reference_id === "string"

@@ -10,6 +10,7 @@ vi.mock("@/lib/membership/stripe", () => ({
   createCheckoutSession: vi.fn(async () => "https://checkout.example/session"),
 }));
 
+import { TERMS_VERSION } from "@/config/legal";
 import { createCheckoutSession } from "@/lib/membership/stripe";
 import { getCurrentUser } from "@/lib/session";
 import { POST } from "./route";
@@ -28,6 +29,7 @@ describe("POST /api/membership/checkout", () => {
     vi.mocked(getCurrentUser).mockResolvedValueOnce({
       id: "cm1real",
       email: "a@example.com",
+      termsVersion: TERMS_VERSION,
     } as never);
     const response = await POST();
     expect(response.status).toBe(200);

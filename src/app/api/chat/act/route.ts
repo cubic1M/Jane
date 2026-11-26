@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { beforeTerms } from "@/lib/before-terms";
 import { runAgentNow } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
@@ -22,6 +23,8 @@ const STATUS: Record<ChatActionError["code"], number> = {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const unaccepted = beforeTerms(user);
+  if (unaccepted) return unaccepted;
   // Only the app's own service worker sends JSON here; a form on another site can't.
   if (!request.headers.get("content-type")?.startsWith("application/json")) {
     return NextResponse.json({ error: "Send JSON" }, { status: 415 });

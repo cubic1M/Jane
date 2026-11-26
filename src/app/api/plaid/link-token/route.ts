@@ -11,6 +11,16 @@ import { getCurrentUser } from "@/lib/session";
 
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 
+function optionalObject(raw: string): { itemId?: unknown } | null {
+  if (!raw.trim()) return {};
+  try {
+    const value: unknown = JSON.parse(raw);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 // A Plaid Link token for the signed-in user. With { itemId }, opens Link's update mode
 // so they can reconnect that bank.
 export async function POST(request: Request) {
@@ -27,8 +37,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bank linking isn't set up yet." }, { status: 503 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { itemId?: unknown };
-  const itemId = body?.itemId ?? null;
+  // No body asks for a new link. One that can't be read doesn't: a reconnect cut off on the way
+  // would link the same bank twice.
+  const body = optionalObject(await request.text());
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const itemId = body.itemId ?? null;
   if (itemId !== null && (typeof itemId !== "string" || !ID_PATTERN.test(itemId))) {
     return NextResponse.json({ error: "Invalid item" }, { status: 400 });
   }

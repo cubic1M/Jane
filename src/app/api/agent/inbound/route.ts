@@ -27,17 +27,25 @@ function authorized(request: Request): boolean {
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 
+// The body as an object, or null: "null", a number or a list is valid JSON with nothing to read.
+function jsonObject(raw: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(raw);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   const raw = await request.text();
   if (raw.length > MAX_BYTES) return NextResponse.json({ error: "Too large" }, { status: 413 });
   if (request.headers.has("svix-signature")) return fromResend(raw, request.headers);
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  let body: Record<string, unknown>;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const body = jsonObject(raw);
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   const to = text(body.to);
   if (!to) return NextResponse.json({ error: "Missing to" }, { status: 400 });
   const authentication = (body.authentication ?? {}) as { dmarc?: unknown };
@@ -55,12 +63,8 @@ async function fromResend(raw: string, headers: Headers) {
   if (!verifyResendSignature(raw, headers, process.env.AGENT_INBOUND_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  let event: { type?: unknown; data?: { email_id?: unknown } };
-  try {
-    event = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const event = jsonObject(raw) as { type?: unknown; data?: { email_id?: unknown } } | null;
+  if (!event) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   if (event.type !== "email.received") return NextResponse.json({ result: "ignored" });
   const emailId = event.data?.email_id;
   if (typeof emailId !== "string")

@@ -13,6 +13,16 @@ import { systemDb } from "@/lib/system-db";
 
 const EXPORT_FORMAT_VERSION = 1;
 
+// A record of what a team member did names whose account it was done to. That id is the other
+// person's, so it stays out of the member's own download.
+const PERSON_ID = /user_?id$/i;
+function withoutOthers(metadata: unknown, userId: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return metadata;
+  return Object.fromEntries(
+    Object.entries(metadata).filter(([key, value]) => !PERSON_ID.test(key) || value === userId),
+  );
+}
+
 export async function exportUserData(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
@@ -583,6 +593,9 @@ export async function exportUserData(
         businessMilesYear: true,
         taxPayments: true,
         refundsHandled: true,
+        // The gift receipts they ticked, and the record years Jane reminded them about.
+        givingReceipts: true,
+        retentionReminded: true,
         // Spec step 165: where they lived and worked.
         moves: true,
         workState: true,
@@ -727,7 +740,7 @@ export async function exportUserData(
     exportedAt: now.toISOString(),
     formatVersion: EXPORT_FORMAT_VERSION,
     activityLog,
-    records,
+    records: records.map((r) => ({ ...r, metadata: withoutOthers(r.metadata, userId) })),
     profile,
     insurance,
     banks,

@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { membershipOffer, type Offer } from "./offer";
 import { systemDb } from "@/lib/system-db";
 
@@ -61,10 +61,18 @@ export async function dismissOffer(
 }
 
 export async function reserveMembership(userId: string, { client = defaultClient }: Options = {}) {
-  const db = scopedFor(userId, client);
-  if ((await db.membershipIntents.count()) > 0) return;
-  await db.membershipIntents.create({ data: { userId, kind: "reserve" } });
-  await track(userId, "membership_reserved", {});
+  const reserved = await personTransaction(
+    userId,
+    async (tx) => {
+      // One at a time for a person: two taps at once each saw none and both reserved.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reserve:${userId}`}))`;
+      if ((await tx.membershipIntent.count({ where: { userId } })) > 0) return false;
+      await tx.membershipIntent.create({ data: { userId, kind: "reserve" } });
+      return true;
+    },
+    client,
+  );
+  if (reserved) await track(userId, "membership_reserved", {});
 }
 
 // From Stripe's checkout.session.completed webhook. Safe to receive twice: the Stripe

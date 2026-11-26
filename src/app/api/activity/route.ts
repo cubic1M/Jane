@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
   const limited = await limitOrNull("activity", ipKey(request.headers));
   if (limited) return limited;
   const text = await request.text();
-  if (text.length > ACTIVITY.maxBodyBytes) {
+  // In bytes: a character can take up to three, and the length counts it as one.
+  if (Buffer.byteLength(text) > ACTIVITY.maxBodyBytes) {
     return NextResponse.json({ error: "Too large" }, { status: 413 });
   }
   let body: unknown;

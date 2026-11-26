@@ -15,7 +15,13 @@ function fromThisSite(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin || !URL.canParse(origin)) return false;
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  return new URL(origin).host === host;
+  const from = new URL(origin);
+  // A plain-HTTP page on the same host isn't this site when the site was reached over HTTPS.
+  const asked =
+    request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ??
+    new URL(request.url).protocol.slice(0, -1);
+  if (asked === "https" && from.protocol !== "https:") return false;
+  return from.host === host;
 }
 
 // The yes on /login/continue (src/lib/sign-in-link.ts). Nothing about the link is checked here:
