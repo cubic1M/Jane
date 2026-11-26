@@ -45,7 +45,11 @@ export function whatIfReply(run: ScenarioRun | null): Reply {
     body: lines.join(" "),
     actions: [
       { id: "whatif.adopt", label: "Use this plan", kind: "primary" },
-      openLink("See the details", `/what-if?s=${run.scenario}`),
+      // The months the reply ran for, so the page shows the same run.
+      openLink(
+        "See the details",
+        `/what-if?s=${run.scenario}${run.params.months > 0 ? `&m=${run.params.months}` : ""}`,
+      ),
     ],
     refs: {
       whatIf: {

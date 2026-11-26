@@ -38,6 +38,19 @@ const median = (values: number[]) => {
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid]! : Math.round((sorted[mid - 1]! + sorted[mid]!) / 2);
 };
+// The calendar months the lines' history covers, first to last, months without a transfer included:
+// an average over the months that had one would read high.
+const historyMonths = (lines: readonly MoveLine[]) => {
+  const dates = lines.map((t) => t.date.slice(0, 7)).sort();
+  if (dates.length === 0) return 1;
+  const [y1, m1] = dates[0]!.split("-").map(Number);
+  const [y2, m2] = dates[dates.length - 1]!.split("-").map(Number);
+  return Math.max(1, (y2! - y1!) * 12 + (m2! - m1!) + 1);
+};
+// "to ... savings" with no "from" before the savings: a transfer into it. "TRANSFER FROM SAVINGS TO
+// CHECKING" is money coming out.
+const INTO_SAVINGS = /\bto\s+(?:(?!from\b)[\w&'.-]+\s+){0,5}savings\b/i;
+const OUT_OF_SAVINGS = /\bfrom\s+(?:(?!to\b)[\w&'.-]+\s+){0,5}savings\b/i;
 const oldestFirst = (a: MoveLine, b: MoveLine) => a.date.localeCompare(b.date);
 const list = (days: string[]) =>
   days.length <= 1
@@ -187,7 +200,7 @@ export function sentByAppReply(app: string, lines: readonly MoveLine[]): Reply {
   const label = appName(app);
   if (sent.length === 0) return notFound(`money you sent by ${label}`);
   const total = sent.reduce((s, t) => s + t.amountCents, 0);
-  const months = new Set(sent.map((t) => t.date.slice(0, 7))).size;
+  const months = historyMonths(lines);
   return {
     body: `You've sent ${formatCents(total)} by ${label} since ${dayLabel(sent[0]!.date)} (${
       sent.length === 1 ? "once" : `${sent.length} times`
@@ -205,12 +218,14 @@ export function savingsTransfersReply(lines: readonly MoveLine[]): Reply {
       (t) =>
         t.amountCents > 0 &&
         (t.pfcDetailed === "TRANSFER_OUT_SAVINGS" ||
-          (/\btransfer\b/i.test(t.description) && /\bsavings\b/i.test(t.description))),
+          (/\btransfer\b/i.test(t.description) &&
+            INTO_SAVINGS.test(t.description) &&
+            !OUT_OF_SAVINGS.test(t.description))),
     )
     .sort(oldestFirst);
   if (moved.length === 0) return notFound("money moved into savings");
   const total = moved.reduce((s, t) => s + t.amountCents, 0);
-  const months = new Set(moved.map((t) => t.date.slice(0, 7))).size;
+  const months = historyMonths(lines);
   const to = nameOf(moved[moved.length - 1]!);
   return {
     body: `You move about ${formatCents(Math.round(total / months))} a month into savings${to ? `, to ${to}` : ""}: ${formatCents(total)} in ${

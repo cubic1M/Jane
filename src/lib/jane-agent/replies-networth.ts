@@ -21,7 +21,8 @@ export function netWorthReply(
       refs: {},
     };
   }
-  if (worth.assetsCents === 0 && worth.debtsCents === 0) {
+  // Nothing known at all, not a balance that is known to be zero (that is $0.00, said below).
+  if (!worth.known) {
     return {
       body: "I can't work out your net worth yet: add your accounts or something you own, and I'll add it up.",
       actions: [openLink("Add your accounts", "/connect")],
