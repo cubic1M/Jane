@@ -66,7 +66,7 @@ const RULES: { outcome: ReplyOutcome; patterns: RegExp[] }[] = [
       /\bkeep (your|the) (previous|old|current) price\b/i,
       // What was done, not only that something was: "applied a temporary hold" isn't a refund and
       // "closed your ticket" isn't a cancelled account.
-      /\bwe('ve| have) applied (a|the|your) (credit|refund|discount|adjustment|price|rate|new(?: [a-z-]+){0,2} (?:price|rate)|(?:lower|reduced)(?: [a-z-]+){0,2} (?:price|rate|fee|charge))\b/i,
+      /\bwe('ve| have) applied (a|the|your) (credit|refund|discount|adjustment|price|rate|(?:lower|reduced)(?: [a-z-]+){0,2} (?:price|rate|fee|charge))\b/i,
       /\bwe('ve| have) reversed (the|your|a|that) (annual |duplicate |monthly |late |extra |double |renewal |service )?(charge|fee|payment|renewal)\b/i,
       /\bwe('ve| have) credited (your|the) (account|card|balance|refund)\b/i,
       /\bwe('ve| have) (cancell?ed|closed) (your|the) (account|subscription|membership|plan|service)\b/i,
@@ -103,7 +103,11 @@ export function readReplyByRules(body: string): ReplyReading {
     .split("\n")
     .filter((line) => !line.trim().startsWith(">"))
     .join("\n");
-  const rule = RULES.find((r) => r.patterns.some((p) => p.test(current)));
+  const found = RULES.find((r) => r.patterns.some((p) => p.test(current)));
+  // A reply that also asks for something is not the request being done: what it asks comes first.
+  const asks = RULES.find((r) => r.outcome === "needs_info");
+  const rule =
+    found?.outcome === "done" && asks && asks.patterns.some((p) => p.test(current)) ? asks : found;
   const outcome = rule?.outcome ?? "unclear";
   const all = sentences(body);
   // The sentence that says what happened, or the first that isn't a pleasantry.

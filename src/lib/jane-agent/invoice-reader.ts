@@ -252,7 +252,11 @@ export function readingWords(r: InvoiceReading): string[] {
   const { invoice } = r;
   // An invoice in another currency keeps its own code: never shown with a dollar sign.
   const money = (cents: number) =>
-    invoice.currency ? `${(cents / 100).toFixed(2)} ${invoice.currency}` : dollars(cents);
+    invoice.currency === "MIXED"
+      ? "amount not shown, the currencies differ"
+      : invoice.currency
+        ? `${(cents / 100).toFixed(2)} ${invoice.currency}`
+        : dollars(cents);
   const priced = (l: InvoiceLine) =>
     `${l.description} (${l.cents < 0 ? "-" : ""}${money(Math.abs(l.cents))})`;
   const out = [
@@ -269,7 +273,7 @@ export function readingWords(r: InvoiceReading): string[] {
   if (!r.against) return out;
   if (invoice.currency) {
     out.push(
-      `This invoice is in ${invoice.currency} and your charge is in dollars, so I won't set one against the other or say which line explains the charge.`,
+      `This invoice ${invoice.currency === "MIXED" ? "mixes currencies" : `is in ${invoice.currency}`} and your charge is in dollars, so I won't set one against the other or say which line explains the charge.`,
     );
     return out;
   }

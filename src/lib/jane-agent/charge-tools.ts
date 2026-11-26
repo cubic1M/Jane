@@ -135,6 +135,15 @@ export async function runChargeTool(
   const invoice = readInvoice(text);
   if (!invoice) return out({ read: false, why: NO_INVOICE_LINES });
   const reading = readAgainst(invoice, found?.kind === "found" ? found.explanation : null);
+  // Two currencies on one invoice: no amount is given, and no total.
+  if (invoice.currency === "MIXED") {
+    return out({
+      read: true,
+      currency: "mixed",
+      note: "This invoice mixes currencies, so I can't give a total or set it against the charge. Say only what its lines are called.",
+      lines: invoice.lines.map((l) => ({ line: oneLine(l.description).slice(0, 80) })),
+    });
+  }
   // An invoice in another currency keeps its own code: never shown with a dollar sign.
   const inv = (cents: number) =>
     invoice.currency

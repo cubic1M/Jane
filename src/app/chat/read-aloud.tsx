@@ -19,7 +19,10 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
   const [speaking, setSpeaking] = useState(false);
   // A tap that is waiting for the voices to load: dropped when the message leaves the page.
   const pending = useRef<(() => void) | null>(null);
+  // Shown while the tap waits, so a second tap visibly cancels it.
+  const [waiting, setWaiting] = useState(false);
   const clearPending = () => {
+    setWaiting(false);
     if (pending.current)
       window.speechSynthesis?.removeEventListener?.("voiceschanged", pending.current);
     pending.current = null;
@@ -51,6 +54,7 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
     const lang = navigator.language || "en-US";
     function start() {
       pending.current = null;
+      setWaiting(false);
       // Only a voice on this device: a network voice would send the message to a speech service.
       const voice = localVoice(synth.getVoices(), lang);
       if (!voice) return;
@@ -65,6 +69,7 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
     // Voices load late on some browsers: the first tap waits for them, once, instead of doing nothing.
     if (synth.getVoices().length === 0) {
       pending.current = start;
+      setWaiting(true);
       synth.addEventListener?.("voiceschanged", start, { once: true });
       return;
     }
@@ -75,10 +80,10 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
     <button
       type="button"
       onClick={toggle}
-      aria-pressed={speaking}
+      aria-pressed={speaking || waiting}
       className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
     >
-      {speaking ? "Stop reading" : "Read aloud"}
+      {speaking || waiting ? "Stop reading" : "Read aloud"}
     </button>
   );
 }

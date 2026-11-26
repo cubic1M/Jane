@@ -129,6 +129,15 @@ describe("read_invoice", () => {
     expect(JSON.stringify(data)).not.toContain("$");
   });
 
+  it("gives no amount or total for an invoice that mixes currencies", async () => {
+    const { data } = await run("read_invoice", {
+      text: "Plan  €20.00\nAddon  USD 5.00\nTotal  €25.00",
+    });
+    expect(data.currency).toBe("mixed");
+    expect(data.total).toBeUndefined();
+    expect(JSON.stringify(data)).not.toMatch(/MIXED|\$|\d\.\d\d/);
+  });
+
   it("lists the lines alone when no charge is named", async () => {
     const { data } = await run("read_invoice", { text: TEXT });
     expect(data.setAgainstCharge).toBeNull();

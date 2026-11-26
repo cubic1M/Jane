@@ -41,7 +41,20 @@ describe("reading a company's reply by rules", () => {
       "We have applied a new account review fee. Please provide the receipt.",
     );
     expect(reading.outcome).toBe("needs_info");
-    expect(readReplyByRules("We have applied a new lower rate to your plan.").outcome).toBe("done");
+    expect(readReplyByRules("We have applied a lower rate to your plan.").outcome).toBe("done");
+    // CodeRabbit #2286: a higher or unchanged rate is not the request done, and a reply that also
+    // asks for something is what it asks.
+    expect(readReplyByRules("We have applied a new higher interest rate.").outcome).not.toBe(
+      "done",
+    );
+    expect(
+      readReplyByRules("We have applied a new higher interest rate. Please provide the receipt.")
+        .outcome,
+    ).toBe("needs_info");
+    expect(readReplyByRules("The rate is unchanged.").outcome).not.toBe("done");
+    expect(
+      readReplyByRules("We have applied a lower rate. Please provide the receipt.").outcome,
+    ).toBe("needs_info");
   });
 
   it("still reads a confirmation as done", () => {
