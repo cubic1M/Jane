@@ -132,6 +132,23 @@ describe.runIf(url)("guided flows against a real database", () => {
     expect(done.refs.note).toMatch(/^Got it\. I'll ask for the money back today/);
   });
 
+  // CodeRabbit part 2 (actions-02): the same button ids sit on every step, so one tapped right after
+  // the question changed is the double tap on the one before.
+  it("refuses an answer tapped the moment its question appeared", async () => {
+    const first = await say("dispute a charge");
+    const shown = new Date(first.refs.flow!.at!);
+    await expect(
+      takeChatAction(userId, first.id, first.actions[0].id, {
+        client,
+        now: new Date(shown.getTime() + 500),
+      }),
+    ).rejects.toMatchObject({ code: "not_open" });
+    // Later, the same tap answers.
+    const second = await tap(first, first.actions[0].label);
+    expect(second.body).toMatch(/Should I ask for it back\?$/);
+    await tap(second, "Cancel");
+  });
+
   // CodeRabbit part 2: the Yes acts on the finding that was picked, not on whatever it became.
   it("stops when the finding changed between the pick and the Yes", async () => {
     const first = await say("dispute a charge");

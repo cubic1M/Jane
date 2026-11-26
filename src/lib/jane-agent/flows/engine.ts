@@ -47,6 +47,9 @@ export type FlowState = {
   // The values behind this step's buttons, in order (flow.pick.1, flow.pick.2…).
   options: string[];
   typed?: FlowQuestion["typed"];
+  // When this step's question was shown (ISO): an answer tapped within CHAT_FLOW_SETTLE_MS of it
+  // is refused.
+  at?: string;
 };
 
 export const PICK_IDS = Array.from(
@@ -59,6 +62,7 @@ export function stepMessage<D>(
   flow: FlowDef<D>,
   state: Pick<FlowState, "step" | "answers">,
   data: D,
+  shownAt?: Date,
 ): { body: string; actions: MessageAction[]; refs: MessageRefs } {
   const ask = flow.steps[state.step].ask(state.answers, data);
   const options = ask.options.slice(0, CHAT_FLOW_OPTIONS);
@@ -92,6 +96,7 @@ export function stepMessage<D>(
         answers: state.answers,
         options: options.map((o) => o.value),
         ...(ask.typed ? { typed: ask.typed } : {}),
+        ...(shownAt ? { at: shownAt.toISOString() } : {}),
       },
     },
   };

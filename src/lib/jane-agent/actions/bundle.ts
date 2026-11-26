@@ -40,6 +40,13 @@ function bundleYes(n: 1 | 2 | 3 | 4 | 5, no = false): ActionHandler {
         detail = linksOf(answered.actions);
       } catch (error) {
         if (!(error instanceof ChatActionError) || error.code !== "not_open") throw error;
+        // "Not open" also means a tap on it still in flight, or its action refusing for now: the
+        // item keeps its buttons unless the message really is answered.
+        const child = await scopedFor(userId, client).janeMessages.findFirst({
+          where: { id: row.id },
+          select: { status: true },
+        });
+        if (!child || child.status === "open") throw error;
         note = "You'd already answered that one.";
       }
       const noId = (m: number) => `bundle.no.${m}`;

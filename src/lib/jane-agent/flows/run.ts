@@ -12,7 +12,7 @@ export async function startFlow(id: FlowId, context: FlowContext): Promise<Reply
   const data = await flow.load(context, {});
   const none = flow.none(data);
   if (none) return { body: none, actions: [], refs: {} };
-  return stepMessage(flow, { step: 0, answers: {} }, data);
+  return stepMessage(flow, { step: 0, answers: {} }, data, context.now);
 }
 
 export type FlowMove =
@@ -33,7 +33,10 @@ export async function answerFlow(
   if (state.step + 1 >= flow.steps.length) {
     return { done: true, note: await flow.finish(answers, data, context) };
   }
-  return { done: false, ...stepMessage(flow, { step: state.step + 1, answers }, data) };
+  return {
+    done: false,
+    ...stepMessage(flow, { step: state.step + 1, answers }, data, context.now),
+  };
 }
 
 // The question the state is on, again (picking a flow up later).
@@ -42,7 +45,7 @@ export async function showFlow(
   context: FlowContext,
 ): Promise<{ body: string; actions: Reply["actions"]; refs: MessageRefs }> {
   const flow = FLOWS[state.id];
-  return stepMessage(flow, state, await flow.load(context, state.answers));
+  return stepMessage(flow, state, await flow.load(context, state.answers), context.now);
 }
 
 // One step back, keeping the answers.
@@ -51,6 +54,11 @@ export async function backFlow(state: FlowState, context: FlowContext): Promise<
   const step = Math.max(0, state.step - 1);
   return {
     done: false,
-    ...stepMessage(flow, { step, answers: state.answers }, await flow.load(context, state.answers)),
+    ...stepMessage(
+      flow,
+      { step, answers: state.answers },
+      await flow.load(context, state.answers),
+      context.now,
+    ),
   };
 }

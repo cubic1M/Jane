@@ -1,6 +1,7 @@
 import { BudgetError, setBudget } from "@/lib/budgets";
 import { centsToInput, formatCents } from "@/lib/money";
-import { ChatActionError, type ActionHandler } from "./handler";
+import { scopedFor } from "@/lib/db-scoped";
+import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
 
 // "Set a budget" (spec step 90), on Jane's answers about a category with no budget yet,
 // prefilled with what the person usually spends there: set through Budgets' own code
@@ -12,6 +13,16 @@ export const budgetSet: ActionHandler = {
   async run({ userId, message, action, client }) {
     const budget = message.refs.budget;
     if (!budget) throw new ChatActionError("failed", "Something went wrong. Open Budgets instead.");
+    // A card offered while the category had no budget does not replace one set since.
+    const current = await scopedFor(userId, client).budgets.findFirst({
+      where: { category: budget.category },
+      select: { amountCents: true },
+    });
+    if (current && current.amountCents !== budget.amountCents) {
+      throw answeredElsewhere(
+        `You already have a ${budget.category} budget of ${formatCents(current.amountCents)} a month, so I left it as it is.`,
+      );
+    }
     try {
       await setBudget(userId, budget.category, centsToInput(budget.amountCents), { client });
     } catch (error) {

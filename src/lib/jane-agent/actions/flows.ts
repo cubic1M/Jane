@@ -1,3 +1,4 @@
+import { CHAT_FLOW_SETTLE_MS } from "@/config/agent-chat";
 import { answerFlow, backFlow } from "../flows/run";
 import type { ActionId } from "../types";
 import {
@@ -32,6 +33,14 @@ function pick(n: number): ActionHandler {
       const state = message.refs.flow;
       const value = state?.options[n - 1];
       if (!state || value === undefined) throw wrong();
+      // The same button ids sit on every step: one tapped right after the question changed is
+      // the double tap on the one before, not an answer to this one.
+      if (state.at && now.getTime() - Date.parse(state.at) < CHAT_FLOW_SETTLE_MS) {
+        throw new ChatActionError(
+          "not_open",
+          "That question just changed. Pick your answer to this one.",
+        );
+      }
       return moved(await answerFlow(state, value, { userId, client, now }), action.label);
     },
   };
