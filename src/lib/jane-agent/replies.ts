@@ -42,14 +42,14 @@ import {
   type AffordResult,
 } from "@/planning/afford";
 import { CHAT_CLARIFY_CHOICES } from "@/config/agent-chat";
-import { matchCategory, type ActVerb, type Intent } from "./intents";
+import { matchCategory, type ActVerb, type Intent, type ShortPeriod } from "./intents";
 import { nameMatches } from "./names";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { dateAndDays, inDays, snoozeButton, things } from "./sources/source";
 import type { PreferenceDraft } from "./preferences";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
-import { shiftMonth } from "@/lib/dates";
+import { addDays, shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { daysBetween } from "@/detection/units";
 import { endedOn, monthCutShortAt } from "@/lib/data-ended";
@@ -482,6 +482,10 @@ export function spendingReply(
       [openLink("Add your accounts", "/connect")],
     );
   }
+  // A day or a week asked for is read by its days, never as the month.
+  if (intent.shortPeriod) {
+    return reply(shortPeriodLine(intent.shortPeriod, intent.category, transactions, asOf), open);
+  }
   if (intent.perMonth && intent.category && !intent.shortPeriod) {
     const usual = usualMonthLine(intent.category, transactions, asOf);
     if (usual) return reply(usual, open);
@@ -770,6 +774,63 @@ function spentIn(
     count: null,
     where: `on ${category}`,
   };
+}
+
+// The days a short period covers, ending on asOf (the person's own today): "this week" is the last
+// seven days, today included, and "last week" the seven before them.
+function shortPeriodDays(
+  period: ShortPeriod,
+  asOf: string,
+): { from: string; to: string; label: string } {
+  switch (period) {
+    case "today":
+      return { from: asOf, to: asOf, label: "today" };
+    case "yesterday":
+      return { from: addDays(asOf, -1), to: addDays(asOf, -1), label: "yesterday" };
+    case "last_week":
+      return {
+        from: addDays(asOf, -13),
+        to: addDays(asOf, -7),
+        label: `last week (${dayLabel(addDays(asOf, -13))} to ${dayLabel(addDays(asOf, -7))})`,
+      };
+    default:
+      return {
+        from: addDays(asOf, -6),
+        to: asOf,
+        label: `in the last 7 days (${dayLabel(addDays(asOf, -6))} to ${dayLabel(asOf)})`,
+      };
+  }
+}
+
+// "How much have I spent on groceries this week?": what the days hold, at the merchant named, on the
+// part or in the category, or all of it. Says when what Jane has ends before the days do.
+function shortPeriodLine(
+  period: ShortPeriod,
+  target: string | null,
+  transactions: InsightTransaction[],
+  asOf: string,
+): string {
+  const { from, to, label } = shortPeriodDays(period, asOf);
+  const lastDate = transactions.reduce(
+    (last, t) => (t.date > last ? t.date : last),
+    transactions[0]!.date,
+  );
+  if (lastDate < from) {
+    return `I can't see ${label}: what I have ends on ${dayLabel(lastDate)}.`;
+  }
+  const inRange = transactions.filter((t) => t.date >= from && t.date <= to);
+  const months = [...new Set(inRange.map((t) => t.date.slice(0, 7)))];
+  const ends = lastDate < to ? ` What I have ends on ${dayLabel(lastDate)}.` : "";
+  if (!target) {
+    const insights = spendingInsights(inRange, { asOf, monthCount: INSIGHT_MONTHS });
+    const cents = insights.months
+      .filter((m) => months.includes(m.month))
+      .reduce((sum, m) => sum + m.spendingCents, 0);
+    return `You spent ${fmt(cents)} ${label}.${ends}`;
+  }
+  const spent = spentIn(target, inRange, months, asOf);
+  if (!spent) return `${SPENDING_NOT_FOUND} "${target}" ${label}.${ends}`;
+  return `You spent ${fmt(spent.cents)} ${spent.where} ${label}.${ends}`;
 }
 
 // "How much have I spent on Uber?" with no period: everything on file, since the data starts, and
