@@ -344,6 +344,33 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
       ).toBe("sized");
     });
 
+    it("a new best quote is a new card, and the old card is closed: one card per quote", async () => {
+      const { me, message } = await sizedMessage();
+      const run = (days: number) =>
+        runJaneAgent(me, { client, now: new Date(NOW.getTime() + days * DAY), trigger: "open" });
+      const sized = async () =>
+        (await client.janeMessage.findMany({ where: { userId: me, status: "open" } })).filter((m) =>
+          parseActions(m.actions).some((a) => a.id === "lifecover.apply"),
+        );
+      await run(0);
+      const [first] = await sized();
+      expect(first.id).toBe(message.id);
+      const firstQuote = parseRefs(first.refs).lifeQuoteId!;
+      // The best quote runs out: the next one is the best now.
+      const application = await client.lifeApplication.findFirstOrThrow({ where: { userId: me } });
+      const quotes = application.quotes as { expiresAt: string }[];
+      quotes[0].expiresAt = new Date(NOW.getTime() - DAY).toISOString();
+      await client.lifeApplication.update({ where: { id: application.id }, data: { quotes } });
+      await run(1);
+      const open = await sized();
+      expect(open).toHaveLength(1);
+      expect(parseRefs(open[0].refs).lifeQuoteId).not.toBe(firstQuote);
+      expect(open[0].id).not.toBe(first.id);
+      expect((await client.janeMessage.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+        "answered",
+      );
+    });
+
     it("a Yes or No answers the question the message showed, not a later one", async () => {
       const { me, tap } = await sizedMessage();
       const now = await tap("lifecover.apply");
