@@ -139,6 +139,16 @@ describe.runIf(url)(
       expect(JSON.stringify(open.actions)).toContain("multi.undo");
       expect((open.refs as { note: string }).note).toContain("until then");
 
+      // A partial Undo had added a retry line after the record.
+      await client.janeMessage.update({
+        where: { id: reply.id },
+        data: {
+          refs: {
+            ...(open.refs as object),
+            note: `${(open.refs as { note: string }).note}\nOne couldn't be reached just now; tap Undo again to retry it.`,
+          },
+        },
+      });
       await client.moneyTransfer.update({
         where: { id: transfer.id },
         data: { status: "completed", completedAt: later() },
@@ -148,6 +158,7 @@ describe.runIf(url)(
       expect(JSON.stringify(closed.actions)).not.toContain("multi.undo");
       const note = (closed.refs as { note: string }).note;
       expect(note).not.toContain("until then");
+      expect(note).not.toContain("tap Undo again");
       expect(note).toMatch(/^All done, in order\.\n1\. Done\. /);
     });
 

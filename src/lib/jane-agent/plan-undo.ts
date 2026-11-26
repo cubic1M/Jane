@@ -89,11 +89,15 @@ export async function closeSettledPlans(
         ? { status: r.status, note: r.note.replace(UNTIL_THEN, "") }
         : r,
     );
-    const wasNote = plan.refs.note === planNote(results);
+    // The note is the plan's own while it starts with the record; what a partial Undo added after
+    // it ("tap Undo again to retry") stays only while some transfer is still undoable.
+    const record = planNote(results);
+    const wasNote = plan.refs.note?.startsWith(record) === true;
+    const suffix = wasNote && live.size > 0 ? plan.refs.note!.slice(record.length) : "";
     const refs = {
       ...plan.refs,
       multi: { steps: plan.refs.multi?.steps ?? [], results: next },
-      ...(wasNote ? { note: planNote(next) } : {}),
+      ...(wasNote ? { note: planNote(next) + suffix } : {}),
     };
     const actions =
       live.size > 0 ? plan.actions : plan.actions.filter((a) => a.id !== "multi.undo");
