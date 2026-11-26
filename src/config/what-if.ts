@@ -127,6 +127,19 @@ export const SCENARIO_COVER: Record<Scenario, string[]> = {
   part_time: ["Check whether part-time hours keep your health plan at work."],
 };
 
+// What is true about cover in each scenario, said as plain facts with nothing to do. A real
+// account may be shown these; SCENARIO_COVER above is advice (what to check, what fills a gap),
+// so it is shown only in demo advice mode (src/lib/advice-mode.ts).
+export const SCENARIO_COVER_FACTS: Record<Scenario, string[]> = {
+  job_loss: ["Health, disability and life cover through work usually end with the job."],
+  raise: [],
+  baby: ["A health plan usually gives a limited window, often 30 days, to add a new baby."],
+  moving: ["Renters, homeowners and car cover are tied to the address on the policy."],
+  car: ["A car needs auto cover before it is driven."],
+  home: ["A mortgage lender requires homeowners cover from the first day."],
+  part_time: ["Health cover at work often depends on weekly hours."],
+};
+
 // Months projected.
 export const WHAT_IF_MONTHS = 12;
 // Goals and big costs: a month counts as "short" when cash would drop below this.

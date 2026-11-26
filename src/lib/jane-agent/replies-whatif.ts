@@ -25,6 +25,9 @@ export function whatIfReply(run: ScenarioRun | null): Reply {
     sectors.debt,
     sectors.taxes,
     sectors.investing,
+    run.sectors.insurance.length > 0
+      ? `${run.advice ? "Cover to check" : "About cover"}: ${run.sectors.insurance.join(" ")}`
+      : null,
     run.sectors.goals.some((g) => g.status === "slips")
       ? `Goals that slip: ${run.sectors.goals
           .filter((g) => g.status === "slips")
@@ -52,6 +55,7 @@ export function whatIfReply(run: ScenarioRun | null): Reply {
       ),
     ],
     refs: {
+      ...(run.advice && run.sectors.insurance.length > 0 ? { advice: true as const } : {}),
       whatIf: {
         scenario: run.scenario,
         months: run.params.months,

@@ -11,6 +11,7 @@ import type { DetectionInput } from "@/detection/types";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { loadPayoff } from "@/lib/debt-plan";
+import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
@@ -88,7 +89,8 @@ export async function whatIf(
   if (overrides.extraMonthlyCents !== undefined) {
     clean.extraMonthlyCents = Math.max(0, Math.round(overrides.extraMonthlyCents));
   }
-  const first = runScenario(scenario, baseline, clean);
+  const advice = await adviceMode(userId, { client });
+  const first = runScenario(scenario, baseline, clean, { advice });
   if (baseline.debt.hasDebts) {
     const payoff = await loadPayoff(userId, { client, now });
     const extra = Math.max(
@@ -97,7 +99,7 @@ export async function whatIf(
     );
     const after = await loadPayoff(userId, { client, now, extraCents: extra });
     baseline.debt.after = after.debtFreeMonth;
-    return runScenario(scenario, baseline, clean);
+    return runScenario(scenario, baseline, clean, { advice });
   }
   return first;
 }

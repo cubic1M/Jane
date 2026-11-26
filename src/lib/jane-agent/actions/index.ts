@@ -64,7 +64,15 @@ import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
 import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
-import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
+import {
+  TAX_PROFILE_HANDLERS,
+  taxCountySet,
+  taxFoundYes,
+  taxIncomeAdd,
+  taxIncomeNo,
+  taxRetireSet,
+  taxStateSet,
+} from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
@@ -308,6 +316,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.income_add": taxIncomeAdd,
   "tax.income_no": taxIncomeNo,
   "tax.state_set": taxStateSet,
+  "tax.county_set": taxCountySet,
+  "tax.retire_set": taxRetireSet,
   // Spec step 119.
   "tax.tag_yes": taxTagYes,
   "tax.tag_no": taxTagNo,

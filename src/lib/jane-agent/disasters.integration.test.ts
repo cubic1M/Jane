@@ -260,7 +260,15 @@ describe.runIf(url)("disasters and losses against a real database", { timeout: 1
 
   it("checks a county the person names, and tells a county with no relief so", async () => {
     const userId = await person("dis-told");
-    const { reply } = await sendToJane(userId, "I live in Travis County", { client, now: LINKED });
+    const { reply: asked } = await sendToJane(userId, "I live in Travis County", {
+      client,
+      now: LINKED,
+    });
+    // Typed in passing: asked about, not saved until the yes (open O27).
+    expect(asked.body).toMatch(/^Want me to put Travis County on your tax profile/);
+    expect(await client.janePreference.count({ where: { userId, key: "profile:county" } })).toBe(0);
+    const reply = (await takeChatAction(userId, asked.id, "tax.county_set", { client, now: LINKED }))
+      .message;
     expect(reply.body).toMatch(/^Got it: Travis County\./);
     expect(reply.body).toContain("I don't see a disaster postponement for Travis County");
     expect((await loadDisasterRelief(userId, { client, now: LINKED })).relief).toEqual([]);
