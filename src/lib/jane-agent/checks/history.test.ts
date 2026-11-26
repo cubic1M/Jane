@@ -196,6 +196,7 @@ describe("the real-path night", () => {
       skipped: 0,
       costCents: 0,
       firstWordsMs: null,
+      failedCount: 1,
       failed: [{ id: "b", text: "second", score: 0, reason: "tool_error" }],
     });
   });
@@ -212,5 +213,50 @@ describe("the real-path night", () => {
     expect(modeLabel("rules_only")).toBe("rules backup");
     expect(modeLabel("real_path")).toBe("real path, played back");
     expect(modeLabel("full")).toBe("with Claude");
+  });
+});
+
+describe("the nightly record (CodeRabbit sweep)", () => {
+  const metrics = (): NightEntry["metrics"] => ({
+    understoodPct: 100,
+    figuresPct: 100,
+    followUpsPct: 100,
+    counts: { questions: 10, withFigures: 5, followUps: 2 },
+    firstWordsMs: 900,
+    fullAnswerMs: 2000,
+  });
+  it("counts the depth-bar streak over consecutive nights, not three records", () => {
+    const nights = (dates: string[]) => dates.map((date) => night({ date, metrics: metrics() }));
+    expect(nightlyTable(nights(["2026-11-01", "2026-11-03", "2026-11-04"]))).toContain(
+      "Not met yet.",
+    );
+    expect(nightlyTable(nights(["2026-11-02", "2026-11-03", "2026-11-04"]))).toContain(
+      "Met for the last three nights.",
+    );
+  });
+  it("reports how many failed, not how many details are kept, and keeps no answer words", () => {
+    const results = Array.from({ length: 45 }, (_, i) => ({
+      id: `q${i}`,
+      text: "t",
+      status: "graded" as const,
+      score: 10,
+      reason: 'Says what it shouldn\'t: "…you will certainly earn $9…".',
+    }));
+    const entry = entryOf(
+      {
+        mode: "full",
+        promptVersion: "p",
+        score: 10,
+        graded: 50,
+        skipped: 0,
+        costCents: 0,
+        results,
+      } as never,
+      "2026-11-04",
+    );
+    expect(entry.failed).toHaveLength(30);
+    expect(entry.failedCount).toBe(45);
+    expect(JSON.stringify(entry)).not.toContain("certainly earn");
+    expect(nightlyTable([entry])).toContain("| 50 | 45 |");
   });
 });

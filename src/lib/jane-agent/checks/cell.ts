@@ -4,6 +4,7 @@ import { isAccountKind, type AccountKind } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { finishImport } from "@/lib/import/background";
+import { deleteCheckPerson } from "./person";
 import { importPositionsFiles } from "@/lib/import/positions";
 import { saveUpload } from "@/lib/import/upload";
 import { systemDb } from "@/lib/system-db";
@@ -27,7 +28,11 @@ type Cell = { accounts: CellAccount[]; positions?: string[] };
 
 // A cell.json, checked: throws saying what is wrong with it.
 export function parseCell(json: string, where: string): Cell {
-  const raw = JSON.parse(json) as { accounts?: unknown; positions?: unknown };
+  const parsed: unknown = JSON.parse(json);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${where}: cell.json is an object with accounts.`);
+  }
+  const raw = parsed as { accounts?: unknown; positions?: unknown };
   if (!Array.isArray(raw.accounts) || raw.accounts.length === 0) {
     throw new Error(`${where}: cell.json needs at least one account.`);
   }
@@ -84,26 +89,35 @@ export async function createCellPerson(
   ).user.create({
     data: { email: `answer-checks-${crypto.randomUUID()}@example.com` },
   });
-  if (cell.positions) {
-    const files = cell.positions.map((file) => ({
-      name: basename(file),
-      text: read(join(dir, file)),
-    }));
-    const saved = await importPositionsFiles(scopedFor(user.id, client), files, { now });
-    if (!saved.ok) throw new Error(`${dir}: positions: ${saved.error}`);
-  }
-  for (const account of cell.accounts) {
-    const form = new FormData();
-    form.set("accountId", "new");
-    form.set("new.name", account.name);
-    form.set("new.kind", account.kind);
-    if (account.balance) form.set("new.balance", account.balance);
-    for (const file of account.files) {
-      form.append("files", new File([read(join(dir, file))], basename(file), { type: "text/csv" }));
+  try {
+    if (cell.positions) {
+      const files = cell.positions.map((file) => ({
+        name: basename(file),
+        text: read(join(dir, file)),
+      }));
+      const saved = await importPositionsFiles(scopedFor(user.id, client), files, { now });
+      if (!saved.ok) throw new Error(`${dir}: positions: ${saved.error}`);
     }
-    const saved = await saveUpload(scopedFor(user.id, client), form, { client });
-    if (!saved.ok) throw new Error(`${dir}: ${account.name}: ${saved.error}`);
-    await finishImport(user.id, saved.runId, { client, now });
+    for (const account of cell.accounts) {
+      const form = new FormData();
+      form.set("accountId", "new");
+      form.set("new.name", account.name);
+      form.set("new.kind", account.kind);
+      if (account.balance) form.set("new.balance", account.balance);
+      for (const file of account.files) {
+        form.append(
+          "files",
+          new File([read(join(dir, file))], basename(file), { type: "text/csv" }),
+        );
+      }
+      const saved = await saveUpload(scopedFor(user.id, client), form, { client });
+      if (!saved.ok) throw new Error(`${dir}: ${account.name}: ${saved.error}`);
+      await finishImport(user.id, saved.runId, { client, now });
+    }
+  } catch (error) {
+    // The caller never gets the id of a person that was not finished: remove it here.
+    await deleteCheckPerson(user.id, { client }).catch(() => undefined);
+    throw error;
   }
   return user.id;
 }

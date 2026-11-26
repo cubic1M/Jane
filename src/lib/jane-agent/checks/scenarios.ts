@@ -108,6 +108,12 @@ export function parseScenarioFiles(texts: readonly string[]): {
       const id = String((item as { id?: unknown } | null)?.id ?? `#${index + 1}`);
       try {
         const scenario = checkScenario(item, index);
+        // "<id>.2" names a scenario's second message: no scenario may be called that.
+        if (/\.\d+$/.test(scenario.id)) {
+          throw new Error(
+            `the id "${scenario.id}" ends in .number, which names a follow-up message`,
+          );
+        }
         if (seen.has(scenario.id)) throw new Error(`the id "${scenario.id}" is used twice`);
         seen.add(scenario.id);
         scenarios.push(scenario);

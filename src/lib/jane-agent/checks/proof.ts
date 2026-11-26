@@ -31,6 +31,8 @@ type ProofQuestion = {
   // contradicts the suggestion.
   about?: string;
   contradicts?: boolean;
+  // The rule for a recognised question threw: a failed probe, not a missing answer.
+  error?: string;
 };
 
 // An answer saying Jane has nothing to go on.
@@ -64,14 +66,20 @@ export type PersonProof = {
 
 const firstLine = (s: string) => s.split("\n")[0].slice(0, 160);
 
-async function ask(
+export async function ask(
   userId: string,
   text: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ProofQuestion> {
   const intent = parseIntent(text, now.toISOString().slice(0, 10));
   if (intent.kind === "unknown") return { text, understood: false, answer: "(for Claude)" };
-  const reply = await answerByRules(userId, intent, { client, now }).catch(() => null);
+  let error: string | undefined;
+  const reply = await answerByRules(userId, intent, { client, now }).catch((e: unknown) => {
+    error = (e instanceof Error ? e.message : String(e)) || "Unknown rule error";
+    return null;
+  });
+  if (error)
+    return { text, understood: true, answer: `(rule failed: ${error.slice(0, 120)})`, error };
   return {
     text,
     understood: Boolean(reply?.body),
@@ -92,6 +100,14 @@ export function inputFor(tool: string, topic: string): Record<string, string> {
   return input;
 }
 
+// The required inputs of a tool that inputFor could not fill: the probe skips such a tool
+// instead of sending {} and reporting the "Unknown figure" the chat would never produce.
+export function unfilledInputs(tool: string, input: Record<string, string>): string[] {
+  const schema = CHAT_TOOLS.find((t) => t.name === tool)?.input_schema as
+    { required?: string[] } | undefined;
+  return (schema?.required ?? []).filter((field) => input[field] === undefined);
+}
+
 export async function proveOn(
   person: Person,
   { client, now }: { client: PrismaClient; now: Date },
@@ -100,9 +116,9 @@ export async function proveOn(
   const top = topThreeFor(report);
   // As a visitor meets them: Try Jane with this person's sample data.
   const trial = await startTrial({ client, now, defer: true, person: person.id });
-  await syncItem(trial.itemId, { client, now });
   const userId = trial.userId;
   try {
+    await syncItem(trial.itemId, { client, now });
     await scanSuggestions(userId, { client, now });
     const offered = await offeredToday(userId, { client, now });
     await runJaneAgent(userId, { client, now, trigger: "open" });
@@ -119,9 +135,11 @@ export async function proveOn(
       const detector = DETECTORS.find((d) => `${d.capability}:${d.topic}` === s.key);
       const tools = [];
       for (const name of detector?.covers ?? []) {
+        const input = inputFor(name, s.topic);
+        if (unfilledInputs(name, input).length > 0) continue;
         const started = Date.now();
         try {
-          const out = await runChatTool(userId, name, inputFor(name, s.topic), { client, now });
+          const out = await runChatTool(userId, name, input, { client, now });
           const parsed = JSON.parse(out.content) as { error?: unknown };
           tools.push({
             name,
@@ -182,6 +200,7 @@ export async function proveOn(
       ),
       ...(top.pass ? [] : [`harness top three ${top.topics.join(", ")} not all on the list`]),
       ...(leads ? [] : ["the first chat doesn't lead with the suggestions"]),
+      ...questions.filter((q) => q.error).map((q) => `"${q.text}" failed: ${q.error}`),
       ...questions
         .filter((q) => q.contradicts)
         .map((q) => `"${q.text}" says there's nothing there, after suggesting ${q.about}`),
@@ -243,7 +262,7 @@ export function formatProof(proofs: readonly PersonProof[], ranOn: string): stri
     out.push("| Question | Understood | First line of the answer |", "| --- | --- | --- |");
     for (const q of p.questions) {
       out.push(
-        `| ${cell(q.text)} | ${q.understood ? (q.contradicts ? "CONTRADICTS" : "yes") : "Claude"} | ${cell(q.answer)} |`,
+        `| ${cell(q.text)} | ${q.error ? "ERROR" : q.understood ? (q.contradicts ? "CONTRADICTS" : "yes") : "Claude"} | ${cell(q.answer)} |`,
       );
     }
     out.push(

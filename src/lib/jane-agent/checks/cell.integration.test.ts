@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -48,5 +49,24 @@ describe.runIf(url)("a walked cell's person", { timeout: 120_000 }, () => {
     expect(rows).toHaveLength(9);
     expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(-141_456);
     expect(await adviceMode(id, { client })).toBe(false);
+  });
+});
+
+describe.runIf(url)("a cell whose setup fails part way", { timeout: 120_000 }, () => {
+  it("leaves no person behind and says what went wrong", async () => {
+    const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
+    const email = `answer-checks-${crypto.randomUUID()}@example.com`;
+    const spy = vi.spyOn(crypto, "randomUUID").mockReturnValueOnce(email.slice(14, 50) as never);
+    const real = (p: string) => readFileSync(p, "utf8");
+    const cell = JSON.parse(real(`${CELL}/cell.json`)) as { accounts: object[] };
+    const second = { name: "Second", kind: "checking", files: ["missing.csv"] };
+    const read = (p: string) =>
+      p.endsWith("cell.json")
+        ? JSON.stringify({ accounts: [...cell.accounts, second] })
+        : real(p.replace("missing.csv", "nope.csv"));
+    await expect(createCellPerson(CELL, { client, now: NOW, read })).rejects.toThrow(/ENOENT/);
+    spy.mockRestore();
+    expect(await client.user.count({ where: { email } })).toBe(0);
+    await client.$disconnect();
   });
 });

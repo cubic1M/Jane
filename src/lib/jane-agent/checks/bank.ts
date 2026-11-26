@@ -807,7 +807,6 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "unrelated-1",
     text: "what's my net worth",
     needs: "rules",
-    after: "follow-2",
     sector: "follow",
     page: "/net-worth",
     tool: "net_worth",
@@ -817,7 +816,6 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "unrelated-2",
     text: "how can i pay less interest",
     needs: "claude",
-    after: "follow-2",
     sector: "follow",
     page: "/debt",
     tool: "card_interest",
@@ -995,7 +993,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1009,7 +1007,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       mentions: /Next step|ask me about bitcoin/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1024,7 +1022,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1038,7 +1036,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1052,7 +1050,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1066,7 +1064,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1080,7 +1078,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1094,7 +1092,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1108,7 +1106,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1122,7 +1120,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
   {
@@ -1136,7 +1134,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "decision",
       mentions: /owe|cushion|credit card|where you stand/i,
-      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+      avoid: /don't see any crypto|demo exchange|button|link below|Which one do you mean/i,
     },
   },
 
@@ -1152,7 +1150,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       mentions: /netflix/i,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1165,9 +1163,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "finding_details",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1181,7 +1179,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       mentions: /netflix/i,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1194,7 +1192,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1208,7 +1206,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1221,7 +1219,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1233,9 +1231,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "priorities",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1249,7 +1247,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1261,9 +1259,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "priorities",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1275,9 +1273,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "priorities",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1289,9 +1287,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "card_interest",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1305,7 +1303,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1317,9 +1315,9 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "decision",
     profile: "demo_advice",
     expect: {
-      mentions: /\\$\\d/,
+      mentions: /\$\d/,
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
   {
@@ -1333,7 +1331,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       avoid:
-        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+        /\bbutton\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
     },
   },
 
@@ -2458,7 +2456,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "loan_fit",
-      mentions: /car loan|\\$20,000/i,
+      mentions: /car loan|\$20,000/i,
       link: "/loans",
       list: true,
       maxChars: 900,

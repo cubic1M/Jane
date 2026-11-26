@@ -182,3 +182,52 @@ describe("fixedChecks in demo advice mode (spec step 137)", () => {
     expect(guard(false)).toBe(false);
   });
 });
+
+describe("fixedChecks: sign, button-only and capped (CodeRabbit sweep)", () => {
+  const owing = q("balance", { figures: () => [-4_200] });
+  it("a debt of $42 is not met by '$42' read as money the person has", () => {
+    expect(failed(fixedChecks(owing, rules("Your balance is $42.00."), facts))).toContain(
+      "figures",
+    );
+    expect(failed(fixedChecks(owing, rules("Your balance is -$42.00."), facts))).not.toContain(
+      "figures",
+    );
+    expect(failed(fixedChecks(owing, rules("You owe $42.00 on it."), facts))).not.toContain(
+      "figures",
+    );
+  });
+  it("a short answer with a button is an answer; a long button-only line is not", () => {
+    const short = fixedChecks(q("x"), rules("You can save $20. Tap the button."), facts);
+    expect(failed(short)).not.toContain("written");
+    expect(failed(short)).not.toContain("shape");
+    const long = fixedChecks(
+      q("x"),
+      rules("Tap the button below to see everything we found for you on this page today."),
+      facts,
+    );
+    expect(failed(long)).toEqual(expect.arrayContaining(["written", "shape"]));
+  });
+  it("reads the sign in the sentence that holds the amount, and keeps a clause with its button", () => {
+    expect(
+      failed(
+        fixedChecks(owing, rules("Your balance is $42.00. You owe $10.00 on your card."), facts),
+      ),
+    ).toContain("figures");
+    const clause = fixedChecks(
+      q("x"),
+      rules("You can save $20 each month by cancelling the unused one; tap the button to do it."),
+      facts,
+    );
+    expect(failed(clause)).not.toContain("written");
+    const polite = fixedChecks(q("x"), rules("Tap the button below. Thanks for asking."), facts);
+    expect(failed(polite)).toEqual(expect.arrayContaining(["written", "shape"]));
+  });
+  it("a capped turn is not answered", () => {
+    const checks = fixedChecks(
+      q("x"),
+      { body: "You have used today's questions.", actions: [], source: "capped" },
+      facts,
+    );
+    expect(failed(checks)).toContain("answered");
+  });
+});

@@ -47,28 +47,39 @@ export async function createCheckPerson({
   ).user.create({
     data: { email: `answer-checks-${crypto.randomUUID()}@example.com` },
   });
-  const { itemId } = await linkDemoBank(user.id, { client, now, person });
-  await syncItem(itemId, { client, api: NO_PLAID, now });
-  // Spec step 137: a finished investor profile, so investment questions get full answers.
-  await saveProfileForm(
-    user.id,
-    { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
-    { client, now },
-  );
-  // Spec step 297: on the demo bank, a practice portfolio at that profile's level (Medium) with
-  // weeks of trades to talk about. The first sync starts it by itself for a demo person (Phase
-  // AW, src/lib/practice/demo-start.ts); this only fills in if that didn't. Practice money only.
-  if (
-    !person &&
-    !(await scopedFor(user.id, client).practicePortfolios.findFirst({ where: { userId: user.id } }))
-  )
-    await seedPractice(user.id, client, now);
-  if (ownAccount) {
-    await createCsvAccountRow(scopedFor(user.id, client), {
-      name: "Own checking",
-      kind: "checking",
-      balance: null,
-    });
+  try {
+    const { itemId } = await linkDemoBank(user.id, { client, now, person });
+    await syncItem(itemId, { client, api: NO_PLAID, now });
+    // Spec step 137: a finished investor profile, so investment questions get full answers.
+    // A sample life keeps the investor profile its own bank link stored.
+    if (!(await scopedFor(user.id, client).investorProfiles.count())) {
+      await saveProfileForm(
+        user.id,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now },
+      );
+    }
+    // Spec step 297: on the demo bank, a practice portfolio at that profile's level (Medium) with
+    // weeks of trades to talk about. The first sync starts it by itself for a demo person (Phase
+    // AW, src/lib/practice/demo-start.ts); this only fills in if that didn't. Practice money only.
+    if (
+      !person &&
+      !(await scopedFor(user.id, client).practicePortfolios.findFirst({
+        where: { userId: user.id },
+      }))
+    )
+      await seedPractice(user.id, client, now);
+    if (ownAccount) {
+      await createCsvAccountRow(scopedFor(user.id, client), {
+        name: "Own checking",
+        kind: "checking",
+        balance: null,
+      });
+    }
+  } catch (error) {
+    // The caller never gets the id of a person that was not finished: remove it here.
+    await deleteCheckPerson(user.id, { client }).catch(() => undefined);
+    throw error;
   }
   return user.id;
 }

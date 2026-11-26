@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import type { CheckQuestion } from "./bank";
 import type { Facts } from "./facts";
-import { gradeWithClaude } from "./grader";
+import { figuresForJudge, gradeWithClaude } from "./grader";
 import { conversations, costOf } from "./run";
 
 // Spec step 87: Claude's grade by the rubric (a fake client here), what Claude costs
@@ -111,5 +111,20 @@ describe("conversations", () => {
         c.map((x) => x.id),
       ),
     ).toEqual([["a", "a2"], ["b", "b2"], ["c"]]);
+  });
+});
+
+describe("figuresForJudge", () => {
+  it("keeps the amount the answer cites even as the 401st, and the turn's own figures", () => {
+    const many = Array.from({ length: 450 }, (_, i) => 10_000 + i * 100);
+    const out = figuresForJudge({
+      ...input,
+      answer: "You have $14,999.00 and $12.34 left.",
+      figures: [1_234],
+      facts: { ...facts, allowedCents: [...many, 1_499_900] },
+    });
+    expect(out).toHaveLength(400);
+    expect(out).toContain("$14,999.00");
+    expect(out).toContain("$12.34");
   });
 });

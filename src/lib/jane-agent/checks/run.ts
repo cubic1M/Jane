@@ -277,6 +277,7 @@ async function runChecks(
             answer: reply.body,
             buttons: reply.actions.map((a) => a.label),
             facts,
+            figures: liveFigures,
             ...(question.judge ? { rules: question.judge } : {}),
           },
           claude,

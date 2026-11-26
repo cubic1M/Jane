@@ -101,3 +101,28 @@ describe("the question bank", () => {
     }
   });
 });
+
+describe("the bank's patterns (CodeRabbit sweep)", () => {
+  it("none has a doubled backslash before b, d or $ (it would match a literal backslash)", () => {
+    const bad = QUESTIONS.flatMap((q) =>
+      [q.expect.mentions, q.expect.avoid]
+        .filter((r): r is RegExp => Boolean(r))
+        .filter((r) => /\\\\[bd$]/.test(r.source))
+        .map(() => q.id),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it("no pattern asks for a straight double quote inside a contraction", () => {
+    const bad = QUESTIONS.filter((q) =>
+      /\w"t\b/.test(`${q.expect.mentions?.source}${q.expect.avoid?.source}`),
+    );
+    expect(bad.map((q) => q.id)).toEqual([]);
+  });
+
+  it("an unrelated question is its own conversation, not a turn inside follow-2", () => {
+    for (const id of ["unrelated-1", "unrelated-2"]) {
+      expect(QUESTIONS.find((q) => q.id === id)?.after).toBeUndefined();
+    }
+  });
+});

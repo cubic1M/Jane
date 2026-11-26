@@ -144,3 +144,22 @@ describe("the rounds where Claude doesn't answer at first", () => {
     expect((await round("refused_first")).results[0].id).toBe("q#refused_first");
   });
 });
+
+describe("a question that names a tool (CodeRabbit sweep)", () => {
+  it("fails when the played model was never offered the tool, however fine the words", async () => {
+    const result = await run(async function (this: { onEvent: (e: unknown) => void }) {
+      this.onEvent({ type: "text", text: "Words." });
+      return { reply: { body: "Words.", actions: [], refs: {} }, source: "claude" };
+    }, "goals");
+    expect(result.failures).toEqual({ tool_not_called: 1 });
+  });
+
+  it("marks a played model that called the tool", async () => {
+    const played = newPlayed();
+    const goals = { name: "goals", input_schema: { type: "object" } };
+    await playbackClaude(question("goals"), played)()
+      .messages.stream({ messages: [], tools: [goals] } as never)
+      .finalMessage();
+    expect(played.called).toBe(true);
+  });
+});
