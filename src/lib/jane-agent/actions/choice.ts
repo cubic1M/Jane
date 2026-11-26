@@ -78,7 +78,8 @@ const canonical = (a: AutopilotSnapshot) =>
 const sameAutopilot = (a: AutopilotSnapshot, b: AutopilotSnapshot) => canonical(a) === canonical(b);
 
 async function restoreAutopilot(userId: string, before: AutopilotSnapshot, client: PrismaClient) {
-  await saveRules(userId, before.rules, { client });
+  // The level first: a rule write whose audit line fails afterwards leaves the rules restored too,
+  // and a retry then finds the settings already as they were.
   await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
     data: {
@@ -86,6 +87,7 @@ async function restoreAutopilot(userId: string, before: AutopilotSnapshot, clien
       acceptSimpleOffers: before.acceptSimpleOffers,
     },
   });
+  await saveRules(userId, before.rules, { client });
   await logAudit(
     { type: "user", id: userId },
     "autopilot_reverted",
@@ -109,16 +111,15 @@ export const choiceRevert: ActionHandler = {
     if (chosen.autopilot) {
       // Settings changed since this card's choice (a pause, an edit): reverting would put the
       // old level over the newer one.
-      if (
-        chosen.autopilotAfter &&
-        !sameAutopilot(chosen.autopilotAfter, await autopilotBefore(userId, client))
-      ) {
+      const current = await autopilotBefore(userId, client);
+      const alreadyBack = sameAutopilot(chosen.autopilot, current);
+      if (!alreadyBack && chosen.autopilotAfter && !sameAutopilot(chosen.autopilotAfter, current)) {
         throw new ChatActionError(
           "expired",
           "Your autopilot settings changed after this, so I left them as they are. You can change them in Settings.",
         );
       }
-      await restoreAutopilot(userId, chosen.autopilot, client);
+      if (!alreadyBack) await restoreAutopilot(userId, chosen.autopilot, client);
     }
     const refs: MessageRefs = { ...rest };
     delete refs.note;

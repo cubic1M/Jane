@@ -36,16 +36,24 @@ export function ReadAloud({ parts }: { parts: (string | null | undefined)[] }) {
       return;
     }
     const lang = navigator.language || "en-US";
-    // Only a voice on this device: a network voice would send the message to a speech service.
-    const voice = localVoice(synth.getVoices(), lang);
-    if (!voice) return;
-    const utterance = new SpeechSynthesisUtterance(spokenText(...parts));
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    setSpeaking(true);
-    synth.speak(utterance);
+    function start() {
+      // Only a voice on this device: a network voice would send the message to a speech service.
+      const voice = localVoice(synth.getVoices(), lang);
+      if (!voice) return;
+      const utterance = new SpeechSynthesisUtterance(spokenText(...parts));
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => setSpeaking(false);
+      setSpeaking(true);
+      synth.speak(utterance);
+    }
+    // Voices load late on some browsers: the first tap waits for them, once, instead of doing nothing.
+    if (synth.getVoices().length === 0) {
+      synth.addEventListener?.("voiceschanged", start, { once: true });
+      return;
+    }
+    start();
   }
 
   return (

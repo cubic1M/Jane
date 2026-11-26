@@ -41,5 +41,8 @@ describe("readReceivedEmail", () => {
 describe("htmlToText", () => {
   it("breaks lines at paragraphs and drops tags", () => {
     expect(htmlToText("<p>One</p><p>Two<br>three</p>")).toBe("One\nTwo\nthree");
+    expect(htmlToText("We&#39;ve refunded &#36;19&#46;99 &#x26; more")).toBe(
+      "We've refunded $19.99 & more",
+    );
   });
 });

@@ -178,8 +178,8 @@ export const multiUndo: ActionHandler = {
     if (gone.size > 0)
       parts.push(
         gone.size > 1
-          ? "Others had already gone through, so they stay."
-          : "The other one had already gone through, so it stays.",
+          ? "Others had already gone through or were already cancelled, so they stay as they are."
+          : "The other one had already gone through or was already cancelled, so it stays as it is.",
       );
     if (retry.size > 0) parts.push("One couldn't be reached just now; tap Undo again to retry it.");
     // A transfer that is cancelled, or too late to cancel, is not offered again.

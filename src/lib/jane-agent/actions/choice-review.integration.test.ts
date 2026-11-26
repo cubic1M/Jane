@@ -72,6 +72,20 @@ describe.runIf(url)("autopilot choice and Revert", { timeout: 60_000 }, () => {
     expect(await autopilotOf(userId, { client })).toBeNull();
   });
 
+  it("lets Revert be tried again when its audit line failed after the settings were put back", async () => {
+    const userId = await person();
+    const message = await question(userId);
+    await takeChatAction(userId, message.id, "autopilot.all", { client });
+    vi.mocked(logAudit).mockImplementation(async (_actor, action) => {
+      if (action === "autopilot_reverted") throw new Error("audit down");
+    });
+    await expect(takeChatAction(userId, message.id, "choice.revert", { client })).rejects.toThrow();
+    vi.mocked(logAudit).mockReset();
+    expect(await autopilotOf(userId, { client })).toBeNull();
+    // The retry finds the settings already back: it finishes, not "settings changed".
+    await takeChatAction(userId, message.id, "choice.revert", { client });
+  });
+
   it("keeps the choice and its Revert when a write after the level was saved fails", async () => {
     const userId = await person();
     const message = await question(userId);
