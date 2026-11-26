@@ -204,6 +204,11 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
 
 // Which decision a question asks for, in the order above. One that names student loans never
 // gets a card decision: paying it off instead of investing is paying it early.
+// An amount that is the down payment or closing costs, not the home's price: "$60,000 down payment",
+// "a down payment of $60k". "A $400,000 home with no down payment" keeps its price.
+const AMOUNT_PUT_DOWN =
+  /\$?\s?\d[\d,.]*\s?[km]?\s*(?:as |for |in |towards? )?(?:a |the |my |our )?(?:down\s?payment|down\b|closing costs?)|\b(?:down\s?payment|closing costs?)\s*(?:of|is|are|at|:|would be|will be)?\s*\$?\s?\d/;
+
 export function decisionFor(text: string): DecisionId | null {
   const student = STUDENT_DEBT.test(text);
   for (const [which, pattern] of DECISION_PATTERNS) {
@@ -564,7 +569,7 @@ export function parseDebtIntent(
     (amountCents === null || amountCents >= 5_000_000)
   ) {
     // "with a $60,000 down payment" is what is put down, not what the home costs.
-    const putDown = /\b(?:down payment|closing costs?)\b/.test(text);
+    const putDown = AMOUNT_PUT_DOWN.test(text);
     return { kind: "home_afford", priceCents: putDown ? null : amountCents };
   }
   if (
@@ -574,7 +579,7 @@ export function parseDebtIntent(
     !HOME_NOT.test(text)
   ) {
     // "$60,000 down payment": what's put down, not what the home costs.
-    const notThePrice = /\b(?:down payment|closing costs?)\b/.test(text);
+    const notThePrice = AMOUNT_PUT_DOWN.test(text);
     return { kind: "home_afford", priceCents: notThePrice ? null : amountCents };
   }
   if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {

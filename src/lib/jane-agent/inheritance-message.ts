@@ -58,7 +58,7 @@ export function inheritanceLines(v: InheritanceView): string[] {
   if (v.inherited.length === 0) {
     lines.push(
       // Answer-check sweep: kept under the length a chat answer allows.
-      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died. Withdrawals from a traditional IRA are taxed as income; qualified Roth withdrawals usually aren't. ${RULE_EXCEPTIONS}`,
+      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died. The taxable part of a traditional IRA withdrawal is taxed as income (after-tax basis can reduce it); qualified Roth withdrawals usually aren't. ${RULE_EXCEPTIONS}`,
     );
   }
   lines.push(

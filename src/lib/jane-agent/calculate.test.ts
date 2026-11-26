@@ -75,6 +75,16 @@ describe("the chat's arithmetic", () => {
     ).toMatchObject({ ok: false });
   });
 
+  it("a rate too small to see still pays off in about a year, not 100 years", () => {
+    const r = ok({
+      operation: "payoff_months",
+      balance: 1200,
+      monthly_payment: 100,
+      apr_percent: 1e-14,
+    });
+    expect(r.note ?? "").not.toMatch(/100 years/);
+  });
+
   it("refuses missing or odd input", () => {
     expect(calculate({ operation: "percent_of", percent: 4 })).toMatchObject({ ok: false });
     expect(calculate({ operation: "nope" })).toMatchObject({ ok: false });

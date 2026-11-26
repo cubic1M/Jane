@@ -172,13 +172,22 @@ describe("parseIntent", () => {
     ["how much did I spend last month", null, "2026-09"],
     ["how much did i spend this month", null, "2026-10"],
     // No amount, or not a question about the future: still what was spent.
-    ["can I see what I spent on food this week", "food", "2026-10"],
     ["did I spend $500 on food this month", "food", "2026-10"],
   ])("understands %s", (text, category, month) => {
     expect(parse(text)).toEqual({ kind: "spending", category, month });
   });
 
-  // CodeRabbit part 2: a week asked for is never "everything on file".
+  // CodeRabbit part 2: a week asked for is never "everything on file", and says it is the month.
+  it("marks a week or a day asked for", () => {
+    expect(parse("can I see what I spent on food this week")).toEqual({
+      kind: "spending",
+      category: "food",
+      month: "2026-10",
+      shortPeriod: true,
+    });
+    expect(parse("how much did I spend this month")).not.toHaveProperty("shortPeriod");
+  });
+
   it("keeps a week or a day out of the all-history answer", () => {
     expect(parse("how much have I spent on groceries this week?")).not.toHaveProperty("sinceStart");
     expect(parse("how much have I spent on groceries?")).toHaveProperty("sinceStart", true);

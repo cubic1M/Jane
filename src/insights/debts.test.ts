@@ -212,6 +212,8 @@ describe("every debt in one place", () => {
     expect(findDebt(debts, "Demo store")?.key).toBe("account:store");
     // CodeRabbit part 2: a card the person doesn't have is not their biggest card.
     expect(findDebt(debts, "my Discover card")).toBeNull();
+    // A word that describes ("current") is not a name the person doesn't have.
+    expect(findDebt(debts, "my current car loan")?.key).toBe("account:car");
     // The biggest card when there are several.
     expect(findDebt(debts, "credit card")?.key).toBe("account:card");
     expect(findDebt(debts, "boat")).toBeNull();

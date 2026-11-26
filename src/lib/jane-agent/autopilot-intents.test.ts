@@ -23,6 +23,9 @@ describe("sector autopilot intents", () => {
       20_000,
       50_000,
     ],
+    ["let jane pay my bills up to $1,200 per payment", "bills", "all", 120_000, null],
+    ["let jane pay my bills up to $1,200 a month, $300 each time", "bills", "all", 30_000, 120_000],
+    ["let jane pay my monthly bills up to $200 per payment", "bills", "all", 20_000, null],
   ])("reads %j", (text, sector, level, actionCapCents, monthlyCapCents) => {
     expect(parse(text)).toEqual({
       kind: "autopilot_sector",

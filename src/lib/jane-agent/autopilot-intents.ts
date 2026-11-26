@@ -54,10 +54,14 @@ export function parseSectorIntent(text: string): SectorIntent | null {
   // Each cap gets its own period: "up to $200 per payment and $500 a month" is two caps.
   let actionCapCents: number | null = null;
   let monthlyCapCents: number | null = null;
-  for (const part of text.split(/\band\b|,|;|\bbut\b|\bwith\b/)) {
+  // A comma inside an amount ("$1,200") is not a break between clauses.
+  for (const part of text.split(/\band\b|(?<!\d),|,(?!\d{3}(?!\d))|;|\bbut\b|\bwith\b/)) {
     const amount = parseAmount(part);
     if (amount === null) continue;
-    if (EACH.test(part) && !MONTHLY.test(part)) actionCapCents ??= amount;
+    // The period belongs to the amount: what follows it. "monthly bills up to $200 per payment" is
+    // a cap per payment; the "monthly" before the amount describes the bills.
+    const after = part.slice(Math.max(0, part.search(/\d/)));
+    if ((EACH.test(after) || EACH.test(part)) && !MONTHLY.test(after)) actionCapCents ??= amount;
     else monthlyCapCents ??= amount;
   }
   return { kind: "autopilot_sector", sector, level, actionCapCents, monthlyCapCents };

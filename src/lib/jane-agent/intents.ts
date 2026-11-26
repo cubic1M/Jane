@@ -65,7 +65,14 @@ export type Intent =
   // category is the person's own words ("food"), matched loosely later; month YYYY-MM.
   // perMonth: "a month", a usual month rather than this one.
   // sinceStart: "how much have I spent at Uber?", no period: everything since the data starts.
-  | { kind: "spending"; category: string | null; month: string; perMonth?: true; sinceStart?: true }
+  | {
+      kind: "spending";
+      category: string | null;
+      month: string;
+      perMonth?: true;
+      sinceStart?: true;
+      shortPeriod?: true;
+    }
   // days is null for the usual coming-up list; beforePayday: only what's due before the next pay.
   | { kind: "coming_up"; days: number | null; beforePayday?: true }
   // findingId: one finding exactly (a clarifying question's button, spec step 88).
@@ -948,11 +955,13 @@ export function parseIntent(
     // 11-20: "You spent $14.20 at Uber in November 2026 so far" for $95.80 since Aug 28).
     const habitual = /\bdo (?:i|we) (?:usually |normally |typically )?spend\b/.test(text);
     const perMonth = month === null && (RECURRING.test(text) || habitual);
+    // A week or a day asked for is not "everything on file", and not a month either: the answer
+    // is the month so far, and says so.
+    const shortPeriod = /\b(?:this|last|past) week\b|\btoday\b|\byesterday\b/.test(text);
     const sinceStart =
       month === null &&
       !perMonth &&
-      // A week or a day asked for is not "everything on file".
-      !/\b(?:this|last|past) week\b|\btoday\b|\byesterday\b/.test(text) &&
+      !shortPeriod &&
       /\b(?:have (?:i|we) spent|did (?:i|we) spend|(?:i|we)'ve spent)\b/.test(text);
     // "On spotify a year": what it costs a year, the cost answer's own (debugger 11-17).
     const yearly = / (?:(?:a|per|each|every) year|yearly|annually)$/;
@@ -966,6 +975,7 @@ export function parseIntent(
       month: month ?? asOf.slice(0, 7),
       ...(perMonth ? { perMonth: true as const } : {}),
       ...(sinceStart ? { sinceStart: true as const } : {}),
+      ...(shortPeriod && month === null ? { shortPeriod: true as const } : {}),
     };
   }
   if (COMING_UP.test(text)) {

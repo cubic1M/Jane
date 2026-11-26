@@ -139,7 +139,7 @@ export function calculate(input: CalcInput): CalcResult {
       const months =
         rate === 0
           ? Math.ceil(balance / payment)
-          : Math.ceil(-Math.log(1 - (rate * balance) / payment) / Math.log(1 + rate));
+          : Math.ceil(-Math.log1p(-(rate * balance) / payment) / Math.log1p(rate));
       // Past a hundred years it's not a plan: say so, rather than simulate for ages.
       if (!Number.isFinite(months) || months > 1200) {
         return {
