@@ -145,11 +145,16 @@ export async function answerDebt(
     }
     case "costly_borrowing":
       return costlyReply(await loadCostlyBorrowing(userId, { client, now }));
-    case "credit_monthly":
+    case "credit_monthly": {
+      // A saved check-up of an earlier month is not this month's: it is worked out again.
+      const month = (await chatToday(userId, { client, now })).slice(0, 7);
+      const saved = await loadCreditMonthly(userId, { client });
       return creditMonthlyReply(
-        (await loadCreditMonthly(userId, { client })) ??
-          (await computeCreditMonthly(userId, { client, now })),
+        saved && saved.month === month
+          ? saved
+          : await computeCreditMonthly(userId, { client, now }),
       );
+    }
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
       return borrowingReply(
@@ -226,14 +231,16 @@ export async function answerDebt(
           select: {
             accountId: true,
             ytdInterestPaidCents: true,
+            updatedAt: true,
             account: { select: { name: true } },
           },
         }),
       ]);
-      // A loan linked twice counts once, with the interest either link reported.
-      const loans = reconcileLiabilities(counting, loanRows).filter(
-        (l) => (l.ytdInterestPaidCents ?? 0) > 0,
-      );
+      // A loan linked twice counts once, with the interest either link reported; a figure read in an
+      // earlier year is not "this year's".
+      const loans = reconcileLiabilities(counting, loanRows, {
+        readingYear: Number(data.asOf.slice(0, 4)),
+      }).filter((l) => (l.ytdInterestPaidCents ?? 0) > 0);
       const finding = data.available
         ? null
         : await db.findings.findFirst({

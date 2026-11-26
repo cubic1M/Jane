@@ -78,6 +78,12 @@ export function debtsReply(book: DebtBook): Reply {
   if (accounts.length > 0 && unread.length === accounts.length) {
     // A file with no balance on it isn't "You owe $0.00".
     lines.push(`I can't see what you owe on ${eitherOf(unread.map((d) => d.name))} yet.`);
+  } else if (unread.length > 0) {
+    // Some balances known, some not: the total is what is known, said so.
+    const known = accounts.filter((d) => d.balanceCents !== null);
+    lines.push(
+      `You owe ${formatCents(book.accountsOwedCents)} on ${whatOwed(known)} that I can see, the same as your net worth counts. I can't see what you owe on ${eitherOf(unread.map((d) => d.name))} yet.`,
+    );
   } else if (accounts.length > 0) {
     lines.push(
       `You owe ${formatCents(book.accountsOwedCents)} on ${whatOwed(accounts)}, the same as your net worth counts.`,
@@ -155,6 +161,9 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
     lines.push(
       debt.kind === "card" ? `The minimum is ${payment}${due}.` : `You pay ${payment}${due}.`,
     );
+  } else if (debt.nextDue) {
+    // The date is known even where the amount is not.
+    lines.push(`The next payment is due ${dayLabel(debt.nextDue)}; I don't know the amount yet.`);
   }
   // An uploaded card's balance is asked on the import page (loansIntro). Debugger 11-17: "how much
   // do I owe on my chase card?" said it didn't know, then "A card has no end date", with no way
@@ -271,7 +280,9 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
     if (saved > 0)
       lines.push(`That's ${formatCents(saved)} less interest than paying only the minimums.`);
   } else if (!summary.baseline.ok) {
-    lines.push("Paying only the minimums on each, not everything would ever be paid off.");
+    lines.push(
+      "Paying only the minimums on each, I can't see everything being paid off within the years I can work out.",
+    );
   }
   const more = summary.scenarios.filter((s) => s.extraCents > summary.extraCents);
   if (more.length > 0) {
