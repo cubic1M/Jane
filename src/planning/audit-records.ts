@@ -79,9 +79,14 @@ export function matchReceipts(
   receipts: Parameters<typeof matchReceipt>[1],
   days: number,
 ): Map<string, { id: string; fileName: string }> {
-  const options = charges.map((c) => ({
+  // Earliest charge first, each taking its earliest free receipt: with one window length that gives
+  // every charge that can have one its own, whatever order they arrived in.
+  const byDate = (a: { date: string | null }, b: { date: string | null }) =>
+    (a.date ?? "").localeCompare(b.date ?? "");
+  const dated = [...receipts].sort(byDate);
+  const options = [...charges].sort(byDate).map((c) => ({
     id: c.id,
-    found: receipts.filter((r) => matchReceipt(c, [r], days) !== null),
+    found: dated.filter((r) => matchReceipt(c, [r], days) !== null),
   }));
   const used = new Set<string>();
   const matched = new Map<string, { id: string; fileName: string }>();
