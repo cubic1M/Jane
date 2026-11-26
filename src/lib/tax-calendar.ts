@@ -19,7 +19,7 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadGiving } from "@/lib/giving";
 import { loadMultiYear } from "@/lib/multi-year";
 import { mayAct, autopilotFor } from "@/lib/sector-autopilot";
-import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
+import { loadSelfEmployed, taxPaymentsLock, type SelfEmployedView } from "@/lib/self-employed";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { filingYear } from "@/lib/tax-filing";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
@@ -336,7 +336,7 @@ async function settleEstimate(
   const { entryAdded, actAdded } = await personTransaction(
     userId,
     async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tax-estimate:${userId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${taxPaymentsLock(userId)}))`;
       const profile = await tx.taxProfile.findFirst({
         where: { userId },
         select: { taxPayments: true },

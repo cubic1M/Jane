@@ -10,7 +10,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import {
   loadTaxEstimate,
   parseTaxPayments,
@@ -256,6 +256,9 @@ export async function saveMiles(
   return next;
 }
 
+// The lock every write of the entered tax payments list takes (a settled estimate, a recording).
+export const taxPaymentsLock = (userId: string) => `tax-payments:${userId}`;
+
 // An estimated tax payment the person made from an account Jane can't see.
 export async function recordTaxPayment(
   userId: string,
@@ -284,17 +287,27 @@ export async function recordTaxPayments(
       throw new SelfEmployedError("Federal or state?");
   }
   if (payments.length === 0) return;
-  const db = scopedFor(userId, client);
-  const current = await db.taxProfiles.findFirst({ select: { taxPayments: true } });
-  const list = [
-    ...parseTaxPayments(current?.taxPayments),
-    ...payments,
-  ] as unknown as Prisma.InputJsonArray;
-  await db.taxProfiles.upsert({
-    where: { userId },
-    create: { userId, taxPayments: list },
-    update: { taxPayments: list },
-  });
+  // Read, add and write under the lock a settled estimate takes, so neither drops the other's entry.
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${taxPaymentsLock(userId)}))`;
+      const current = await tx.taxProfile.findFirst({
+        where: { userId },
+        select: { taxPayments: true },
+      });
+      const list = [
+        ...parseTaxPayments(current?.taxPayments),
+        ...payments,
+      ] as unknown as Prisma.InputJsonArray;
+      await tx.taxProfile.upsert({
+        where: { userId },
+        create: { userId, taxPayments: list },
+        update: { taxPayments: list },
+      });
+    },
+    client,
+  );
   // The payments are saved: a failure of the records after them must not fail the call, or a
   // retry would append the same payments again.
   try {
