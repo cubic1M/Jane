@@ -383,8 +383,8 @@ const STUDENT_LONG =
 // Spec step 226: money lent to or borrowed from family and friends.
 // Spec step 249. Helping someone with credit; a past co-signed loan is still family loans.
 // Spec step 251: the monthly credit check-up.
-const CREDIT_MONTHLY =
-  /\b(?:monthly |this month'?s )?credit check-?up\b|\b(?:credit|loans?|debts?) on autopilot\b.*\bmonth|\bmonthly (?:credit|loan|debt) check\b/;
+export const CREDIT_MONTHLY =
+  /\b(?:monthly |this month'?s )?credit check-?up\b|\bwhat did (?:you|jane) (?:check|do|find)\b[^.]*\b(?:credit|loans?|debts?)\b[^.]*\bthis month\b|\b(?:credit|loans?|debts?) on autopilot\b.*\bmonth|\bmonthly (?:credit|loan|debt) check\b/;
 // Spec step 250: what could I borrow, and at what rate?
 const BORROWING_POWER =
   /\bwhat (?:could|can|would) i (?:borrow|get approved for|qualify for)\b|\bhow much (?:could|can|would) i (?:borrow|get approved for|qualify for)\b|\bwhat rates? (?:could|would|can|might) i get\b|\bhow (?:big|large|much) (?:of )?an? (?:loan|mortgage|car loan|personal loan) (?:could|can|would) i (?:get|qualify for)\b|\bprequalif\w*\b|\bpre-qualif\w*\b|\bborrowing power\b/;
@@ -423,6 +423,7 @@ const DEBT_TROUBLE =
 // Spec step 248. Rent reporting, a rent increase, and a security deposit.
 const RENTING =
   /\b(?:report|reporting|reported)\b.*\b(?:my )?rent\b|\brent\b.*\b(?:credit (?:report|score|file|bureaus?)|build(?:ing)? (?:my )?credit)\b|\b(?:my )?rent (?:went up|is going up|increase\w*|hike|raised)\b|\brent (?:is|got) (?:too )?(?:high|raised)\b|\b(?:security|rental) deposit\b|\bdeposit back\b|\blandlord\b.*\bdeposit\b/;
+const PAST_COST = /\b(?:did|have|has|had|ever|so far)\b/;
 const COSTLY =
   /\bpayday (?:loans?|lenders?|advances?)\b|\bcash advances?\b|\bpay(?:check)? advance apps?\b|\b(?:earnin|brigit|moneylion|klover)\b|\bhigh[- ]cost (?:loans?|borrowing)\b|\bsmall[- ]dollar loans?\b|\bpayday alternative\b|\bcostly (?:short[- ]term )?borrowing\b|\boverdrafts?\b.*\b(?:keep|keeps|again|repeated|every month|so often|a lot|cost me|add up)\b|\b(?:keep|keeps|stop|always)\b.*\boverdraft\w*/;
 // Spec step 246.
@@ -431,7 +432,7 @@ const MORTGAGE_MONEY =
 const PER_MONTH = /\b(?:a|per|each|every) month\b|\bmonthly\b|\/ ?mo\b/;
 // Spec step 245.
 const CAR_LOAN =
-  /\b(?:gap (?:insurance|coverage|cover|waiver)|(?:extended (?:car )?warranty|service contract)\b[^.]*\b(?:car|auto|loan|dealer)|\b(?:car|auto|loan|dealer)\b[^.]*\b(?:extended (?:car )?warranty|service contract)|vehicle service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
+  /\b(?:gap (?:insurance|coverage|cover|waiver)|\bgap\b[^.]*\b(?:car|auto) loan\b|\b(?:car|auto) loan\b[^.]*\bgap\b|(?:extended (?:car )?warranty|service contract)\b[^.]*\b(?:car|auto|loan|dealer)|\b(?:car|auto|loan|dealer)\b[^.]*\b(?:extended (?:car )?warranty|service contract)|vehicle service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
 // Spec step 230.
 const DEBT_REVIEW =
   /\b(?:(?:yearly|annual|year-?end|full|quick)\s+)?(?:debt|loan|credit)s?\s+(?:review|check-?up|health ?check)\b|\breview (?:all )?(?:of )?my (?:debts?|loans?)\b|\bhow are my (?:debts?|loans?) doing\b|\bgo over my (?:debts?|loans?)\b/;
@@ -459,9 +460,15 @@ function equityIntent(text: string, amountCents: number | null): DebtIntent | nu
 const CREDIT_GOAL =
   /\b(?:credit )?score\b.*\b(?:need|want|get|reach|hit|raise|goal|target|by|in)\b|\b(?:need|want|get|reach|hit|raise)\b.*\b(?:credit )?score\b|\bcredit (?:goal|plan)\b/;
 function goalFrom(text: string, asOf: string) {
-  const score = /\b([5-8]\d{2})\b/.exec(text);
-  const targetScore =
-    score && Number(score[1]) >= 500 && Number(score[1]) <= 850 ? Number(score[1]) : null;
+  // The score the goal names ("reach 740", "need a 740"); with just one score in the words, that one.
+  // "My score is 620 and I want 740" has two: the one after the goal's own words.
+  const scores = [...text.matchAll(/\b([5-8]\d{2})\b/g)].map((m) => Number(m[1]));
+  const tied =
+    /\b(?:reach|hit|get to|raise (?:it |my score |my credit score )?to|want|need|goal of|target of|up to)\b[^0-9.]{0,30}?\b([5-8]\d{2})\b/.exec(
+      text,
+    );
+  const picked = tied ? Number(tied[1]) : scores.length === 1 ? scores[0]! : null;
+  const targetScore = picked !== null && picked >= 500 && picked <= 850 ? picked : null;
   let months: number | null = null;
   const inN =
     /\bin (\d{1,2}|a|one|two|three|four|five|six|seven|eight|nine|ten|twelve) (month|months|year|years)\b/.exec(
@@ -491,7 +498,12 @@ function goalFrom(text: string, asOf: string) {
     );
     if (m >= 0) {
       const now = Number(asOf.slice(5, 7)) - 1;
-      months = (m - now + 12) % 12 || 12;
+      // A year stated ("by June 2028") counts; a month alone is its next occurrence.
+      const year = new RegExp(`\\b(?:by|in|before) ${MONTH_NAMES[m]}(?:,)? (20\\d\\d)\\b`).exec(
+        text,
+      );
+      const ahead = year ? (Number(year[1]) - Number(asOf.slice(0, 4))) * 12 + (m - now) : null;
+      months = ahead !== null ? (ahead > 0 ? ahead : null) : (m - now + 12) % 12 || 12;
     }
   }
   const goalKind = /\b(?:mortgage|home|house)\b/.test(text)
@@ -520,6 +532,11 @@ export function parseDebtIntent(
   if (CREDIT_MONTHLY.test(text)) return { kind: "credit_monthly" };
   if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
+  // "Should I get a payday loan?" is the decision; "how much have payday loans cost me?" is the history.
+  // A question in the past ("how much did getting a payday loan cost me?") is the history.
+  if (COSTLY.test(text) && decisionFor(text) === "payday_loan" && !PAST_COST.test(text)) {
+    return { kind: "debt_decision", which: "payday_loan" };
+  }
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };
   if (RENTING.test(text)) return { kind: "renting" };
   // "Pay extra on my mortgage or invest?" with no amount is the pay-or-invest decision, worked
@@ -560,6 +577,10 @@ export function parseDebtIntent(
     !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text) &&
     !RATE_LOOKUP.test(text)
   ) {
+    // Only the current year is "this year": another year's interest isn't in what is read here, so
+    // it is left to the question's other answers rather than answered with this year's.
+    const named = /\bin (20\d\d)\b/.exec(text);
+    if (named && named[1] !== asOf.slice(0, 4)) return null;
     return /\b(?:this year|so far this year|year to date|ytd|in 20\d\d)\b/.test(text)
       ? { kind: "card_interest", thisYear: true }
       : { kind: "card_interest" };
@@ -653,7 +674,14 @@ export function parseDebtIntent(
   }
   if (STUDENT.test(text)) return { kind: "student_loans" };
   // After refinancing ("refinance my mortgage"); a payoff date stays the debt itself.
-  if (MORTGAGE.test(text) && !PAID_OFF.test(text) && !RATE.test(text) && !OWE.test(text)) {
+  if (
+    MORTGAGE.test(text) &&
+    !PAID_OFF.test(text) &&
+    !RATE.test(text) &&
+    !OWE.test(text) &&
+    !BALANCE.test(text) &&
+    !MY_RATE.test(text)
+  ) {
     return { kind: "mortgage" };
   }
   const paid = PAID_OFF.exec(text);

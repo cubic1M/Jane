@@ -4,7 +4,7 @@ import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { matchSubcategory } from "@/insights/subcategories";
-import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { CREDIT_MONTHLY, parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { CUSHION_ASK, EXPLAIN, parseAck, type AckIntent } from "./ack-intents";
 import { parseDecision, type DecisionIntent } from "./decision-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
@@ -733,7 +733,8 @@ export function parseIntent(
     return { kind: "spending", category: null, month: d.toISOString().slice(0, 7) };
   }
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
-  if (CHECKED.test(text)) return { kind: "checked" };
+  // "What did you check on my credit this month?" is the credit check-up, not what was checked.
+  if (CHECKED.test(text) && !CREDIT_MONTHLY.test(text)) return { kind: "checked" };
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };

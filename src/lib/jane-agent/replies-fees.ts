@@ -64,16 +64,34 @@ export function chargeReply(amountCents: number, day: string | null, ctx: FeeCon
       refs: {},
     };
   }
+  // A purchase of the same amount beside a fee: which one was meant is for the person to say,
+  // before either is named.
+  const feeCount = found.filter((t) => isFee(t, cash)).length;
+  if (feeCount > 0 && feeCount < found.length) {
+    return {
+      body: `More than one charge was ${money}: ${found
+        .slice(0, 3)
+        .map(
+          (t) =>
+            `${isFee(t, cash) ? feeKind(t) : (nameOf(t) ?? "a charge")} on ${dayLabel(t.date)}`,
+        )
+        .join(", ")}.`,
+      actions,
+      refs: {},
+    };
+  }
   const [latest] = found as [FeeLine, ...FeeLine[]];
-  // The first time it was charged: a calendar day, not a moment.
-  const firstDay = found[found.length - 1]!.date;
   const account = ctx.accounts.get(latest.accountId)?.name ?? "your account";
   if (isFee(latest, cash)) {
     const item = ITEM.exec(latest.description)?.[1];
     const kind = feeKind(latest);
+    // Repeats are the same kind of fee on the same account, not any charge of the amount.
+    const same = found.filter((t) => feeKind(t) === kind && t.accountId === latest.accountId);
+    // The first time it was charged: a calendar day, not a moment.
+    const sameFirstDay = same[same.length - 1]!.date;
     const times =
-      found.length > 1
-        ? ` It's been charged ${found.length} times since ${dayLabel(firstDay)}.`
+      same.length > 1
+        ? ` It's been charged ${same.length} times since ${dayLabel(sameFirstDay)}.`
         : "";
     const ask = /overdraft|insufficient/.test(kind)
       ? " Banks often refund a first one if you ask."
@@ -97,6 +115,8 @@ export function chargeReply(amountCents: number, day: string | null, ctx: FeeCon
       refs: {},
     };
   }
+  // The first time it was charged: a calendar day, not a moment.
+  const firstDay = found[found.length - 1]!.date;
   const times =
     found.length > 1
       ? ` It's been ${money} ${found.length} times since ${dayLabel(firstDay)}.`
@@ -118,7 +138,14 @@ export function feesPaidReply(late: boolean, months: number, ctx: FeeContext): R
     .filter((t) => t.date > since && (!late || t.pfcDetailed === "BANK_FEES_LATE_FEES"))
     .map((t) => ({ ...t, pfc: t.pfcDetailed, onCash: cash(t.accountId) }))
     .filter((t) => isBankFee(t));
-  const fees = inWindow.filter((t) => t.amountCents > 0);
+  const year = bankFeesYear(inWindow, months);
+  // The fees the headline counts (a fee given back, and the refund that paid it, are both left
+  // out) and the refunds it takes off that are not paired with a fee.
+  const counted = new Set<unknown>(year?.lines ?? []);
+  const fees = inWindow.filter((t) => t.amountCents > 0 && counted.has(t));
+  const givenBack = (year?.lines ?? [])
+    .filter((t) => t.amountCents < 0)
+    .reduce((sum, t) => sum - t.amountCents, 0);
   const period =
     months >= 12
       ? "the last 12 months"
@@ -126,7 +153,6 @@ export function feesPaidReply(late: boolean, months: number, ctx: FeeContext): R
         ? "1 month of data"
         : `${months} months of data`;
   const actions = [openLink("See the fees", FEE_LIST_PATH)];
-  const year = bankFeesYear(inWindow, months);
   if (!year || fees.length === 0) {
     return {
       body: `I don't see ${late ? "a late fee" : "any bank fees"} in ${period}.`,
@@ -143,6 +169,7 @@ export function feesPaidReply(late: boolean, months: number, ctx: FeeContext): R
       ? `${kind.replace(/^an? /, "one ")} (${total}, ${dayLabel(list[0]!.date)})`
       : `${list.length} ${plural} (${total})`;
   });
+  if (givenBack > 0) parts.push(`less ${formatCents(givenBack)} given back`);
   return {
     body: `You paid ${formatCents(year.seenCents)} in ${year.count === 1 ? "one fee" : `${year.count} fees`} in ${period}: ${parts.join(", ")}.`,
     actions,

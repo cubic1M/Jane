@@ -190,7 +190,7 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   116: "Checks your credit score monthly with a soft pull.",
   117: "Watches rates; drafts a request to move a due date.",
   174: "Works out which card earns most on your spending.",
-  175: "Handles the payment before a card's statement closes.",
+  175: "Watches each card's statement date; pays before it closes only where you allow.",
   176: "Puts pay-later installments in your forecast.",
   177: "Prepares a plan and written requests when money is tight.",
   178: "Works out the car you can afford; checks dealer financing.",

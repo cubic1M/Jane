@@ -35,6 +35,29 @@ describe("what you make", () => {
     );
   });
 
+  // CodeRabbit part 2: extra pay is added once to a year, and a known year before tax is said.
+  it("adds extra pay once to the year's take-home", () => {
+    const withBonus: IncomeFacts = {
+      ...S5,
+      monthCents: 200_000,
+      schedules: [{ ...S5.schedules[0]!, monthCents: 200_000, extraCents: 100_000 }],
+    };
+    expect(incomeReply("year", withBonus).body).toMatch(
+      /^You take home about \$25,000\.00 a year \(\$2,000\.00 a month: .*, plus \$1,000\.00 of extra pay\)/,
+    );
+    expect(incomeReply("month", withBonus).body).not.toMatch(/extra pay/);
+  });
+
+  it("gives the year before tax when no monthly pay is seen", () => {
+    const body = incomeReply("year", { ...S5, monthCents: null, schedules: [] }).body;
+    expect(body).toBe(
+      "I can't say what you take home a month yet, but your pay before tax for 2026 is about $20,955.95, the figure the tax cards use.",
+    );
+    expect(incomeReply("month", { ...S5, monthCents: null, schedules: [] }).body).toMatch(
+      /can't say what you make/,
+    );
+  });
+
   it("uses what they told Jane", () => {
     expect(incomeReply("month", { ...S5, told: true, schedules: [] }).body).toBe(
       "You told me you take home $1,343.33 a month, so that's what I use.",

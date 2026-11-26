@@ -62,7 +62,11 @@ function actionWhy(action: {
 
 export async function loadTimeline(
   userId: string,
-  { client = defaultClient, limit = 50 }: { client?: PrismaClient; limit?: number } = {},
+  {
+    client = defaultClient,
+    limit = 50,
+    by,
+  }: { client?: PrismaClient; limit?: number; by?: TimelineEntry["by"] } = {},
 ): Promise<TimelineEntry[]> {
   const db = scopedFor(userId, client);
   const [acts, transfers, rules, actions] = await Promise.all([
@@ -164,7 +168,9 @@ export async function loadTimeline(
       undoHref: null,
     })),
   ];
+  // `by` is applied before the cap, so newer entries of the other kind do not use up its slots.
   return entries
+    .filter((e) => !by || e.by === by)
     .sort((a, b) => b.at.getTime() - a.at.getTime() || a.id.localeCompare(b.id))
     .slice(0, limit);
 }

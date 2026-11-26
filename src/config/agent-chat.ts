@@ -503,6 +503,8 @@ export const INVOICE_MAX_LINES = 80;
 
 // A bill asked by its kind ("how much is my internet bill?"), as the bank files it: what the backup
 // chat looks for in statements that ended long ago (src/lib/jane-agent/replies-old-bills.ts).
+// Charges this many days apart (about a month, either way) are a monthly bill; a week apart is not.
+export const MONTHLY_GAP_DAYS = { from: 25, to: 35 } as const;
 export const BILL_KINDS: Readonly<Record<string, string>> = {
   internet: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
   cable: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
