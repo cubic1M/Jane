@@ -70,9 +70,18 @@ export function cardInterestReply(
       refs: {},
     };
   }
+  // A card whose balance or rate isn't known is not a card with no interest.
+  if (data.cards.length === 0 && data.promos.length === 0 && data.unknownCardIds.length > 0) {
+    const n = data.unknownCardIds.length;
+    return {
+      body: `I can't see the balance or the rate on ${n === 1 ? "one of your cards" : `${n} of your cards`}, so I can't say what card interest you pay. Open the interest page to add them.${loansLine(loans)}`,
+      actions: [INTEREST_PAGE],
+      refs: {},
+    };
+  }
   if (data.cards.length === 0 && data.promos.length === 0) {
     return {
-      body: "None of your cards carries a balance charged interest, so there's no card interest to cut. Paying in full each month keeps it that way.",
+      body: `None of your cards carries a balance charged interest, so there's no card interest to cut. Paying in full each month keeps it that way.${loansLine(loans)}`,
       actions: [INTEREST_PAGE],
       refs: {},
     };
@@ -109,7 +118,7 @@ export function cardInterestReply(
     lines.push(`Rate cuts you've won save about ${formatCents(data.grantedSavingCents)} a year.`);
   }
   return {
-    body: lines.join("\n"),
+    body: `${lines.join("\n")}${loansLine(loans) ? `\n${loansLine(loans).trim()}` : ""}`,
     actions: next ? [askButton(next.name), INTEREST_PAGE] : [INTEREST_PAGE],
     refs: next?.rate ? { advice: true, cardRate: { id: next.rate.id } } : { advice: true },
   };

@@ -154,5 +154,19 @@ export function parseBlock(value: unknown): AnswerBlock | null {
   }
   if (!["bars", "table", "timeline", "progress"].includes(String(value.type))) return null;
   if (value.type === "table" && !Array.isArray(value.columns)) return null;
+  // A row that isn't shaped as its block says would throw when the block is drawn.
+  const str = (v: unknown) => typeof v === "string";
+  const num = (v: unknown) => typeof v === "number" && Number.isFinite(v);
+  const rowOk = (row: unknown): boolean => {
+    if (value.type === "table") return Array.isArray(row) && row.every(str);
+    if (!isObject(row)) return false;
+    if (value.type === "bars") return str(row.label) && num(row.cents);
+    if (value.type === "timeline") {
+      return str(row.date) && str(row.label) && (row.cents === null || num(row.cents));
+    }
+    return str(row.label) && num(row.doneCents) && num(row.totalCents);
+  };
+  if (!value.rows.every(rowOk)) return null;
+  if (value.type === "table" && !(value.columns as unknown[]).every(str)) return null;
   return value as AnswerBlock;
 }

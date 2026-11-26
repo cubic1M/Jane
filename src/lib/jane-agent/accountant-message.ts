@@ -36,7 +36,7 @@ export function answersMessage(v: AccountantPageView): MessageParts | null {
   const first = fresh[0];
   return {
     // Whoever holds the link typed that name: what they wrote, not who they are.
-    body: `A note came in on your accountant link${fresh.length > 1 ? ` (${fresh.length} notes)` : ""}. Signed ${first.fromName}: "${first.body.length > 240 ? `${first.body.slice(0, 240)}…` : first.body}"${first.questionText ? ` (about: ${first.questionText})` : ""}`,
+    body: `A note came in on your accountant link${fresh.length > 1 ? ` (${fresh.length} notes)` : ""}. Signed ${first.fromName}: "${first.body.length > 1500 ? `${first.body.slice(0, 1500)}…` : first.body}"${first.questionText ? ` (about: ${first.questionText})` : ""}`,
     refs: { taxYear: v.year },
     actions: [
       { id: "tax.accountant_seen", label: "Got it", kind: "primary" },

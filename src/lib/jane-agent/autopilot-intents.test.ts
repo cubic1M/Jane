@@ -13,6 +13,16 @@ describe("sector autopilot intents", () => {
     ["only the safe stuff for debt", "debt", "safe", null, null],
     ["always ask me about taxes", "taxes", "ask", null, null],
     ["stop handling my investments", "investing", "ask", null, null],
+    // CodeRabbit part 2: a "don't" is a stop, and two caps are two periods.
+    ["don't let jane handle insurance", "insurance", "ask", null, null],
+    ["I do not want you to pay my bills by yourself", "bills", "ask", null, null],
+    [
+      "let jane pay my bills up to $200 per payment and $500 a month",
+      "bills",
+      "all",
+      20_000,
+      50_000,
+    ],
   ])("reads %j", (text, sector, level, actionCapCents, monthlyCapCents) => {
     expect(parse(text)).toEqual({
       kind: "autopilot_sector",

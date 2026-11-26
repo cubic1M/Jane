@@ -563,7 +563,9 @@ export function parseDebtIntent(
     !HOME_NOT.test(text) &&
     (amountCents === null || amountCents >= 5_000_000)
   ) {
-    return { kind: "home_afford", priceCents: amountCents };
+    // "with a $60,000 down payment" is what is put down, not what the home costs.
+    const putDown = /\b(?:down payment|closing costs?)\b/.test(text);
+    return { kind: "home_afford", priceCents: putDown ? null : amountCents };
   }
   if (
     /\b(?:down payment|closing costs?|pre-?approv\w* for a mortgage|mortgage pre-?approv\w*)\b/.test(
