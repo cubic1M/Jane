@@ -152,6 +152,9 @@ describe.runIf(url)(
       expect(reply.body).toMatch(
         /^Got it: you plan to retire in 2038\. Here is your federal tax over the next \d+ years\./,
       );
+      // CodeRabbit #2297: buttons that come with the answer must work, so the message stays open
+      // while it has any (the follow-up handlers act on an open message).
+      expect(reply.status).toBe(reply.actions.some((a) => a.kind !== "link") ? "open" : "answered");
       const ask = await sendToJane(userId, "how do my taxes look over the next several years", {
         client,
         now: LINKED,

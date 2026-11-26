@@ -52,6 +52,13 @@ describe("debt questions, routed", () => {
     expect(
       parseDebtIntent("should i get a payday loan if i have no savings?", null, AS_OF),
     ).toEqual({ kind: "debt_decision", which: "payday_loan" });
+    expect(
+      parseDebtIntent(
+        "should i get a payday loan if i have no savings and it will cost $100?",
+        null,
+        AS_OF,
+      ),
+    ).toEqual({ kind: "debt_decision", which: "payday_loan" });
   });
 
   it("reaches the monthly credit answer through the public parser, not 'what did you check'", () => {

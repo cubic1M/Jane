@@ -171,6 +171,8 @@ export const taxCountySet: ActionHandler = {
     }
     const reply = disasterReply(await loadDisasterRelief(userId, { client, now }));
     return {
+      // Open while the answer has buttons of its own (the disaster move): they work on an open one.
+      status: reply.actions.some((a) => a.kind !== "link") ? "open" : "answered",
       answeredWith: action.label,
       body: `Got it: ${county} County.\n${reply.body}`,
       actions: reply.actions,
@@ -197,6 +199,7 @@ export const taxRetireSet: ActionHandler = {
     }
     const reply = yearsReply(await loadMultiYear(userId, { client, now }));
     return {
+      status: reply.actions.some((a) => a.kind !== "link") ? "open" : "answered",
       answeredWith: action.label,
       body: `Got it: you plan to retire in ${year}. ${reply.body}`,
       actions: reply.actions,

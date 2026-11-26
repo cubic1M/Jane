@@ -535,7 +535,12 @@ export function parseDebtIntent(
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   // "Should I get a payday loan?" is the decision; "how much have payday loans cost me?" is the history.
   // A question in the past ("how much did getting a payday loan cost me?") is the history.
-  if (COSTLY.test(text) && decisionFor(text) === "payday_loan" && !PAST_COST.test(text)) {
+  // (a condition with "if" or "when" is a question about now, whatever it says of the past)
+  if (
+    COSTLY.test(text) &&
+    decisionFor(text) === "payday_loan" &&
+    (!PAST_COST.test(text) || /\b(?:if|when|unless)\b/.test(text))
+  ) {
     return { kind: "debt_decision", which: "payday_loan" };
   }
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };

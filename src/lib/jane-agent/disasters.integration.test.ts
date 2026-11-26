@@ -272,6 +272,7 @@ describe.runIf(url)("disasters and losses against a real database", { timeout: 1
     ).message;
     expect(reply.body).toMatch(/^Got it: Travis County\./);
     expect(reply.body).toContain("I don't see a disaster postponement for Travis County");
+    expect(reply.status).toBe(reply.actions.some((a) => a.kind !== "link") ? "open" : "answered");
     expect((await loadDisasterRelief(userId, { client, now: LINKED })).relief).toEqual([]);
   });
 });
