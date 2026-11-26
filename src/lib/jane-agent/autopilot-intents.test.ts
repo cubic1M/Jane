@@ -38,6 +38,14 @@ describe("sector autopilot intents", () => {
     // "Stop asking me" is a grant, not a refusal.
     ["stop asking me and let jane pay my bills automatically", "bills", "all", null, null],
     ["don't let jane pay my bills automatically", "bills", "ask", null, null],
+    // CodeRabbit #2290: asking to stop being asked to let Jane, then saying no, is a refusal.
+    [
+      "stop asking me to let jane pay my bills automatically. I don't want that",
+      "bills",
+      "ask",
+      null,
+      null,
+    ],
   ])("reads %j", (text, sector, level, actionCapCents, monthlyCapCents) => {
     expect(parse(text)).toEqual({
       kind: "autopilot_sector",

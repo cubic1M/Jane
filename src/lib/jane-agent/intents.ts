@@ -939,12 +939,16 @@ export function parseIntent(
     }
   }
   if (SPENDING.test(text)) {
-    const on = /\b(?:on|for|at) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(text);
-    // "how much did I spend eating out": a spending word straight after, without "on" (night
-    // round 11-06), taken only when it names one, so "spend last month" stays the whole month.
-    const after = /\bspen(?:d|t|ding) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(
+    // The period words end the name ("at safeway yesterday", "on groceries past week").
+    const on = /\b(?:on|for|at) (.+?)(?= (?:this|last|past|in|during|so far|since|today|yesterday)\b|$)/.exec(
       text,
     );
+    // "how much did I spend eating out": a spending word straight after, without "on" (night
+    // round 11-06), taken only when it names one, so "spend last month" stays the whole month.
+    const after =
+      /\bspen(?:d|t|ding) (.+?)(?= (?:this|last|past|in|during|so far|since|today|yesterday)\b|$)/.exec(
+        text,
+      );
     const named = after && cleanTarget(after[1]);
     const category = on
       ? cleanTarget(on[1])

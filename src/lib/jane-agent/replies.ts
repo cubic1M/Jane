@@ -815,22 +815,36 @@ function shortPeriodLine(
     (last, t) => (t.date > last ? t.date : last),
     transactions[0]!.date,
   );
+  const firstDate = transactions.reduce(
+    (first, t) => (t.date < first ? t.date : first),
+    transactions[0]!.date,
+  );
   if (lastDate < from) {
     return `I can't see ${label}: what I have ends on ${dayLabel(lastDate)}.`;
   }
-  const inRange = transactions.filter((t) => t.date >= from && t.date <= to);
-  const months = [...new Set(inRange.map((t) => t.date.slice(0, 7)))];
-  const ends = lastDate < to ? ` What I have ends on ${dayLabel(lastDate)}.` : "";
-  if (!target) {
-    const insights = spendingInsights(inRange, { asOf, monthCount: INSIGHT_MONTHS });
-    const cents = insights.months
-      .filter((m) => months.includes(m.month))
-      .reduce((sum, m) => sum + m.spendingCents, 0);
-    return `You spent ${fmt(cents)} ${label}.${ends}`;
+  if (firstDate > to) {
+    return `I can't see ${label}: what I have starts on ${dayLabel(firstDate)}.`;
   }
-  const spent = spentIn(target, inRange, months, asOf);
-  if (!spent) return `${SPENDING_NOT_FOUND} "${target}" ${label}.${ends}`;
-  return `You spent ${fmt(spent.cents)} ${spent.where} ${label}.${ends}`;
+  // The days are read as one month, so a refund on one day nets against a purchase on another and
+  // every answer (all spending, a merchant, a part, a category) follows the same rule: the
+  // range's total, never below zero.
+  const month = asOf.slice(0, 7);
+  const days = transactions
+    .filter((t) => t.date >= from && t.date <= to)
+    .map((t) => ({ ...t, date: `${month}-01` }));
+  const edges = `${lastDate < to ? ` What I have ends on ${dayLabel(lastDate)}.` : ""}${
+    firstDate > from ? ` What I have starts on ${dayLabel(firstDate)}.` : ""
+  }`;
+  if (!target) {
+    const cents =
+      spendingInsights(days, { asOf, monthCount: INSIGHT_MONTHS }).months.find(
+        (m) => m.month === month,
+      )?.spendingCents ?? 0;
+    return `You spent ${fmt(cents)} ${label}.${edges}`;
+  }
+  const spent = spentIn(target, days, [month], asOf);
+  if (!spent) return `${SPENDING_NOT_FOUND} "${target}" ${label}.${edges}`;
+  return `You spent ${fmt(Math.max(0, spent.cents))} ${spent.where} ${label}.${edges}`;
 }
 
 // "How much have I spent on Uber?" with no period: everything on file, since the data starts, and

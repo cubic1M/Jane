@@ -98,9 +98,70 @@ describe("spending for a day or a week", () => {
     );
     expect(at("2027-01-02", "how much did I spend yesterday")).toBe("You spent $40.00 yesterday.");
     expect(at("2027-01-06", "how much did I spend last week")).toBe(
-      "You spent $10.00 last week (Dec 24 to Dec 30).",
+      "You spent $10.00 last week (Dec 24 to Dec 30). What I have starts on Dec 30.",
     );
     expect(at("2026-12-31", "how much did I spend yesterday")).toBe("You spent $10.00 yesterday.");
+  });
+
+  // CodeRabbit #2290: the period word ends the merchant's name.
+  it("reads a merchant named before the period word", () => {
+    expect(parseIntent("how much did I spend at Safeway yesterday", TODAY)).toMatchObject({
+      category: "safeway",
+      shortPeriod: "yesterday",
+    });
+    expect(parseIntent("how much did I spend on groceries past week", TODAY)).toMatchObject({
+      category: "groceries",
+      shortPeriod: "week",
+    });
+    expect(parseIntent("how much did I spend at Safeway today", TODAY)).toMatchObject({
+      category: "safeway",
+      shortPeriod: "today",
+    });
+  });
+
+  it("says where what it has starts, too", () => {
+    const recent = rows.filter((r) => r.date >= "2026-11-15");
+    const intent = parseIntent("how much did I spend this week", TODAY);
+    if (intent.kind !== "spending") throw new Error("kind");
+    expect(spendingReply(intent, recent, TODAY).body).toMatch(
+      /^You spent \$50\.00 in the last 7 days .*What I have starts on Nov 15\.$/,
+    );
+    const yesterday = parseIntent("how much did I spend yesterday", TODAY);
+    if (yesterday.kind !== "spending") throw new Error("kind");
+    const today = recent.filter((r) => r.date === TODAY);
+    expect(spendingReply(yesterday, today, TODAY).body).toBe(
+      "I can't see yesterday: what I have starts on Nov 17.",
+    );
+  });
+
+  // One rule for every answer: the days' total, refunds netting against purchases, never below zero.
+  it("nets a refund against a purchase across the days, the same for all spending and a merchant", () => {
+    const refunds = [
+      t("2026-12-31", 10_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2027-01-01", -10_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2027-01-02", 2_000, "Peets", "FOOD_AND_DRINK", "FOOD_AND_DRINK_COFFEE"),
+    ];
+    const at = (text: string) => {
+      const intent = parseIntent(text, "2027-01-02");
+      if (intent.kind !== "spending") throw new Error(intent.kind);
+      return spendingReply(intent, refunds, "2027-01-02").body;
+    };
+    expect(at("how much did I spend this week")).toMatch(/^You spent \$20\.00 in the last 7 days/);
+    expect(at("how much did I spend at Safeway this week")).toMatch(
+      /^You spent \$0\.00 at Safeway in the last 7 days/,
+    );
+  });
+
+  it("reads a part whose spending sits in one month of the days", () => {
+    const apart = [
+      t("2026-12-31", 6_000, "Safeway", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+      t("2027-01-01", 1_000, "Peets", "FOOD_AND_DRINK", "FOOD_AND_DRINK_COFFEE"),
+    ];
+    const intent = parseIntent("how much did I spend on groceries this week", "2027-01-01");
+    if (intent.kind !== "spending") throw new Error(intent.kind);
+    expect(spendingReply(intent, apart, "2027-01-01").body).toMatch(
+      /^You spent \$60\.00 on groceries in the last 7 days/,
+    );
   });
 
   it("says when what it has ends before the days do", () => {
