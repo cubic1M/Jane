@@ -71,4 +71,12 @@ describe("the mask", () => {
     expect(maskFor([])).toBe(NO_MASK);
     expect(hideIn({ a: "Daniel Smith" }, NO_MASK)).toEqual({ a: "Daniel Smith" });
   });
+
+  // CodeRabbit part 2: a name that starts or ends with a letter outside A to Z is still hidden.
+  it("hides names that start or end with an accented letter", () => {
+    const accented = maskFor(["Zoë Lee", "Åke Berg", "Renée"]);
+    const hidden = accented.hide("Paid Zoë Lee, åke berg and Renée; Zoëe stays.");
+    expect(hidden).not.toMatch(/Zoë Lee|åke berg|Renée/i);
+    expect(hidden).toContain("Zoëe stays");
+  });
 });

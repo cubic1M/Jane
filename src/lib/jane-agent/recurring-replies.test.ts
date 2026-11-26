@@ -155,4 +155,31 @@ describe("paydayReply", () => {
       /^I don't see a regular paycheck yet\./,
     );
   });
+
+  // CodeRabbit part 2: every regular charge is the bills view; two of one name are both said.
+  it("sends every regular charge to the bills view", () => {
+    const all = subscriptionsReply({ total: false, all: true }, recurring, null);
+    expect(all.actions.at(-1)).toMatchObject({ href: "/bills" });
+    const none = subscriptionsReply(
+      { total: false, all: true },
+      { charges: [], nextIncome: null },
+      null,
+    );
+    expect(none.actions[0]).toMatchObject({ href: "/bills" });
+  });
+
+  it("says two charges of the same name each, not 'which one' twice", () => {
+    const twice = {
+      ...recurring,
+      charges: [
+        charge({ key: "netflix:1799", lastAmountCents: 1_799, annualCostCents: 21_588 }),
+        charge({ key: "netflix:999", lastAmountCents: 999, annualCostCents: 11_988 }),
+      ],
+    };
+    const reply = costReply({ target: "netflix", year: false }, twice, null, TODAY)!;
+    expect(reply.body).toContain("2 charges from Netflix");
+    expect(reply.body).toContain("$17.99");
+    expect(reply.body).toContain("$9.99");
+    expect(reply.refs.choices).toBeUndefined();
+  });
 });

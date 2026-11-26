@@ -64,10 +64,13 @@ export function maskFor(names: readonly string[]): PayeeMask {
     used.add(tag);
     tags.set(tag, name);
     const words = name.split(/\s+/);
+    // Boundaries by letter, not by \b: a name that starts or ends with "Å" or "é" is bounded too.
+    const before = "(?<![\\p{L}\\p{N}_])";
+    const after = "(?![\\p{L}\\p{N}_])";
     const pattern =
       words.length > 1
-        ? new RegExp(`\\b${words.map(escape).join("\\s+")}\\b`, "gi")
-        : new RegExp(`\\b(?:${escape(name)}|${escape(name.toUpperCase())})\\b`, "g");
+        ? new RegExp(`${before}${words.map(escape).join("\\s+")}${after}`, "giu")
+        : new RegExp(`${before}(?:${escape(name)}|${escape(name.toUpperCase())})${after}`, "gu");
     return { pattern, tag };
   });
   const back = new RegExp([...tags.keys()].map(escape).join("|"), "g");

@@ -75,6 +75,19 @@ export function costReply(
     return rentAsk(snapshot.rentQuestion);
   }
   if (matches.length === 0) return null;
+  // Two charges of one name (two plans, two cards): asking "which one" would offer the same name
+  // twice, so each is said with its own amount and how often (CodeRabbit part 2).
+  if (matches.length > 1 && new Set(matches.map((c) => c.merchant.toLowerCase())).size === 1) {
+    const each = matches.map(
+      (c) =>
+        `${formatCents(c.lastAmountCents)} ${EVERY[c.frequency]} (${formatCents(c.annualCostCents)} a year)`,
+    );
+    return {
+      body: `You have ${matches.length} charges from ${matches[0].merchant}: ${each.join("; ")}.`,
+      actions: [linkFor(matches[0])],
+      refs: {},
+    };
+  }
   if (matches.length > 1) {
     return clarifyReply(
       "Which one do you mean?",
@@ -151,6 +164,8 @@ export function subscriptionsReply(
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
   const what = intent.all ? "regular charges" : "subscriptions";
+  // All the regular charges include rent and bills: their list is the bills view.
+  const listLink = intent.all ? billsLink : subscriptionsLink;
   // "1 subscription", not "1 subscriptions" (night QA 10-30).
   const counted = `${list.length} ${list.length === 1 ? what.replace(/s$/, "") : what}`;
   if (list.length === 0) {
@@ -164,14 +179,14 @@ export function subscriptionsReply(
           : `${seenOnce.slice(0, -1).join(", ")} and ${seenOnce[seenOnce.length - 1]}`;
       return {
         body: `${named} ${seenOnce.length === 1 ? "looks like a subscription" : "look like subscriptions"}, one charge each so far. There's too little history to be sure: they show as subscriptions once about two months of transactions are in.`,
-        actions: [subscriptionsLink],
+        actions: [listLink],
         refs: {},
       };
     }
     const why = shortHistory
       ? ": there's too little history to tell. They show once about two months of transactions are in."
       : ".";
-    return { body: `I don't see any ${what} yet${why}`, actions: [subscriptionsLink], refs: {} };
+    return { body: `I don't see any ${what} yet${why}`, actions: [listLink], refs: {} };
   }
   const yearCents = list.reduce((sum, c) => sum + c.annualCostCents, 0);
   const monthCents = Math.round(yearCents / 12);
@@ -215,11 +230,11 @@ export function subscriptionsReply(
         : said.join(" ");
     return {
       body: `${lines.join(" ")} ${tail}`,
-      actions: [...decision.actions, subscriptionsLink],
+      actions: [...decision.actions, listLink],
       refs: decision.refs,
     };
   }
-  return { body: lines.join(" "), actions: [subscriptionsLink], refs: {} };
+  return { body: lines.join(" "), actions: [listLink], refs: {} };
 }
 
 // "When do I get paid?": the same payday as safe to spend.

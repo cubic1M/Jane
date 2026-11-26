@@ -531,6 +531,42 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(sent.every((m) => m.notifiedVia === "both")).toBe(true);
     });
 
+    // CodeRabbit part 2: a push that throws leaves nothing claimed but never sent.
+    it("gives the messages back when the push throws, so the retry sends them", async () => {
+      const userId = await withMessages("notify-push-throws");
+      await device(userId);
+      const { push, send } = fakes();
+      push.mockRejectedValueOnce(new Error("push service down"));
+      await expect(
+        deliverChatNotifications(userId, { client, now: at(MINUTE), push, send }),
+      ).rejects.toThrow("push service down");
+      expect((await messagesOf(userId)).every((m) => m.notifiedAt === null)).toBe(true);
+      const retry = await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send });
+      expect(retry.pushed).toBeGreaterThan(0);
+    });
+
+    // CodeRabbit part 2: an agenda with something to answer is waiting, though the plain brief is off.
+    it("starts a delivery job for an agenda with something on it, with the brief off", async () => {
+      const userId = await person("notify-brief-queue", {
+        channel: "push",
+        kinds: { brief: false, decision: true },
+      } as Prisma.InputJsonObject);
+      await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "brief",
+          body: "Good morning!",
+          dedupeKey: `brief:${crypto.randomUUID()}`,
+          createdAt: at(0),
+          refs: { items: [{ dedupeKey: "finding:x", label: "A thing" }] },
+        },
+      });
+      const deliver = vi.fn(async () => ({ pushed: 0, emailed: 0 }));
+      const id = await queueChatNotifications(userId, { client, now: at(MINUTE), deliver });
+      expect(id).not.toBeNull();
+      expect(deliver).toHaveBeenCalledTimes(1);
+    });
+
     it("gives the messages back when the email fails, so the retry sends them", async () => {
       const userId = await withMessages("notify-fail", { channel: "email" });
       const { push, send } = fakes();

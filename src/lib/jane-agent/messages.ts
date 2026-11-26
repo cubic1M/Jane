@@ -218,7 +218,15 @@ export async function closeSettled(
   const byFinding = open.flatMap((m) => {
     const refs = parseRefs(m.refs);
     return refs.findingId
-      ? [{ id: m.id, findingId: refs.findingId, refs, actions: parseActions(m.actions) }]
+      ? [
+          {
+            id: m.id,
+            findingId: refs.findingId,
+            refs,
+            raw: m.refs,
+            actions: parseActions(m.actions),
+          },
+        ]
       : [];
   });
   if (byFinding.length === 0) return elsewhere;
@@ -248,7 +256,13 @@ export async function closeSettled(
     const answer = answerFor.get(message.findingId);
     // Its Open link stays.
     const { count } = await db.janeMessages.updateMany({
-      where: { id: message.id, status: "open" },
+      // The refs read above must still be the refs: a pin made meanwhile is not written over (the
+      // next run closes it then).
+      where: {
+        id: message.id,
+        status: "open",
+        refs: { equals: message.raw as Prisma.InputJsonValue },
+      },
       data: {
         status: "answered",
         answeredAt: now,
@@ -398,16 +412,24 @@ export async function setPinned(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
   const db = scopedFor(userId, client);
-  const row = await db.janeMessages.findFirst({ where: { id: messageId }, select: { refs: true } });
-  if (!row) return false;
-  const refs = { ...parseRefs(row.refs) };
-  if (pinned) refs.pinned = true;
-  else delete refs.pinned;
-  await db.janeMessages.updateMany({
-    where: { id: messageId },
-    data: { refs: refs as Prisma.InputJsonObject },
-  });
-  return true;
+  // Written only over the refs it read: a note another writer added meanwhile is read again, not
+  // lost (CodeRabbit part 2).
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const row = await db.janeMessages.findFirst({
+      where: { id: messageId },
+      select: { refs: true },
+    });
+    if (!row) return false;
+    const refs = { ...parseRefs(row.refs) };
+    if (pinned) refs.pinned = true;
+    else delete refs.pinned;
+    const { count } = await db.janeMessages.updateMany({
+      where: { id: messageId, refs: { equals: row.refs as Prisma.InputJsonValue } },
+      data: { refs: refs as Prisma.InputJsonObject },
+    });
+    if (count > 0) return true;
+  }
+  return false;
 }
 
 // Spec step 96: the person's pinned messages, newest first.
@@ -514,7 +536,14 @@ export async function openPopupMessages(
   const answers = new Set<string>();
   timeline.forEach((m, i) => {
     if (m.kind !== "user") return;
-    const next = timeline.slice(i + 1).find((n) => n.kind !== "user");
+    // An answer is a reply or a card with Yes and No, never a heads-up, brief or note a scan posted
+    // in between (CodeRabbit part 2; an explicit reply reference needs a column: open list).
+    const next = timeline
+      .slice(i + 1)
+      .find(
+        (n) =>
+          n.kind !== "user" && n.kind !== "heads_up" && n.kind !== "brief" && n.kind !== "done",
+      );
     if (next && next.createdAt.getTime() - m.createdAt.getTime() <= ANSWER_WINDOW_MS) {
       answers.add(next.id);
     }

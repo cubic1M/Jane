@@ -1,5 +1,5 @@
 import { CHAT_PRIMER_STORED_MINUTES } from "@/config/agent-chat";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { sameData } from "@/lib/data-stamp";
 import { localDate } from "@/lib/today";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
@@ -107,8 +107,9 @@ export async function markPrimerStale(
     });
     if (!row) return;
     const value = row.value as { at?: string; builtAt?: string };
-    await scopedFor(userId, client).janePreferences.update({
-      where: { userId_kind_key: { userId, kind: "system", key: KEY } },
+    // Only the value that was read: a newer primer saved meanwhile is not marked old by this.
+    await scopedFor(userId, client).janePreferences.updateMany({
+      where: { kind: "system", key: KEY, value: { equals: row.value as Prisma.InputJsonValue } },
       data: {
         value: { ...value, at: new Date(0).toISOString(), builtAt: value.builtAt ?? value.at },
       },

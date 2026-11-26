@@ -132,10 +132,11 @@ export async function deletePreference(
     where: { id },
     select: { kind: true, key: true },
   });
+  // What Jane knew from it goes first: if that fails the preference is still there to delete again,
+  // and a second pass finds nothing left to forget (CodeRabbit part 2).
+  if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client });
   const { count } = await db.janePreferences.deleteMany({ where: { id } });
   if (count > 0) {
-    // And what Jane knew from it.
-    if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client });
     await logAudit(
       { type: "user", id: userId },
       "preference_deleted",

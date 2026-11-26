@@ -206,6 +206,14 @@ describe.runIf(url)(
         status: "pending",
       });
 
+      // CodeRabbit part 2: a savings account that is named is that one, never the biggest other.
+      const named = await sendToJane(userId, "move $200 to Vacation Savings", {
+        client,
+        now: later(),
+      });
+      expect(named.reply.actions.some((x) => x.id === "multi.confirm")).toBe(false);
+      expect(named.reply.body).toMatch(/vacation savings/i);
+
       // A real account (no money-movement partner): how to do it themselves, never a team request.
       const real = await client.user.create({
         data: { email: `multi-real-${crypto.randomUUID()}@example.com` },

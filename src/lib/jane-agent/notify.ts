@@ -129,6 +129,14 @@ type Send = typeof sendEmail;
 function emailSender(send: Send | undefined): Send | null {
   if (send) return send;
   if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) return sendEmail;
+  // AgentMail, when it is the provider, needs its own two settings, not Resend's.
+  if (
+    process.env.EMAIL_PROVIDER === "agentmail" &&
+    process.env.AGENTMAIL_API_KEY &&
+    process.env.AGENTMAIL_INBOX_ID
+  ) {
+    return sendEmail;
+  }
   if (process.env.NODE_ENV === "development") {
     return async (email) => log.dev(`[dev] Jane's email:\n${email.subject}\n\n${email.text}`);
   }
@@ -271,11 +279,19 @@ export async function deliverChatNotifications(
     for (const group of groups) {
       if (room <= 0) break;
       const claimed: Notifiable[] = [];
-      for (const m of group.slice(0, room)) if (await claim(m, "push")) claimed.push(m);
-      if (claimed.length === 0) continue;
-      const message =
-        claimed.length === 1 ? chatPushMessage(claimed[0]) : bundledPushMessage(claimed);
-      if ((await push(userId, message, { client })) === 0) {
+      let taken = 0;
+      try {
+        for (const m of group.slice(0, room)) if (await claim(m, "push")) claimed.push(m);
+        if (claimed.length === 0) continue;
+        const message =
+          claimed.length === 1 ? chatPushMessage(claimed[0]) : bundledPushMessage(claimed);
+        taken = await push(userId, message, { client });
+      } catch (error) {
+        // Nothing went out: give them back so the retry sends them (as the email path does).
+        for (const m of claimed) await unclaim(m);
+        throw error;
+      }
+      if (taken === 0) {
         // No device took it (all gone): give them back for email.
         for (const m of claimed) await unclaim(m);
         pushWorks = false;
@@ -379,9 +395,15 @@ export async function queueChatNotifications(
     select: { chatNotifyPrefs: true },
   });
   const prefs = chatNotifyPrefs(user?.chatNotifyPrefs);
-  const kinds = CHAT_NOTIFY_KINDS.filter((k) => notifiesKind(prefs, k));
+  // A brief with something on it to answer goes out like a decision (chooseToNotify), so it is
+  // looked at whenever decisions are wanted, even with the plain brief off.
+  const kinds = CHAT_NOTIFY_KINDS.filter(
+    (k) => notifiesKind(prefs, k) || (k === "brief" && notifiesKind(prefs, "decision")),
+  );
   if (!user || kinds.length === 0) return null;
-  const waiting = await scopedFor(userId, client).janeMessages.count({
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    select: { id: true, kind: true, refs: true },
+    take: 200,
     where: {
       status: "open",
       readAt: null,
@@ -390,6 +412,10 @@ export async function queueChatNotifications(
       OR: [{ notifiedAt: null }, ...(prefs.channel === "both" ? [{ notifiedVia: "push" }] : [])],
     },
   });
+  const waiting = chooseToNotify(
+    rows.map((r) => ({ ...r, body: "", actions: [], createdAt: now, notifiedVia: null })),
+    prefs,
+  ).length;
   if (waiting === 0) return null;
 
   const emailAfterMinutes = trigger === "cron" ? 0 : CHAT_EMAIL_AFTER_MINUTES;
