@@ -167,6 +167,21 @@ async function sameAccountsLinked(
   accessToken: string,
   institutionName: string,
 ): Promise<boolean> {
+  try {
+    return await accountsAllLinked(db, api, accessToken, institutionName);
+  } catch (error) {
+    // A guard only: a failure here must not leave Plaid's Item made and its token unsaved.
+    log.error("Couldn't check whether a new link was linked already", { error });
+    return false;
+  }
+}
+
+async function accountsAllLinked(
+  db: ReturnType<typeof scopedFor>,
+  api: PlaidApi,
+  accessToken: string,
+  institutionName: string,
+): Promise<boolean> {
   const sameBank = { equals: institutionName, mode: "insensitive" as const };
   const before = await db.plaidItems.findFirst({
     where: { institutionName: sameBank },
@@ -233,10 +248,17 @@ export async function exchangePublicToken(
   );
   const db = scopedFor(userId, client);
   // The same exchange again (a retry) gives the Item already saved, which has its slot.
-  const saved = await db.plaidItems.findFirst({
-    where: { plaidItemId: data.item_id },
-    select: { id: true },
-  });
+  // A lookup that fails counts as "not saved": the create below then decides (a row that exists
+  // keeps its Item), and a save that fails ends the Item, so no token is lost on this path.
+  let saved: { id: string } | null = null;
+  try {
+    saved = await db.plaidItems.findFirst({
+      where: { plaidItemId: data.item_id },
+      select: { id: true },
+    });
+  } catch (error) {
+    log.error("Couldn't look up a new bank link", { error });
+  }
   if (slot && (saved || isDemoItemId(data.item_id))) await releaseItemSlot(slot, { client });
   if (saved) return saved.id;
   // Every account Plaid shares from this link is one already linked from the same bank: the new
@@ -270,14 +292,18 @@ export async function exchangePublicToken(
     await dropUnsavedItem(data, slot, error, { client, api });
     throw error;
   }
-  await logAudit(
-    { type: "user", id: userId },
-    "item_linked",
-    { type: "plaid_item", id: item.id },
-    {
-      institution: institutionName,
-    },
-  );
-  await track(userId, "link_succeeded", { institution: institutionName });
+  // The Item is saved and in use: a record or event that fails to write must not make the link
+  // look failed (Link's public token works once, so the person could not try it again).
+  try {
+    await logAudit(
+      { type: "user", id: userId },
+      "item_linked",
+      { type: "plaid_item", id: item.id },
+      { institution: institutionName },
+    );
+    await track(userId, "link_succeeded", { institution: institutionName });
+  } catch (error) {
+    log.error("Couldn't record a saved bank link", { error: String(error) });
+  }
   return item.id;
 }

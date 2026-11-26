@@ -76,24 +76,36 @@ export function LinkButton({
       Plaid.create({
         token: token.body.linkToken,
         onSuccess: async (publicToken, metadata) => {
-          if (itemId) {
-            // Update mode keeps the same item: it stops asking, and syncs (the server's job).
-            await post("/api/plaid/repaired", { itemId });
-            router.refresh();
+          // A request that fails or can't be reached must not leave the button on "Opening…".
+          try {
+            if (itemId) {
+              // Update mode keeps the same item: it stops asking, and syncs (the server's job).
+              const repaired = await post("/api/plaid/repaired", { itemId });
+              if (!repaired.ok) {
+                setError(repaired.body.error ?? "Reconnecting didn't finish. Please try again.");
+                setBusy(false);
+                return;
+              }
+              router.refresh();
+              setBusy(false);
+              return;
+            }
+            const saved = await post("/api/plaid/exchange", {
+              publicToken,
+              institutionName: metadata.institution?.name ?? null,
+            });
+            if (saved.body.code === LINKING_FULL_CODE) return linkingFull();
+            if (!saved.ok) {
+              setError(saved.body.error ?? "Linking didn't finish. Please try again.");
+              setBusy(false);
+              return;
+            }
+            router.push("/scanning");
+          } catch {
+            sendEvent("link_failed");
+            setError("Linking didn't finish. Check your connection and try again.");
             setBusy(false);
-            return;
           }
-          const saved = await post("/api/plaid/exchange", {
-            publicToken,
-            institutionName: metadata.institution?.name ?? null,
-          });
-          if (saved.body.code === LINKING_FULL_CODE) return linkingFull();
-          if (!saved.ok) {
-            setError(saved.body.error ?? "Linking didn't finish. Please try again.");
-            setBusy(false);
-            return;
-          }
-          router.push("/scanning");
         },
         onExit: (exitError) => {
           if (exitError) sendEvent("link_failed");

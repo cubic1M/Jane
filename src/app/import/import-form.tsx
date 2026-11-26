@@ -77,6 +77,11 @@ export function ImportForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
+  // Counts file choices: a preview that finishes after the files changed is for files no longer
+  // chosen, and is dropped (else the person would confirm A's preview and import B).
+  const selection = useRef(0);
+  // A column mapping changed after the preview: what it checked isn't what would be imported.
+  const [mappingChanged, setMappingChanged] = useState(false);
   // Column pickers by file position, kept once shown: the import sends the picked columns too.
   const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +139,8 @@ export function ImportForm({
     setBusy("preview");
     event.preventDefault();
     setError(null);
+    setMappingChanged(false);
+    const gen = selection.current;
     const data = formData();
     const over = tooMuch(data);
     if (over) {
@@ -145,6 +152,7 @@ export function ImportForm({
       const result = await previewImport(data)
         .catch(() => previewImport(data))
         .catch(() => null);
+      if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       setPreview(result);
       if (!result.ok) return;
@@ -169,14 +177,17 @@ export function ImportForm({
 
   // Saves the rows and returns at once; the person keeps using Jane while the rest runs.
   function onConfirm() {
+    if (mappingChanged) return setError("You changed a column. Preview again to check it first.");
     setBusy("import");
     setError(null);
     setSaved(null);
+    const gen = selection.current;
     const data = formData();
     const over = tooMuch(data);
     if (over) return setError(over);
     startTransition(async () => {
       const result = await startImport(data).catch(() => null);
+      if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
       setSaved({
@@ -231,7 +242,16 @@ export function ImportForm({
   );
 
   return (
-    <form method="post" ref={formRef} onSubmit={onPreview} className="flex flex-col gap-4">
+    <form
+      method="post"
+      ref={formRef}
+      onSubmit={onPreview}
+      onChange={(event) => {
+        const name = (event.target as unknown as HTMLInputElement).name;
+        if (name?.startsWith("map.")) setMappingChanged(true);
+      }}
+      className="flex flex-col gap-4"
+    >
       <label className="flex flex-col gap-1 text-sm font-medium">
         Account
         <select
@@ -301,6 +321,8 @@ export function ImportForm({
           multiple
           required
           onChange={() => {
+            selection.current += 1;
+            setMappingChanged(false);
             setPreview(null);
             setPickers({});
             // New files start the next upload: the last one's "Saved 58 transactions" goes, so the
@@ -320,7 +342,7 @@ export function ImportForm({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={pending || mixed !== null || !!fromLinked?.sure}
+            disabled={pending || mappingChanged || mixed !== null || !!fromLinked?.sure}
             className={PRIMARY_BUTTON}
           >
             {pending ? "Saving…" : `Import ${plural(total, "transaction")}`}

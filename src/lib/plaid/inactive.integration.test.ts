@@ -106,4 +106,33 @@ describe.runIf(url)("inactive cleanup against a real database", () => {
     ).toBeNull();
     expect(remove.mock.calls.some((c) => c[0] === outsider)).toBe(false);
   });
+
+  it("leaves alone someone who came back after the run began, before their turn", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const one = await person("turn-one", 55);
+    const two = await person("turn-two", 55);
+    const userIds = [one, two];
+    await runInactiveCleanup({ client, now: NOW, send: vi.fn(), remove: vi.fn(), userIds });
+    const weekLater = new Date(NOW.getTime() + 7 * DAY);
+    // Whoever goes second opens the app while the first one is being removed.
+    const removed: string[] = [];
+    const remove = vi.fn(async (userId: string) => {
+      removed.push(userId);
+      const other = userId === one ? two : one;
+      if (removed.length === 1) {
+        await client.analyticsEvent.create({
+          data: { userId: other, name: "report_viewed", createdAt: weekLater },
+        });
+      }
+    });
+    const run = await runInactiveCleanup({
+      client,
+      now: weekLater,
+      send: vi.fn(),
+      remove: remove as never,
+      userIds,
+    });
+    expect(removed).toHaveLength(1);
+    expect(run.removed).toBe(1);
+  });
 });
