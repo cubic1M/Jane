@@ -181,5 +181,20 @@ describe("paydayReply", () => {
     expect(reply.body).toContain("$17.99");
     expect(reply.body).toContain("$9.99");
     expect(reply.refs.choices).toBeUndefined();
+    // A bill that moves is its range and usual amount, not its last amount.
+    const moving = {
+      ...recurring,
+      charges: [
+        charge({
+          key: "xcel:a",
+          merchant: "Xcel Energy",
+          lastAmountCents: 5_749,
+          varies: { lowCents: 3_872, highCents: 5_749, usualCents: 4_660 },
+        }),
+        charge({ key: "xcel:b", merchant: "Xcel Energy", lastAmountCents: 999 }),
+      ],
+    };
+    const range = costReply({ target: "xcel", year: false }, moving, null, TODAY)!;
+    expect(range.body).toContain("about $46.60 a month ($38.72 to $57.49)");
   });
 });

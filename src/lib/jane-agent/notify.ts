@@ -245,9 +245,10 @@ export async function deliverChatNotifications(
         data: { notifiedAt: now, notifiedVia: via },
       })
     ).count === 1;
-  const unclaim = (m: Notifiable) =>
+  // Only what this delivery wrote is given back: another delivery's claim on it stays.
+  const unclaim = (m: Notifiable, via: Channel) =>
     db.janeMessages.updateMany({
-      where: { id: m.id },
+      where: { id: m.id, notifiedAt: now, notifiedVia: via },
       data: { notifiedAt: m.notifiedAt ?? null, notifiedVia: m.notifiedVia },
     });
   const record = async (m: Notifiable, channel: Channel) => {
@@ -288,12 +289,12 @@ export async function deliverChatNotifications(
         taken = await push(userId, message, { client });
       } catch (error) {
         // Nothing went out: give them back so the retry sends them (as the email path does).
-        for (const m of claimed) await unclaim(m);
+        for (const m of claimed) await unclaim(m, "push");
         throw error;
       }
       if (taken === 0) {
         // No device took it (all gone): give them back for email.
-        for (const m of claimed) await unclaim(m);
+        for (const m of claimed) await unclaim(m, "push");
         pushWorks = false;
         break;
       }
@@ -368,7 +369,7 @@ export async function deliverChatNotifications(
     });
   } catch (error) {
     // Give them back so the retry sends them; the job queue retries this whole run.
-    for (const m of claimed) await unclaim(m);
+    for (const m of claimed) await unclaim(m, m.notifiedVia === "push" ? "both" : "email");
     throw error;
   }
   for (const m of claimed) await record(m, "email");
@@ -403,7 +404,6 @@ export async function queueChatNotifications(
   if (!user || kinds.length === 0) return null;
   const rows = await scopedFor(userId, client).janeMessages.findMany({
     select: { id: true, kind: true, refs: true },
-    take: 200,
     where: {
       status: "open",
       readAt: null,

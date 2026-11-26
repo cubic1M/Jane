@@ -64,9 +64,10 @@ export function maskFor(names: readonly string[]): PayeeMask {
     used.add(tag);
     tags.set(tag, name);
     const words = name.split(/\s+/);
-    // Boundaries by letter, not by \b: a name that starts or ends with "Å" or "é" is bounded too.
-    const before = "(?<![\\p{L}\\p{N}_])";
-    const after = "(?![\\p{L}\\p{N}_])";
+    // Boundaries by Latin letter, not by \b: a name that starts or ends with "Å" or "é" is bounded too,
+    // and one that follows Han or Kana text (which has no spaces) is still found.
+    const before = "(?<![\\p{Script=Latin}\\p{N}_])";
+    const after = "(?![\\p{Script=Latin}\\p{N}_])";
     const pattern =
       words.length > 1
         ? new RegExp(`${before}${words.map(escape).join("\\s+")}${after}`, "giu")

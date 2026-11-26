@@ -114,7 +114,7 @@ async function savingsAccount(userId: string, words: string, client: PrismaClien
     select: { id: true, name: true },
     orderBy: [{ currentBalanceCents: "desc" }, { id: "asc" }],
   });
-  const named = (words.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter(
+  const named = (words.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(
     (w) => !/^(?:my|the|our|a|an|to|saving|savings|account|accounts)$/.test(w),
   );
   if (named.length === 0) return accounts[0] ?? null;

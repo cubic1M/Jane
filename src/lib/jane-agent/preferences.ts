@@ -132,10 +132,12 @@ export async function deletePreference(
     where: { id },
     select: { kind: true, key: true },
   });
-  // What Jane knew from it goes first: if that fails the preference is still there to delete again,
-  // and a second pass finds nothing left to forget (CodeRabbit part 2).
-  if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client });
-  const { count } = await db.janePreferences.deleteMany({ where: { id } });
+  // What Jane knew from it goes with it, in one transaction: both happen or neither does.
+  const count = await client.$transaction(async (tx) => {
+    const inTx = tx as unknown as PrismaClient;
+    if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client: inTx });
+    return (await scopedFor(userId, inTx).janePreferences.deleteMany({ where: { id } })).count;
+  });
   if (count > 0) {
     await logAudit(
       { type: "user", id: userId },

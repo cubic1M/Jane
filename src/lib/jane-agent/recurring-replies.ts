@@ -78,9 +78,11 @@ export function costReply(
   // Two charges of one name (two plans, two cards): asking "which one" would offer the same name
   // twice, so each is said with its own amount and how often (CodeRabbit part 2).
   if (matches.length > 1 && new Set(matches.map((c) => c.merchant.toLowerCase())).size === 1) {
-    const each = matches.map(
-      (c) =>
-        `${formatCents(c.lastAmountCents)} ${EVERY[c.frequency]} (${formatCents(c.annualCostCents)} a year)`,
+    const each = matches.map((c) =>
+      // A bill that moves with use is its range, not its last amount.
+      c.varies
+        ? `about ${formatCents(c.varies.usualCents)} ${EVERY[c.frequency]} (${formatCents(c.varies.lowCents)} to ${formatCents(c.varies.highCents)})`
+        : `${formatCents(c.lastAmountCents)} ${EVERY[c.frequency]} (${formatCents(c.annualCostCents)} a year)`,
     );
     return {
       body: `You have ${matches.length} charges from ${matches[0].merchant}: ${each.join("; ")}.`,

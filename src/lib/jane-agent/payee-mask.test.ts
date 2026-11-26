@@ -78,5 +78,7 @@ describe("the mask", () => {
     const hidden = accented.hide("Paid Zoë Lee, åke berg and Renée; Zoëe stays.");
     expect(hidden).not.toMatch(/Zoë Lee|åke berg|Renée/i);
     expect(hidden).toContain("Zoëe stays");
+    // A name straight after Han text (no space between words there) is still hidden.
+    expect(accented.hide("支付Zoë Lee了")).not.toContain("Zoë");
   });
 });
