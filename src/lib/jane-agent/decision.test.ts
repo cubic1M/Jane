@@ -49,6 +49,17 @@ describe("reading a decision question", () => {
     }
   });
 
+  it("reads a bare 'should I buy?' the same with its question mark left on", () => {
+    expect(parseDecision("should i buy?")).toEqual({ kind: "decision", item: null, label: null });
+  });
+
+  it("sends a loan with an amount the same way however the amount is written", () => {
+    expect(parseDecision("should i take a personal loan for $10,000")).toBeNull();
+    expect(parseDecision("should i take a personal loan for 10000 dollars")).toBeNull();
+    expect(parseDecision("should i take a personal loan\nfor $10,000")).toBeNull();
+    expect(parseDecision("should i take a personal loan")).toMatchObject({ item: "loan" });
+  });
+
   it("leaves what other answers own to them", () => {
     expect(parseDecision("should i buy a $900 couch")).toBeNull();
     // Insurance takes its own (src/config/decisions.ts).

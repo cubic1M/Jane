@@ -18,6 +18,31 @@ export type ReceivedEmail = {
   verified: boolean;
 };
 
+const ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+export const htmlToText = (html: string): string =>
+  html
+    .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/gi, (_m, name: string) => ENTITIES[name.toLowerCase()])
+    // "&#39;" and "&#x27;": the email's own characters, not their codes.
+    .replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (m, code: string) => {
+      const point = code[0].toLowerCase() === "x" ? parseInt(code.slice(1), 16) : Number(code);
+      return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : m;
+    })
+    .replace(/[ \t]+/g, " ")
+    .replace(/ ?\n ?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 
@@ -36,7 +61,14 @@ export async function readReceivedEmail(emailId: string): Promise<ReceivedEmail 
     to: [...strings(body.to), ...strings(body.received_for)],
     from: typeof body.from === "string" ? body.from : "",
     subject: typeof body.subject === "string" ? body.subject : "",
-    text: typeof body.text === "string" ? body.text : "",
+    // An HTML-only reply has no text part: its words, tags removed, so the reply reader never gets
+    // just the subject line.
+    text:
+      typeof body.text === "string" && body.text.trim()
+        ? body.text
+        : typeof body.html === "string"
+          ? htmlToText(body.html)
+          : "",
     verified: auth.dmarc === "pass",
   };
 }

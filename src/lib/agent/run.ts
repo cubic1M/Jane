@@ -245,7 +245,11 @@ export async function agentStep(
   }
   // Some companies only cancel from the account holder's own page: the person gets the
   // link, and Jane confirms by watching for the next charge.
-  if (action.type === "cancel_subscription" && action.agentMessages.length === 0) {
+  if (
+    action.type === "cancel_subscription" &&
+    chosen.plan !== "downgrade" &&
+    action.agentMessages.length === 0
+  ) {
     const { merchant: row } = await companyFacts(action.company, { client });
     if (row?.cancelUrl && cancelsFromOwnAccountOnly(row)) {
       await setStatus(

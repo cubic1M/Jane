@@ -86,7 +86,8 @@ async function decide(
         source: "chat",
         ...(switchTo ? { options: { switchTo } } : {}),
       },
-      { client },
+      // The card's own clock: a No's Undo deadline counts from the instant it is recorded.
+      { client, now: context.now },
     );
     return {
       answeredWith: context.action.label,
@@ -132,6 +133,19 @@ function diyOutcome(
   };
 }
 
+// A connector planned it (src/lib/connectors/for-card.ts): nothing happens until the person says
+// yes to its exact steps, on a Yes or on a switch pick alike.
+function connectorOutcome(
+  outcome: ActionOutcome & { decisionId?: string; connectorActionId?: string },
+): ActionOutcome | null {
+  if (!outcome.decisionId || !outcome.connectorActionId) return null;
+  return {
+    answeredWith: outcome.answeredWith,
+    note: "The steps are ready. Check them and say yes on Connections: nothing is sent before that.",
+    actions: [openLink("Check the steps", "/settings/connections#actions")],
+  };
+}
+
 export const findingYes: ActionHandler = {
   id: "finding.yes",
   on: "open",
@@ -140,15 +154,8 @@ export const findingYes: ActionHandler = {
     if (outcome.decisionId && outcome.actionType && outcome.diy) {
       return diyOutcome(context, outcome);
     }
-    // A connector planned it (src/lib/connectors/for-card.ts): nothing happens until the person
-    // says yes to its exact steps.
-    if (outcome.decisionId && outcome.connectorActionId) {
-      return {
-        answeredWith: outcome.answeredWith,
-        note: "The steps are ready. Check them and say yes on Connections: nothing is sent before that.",
-        actions: [openLink("Check the steps", "/settings/connections#actions")],
-      };
-    }
+    const planned = connectorOutcome(outcome);
+    if (planned) return planned;
     return outcome.decisionId && outcome.actionType
       ? { ...outcome, note: nextStep(outcome.actionType) }
       : outcome;
@@ -186,6 +193,8 @@ export const findingPick: ActionHandler = {
     if (outcome.decisionId && outcome.actionType && outcome.diy) {
       return diyOutcome(context, outcome);
     }
+    const planned = connectorOutcome(outcome);
+    if (planned) return planned;
     return outcome.decisionId
       ? {
           ...outcome,

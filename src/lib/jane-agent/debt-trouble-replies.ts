@@ -12,7 +12,17 @@ import type { DebtTrouble } from "@/lib/debt-trouble";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import { type MessageAction, openLink } from "./types";
-import { formatPercent as pct } from "@/lib/percent";
+import { formatPercent, formatPercentTenths } from "@/lib/percent";
+
+// Whole percents, unless the share and the mark would then read the same ("40%" over the "40% mark").
+const pct = (share: number) => {
+  const whole = formatPercent(share);
+  if (whole !== formatPercent(TROUBLE_PAYMENT_SHARE) || share === TROUBLE_PAYMENT_SHARE)
+    return whole;
+  const tenths = formatPercentTenths(share);
+  // Still the same at tenths: two decimals.
+  return tenths !== whole ? tenths : `${(share * 100).toFixed(2)}%`;
+};
 
 // Jane's answers when debt is too much (spec step 229), from src/lib/debt-trouble.ts. Pure.
 // Facts and doors to knock on: it doesn't choose between them, never advises on settlement

@@ -38,7 +38,7 @@ const FILLER =
 const LEAD =
   /^(?:do you think|would you say|what do you think|what would you say|can you tell me|tell me|i was wondering|i'?m wondering|im wondering|quick question|question)[,:]?\s*(?:if|whether)?\s*/;
 
-const BARE = /^should i(?: buy| do it| buy it| go for it| get it)?$/;
+const BARE = /^should i(?: buy| do it| buy it| go for it| get it)?[?.!]*$/;
 const PAYOFF_OR_INVEST =
   /\b(?:pay(?:ing)? (?:off|down)\b.*\b(?:or|vs\.?|versus|instead of)\b.*\b(?:invest\w*|sav\w+)|(?:invest\w*|sav\w+)\b.*\b(?:or|vs\.?|versus|instead of)\b.*\bpay(?:ing)? (?:off|down))\b/;
 // A question about doing something with money: "should I (be)", "I should", "is it worth", "is X

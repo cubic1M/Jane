@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heardError, spokenText, transcriptOf } from "./speech";
+import { heardError, localVoice, spokenText, transcriptOf } from "./speech";
 
 // Spec step 186: what the browser heard, and a message as words to read aloud.
 
@@ -35,5 +35,17 @@ describe("a message read aloud", () => {
         "Saved.",
       ),
     ).toBe("These 2 matter most: Review your Hulu subscription. Due tomorrow. Saved.");
+  });
+});
+
+describe("localVoice", () => {
+  const voices = [
+    { name: "net", localService: false, lang: "en-US" },
+    { name: "device", localService: true, lang: "en-GB" },
+  ];
+  it("never picks a voice that runs on a speech service", () => {
+    expect(localVoice(voices, "en-US")?.name).toBe("device");
+    expect(localVoice([voices[0]], "en-US")).toBeNull();
+    expect(localVoice([], "en-US")).toBeNull();
   });
 });

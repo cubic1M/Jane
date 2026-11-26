@@ -29,7 +29,7 @@ function comparisonLines(c: RefinanceComparison): string[] {
   ];
   if (c.cashPayoffCents) {
     lines.push(
-      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still keep your emergency cushion, more than any loan.`,
+      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still keep your emergency cushion as of my last check, more than any loan. Cash moves, so look at your balance again first.`,
     );
     return lines;
   }

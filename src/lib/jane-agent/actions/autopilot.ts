@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import type { AutopilotChoice } from "@/config/autopilot";
 import { autopilotOf, setAutopilot } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
@@ -34,7 +35,17 @@ function choose(level: AutopilotChoice): ActionHandler {
       }
       // What Revert puts back (founder, 2026-10-25): the choices stay, greyed, with Revert.
       const before = await autopilotBefore(userId, client);
-      const approved = await setAutopilot(userId, level, { client, now });
+      // The level and rules are saved before setAutopilot's audit row: if that write fails, the
+      // choice still has to reach the message, or a retry finds a level set and refuses.
+      let approved = 0;
+      try {
+        approved = await setAutopilot(userId, level, { client, now });
+      } catch (error) {
+        if ((await autopilotOf(userId, { client })) !== level) throw error;
+        log.error("autopilot saved, but a write after it failed", {
+          error: error instanceof Error ? error.name : "unknown",
+        });
+      }
       // The agent's first steps on what the new level approved, as Settings starts them.
       const working = await scopedFor(userId, client).actions.findMany({
         where: { agentState: "working" },
@@ -44,7 +55,10 @@ function choose(level: AutopilotChoice): ActionHandler {
         answeredWith: action.label,
         note: NOTES[level](approved),
         agentActionIds: working.map((a) => a.id),
-        ...keepChoice(message, action, { autopilot: before }),
+        ...keepChoice(message, action, {
+          autopilot: before,
+          autopilotAfter: await autopilotBefore(userId, client),
+        }),
       };
     },
   };

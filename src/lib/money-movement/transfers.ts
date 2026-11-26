@@ -4,6 +4,7 @@ import type { Sector } from "@/config/autopilot-sectors";
 import { addDays } from "@/detection/units";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { bigMoveCheck } from "@/lib/money-for-two";
@@ -30,6 +31,20 @@ export type NewTransfer = {
 };
 
 export class TransferError extends Error {}
+
+// The transfer is saved (and, past the partner check, scheduled) before its audit row and funnel
+// event: if either fails, the caller still needs the id, to show it and to offer Undo. The failure
+// is logged by the transfer's id alone, never rethrown (CodeRabbit sweep part 2).
+async function recorded(transferId: string, write: () => Promise<void>): Promise<void> {
+  try {
+    await write();
+  } catch (error) {
+    log.error("money transfer saved, but its audit or analytics write failed", {
+      transferId,
+      error: error instanceof Error ? error.name : "unknown",
+    });
+  }
+}
 
 export async function scheduleTransfer(
   userId: string,
@@ -83,13 +98,15 @@ export async function scheduleTransfer(
       },
       select: { id: true },
     });
-    await logAudit(
-      { type: "user", id: userId },
-      "money_transfer_awaiting_partner",
-      { type: "money_transfer", id: row.id },
-      { by, purpose: transfer.purpose, amount_cents: transfer.amountCents },
-    );
-    await track(userId, "money_transfer_awaiting_partner", { by, purpose: transfer.purpose });
+    await recorded(row.id, async () => {
+      await logAudit(
+        { type: "user", id: userId },
+        "money_transfer_awaiting_partner",
+        { type: "money_transfer", id: row.id },
+        { by, purpose: transfer.purpose, amount_cents: transfer.amountCents },
+      );
+      await track(userId, "money_transfer_awaiting_partner", { by, purpose: transfer.purpose });
+    });
     return { id: row.id, runOn, awaitingPartner: true };
   }
   const { partnerRef } = await movement.schedule({
@@ -119,18 +136,20 @@ export async function scheduleTransfer(
     },
     select: { id: true },
   });
-  await logAudit(
-    { type: "user", id: userId },
-    "money_transfer_scheduled",
-    { type: "money_transfer", id: row.id },
-    {
-      by,
-      purpose: transfer.purpose,
-      amount_cents: transfer.amountCents,
-      simulated: movement.simulated,
-    },
-  );
-  await track(userId, "money_transfer_scheduled", { by, purpose: transfer.purpose });
+  await recorded(row.id, async () => {
+    await logAudit(
+      { type: "user", id: userId },
+      "money_transfer_scheduled",
+      { type: "money_transfer", id: row.id },
+      {
+        by,
+        purpose: transfer.purpose,
+        amount_cents: transfer.amountCents,
+        simulated: movement.simulated,
+      },
+    );
+    await track(userId, "money_transfer_scheduled", { by, purpose: transfer.purpose });
+  });
   return { id: row.id, runOn };
 }
 

@@ -240,4 +240,28 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
       ),
     ).rejects.toThrow("Transfers only go between your own accounts.");
   });
+  it("keeps the transfer's id when the audit write fails after it is saved", async () => {
+    const demo = await demoPerson("money-audit-fail");
+    const account = await client.account.findFirstOrThrow({
+      where: { userId: demo, type: "depository" },
+    });
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const made = await scheduleTransfer(
+      demo,
+      {
+        fromAccountId: account.id,
+        toAccountId: null,
+        toName: "Emergency fund",
+        amountCents: 100,
+        purpose: "goal",
+        sector: "goals",
+      },
+      "person",
+      { client, now: LINKED },
+    );
+    spy.mockRestore();
+    expect(made.id).toBeTruthy();
+    expect(await client.moneyTransfer.count({ where: { id: made.id } })).toBe(1);
+  });
 });

@@ -6,7 +6,7 @@ import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { FINDING_STATUS } from "@/lib/action-status";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { PLACEHOLDERS } from "@/lib/drafts";
 import { holderName } from "@/lib/holder-name";
 import type { sendAgentMail } from "./mail";
@@ -110,21 +110,28 @@ export async function setStatus(
   data: Record<string, unknown>,
   { client, now, notify }: Required<Pick<Options, "client" | "now" | "notify">>,
 ) {
-  const db = scopedFor(userId, client);
   const closing = status === "done" || status === "failed";
-  await db.actions.updateMany({
-    where: { id: action.id },
-    data: {
-      status,
-      startedAt: action.startedAt ?? (status === "queued" ? null : now),
-      completedAt: closing ? now : null,
-      ...data,
+  // Both rows or neither: an action saved as finished beside a finding still "in progress" could
+  // never be repaired (the agent skips a finished action on retry).
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.action.updateMany({
+        where: { id: action.id, userId },
+        data: {
+          status,
+          startedAt: action.startedAt ?? (status === "queued" ? null : now),
+          completedAt: closing ? now : null,
+          ...data,
+        },
+      });
+      await tx.finding.updateMany({
+        where: { id: action.decision.findingId, userId },
+        data: { status: FINDING_STATUS[status] },
+      });
     },
-  });
-  await db.findings.updateMany({
-    where: { id: action.decision.findingId },
-    data: { status: FINDING_STATUS[status] },
-  });
+    client,
+  );
   if (status !== action.status) {
     const userTodo = typeof data.userTodo === "string" ? data.userTodo : null;
     const email = statusEmail(status, titleOf(action), userTodo);

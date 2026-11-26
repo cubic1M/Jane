@@ -167,6 +167,19 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
     expect(await reload(actionId)).toMatchObject({ status: "done", agentState: "finished" });
   });
 
+  it("does not tell the person to cancel on the company's page when they chose a downgrade", async () => {
+    const { userId } = await person();
+    const merchant = await pageOnlyMerchant();
+    const { actionId } = await approve(userId, "subscription_review", merchant, {
+      plan: "downgrade",
+    });
+    // It asks the company for the cheaper plan, instead of sending the person off to cancel.
+    expect(await agentStep(userId, actionId, { client, notify })).toBe("sent");
+    expect(await reload(actionId)).toMatchObject({ selfServiceUrl: null });
+    const sent = await client.agentMessage.findFirstOrThrow({ where: { actionId } });
+    expect(sent.body).toContain("cheapest plan");
+  });
+
   it("questions a cancellation when the company charges again", async () => {
     const { userId, accountId } = await person();
     const merchant = await pageOnlyMerchant();

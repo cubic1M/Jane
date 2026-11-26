@@ -37,3 +37,18 @@ export function heardError(code: string): string {
   if (code === "aborted") return "Stopped listening.";
   return "Speaking didn't work this time. Type instead.";
 }
+
+// A voice that speaks on the device itself, for the language: a network voice would send the
+// message's words to a speech service, and messages are private. None: nothing is read aloud.
+export function localVoice<V extends { localService: boolean; lang: string }>(
+  voices: readonly V[],
+  lang: string,
+): V | null {
+  const base = lang.toLowerCase().split("-")[0];
+  const local = voices.filter((v) => v.localService);
+  return (
+    local.find((v) => v.lang.toLowerCase() === lang.toLowerCase()) ??
+    local.find((v) => v.lang.toLowerCase().split(/[-_]/)[0] === base) ??
+    null
+  );
+}

@@ -54,6 +54,10 @@ const STANDINS = () => {
         spoken.push(u.text);
       },
       cancel: () => {},
+      // A voice on the device itself: Read aloud never uses a network voice.
+      getVoices: () => [{ localService: true, lang: "en-US", name: "Local" }],
+      addEventListener: () => {},
+      removeEventListener: () => {},
     },
   });
   w.SpeechSynthesisUtterance = class {

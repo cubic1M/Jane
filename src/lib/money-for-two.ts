@@ -207,25 +207,45 @@ export async function approveBigMove(
   const movement = await moneyPartnerFor(pair.partnerId, { client });
   if (!movement) throw new MoneyForTwoError("No money-movement partner is connected.");
   const runOn = today(move.runOn) < today(now) ? today(now) : today(move.runOn);
-  const { partnerRef } = await movement.schedule({
-    fromAccountId: move.fromAccountId,
-    toAccountId: move.toAccountId,
-    toName: move.toName,
-    amountCents: move.amountCents,
-    runOn,
-    memo: move.planKey ?? move.purpose,
-  });
-  const { count } = await systemDb(WHY, client).moneyTransfer.updateMany({
+  // Claimed before it goes to the partner: the row leaves "awaiting_partner" first, so a decline
+  // (which only takes a move still waiting) cannot succeed while the money is being scheduled.
+  const claimed = await systemDb(WHY, client).moneyTransfer.updateMany({
     where: { id: move.id, status: "awaiting_partner" },
+    data: { status: "pending", approvedById: userId },
+  });
+  if (claimed.count === 0) throw new MoneyForTwoError("That move isn't waiting for you any more.");
+  const putBack = () =>
+    systemDb(WHY, client).moneyTransfer.updateMany({
+      where: { id: move.id, status: "pending", partnerRef: null },
+      data: { status: "awaiting_partner", approvedById: null },
+    });
+  let partnerRef: string;
+  try {
+    ({ partnerRef } = await movement.schedule({
+      fromAccountId: move.fromAccountId,
+      toAccountId: move.toAccountId,
+      toName: move.toName,
+      amountCents: move.amountCents,
+      runOn,
+      memo: move.planKey ?? move.purpose,
+    }));
+  } catch (error) {
+    await putBack();
+    throw error;
+  }
+  const { count } = await systemDb(WHY, client).moneyTransfer.updateMany({
+    where: { id: move.id, status: "pending", partnerRef: null },
     data: {
-      status: "pending",
       partnerRef,
       partner: movement.name,
-      approvedById: userId,
       runOn: new Date(`${runOn}T00:00:00Z`),
     },
   });
-  if (count === 0) throw new MoneyForTwoError("That move isn't waiting for you any more.");
+  if (count === 0) {
+    // Undone while it was being scheduled: the partner's copy goes too.
+    await movement.cancel(partnerRef);
+    throw new MoneyForTwoError("That move isn't waiting for you any more.");
+  }
   await logAudit(
     { type: "user", id: userId },
     "big_move_approved",

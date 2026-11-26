@@ -376,16 +376,21 @@ export const ACTION_IDS = [
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
+export type AutopilotSnapshot = {
+  level: string | null;
+  acceptSimpleOffers: boolean;
+  rules: { key: string; enabled: boolean; monthlyLimit: number; maxAnnualCents: number | null }[];
+};
+
 // What a choice changed, so Revert can put it back (src/lib/jane-agent/actions/choice.ts).
 export type ChosenRef = {
   actionId: string;
   label: string;
   // An autopilot level: the level and the standing rules from before it.
-  autopilot?: {
-    level: string | null;
-    acceptSimpleOffers: boolean;
-    rules: { key: string; enabled: boolean; monthlyLimit: number; maxAnnualCents: number | null }[];
-  };
+  autopilot?: AutopilotSnapshot;
+  // The same settings as the choice left them: Revert puts the old ones back only while these
+  // are still the current ones, never over a later change (a pause, a Settings edit).
+  autopilotAfter?: AutopilotSnapshot;
   // A pick queued for the team (insurance cover, a loan): its decision.
   decisionId?: string;
   // Started at once (an insurance switch): kept on the message, with no Revert.
