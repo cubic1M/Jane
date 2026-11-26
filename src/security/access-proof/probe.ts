@@ -113,6 +113,14 @@ export async function closeSystem() {
   client = null;
 }
 
+type Child = {
+  table_name: string;
+  key: string;
+  parent: string;
+  parent_key: string;
+  owner: string;
+};
+
 export type Write = {
   tbl: string;
   op: string;
@@ -125,8 +133,19 @@ export type Write = {
 // made as jane_rls is logged too. Every write goes in, whoever it's for; reads of the log say.
 export async function installWriteLog() {
   await asSystem(async (sql) => {
-    await sql(`DROP FUNCTION IF EXISTS access_proof_log() CASCADE`);
-    await sql(`DROP TABLE IF EXISTS access_proof_writes, access_proof_victims`);
+    await sql(`DROP FUNCTION IF EXISTS access_proof_log(), access_proof_keep() CASCADE`);
+    await sql(`DROP TABLE IF EXISTS access_proof_writes, access_proof_victims, access_proof_gone`);
+    await sql(`CREATE TABLE access_proof_gone (tbl text NOT NULL, key text, owner text)`);
+    // The owner of a row others hang from, kept as it is deleted: what the delete takes with it
+    // is logged once it has gone.
+    await sql(`
+      CREATE FUNCTION access_proof_keep() RETURNS trigger
+      LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+      BEGIN
+        INSERT INTO access_proof_gone
+        VALUES (TG_TABLE_NAME, to_jsonb(OLD) ->> TG_ARGV[1], to_jsonb(OLD) ->> TG_ARGV[0]);
+        RETURN OLD;
+      END $$`);
     await sql(`
       CREATE TABLE access_proof_writes (
         tbl text NOT NULL, op text NOT NULL, owner text, old_owner text, points_at text
@@ -142,13 +161,17 @@ export async function installWriteLog() {
         reference text;
         new_owner text := new_row ->> column_name;
         old_owner text := old_row ->> column_name;
+        lookup text;
       BEGIN
-        -- A child table: the column is the key to its parent row, whose owner it is.
+        -- A child table: the column is the key to its parent row, whose owner it is. Arguments:
+        -- that column, the parent, its owner column, its key.
         IF TG_NARGS > 1 THEN
-          EXECUTE format('SELECT user_id::text FROM %I WHERE id = $1', TG_ARGV[1])
-            INTO new_owner USING new_owner;
-          EXECUTE format('SELECT user_id::text FROM %I WHERE id = $1', TG_ARGV[1])
-            INTO old_owner USING old_owner;
+          lookup := format(
+            'SELECT coalesce((SELECT %I::text FROM %I WHERE %I::text = $1),
+              (SELECT owner FROM access_proof_gone WHERE tbl = %L AND key = $1 LIMIT 1))',
+            TG_ARGV[2], TG_ARGV[1], TG_ARGV[3], TG_ARGV[1]);
+          EXECUTE lookup INTO new_owner USING new_owner;
+          EXECUTE lookup INTO old_owner USING old_owner;
         END IF;
         -- A row of someone's that now points at a victim's row, by an id column.
         SELECT e.key INTO reference FROM jsonb_each_text(coalesce(new_row, '{}')) e
@@ -161,25 +184,38 @@ export async function installWriteLog() {
       SELECT c.table_name FROM information_schema.columns c
       JOIN information_schema.tables t USING (table_schema, table_name)
       WHERE c.table_schema = 'public' AND c.column_name = 'user_id' AND t.table_type = 'BASE TABLE'`);
-    // Tables with no user_id of their own, owned through the row they point at.
-    const children = await sql<{ table_name: string; parent: string; key: string }>(`
-      SELECT p.table_name, pa.relname AS parent, fk.attname AS key FROM jane_rls_plan() p
+    // Tables with no user_id of their own, owned through the rows they point at.
+    const children = await sql<Child>(`
+      SELECT p.table_name, fk.attname AS key, pa.relname AS parent, pk.attname AS parent_key,
+        CASE WHEN pa.relname = 'users' THEN 'id' ELSE 'user_id' END AS owner
+      FROM jane_rls_plan() p
       JOIN pg_constraint con ON con.contype = 'f' AND array_length(con.conkey, 1) = 1
         AND con.conrelid = to_regclass(format('public.%I', p.table_name))
       JOIN pg_class pa ON pa.oid = con.confrelid
       JOIN pg_attribute fk ON fk.attrelid = con.conrelid AND fk.attnum = con.conkey[1]
-      WHERE p.kind = 'child' AND EXISTS (
-        SELECT 1 FROM pg_attribute u WHERE u.attrelid = pa.oid AND u.attname = 'user_id')`);
+      JOIN pg_attribute pk ON pk.attrelid = con.confrelid AND pk.attnum = con.confkey[1]
+      WHERE p.kind = 'child' AND (pa.relname = 'users' OR EXISTS (
+        SELECT 1 FROM pg_attribute u WHERE u.attrelid = pa.oid AND u.attname = 'user_id'))`);
     const watched = [
-      ...tables.map(({ table_name }) => ({ table: table_name, args: ["user_id"] })),
-      { table: "users", args: ["id"] },
-      ...children.map((c) => ({ table: c.table_name, args: [c.key, c.parent] })),
+      ...tables.map(({ table_name }) => ({ table: table_name, name: "", args: ["user_id"] })),
+      { table: "users", name: "", args: ["id"] },
+      // One for each parent a child has, so a write under anyone's row says whose.
+      ...children.map((c) => ({
+        table: c.table_name,
+        name: `_${c.key}`,
+        args: [c.key, c.parent, c.owner, c.parent_key],
+      })),
     ];
-    for (const { table, args } of watched) {
-      await sql(`DROP TRIGGER IF EXISTS access_proof_log ON "${table}"`);
+    for (const { table, name, args } of watched) {
       await sql(
-        `CREATE TRIGGER access_proof_log AFTER INSERT OR UPDATE OR DELETE ON "${table}"
+        `CREATE TRIGGER "access_proof_log${name}" AFTER INSERT OR UPDATE OR DELETE ON "${table}"
          FOR EACH ROW EXECUTE FUNCTION access_proof_log('${args.join("', '")}')`,
+      );
+    }
+    for (const c of children) {
+      await sql(
+        `CREATE OR REPLACE TRIGGER "access_proof_keep_${c.parent_key}" BEFORE DELETE ON "${c.parent}"
+         FOR EACH ROW EXECUTE FUNCTION access_proof_keep('${c.owner}', '${c.parent_key}')`,
       );
     }
   });
@@ -196,8 +232,8 @@ export async function setVictims(rowIds: string[]) {
 // Takes it all back out of the database, for a run against a database that lives on.
 export async function removeWriteLog() {
   await asSystem(async (sql) => {
-    await sql(`DROP FUNCTION IF EXISTS access_proof_log() CASCADE`);
-    await sql(`DROP TABLE IF EXISTS access_proof_writes, access_proof_victims`);
+    await sql(`DROP FUNCTION IF EXISTS access_proof_log(), access_proof_keep() CASCADE`);
+    await sql(`DROP TABLE IF EXISTS access_proof_writes, access_proof_victims, access_proof_gone`);
   });
 }
 

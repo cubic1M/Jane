@@ -26,6 +26,10 @@ describe("no-raw-db, the ways round it", () => {
     },
   );
 
+  it("but not types passed on by name", () => {
+    expect(messages('export { type PoolConfig } from "pg";')).toEqual([]);
+  });
+
   it("a name given the client by assignment", () => {
     const code = `import { db } from "@/lib/db";
       let raw; raw = db; export const a = raw.user.count();`;

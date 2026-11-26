@@ -1,6 +1,7 @@
 import net from "node:net";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
+import { metadata } from "./invoke";
 import { installProbes, seen } from "./probe";
 import { resolveTree } from "./render";
 import { judge, type Observation } from "./verdict";
@@ -33,6 +34,28 @@ describe("what the access proof would miss", () => {
       }),
     );
     expect(problems).toEqual(["wrote without access: transactions"]);
+  });
+
+  it("tells an email by where it was headed, not by what the address mentions", () => {
+    const sent = (line: string) =>
+      judge(
+        observed({
+          access: "public",
+          attacker: "trial",
+          traffic: { landed: false, markerRead: [], outbound: [line] },
+        }),
+      ).join();
+    expect(sent("https://example.com/?next=api.resend.com {}")).toBe("");
+    expect(sent("api.resend.com")).toContain("caused an email");
+  });
+
+  it("hands an image file its parameters and reads the bytes it answers with", async () => {
+    const image = async ({ params }: { params: Promise<{ id: string }> }) =>
+      new TextEncoder().encode((await params).id);
+    const answered = await metadata(image)!(undefined, {
+      params: Promise.resolve({ id: "zqmarkzq" }),
+    });
+    expect(await answered.text()).toBe("zqmarkzq");
   });
 
   it("a call that never answered", () => {

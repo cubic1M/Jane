@@ -99,6 +99,9 @@ function create(context) {
     },
     ExportNamedDeclaration(node) {
       if (!node.source || node.exportKind === "type") return;
+      // Types named one by one are erased too, so nothing is passed on.
+      const named = node.specifiers;
+      if (named.length > 0 && named.every((s) => s.exportKind === "type")) return;
       const source = String(node.source.value);
       if (DRIVER_MODULE.test(source)) context.report({ node, messageId: "driver" });
       else if (DB_MODULE.test(source)) uses.push(node);

@@ -46,6 +46,13 @@ function stringify(value: unknown) {
   }
 }
 
+// Where a line of traffic was going: a request's line starts with its address, a socket's is the
+// host alone.
+function headedFor(line: string): string {
+  const target = line.split(" ", 1)[0]!;
+  return URL.canParse(target) ? new URL(target).hostname : target;
+}
+
 export function judge(seen: Observation): string[] {
   const { access, attacker, answer, writes, traffic, victim, actorId } = seen;
   const problems: string[] = [];
@@ -77,7 +84,7 @@ export function judge(seen: Observation): string[] {
     }
   }
   // Every email goes out through Resend, and the probes stop it there.
-  const emails = traffic.outbound.filter((line) => line.includes("api.resend.com"));
+  const emails = traffic.outbound.filter((line) => headedFor(line) === "api.resend.com");
   if (attacker === "trial" && emails.length > 0) {
     problems.push(`a trial person caused an email: ${emails[0].slice(0, 200)}`);
   }

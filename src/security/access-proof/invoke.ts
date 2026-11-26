@@ -73,11 +73,19 @@ async function readBody(response: Response): Promise<string> {
 }
 
 // A metadata file's answer as a route's: what it returns, as the body Next.js would send.
-function metadata(make: unknown) {
+export function metadata(make: unknown) {
   if (typeof make !== "function") return undefined;
-  return async () => {
-    const made = await (make as () => unknown)();
-    return made instanceof Response ? made : Response.json(made);
+  // An image file is handed its address's parameters, as a route is; the others ignore them.
+  return async (_request?: unknown, context?: { params: Promise<unknown> }) => {
+    const made = await (make as (props: unknown) => unknown)({ params: context?.params });
+    if (made instanceof Response) return made;
+    // An image's bytes go as they are: written out as JSON they'd be an empty object.
+    const bytes =
+      made instanceof Blob ||
+      made instanceof ArrayBuffer ||
+      ArrayBuffer.isView(made) ||
+      made instanceof ReadableStream;
+    return bytes ? new Response(made as BodyInit) : Response.json(made);
   };
 }
 
