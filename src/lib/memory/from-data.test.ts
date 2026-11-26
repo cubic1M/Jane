@@ -11,12 +11,18 @@ import { cardHabitFrom, factsFromData, paydayFrom, rentPayeeFrom } from "./from-
 // What an upload or the scan teaches Jane, and the detectors using what it knows.
 
 const TODAY = "2026-10-20";
-const tx = (date: string, amountCents: number, description: string, pfc: string): ProfileTx => ({
+const tx = (
+  date: string,
+  amountCents: number,
+  description: string,
+  pfc: string,
+  accountId = "chk",
+): ProfileTx => ({
   date,
   amountCents,
   description,
   pfc,
-  accountId: "chk",
+  accountId,
 });
 const input = (transactions: ProfileTx[], credit = false): ProfileInput => ({
   today: TODAY,
@@ -68,10 +74,20 @@ describe("facts from the data", () => {
   it("finds where the rent goes and how the cards are used", () => {
     const data = input([rent("2026-08-01"), rent("2026-09-01"), rent("2026-10-01")], true);
     expect(rentPayeeFrom(data)).toEqual({ name: "Greystar Properties", matches: 3 });
-    expect(cardHabitFrom(data)).toEqual({ carries: false, matches: 0 });
-    const interest = tx("2026-10-05", 2_300, "INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE");
+    // A card with no lines of its own in the window is unknown (CodeRabbit part 2), not paid off.
+    expect(cardHabitFrom(data)).toBeNull();
+    const onCard = (pfc: string, amount: number) =>
+      tx("2026-10-05", amount, "CARD LINE", pfc, "card");
+    expect(cardHabitFrom(input([onCard("FOOD_AND_DRINK_RESTAURANT", 1_500)], true))).toEqual({
+      carries: false,
+      matches: 0,
+    });
+    const interest = onCard("BANK_FEES_INTEREST_CHARGE", 2_300);
     expect(cardHabitFrom(input([interest], true))).toEqual({ carries: true, matches: 1 });
     expect(cardHabitFrom(input([interest]))).toBeNull();
+    // Interest on the checking account is not the card's.
+    const onChecking = tx("2026-10-05", 2_300, "INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE");
+    expect(cardHabitFrom(input([onChecking], true))).toBeNull();
   });
 
   it("names the payee and the employer without a Bank of America line's ids and holder", () => {

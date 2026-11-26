@@ -67,13 +67,18 @@ export function rentPayeeFrom(input: ProfileInput): { name: string; matches: num
   return top && top[1] >= RENT_PAYEE_MIN ? { name: top[0], matches: top[1] } : null;
 }
 
-// How the cards are used: interest charged lately means a balance is carried.
+// How the cards are used: interest charged lately on a card means a balance is carried. Only a
+// credit card's own lines count (interest on a checking account says nothing about the cards), and
+// a card with no lines in the window is unknown, not "paid in full".
 export function cardHabitFrom(input: ProfileInput): { carries: boolean; matches: number } | null {
-  if (!input.accounts.some((a) => a.type === "credit")) return null;
+  const cards = new Set(input.accounts.filter((a) => a.type === "credit").map((a) => a.id));
+  if (cards.size === 0) return null;
   const since = addDays(input.today, -CARD_HABIT_DAYS);
-  const interest = input.transactions.filter(
-    (t) => t.date > since && t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.amountCents > 0,
+  const seen = input.transactions.filter((t) => t.date > since && cards.has(t.accountId));
+  const interest = seen.filter(
+    (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.amountCents > 0,
   ).length;
+  if (seen.length === 0) return null;
   return { carries: interest > 0, matches: interest };
 }
 
