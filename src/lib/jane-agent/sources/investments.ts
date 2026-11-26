@@ -865,7 +865,9 @@ export const investmentsSource: MessageSource = {
     // With no holdings only what does not need them is said: the HSA receipts vault and a
     // beneficiary missing on an account.
     const topics =
-      inv.holdingCount === 0 ? TOPICS.filter((t) => t === hsaCards || t === beneficiaryCards) : TOPICS;
+      inv.holdingCount === 0
+        ? TOPICS.filter((t) => t === hsaCards || t === beneficiaryCards)
+        : TOPICS;
     const year = new Date(snapshot.asOf).getUTCFullYear();
     return topics.flatMap((topic) => topic({ inv, snapshot, year }) ?? []);
   },

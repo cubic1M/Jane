@@ -39,9 +39,7 @@ export const payoffSource: MessageSource = {
     // The stored plan covers only the debts it includes: say so when others are left out.
     const leftOut = payoff.summary.leftOut;
     const scope =
-      leftOut.length > 0
-        ? ` Not in this plan: ${leftOut.map((l) => l.name).join(", ")}.`
-        : "";
+      leftOut.length > 0 ? ` Not in this plan: ${leftOut.map((l) => l.name).join(", ")}.` : "";
     const these = leftOut.length > 0 ? "the debts in your plan add up" : "your debts add up";
     const finish = leftOut.length > 0 ? "done with these" : "debt-free";
     if (stored.status === "off_track") {

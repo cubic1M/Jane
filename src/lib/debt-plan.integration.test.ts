@@ -143,7 +143,7 @@ describe.runIf(url)("payoff plans against a real database", () => {
     );
     expect(message).toMatchObject({ kind: "heads_up", dedupeKey: "payoff:check:2026-11-18" });
     expect(message.body).toMatch(
-      /^Your payoff plan is off track: your debts add up to \$[\d,.]+, and the plan expected \$[\d,.]+ by now/,
+      /^Your payoff plan is off track: the debts in your plan add up to \$[\d,.]+, and the plan expected \$[\d,.]+ by now/,
     );
   });
 

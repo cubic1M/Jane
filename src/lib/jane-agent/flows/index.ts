@@ -158,7 +158,8 @@ const stampFinding = (key: string, answers: Answers, data: { findings: SnapshotF
   key === "finding"
     ? { fingerprint: data.findings.find((f) => f.findingId === answers.finding)?.fingerprint ?? "" }
     : {};
-const CHANGED = "That one changed since you picked it, so I've stopped. Ask again to see it as it is.";
+const CHANGED =
+  "That one changed since you picked it, so I've stopped. Ask again to see it as it is.";
 const changed = (finding: SnapshotFinding, answers: Answers) =>
   !answers.fingerprint || finding.fingerprint !== answers.fingerprint;
 

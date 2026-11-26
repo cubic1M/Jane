@@ -21,6 +21,7 @@ import { loadSelfEmployed, recordTaxPayment } from "@/lib/self-employed";
 import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
+import { parseRefs } from "./types";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
@@ -234,7 +235,7 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     );
     // CodeRabbit part 2: the tap pays what the card showed. A payment recorded since moves the
     // plan, so the old card pays nothing, and the plan's new amount is a card of its own.
-    expect(message.refs.estimateCents).toBe(
+    expect(parseRefs(message.refs).estimateCents).toBe(
       (await loadTaxCalendar(userId, { client, now })).due[0].cents,
     );
     await recordTaxPayment(
@@ -247,7 +248,7 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     ).rejects.toMatchObject({ code: "failed", message: expect.stringContaining("changed from") });
     expect(await client.taxPayment.count({ where: { userId } })).toBe(0);
     const fresh = (await messageFrom(userId, now, "estimate_due:"))!;
-    expect(fresh.refs).not.toMatchObject({ estimateCents: message.refs.estimateCents });
+    expect(parseRefs(fresh.refs).estimateCents).not.toBe(parseRefs(message.refs).estimateCents);
     const done = (await takeChatAction(userId, fresh.id, "tax.estimate_pay", { client, now }))
       .message;
     expect(done.refs.note).toMatch(

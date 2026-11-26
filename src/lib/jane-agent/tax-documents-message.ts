@@ -36,7 +36,7 @@ export function flaggedMessage(f: CollectedForm, year: number): MessageParts {
 
 // The forms collected that check out. At the levels that let Jane act they're already
 // ticked off; otherwise one tap does it.
-export function collectedMessage(view: TaxDocumentsView, acts: boolean): MessageParts | null {
+export function collectedMessage(view: TaxDocumentsView): MessageParts | null {
   const good = view.forms.filter((f) => f.document && f.usable);
   if (good.length === 0) return null;
   const waiting = good.filter((f) => !f.received);

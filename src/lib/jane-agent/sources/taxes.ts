@@ -790,7 +790,7 @@ function documentCards({ tax, acts }: In): Candidate[] {
       P.doc_flagged,
     ),
   );
-  const collected = collectedMessage(docs, acts);
+  const collected = collectedMessage(docs);
   if (collected) {
     // Keyed on which forms were collected, not how many: one stopping being usable as another
     // becomes usable is a different collection.

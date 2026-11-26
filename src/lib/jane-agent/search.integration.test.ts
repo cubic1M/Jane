@@ -132,6 +132,8 @@ describe.runIf(url)("history and search against a real database", () => {
     });
     expect(posted.map((m) => m.dedupeKey)).not.toContain("week:2026-10-19");
     const brief = posted.find((m) => m.dedupeKey === "brief:2026-10-19");
-    expect(brief?.body).toMatch(/^The last 7 days: .*in the week of Oct 12 we covered \d+ questions? you asked/m);
+    expect(brief?.body).toMatch(
+      /^The last 7 days: .*in the week of Oct 12 we covered \d+ questions? you asked/m,
+    );
   });
 });

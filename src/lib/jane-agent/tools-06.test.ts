@@ -36,11 +36,11 @@ describe("the collected tax forms card", () => {
   const view = (received: boolean) =>
     ({ year: 2026, forms: [form("a", received), form("b", true)] }) as unknown as TaxDocumentsView;
 
-  it("says 'ticked off' only when they are, whatever the overall level", () => {
-    const waiting = collectedMessage(view(false), true)!;
+  it("says 'ticked off' only when they are, whatever the overall autopilot level", () => {
+    const waiting = collectedMessage(view(false))!;
     expect(waiting.body).not.toContain("ticked");
     expect(waiting.actions.map((a) => a.id)).toContain("tax.docs_tick");
-    const done = collectedMessage(view(true), true)!;
+    const done = collectedMessage(view(true))!;
     expect(done.body).toContain("ticked");
     expect(done.actions.map((a) => a.id)).not.toContain("tax.docs_tick");
   });
