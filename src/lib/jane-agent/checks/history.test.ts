@@ -196,6 +196,7 @@ describe("the real-path night", () => {
       skipped: 0,
       costCents: 0,
       firstWordsMs: null,
+      failedCount: 1,
       failed: [{ id: "b", text: "second", score: 0, reason: "tool_error" }],
     });
   });
