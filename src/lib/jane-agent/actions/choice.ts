@@ -2,7 +2,13 @@ import type { AutopilotLevel, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { DecisionError, undoPick } from "@/lib/decisions";
 import { rulesFor, saveRules } from "@/lib/standing-rules";
-import type { ChatMessage, ChosenRef, MessageAction, MessageRefs } from "../types";
+import type {
+  AutopilotSnapshot,
+  ChatMessage,
+  ChosenRef,
+  MessageAction,
+  MessageRefs,
+} from "../types";
 import { ChatActionError, type ActionHandler, type ActionOutcome } from "./handler";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
@@ -40,7 +46,7 @@ export function keepChoice(
 export async function autopilotBefore(
   userId: string,
   client: PrismaClient,
-): Promise<NonNullable<ChosenRef["autopilot"]>> {
+): Promise<AutopilotSnapshot> {
   const [user, rules] = await Promise.all([
     scopedFor(userId, client).me.findUnique({
       where: { id: userId },
@@ -60,11 +66,18 @@ export async function autopilotBefore(
   };
 }
 
-async function restoreAutopilot(
-  userId: string,
-  before: NonNullable<ChosenRef["autopilot"]>,
-  client: PrismaClient,
-) {
+// Field by field: the message's JSON comes back with its keys in another order.
+const canonical = (a: AutopilotSnapshot) =>
+  JSON.stringify([
+    a.level,
+    a.acceptSimpleOffers,
+    a.rules
+      .map((r) => [r.key, r.enabled, r.monthlyLimit, r.maxAnnualCents])
+      .sort((x, y) => String(x[0]).localeCompare(String(y[0]))),
+  ]);
+const sameAutopilot = (a: AutopilotSnapshot, b: AutopilotSnapshot) => canonical(a) === canonical(b);
+
+async function restoreAutopilot(userId: string, before: AutopilotSnapshot, client: PrismaClient) {
   await saveRules(userId, before.rules, { client });
   await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
@@ -93,7 +106,20 @@ export const choiceRevert: ActionHandler = {
         throw error;
       });
     }
-    if (chosen.autopilot) await restoreAutopilot(userId, chosen.autopilot, client);
+    if (chosen.autopilot) {
+      // Settings changed since this card's choice (a pause, an edit): reverting would put the
+      // old level over the newer one.
+      if (
+        chosen.autopilotAfter &&
+        !sameAutopilot(chosen.autopilotAfter, await autopilotBefore(userId, client))
+      ) {
+        throw new ChatActionError(
+          "expired",
+          "Your autopilot settings changed after this, so I left them as they are. You can change them in Settings.",
+        );
+      }
+      await restoreAutopilot(userId, chosen.autopilot, client);
+    }
     const refs: MessageRefs = { ...rest };
     delete refs.note;
     return {
