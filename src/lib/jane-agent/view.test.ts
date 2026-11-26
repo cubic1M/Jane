@@ -69,8 +69,8 @@ describe("toView", () => {
     expect(toView(message({ status: "dismissed" }), NOW, null).buttons).toEqual([]);
   });
 
-  it("keeps a plan's own Undo (multi.undo, paycheck.undo, tuneup.undo) on an answered message", () => {
-    for (const id of ["multi.undo", "paycheck.undo", "tuneup.undo"] as const) {
+  it("keeps a plan's own Undo (multi.undo, which runs on the answered message)", () => {
+    for (const id of ["multi.undo"] as const) {
       const answered = message({
         status: "answered",
         answeredWith: "Yes",

@@ -1262,7 +1262,7 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
   if (!latest) {
     return reply(
-      "There's nothing I can undo from here right now. To take back a No, or a transfer a plan made while it is still pending, tap Undo on that message; anything else you said yes to is on your plan.",
+      "There's nothing I can undo from here right now. To take back a No, tap Undo on its message; anything else you said yes to is on your plan.",
       [openLink("Open the plan", "/plan")],
     );
   }
@@ -1270,6 +1270,15 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
     `Undo my yes to "${latest.title}"? It goes back on your plan.`,
     [{ id: "undo.rule", label: "Undo it", kind: "primary" }, openLink("Open the plan", "/plan")],
     { decisionId: latest.decisionId, undoUntil: latest.undoUntil.toISOString() },
+  );
+}
+
+// "Undo the transfer": the button is on the plan's own message, and works while the transfer is
+// still pending; a transfer that has gone through can't be taken back from here.
+export function undoTransferReply(): Reply {
+  return reply(
+    'To take back a transfer from a plan, tap "Undo the transfer" on that plan\'s message in this chat. It works while the transfer is still pending; one that has gone through stays.',
+    [openLink("Open the plan", "/plan")],
   );
 }
 

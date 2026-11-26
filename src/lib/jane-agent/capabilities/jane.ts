@@ -18,6 +18,7 @@ import {
   greetingReply,
   pauseReply,
   undoReply,
+  undoTransferReply,
   whatDidReply,
 } from "../replies";
 import { overviewReply, sectorChangeReply } from "../replies-autopilot";
@@ -168,6 +169,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "approve_all":
       return approveAllReply(await loadSnapshot(userId, { client, now }));
     case "undo":
+      if (intent.transfer) return undoTransferReply();
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));

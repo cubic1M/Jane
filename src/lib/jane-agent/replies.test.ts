@@ -18,6 +18,7 @@ import {
   safeReply,
   spendingReply,
   undoReply,
+  undoTransferReply,
   unknownReply,
   whatDidReply,
 } from "./replies";
@@ -645,6 +646,15 @@ describe("approveAllReply", () => {
 
   it("says when nothing is safe to approve together", () => {
     expect(buttonIds(approveAllReply(snapshot()))).toEqual(["open"]);
+  });
+});
+
+describe("undoTransferReply", () => {
+  it("points to the plan's own Undo button and says when it works", () => {
+    const reply = undoTransferReply();
+    expect(reply.body).toContain("Undo the transfer");
+    expect(reply.body).toContain("still pending");
+    expect(reply.actions.some((a) => a.id.startsWith("undo."))).toBe(false);
   });
 });
 
