@@ -135,22 +135,37 @@ export async function runChargeTool(
   const invoice = readInvoice(text);
   if (!invoice) return out({ read: false, why: NO_INVOICE_LINES });
   const reading = readAgainst(invoice, found?.kind === "found" ? found.explanation : null);
+  // Two currencies on one invoice: no amount is given, and no total.
+  if (invoice.currency === "MIXED") {
+    return out({
+      read: true,
+      currency: "mixed",
+      note: "This invoice mixes currencies, so I can't give a total or set it against the charge. Say only what its lines are called.",
+      lines: invoice.lines.map((l) => ({ line: oneLine(l.description).slice(0, 80) })),
+    });
+  }
+  // An invoice in another currency keeps its own code: never shown with a dollar sign.
+  const inv = (cents: number) =>
+    invoice.currency
+      ? `${cents < 0 ? "-" : ""}${(Math.abs(cents) / 100).toFixed(2)} ${invoice.currency}`
+      : money(cents);
   const line = (l: { description: string; cents: number }) => ({
     // Written by the company: one line, as written.
     line: oneLine(l.description).slice(0, 80),
-    amount: money(l.cents),
+    amount: inv(l.cents),
   });
   return out({
     read: true,
+    currency: invoice.currency ?? "USD",
     lines: invoice.lines.map(line),
-    total: invoice.totalCents === null ? null : money(invoice.totalCents),
-    linesAddUpTo: money(invoice.linesCents),
+    total: invoice.totalCents === null ? null : inv(invoice.totalCents),
+    linesAddUpTo: inv(invoice.linesCents),
     setAgainstCharge: reading.against
       ? {
           charge: money(reading.against.chargeCents),
           totalIsTheCharge: reading.against.totalMatches,
           lineThatIsTheUsual: reading.usualLine ? line(reading.usualLine) : null,
-          extra: reading.extraCents === null ? null : money(reading.extraCents),
+          extra: reading.extraCents === null ? null : inv(reading.extraCents),
           linesThatMakeUpTheExtra: reading.explaining.map(line),
           // False: the lines read don't add up to the total, so no line is named as the reason.
           linesAddUpToTheTotal: reading.against.linesAddUp,

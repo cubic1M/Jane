@@ -45,4 +45,8 @@ describe("htmlToText", () => {
       "We've refunded $19.99 & more",
     );
   });
+
+  it("decodes each reference once", () => {
+    expect(htmlToText("<p>Pay &amp;#36;5 &#36;5 &amp;amp;</p>")).toBe("Pay &#36;5 $5 &amp;");
+  });
 });

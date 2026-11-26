@@ -73,4 +73,10 @@ describe("facts from the chat", () => {
       label: "You rent your home",
     });
   });
+
+  it("keeps 'a personal loan' as a debt to pay off", () => {
+    expect(Object.keys(said("I want to pay off a personal loan"))).toEqual([
+      "goal:pay_off_a_personal_loan",
+    ]);
+  });
 });

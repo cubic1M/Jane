@@ -55,8 +55,12 @@ describe("reading a decision question", () => {
 
   it("sends a loan with an amount the same way however the amount is written", () => {
     expect(parseDecision("should i take a personal loan for $10,000")).toBeNull();
+    expect(parseDecision("should i take a personal loan for $ 10,000")).toBeNull();
+    expect(parseDecision("should i take a personal loan for $\n10,000")).toBeNull();
     expect(parseDecision("should i take a personal loan for 10000 dollars")).toBeNull();
     expect(parseDecision("should i take a personal loan\nfor $10,000")).toBeNull();
+    // CodeRabbit #2286: any spacing after the dollar sign.
+    expect(parseDecision("should i buy a car with a personal loan for $  10,000")).toBeNull();
     expect(parseDecision("should i take a personal loan")).toMatchObject({ item: "loan" });
   });
 

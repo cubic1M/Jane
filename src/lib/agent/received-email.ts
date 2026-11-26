@@ -32,12 +32,15 @@ export const htmlToText = (html: string): string =>
     .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6])>/gi, "\n")
     .replace(/<[^>]*>/g, " ")
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/gi, (_m, name: string) => ENTITIES[name.toLowerCase()])
-    // "&#39;" and "&#x27;": the email's own characters, not their codes.
-    .replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (m, code: string) => {
-      const point = code[0].toLowerCase() === "x" ? parseInt(code.slice(1), 16) : Number(code);
-      return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : m;
-    })
+    // Each reference is decoded once, in one pass: "&amp;#36;" is the text "&#36;", not "$".
+    .replace(
+      /&(?:(amp|lt|gt|quot|apos|nbsp)|#(x[0-9a-f]{1,6}|\d{1,7}));/gi,
+      (m, name?: string, code?: string) => {
+        if (name) return ENTITIES[name.toLowerCase()];
+        const point = code![0].toLowerCase() === "x" ? parseInt(code!.slice(1), 16) : Number(code);
+        return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : m;
+      },
+    )
     .replace(/[ \t]+/g, " ")
     .replace(/ ?\n ?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
