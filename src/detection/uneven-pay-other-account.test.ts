@@ -102,6 +102,24 @@ describe("uneven pay beside a paycheck into another account", () => {
     ]);
   });
 
+  // The sweep's two-uploads person: checking's paychecks read as "uneven pay, $8,522.50 a month"
+  // once the latest ones showed on another account.
+  it("doesn't call a salary that moved to the other account uneven pay", () => {
+    const [latest, previous, ...older] = salary(SAVINGS.id);
+    const moved = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 40_000 }, SAVINGS],
+      transactions: [
+        ...rent,
+        latest!,
+        previous!,
+        ...older.map((t) => ({ ...t, accountId: CHECKING.id })),
+      ],
+    });
+    expect(unevenPay(moved, CHECKING.id)).toBeNull();
+    expect(nextUnevenPayBy(moved, [CHECKING.id])).toBeNull();
+    expect(warnings(moved).map(([, cents]) => cents)).toEqual([-80_000]);
+  });
+
   it("loses the cutoff to a payday into the account itself", () => {
     const paid = person(CHECKING.id);
     expect(nextUnevenPayBy(paid, [CHECKING.id])).toBeNull();

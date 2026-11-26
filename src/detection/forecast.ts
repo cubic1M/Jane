@@ -123,12 +123,16 @@ const newestLine = (input: DetectionInput, accountId: string) =>
     .filter((t) => t.accountId === accountId && t.date <= input.asOf)
     .reduce((day, t) => (t.date > day ? t.date : day), "") || input.asOf;
 
+// With a payday on the calendar somewhere, a paycheck among these isn't pay with no schedule: a
+// salary that moved to another account, or a job that ended, isn't coming here again.
 function unevenDeposits(input: DetectionInput, accountId: string) {
   const newest = newestLine(input, accountId);
   const since = addDays(newest, -UNEVEN_PAY_LOOKBACK_DAYS);
+  const scheduled = nextPayday(input, FORECAST_DAYS) !== null;
   return input.transactions.filter(
     (t) =>
       t.accountId === accountId &&
+      !(scheduled && isPaycheck(t)) &&
       t.amountCents < 0 &&
       t.pfcPrimary === "INCOME" &&
       !UNEVEN_PAY_NOT_PAY.includes(t.pfcDetailed ?? "") &&
