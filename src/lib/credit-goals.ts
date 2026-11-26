@@ -224,12 +224,18 @@ export async function completeGoalItems(
   userId: string,
   goalId: string,
   keys: readonly string[] | "all",
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), month }: Options & { month?: string } = {},
 ): Promise<number> {
   const db = scopedFor(userId, client);
   const goals = await loadCreditGoals(userId, { client, now });
   const goal = goals.goals.find((g) => g.id === goalId);
   if (!goal) throw new CreditGoalError("That plan isn't on your list.");
+  // A list from an earlier month (a card tapped after the month turned) is not this month's.
+  if (month !== undefined && month !== goal.currentMonth) {
+    throw new CreditGoalError(
+      `That list was for ${month}. Open your credit plan to see this month's.`,
+    );
+  }
   const wanted = keys === "all" ? goal.thisMonth.map((i) => i.key) : [...keys];
   const valid = goal.thisMonth
     .filter((i) => wanted.includes(i.key) && !i.done)

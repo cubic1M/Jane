@@ -34,7 +34,11 @@ export const creditGoalDone: ActionHandler = {
     if (!id)
       throw new ChatActionError("failed", "Something went wrong. Open your credit plan instead.");
     try {
-      const n = await completeGoalItems(userId, id, "all", { client, now });
+      const n = await completeGoalItems(userId, id, "all", {
+        client,
+        now,
+        month: message.refs.creditGoalMonth,
+      });
       return {
         answeredWith: action.label,
         note: `Ticked off ${n} ${n === 1 ? "item" : "items"} for this month.`,

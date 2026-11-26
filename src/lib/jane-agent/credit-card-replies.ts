@@ -98,9 +98,12 @@ export function cardFeeReply(cards: CreditCards): Reply {
   }
   const lines = withFee.map((c) => {
     const f = c.fee!;
+    // With no fee-free card in their credit band there is nothing to compare it against.
     const verdict = f.paysForItself
       ? "It pays for itself."
-      : `It doesn't pay for itself: the ${f.noFee!.card.name}, with no fee, would earn ${formatCents(f.noFee!.earnsCents)} on the same spending.`;
+      : f.noFee
+        ? `It doesn't pay for itself: the ${f.noFee.card.name}, with no fee, would earn ${formatCents(f.noFee.earnsCents)} on the same spending.`
+        : "It doesn't pay for itself.";
     return `Your ${c.name} earns about ${formatCents(f.earnsCents)} a year on your spending, ${formatCents(f.netCents)} after its ${formatCents(f.feeCents)} fee. ${verdict}`;
   });
   const better = cards.better[0];
@@ -126,7 +129,7 @@ export function betterCardReply(cards: CreditCards): Reply {
     ? `\nAlso: ${others.map((o) => `the ${o.card.name}, about ${formatCents(o.gainCents)} a year`).join("; ")}.`
     : "";
   return {
-    body: `${betterLine(best)} That's from your own spending over the last year, fee counted. Applying is a hard credit check.${also}`,
+    body: `${betterLine(best)} ${cards.firstLook ? "That's from the little of your spending I can see so far, fee counted, so treat it as a rough guide." : "That's from your own spending over the last year, fee counted."} Applying is a hard credit check.${also}`,
     actions: [applyButton(best), CARDS_PAGE],
     refs: { advice: true, creditCard: { productId: best.card.id } },
   };

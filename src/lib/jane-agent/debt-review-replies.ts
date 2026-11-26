@@ -25,7 +25,13 @@ function tapButton(tap: ReviewTap): { action: MessageAction; refs: MessageRefs }
     case "pay":
       return {
         action: payButton(),
-        refs: { creditStatement: { accountId: tap.accountId, closesOn: tap.closesOn } },
+        refs: {
+          creditStatement: {
+            accountId: tap.accountId,
+            closesOn: tap.closesOn,
+            amountCents: tap.amountCents,
+          },
+        },
       };
     case "ask":
       return { action: askButton(tap.card), refs: { cardRate: { id: tap.requestId } } };

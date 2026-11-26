@@ -158,6 +158,11 @@ describe.runIf(url)(
         .find((c) => c.dedupeKey.startsWith("creditgoal:"))!;
       expect(month.body).toContain("this month's list (2026-10):");
       expect(month.actions[0]).toMatchObject({ id: "creditgoal.done" });
+      // CodeRabbit part 2: a card made for another month ticks nothing off this month's list.
+      expect(month.refs).toMatchObject({ creditGoalMonth: "2026-10" });
+      await expect(
+        completeGoalItems(id, goal.id!, "all", { ...opts(), month: "2026-09" }),
+      ).rejects.toThrow(/That list was for 2026-09/);
       // Tick off one item, then the rest from the chat's button.
       expect(await completeGoalItems(id, goal.id!, ["pay"], opts())).toBe(1);
       await expect(completeGoalItems(id, goal.id!, ["pay"], opts())).rejects.toThrow(

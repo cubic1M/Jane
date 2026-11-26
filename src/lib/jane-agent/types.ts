@@ -449,7 +449,8 @@ export type MessageRefs = {
   creditCard?: { productId: string };
   // Spec step 175: the statement "Pay it before the statement" pays toward, and the
   // credit-builder stand-in to open.
-  creditStatement?: { accountId: string; closesOn: string };
+  // amountCents: what the card showed, so a tap pays that and nothing else (older cards have none).
+  creditStatement?: { accountId: string; closesOn: string; amountCents?: number };
   creditBuilder?: { productId: string };
   // Spec step 176: the buy now, pay later plan "Pay it off" pays.
   bnplPlan?: { key: string };
@@ -469,6 +470,8 @@ export type MessageRefs = {
   // Spec step 227: the plan "Start" saves, and the goal "I've done this month's list" ticks.
   creditGoalDraft?: { kind: string; targetScore: number; targetDate: string };
   creditGoalId?: string;
+  // The month the card's list was for: a tap in another month ticks nothing off.
+  creditGoalMonth?: string;
   // Spec step 228: which drafted request the "I sent it" button records.
   homeRequest?: "pmi" | "escrow";
   // Spec step 230: the buttons of a debt review. Each is its own item, so the message stays
