@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { giveBack, hit } from "@/lib/rate-limit";
@@ -567,7 +568,7 @@ async function takeChatActionWork(
   // The handler's work is done: Claude's copy of the numbers going stale late must not leave the
   // message open to be tapped again (a second transfer for the same step).
   await markPrimerStale(userId, { client, now }).catch((error) => {
-    console.error("marking the primer stale failed after a tap", {
+    log.error("marking the primer stale failed after a tap", {
       error: error instanceof Error ? error.name : "unknown",
     });
   });

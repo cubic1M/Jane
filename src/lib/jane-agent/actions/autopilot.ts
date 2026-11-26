@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import type { AutopilotChoice } from "@/config/autopilot";
 import { autopilotOf, setAutopilot } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
@@ -41,7 +42,7 @@ function choose(level: AutopilotChoice): ActionHandler {
         approved = await setAutopilot(userId, level, { client, now });
       } catch (error) {
         if ((await autopilotOf(userId, { client })) !== level) throw error;
-        console.error("autopilot saved, but a write after it failed", {
+        log.error("autopilot saved, but a write after it failed", {
           error: error instanceof Error ? error.name : "unknown",
         });
       }

@@ -4,6 +4,7 @@ import type { Sector } from "@/config/autopilot-sectors";
 import { addDays } from "@/detection/units";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { bigMoveCheck } from "@/lib/money-for-two";
@@ -38,7 +39,7 @@ async function recorded(transferId: string, write: () => Promise<void>): Promise
   try {
     await write();
   } catch (error) {
-    console.error("money transfer saved, but its audit or analytics write failed", {
+    log.error("money transfer saved, but its audit or analytics write failed", {
       transferId,
       error: error instanceof Error ? error.name : "unknown",
     });
