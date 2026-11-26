@@ -80,24 +80,34 @@ export function matchReceipts(
   days: number,
 ): Map<string, { id: string; fileName: string }> {
   // Earliest charge first, each taking its earliest free receipt: with one window length that gives
-  // every charge that can have one its own, whatever order they arrived in.
+  // as many charges a receipt as can have one, whatever order they arrived in.
   const byDate = (a: { date: string | null }, b: { date: string | null }) =>
     (a.date ?? "").localeCompare(b.date ?? "");
   const dated = [...receipts].sort(byDate);
-  const options = [...charges].sort(byDate).map((c) => ({
-    id: c.id,
-    found: dated.filter((r) => matchReceipt(c, [r], days) !== null),
-  }));
-  const used = new Set<string>();
+  const options = new Map(
+    [...charges]
+      .sort(byDate)
+      .map((c) => [c.id, dated.filter((r) => matchReceipt(c, [r], days) !== null)]),
+  );
+  const heldBy = new Map<string, string>();
   const matched = new Map<string, { id: string; fileName: string }>();
-  for (const { id, found } of options) {
-    const rivals = options.filter((o) => o.found.some((r) => found.includes(r)));
-    if (rivals.length > new Set(rivals.flatMap((o) => o.found)).size) continue;
-    const receipt = found.find((r) => !used.has(r.id));
+  for (const [id, found] of options) {
+    const receipt = found.find((r) => !heldBy.has(r.id));
     if (!receipt) continue;
-    used.add(receipt.id);
+    heldBy.set(receipt.id, id);
     matched.set(id, { id: receipt.id, fileName: receipt.fileName });
   }
+  // A charge left without one competes with whoever holds a receipt it could claim, and they with
+  // whoever holds theirs: more charges than receipts, so none of that group is called receipted.
+  // (A set also walks what is added to it on the way.)
+  const short = new Set([...options.keys()].filter((id) => !matched.has(id)));
+  for (const id of short) {
+    for (const receipt of options.get(id)!) {
+      const holder = heldBy.get(receipt.id);
+      if (holder) short.add(holder);
+    }
+  }
+  for (const id of short) matched.delete(id);
   return matched;
 }
 

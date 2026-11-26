@@ -262,27 +262,31 @@ export async function recordDecision(
   // The agent works the action itself when it can (src/lib/agent/run.ts).
   // A switch to a picked option is the agent's too, whatever the action (spec step 77).
   // First after the answer is saved: it can't be given again, so a later step that fails must not
-  // leave the action with nobody to work it. The record of the answer is written either way.
+  // leave the action with nobody to work it. What it said about the price is kept, and the record of
+  // it written, either way.
   try {
     if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {
       result.agentJobId = await startAgent(userId, result.actionId, { client, source });
     }
   } finally {
-    await logAudit(
-      { type: "user", id: userId },
-      "decision_made",
-      { type: "finding", id: finding.id },
-      {
-        choice,
-        source,
-        changed_options: options !== null,
-        decision_id: result.decisionId,
-        action_id: result.actionId,
-        ...(result.connectorActionId ? { connector_action_id: result.connectorActionId } : {}),
-      },
-    );
+    try {
+      await keepAnswerAboutThePrice(db, finding, choice);
+    } finally {
+      await logAudit(
+        { type: "user", id: userId },
+        "decision_made",
+        { type: "finding", id: finding.id },
+        {
+          choice,
+          source,
+          changed_options: options !== null,
+          decision_id: result.decisionId,
+          action_id: result.actionId,
+          ...(result.connectorActionId ? { connector_action_id: result.connectorActionId } : {}),
+        },
+      );
+    }
   }
-  await keepAnswerAboutThePrice(db, finding, choice);
   // The person's own answer (not a standing rule's or autopilot's) is evidence of what they act
   // on (src/lib/memory/).
   if (source !== "rule" && source !== "auto") {

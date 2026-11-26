@@ -25,10 +25,16 @@ describe.runIf(url)("two-factor that can't sign the other sessions out", () => {
   });
 
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
-    await client.rateLimit.deleteMany({ where: { key: { contains: userId } } });
-    await client.$disconnect();
-    vi.unstubAllEnvs();
+    try {
+      // With no id (the setup failed) these filters would be dropped, and every row would go.
+      if (userId) {
+        await client.user.deleteMany({ where: { id: userId } });
+        await client.rateLimit.deleteMany({ where: { key: { contains: userId } } });
+      }
+    } finally {
+      await client.$disconnect();
+      vi.unstubAllEnvs();
+    }
   });
 
   it("isn't left on, and the next code does all of it", async () => {

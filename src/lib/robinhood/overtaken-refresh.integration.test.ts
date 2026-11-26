@@ -149,6 +149,42 @@ describe.runIf(url)("a refresh overtaken by a newer sign-in", () => {
     });
   });
 
+  // Between a check and the last write there was room for a new sign-in, whose numbers the older
+  // ones then covered.
+  it("keeps a new sign-in waiting until everything it read is saved", async () => {
+    const userId = await person();
+    await connected(userId);
+    await system().account.deleteMany({ where: { userId } });
+    let signingIn: Promise<unknown> | undefined;
+    let landedMidSave: boolean | undefined;
+    const watched = db.$extends({
+      query: {
+        holding: {
+          async upsert({ args, query }) {
+            if (!signingIn) {
+              signingIn = system()
+                .robinhoodConnection.updateMany({ where: { userId }, data: { syncingSince: null } })
+                .then(() => true);
+              const waited = new Promise<boolean>((done) => setTimeout(done, 500, false));
+              landedMidSave = (await Promise.race([signingIn, waited])) as boolean;
+            }
+            return query(args);
+          },
+        },
+      },
+    }) as unknown as typeof db;
+
+    const result = await refreshConnection(userId, {
+      client: watched,
+      now: new Date(Date.now() + 1000),
+    });
+    await signingIn;
+
+    expect(landedMidSave).toBe(false);
+    expect(result).toBe("updated");
+    expect(await system().account.count({ where: { userId } })).toBeGreaterThan(0);
+  });
+
   it("leaves the new sign-in alone when its own old one is refused", async () => {
     const userId = await person();
     await connected(userId);

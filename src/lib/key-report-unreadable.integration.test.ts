@@ -27,9 +27,13 @@ describe.runIf(url)("the key report with a value whose key can't be told", () =>
     });
   });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
-    await client.$disconnect();
-    vi.unstubAllEnvs();
+    try {
+      // With no id (the setup failed) the filter would be dropped, and every user would go.
+      if (userId) await client.user.deleteMany({ where: { id: userId } });
+    } finally {
+      await client.$disconnect();
+      vi.unstubAllEnvs();
+    }
   });
 
   // It may be the old key's: removing that key could lose it for good.

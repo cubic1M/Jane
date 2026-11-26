@@ -22,4 +22,19 @@ describe("the activity log's size limit", () => {
     expect(response.status).toBe(413);
     expect(recordActivity).not.toHaveBeenCalled();
   });
+
+  it("stops reading once past it, rather than taking in the whole body first", async () => {
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent++ === 1_000) return controller.close();
+        controller.enqueue(new Uint8Array(1_024).fill(32));
+      },
+    });
+    const response = await POST(
+      new NextRequest("http://localhost/api/activity", { method: "POST", body, duplex: "half" }),
+    );
+    expect(response.status).toBe(413);
+    expect(sent).toBeLessThan((ACTIVITY.maxBodyBytes / 1_024) * 2);
+  });
 });

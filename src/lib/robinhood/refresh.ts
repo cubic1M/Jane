@@ -126,8 +126,14 @@ function failureCode(error: unknown): string {
   return "unexpected";
 }
 
+// The tables a refresh writes, inside the one transaction that saves it.
+type Saving = Pick<
+  Parameters<Parameters<ScopedDb["transaction"]>[0]>[0],
+  "accounts" | "securities" | "holdings" | "investmentTransactions"
+> & { userId: string };
+
 async function saveSecurity(
-  db: ScopedDb,
+  db: Saving,
   ref: string,
   data: {
     name: string;
@@ -149,7 +155,7 @@ async function saveSecurity(
 
 // What an account holds, replaced. Cash is a holding like Plaid's, with no ticker, which is what the
 // invested-cash detector and the page read.
-async function saveHoldings(db: ScopedDb, accountId: string, read: Read, today: Date) {
+async function saveHoldings(db: Saving, accountId: string, read: Read, today: Date) {
   const kept: string[] = [];
   const hold = async (
     securityId: string,
@@ -205,7 +211,7 @@ async function saveHoldings(db: ScopedDb, accountId: string, read: Read, today: 
 
 // Filled orders, in Plaid's sign (money out is positive), which is how the tax figures read them.
 async function saveOrders(
-  db: ScopedDb,
+  db: Saving,
   accountId: string,
   orders: FilledOrder[],
   accountKey: string,
@@ -252,13 +258,12 @@ async function saveOrders(
 }
 
 async function saveEverything(
-  db: ScopedDb,
+  db: Saving,
   connectionId: string,
   accountKey: string,
   reads: Read[],
-  now: Date,
+  today: Date,
 ) {
-  const today = new Date(`${await todayFor(db, now)}T00:00:00Z`);
   const refs: string[] = [];
   for (const read of reads) {
     const ref = read.account.ref(accountKey);
@@ -378,19 +383,27 @@ export async function refreshConnection(
           : error;
       });
     }
-    if ((await db.robinhoodConnections.count({ where: held(row.id, now) })) === 0) return "busy";
-    await saveEverything(db, row.id, secrets.accountKey, reads, now);
-    await db.robinhoodConnections.updateMany({
-      where: held(row.id, now),
-      data: {
-        lastSyncedAt: now,
-        lastErrorCode: null,
-        lastErrorAt: null,
-        failures: 0,
-        nextTryAt: null,
-        syncingSince: null,
-      },
+    const today = new Date(`${await todayFor(db, now)}T00:00:00Z`);
+    // One change. Writing the connection's row first locks it, so a new sign-in waits until all of
+    // it is saved, and one that got there first leaves nothing to save.
+    const saved = await db.transaction(async (tx) => {
+      const { count } = await tx.robinhoodConnections.updateMany({
+        where: held(row.id, now),
+        data: {
+          lastSyncedAt: now,
+          lastErrorCode: null,
+          lastErrorAt: null,
+          failures: 0,
+          nextTryAt: null,
+          syncingSince: null,
+        },
+      });
+      if (count === 0) return false;
+      const saving = { ...tx, userId };
+      await saveEverything(saving, row.id, secrets.accountKey, reads, today);
+      return true;
     });
+    if (!saved) return "busy";
     // The chat's copy of the numbers was worked out before these.
     forgetPrimer(userId);
     return "updated";

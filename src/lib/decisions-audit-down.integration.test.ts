@@ -35,9 +35,15 @@ describe.runIf(url)("a yes when a step after it fails", () => {
   });
 
   afterAll(async () => {
-    await client.$executeRaw`DELETE FROM jobs WHERE payload->>'userId' = ${userId}`;
-    await client.user.deleteMany({ where: { id: userId } });
-    await client.$disconnect();
+    try {
+      // With no id (the setup failed) the filter would be dropped, and every user would go.
+      if (userId) {
+        await client.$executeRaw`DELETE FROM jobs WHERE payload->>'userId' = ${userId}`;
+        await client.user.deleteMany({ where: { id: userId } });
+      }
+    } finally {
+      await client.$disconnect();
+    }
   });
 
   // The answer was already saved, and a second yes is refused: without the job, nothing ever
@@ -71,6 +77,39 @@ describe.runIf(url)("a yes when a step after it fails", () => {
       SELECT count(*) AS count FROM jobs
       WHERE kind = 'agent_step' AND payload->>'actionId' = ${action.id}`;
     expect(Number(count)).toBe(1);
+  });
+
+  // The answer can't be given again, so what it said about the price is kept either way.
+  it("still keeps the answer about the price when the record can't be written", async () => {
+    const f = findingOfType("subscription_review");
+    const finding = await client.finding.create({
+      data: {
+        userId,
+        type: f.type,
+        key: `${f.key}:price`,
+        title: f.title,
+        annualSavingsCents: f.annualSavingsCents,
+        amountCents: f.amountCents,
+        confidence: f.confidence,
+        evidence: {
+          ...(f.evidence as Prisma.InputJsonObject),
+          onlyItsPrice: true,
+          merchantKey: "priced-only",
+        },
+      },
+      select: { ...CARD_SELECT, status: true },
+    });
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit log down"));
+    await expect(
+      recordDecision(
+        userId,
+        { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
+        { client },
+      ),
+    ).rejects.toThrow("audit log down");
+    expect(
+      await client.subscriptionCheck.findFirst({ where: { userId, merchantKey: "priced-only" } }),
+    ).toMatchObject({ isSubscription: true });
   });
 
   it("is still recorded when Jane's job can't be queued", async () => {

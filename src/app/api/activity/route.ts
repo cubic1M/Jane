@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ACTIVITY } from "@/config/activity";
 import { recordActivity } from "@/lib/activity/record";
+import { cappedText } from "@/lib/capped-text";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 
@@ -10,11 +11,8 @@ import { getCurrentUser } from "@/lib/session";
 export async function POST(request: NextRequest) {
   const limited = await limitOrNull("activity", ipKey(request.headers));
   if (limited) return limited;
-  const text = await request.text();
-  // In bytes: a character can take up to three, and the length counts it as one.
-  if (Buffer.byteLength(text) > ACTIVITY.maxBodyBytes) {
-    return NextResponse.json({ error: "Too large" }, { status: 413 });
-  }
+  const text = await cappedText(request, ACTIVITY.maxBodyBytes);
+  if (text === null) return NextResponse.json({ error: "Too large" }, { status: 413 });
   let body: unknown;
   try {
     body = JSON.parse(text);

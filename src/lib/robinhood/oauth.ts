@@ -6,12 +6,12 @@ import {
   robinhoodServer,
 } from "@/config/robinhood";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { cappedText } from "@/lib/capped-text";
 import { encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { openSignIn, pkceChallenge, randomValue } from "@/lib/oauth-pkce";
 import { siteOrigin } from "@/lib/site-origin";
 import { systemDb } from "@/lib/system-db";
-import { cappedText } from "./capped";
 
 // Signing in with Robinhood: its server's metadata, registering this app once, the authorization
 // code flow with PKCE and state, and refreshing tokens. The person signs in on Robinhood's page, so
