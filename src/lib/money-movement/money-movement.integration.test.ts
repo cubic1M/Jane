@@ -209,6 +209,24 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     );
   });
 
+  it("Undo counts a transfer waiting on the partner too (CodeRabbit sweep)", async () => {
+    const userId = await demoPerson("money-undo-await");
+    await setSectorAutopilot(userId, "goals", { level: "ask" }, { client, now: LINKED });
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const plan = (await runPaycheckPlan(userId, { client, now: LINKED }))!;
+    const { scheduled } = await movePaycheckPlan(userId, plan.id, { client, now: LINKED });
+    await client.moneyTransfer.update({
+      where: { id: scheduled[0].transferId },
+      data: { status: "awaiting_partner" },
+    });
+    const { cancelled, remaining } = await undoPaycheckPlan(userId, plan.id, {
+      client,
+      now: LINKED,
+    });
+    expect(cancelled + remaining).toBe(scheduled.length);
+  });
+
   it("says when the next paycheck comes when there's none to split yet", async () => {
     const userId = await demoPerson("money-next");
     const later = new Date("2026-10-25T15:00:00Z");

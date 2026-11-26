@@ -1,6 +1,6 @@
 import { conciergeMode } from "@/lib/concierge-mode";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { startAgent } from "@/lib/agent/run";
+import { AgentAlreadyStarted, startAgent } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
@@ -25,6 +25,36 @@ export class AcceptShopError extends Error {}
 const DECIDABLE = ["new", "shown"] as const;
 
 const asJson = (q: StoredQuote) => JSON.parse(JSON.stringify(q)) as Prisma.InputJsonObject;
+
+// The shop's columns when another of its quotes was picked: it becomes the pick the agent binds
+// (step 105), and the old pick joins the runners-up.
+const pickData = (
+  shop: { pick: StoredQuote | null; runnersUp: StoredQuote[] },
+  chosen: StoredQuote,
+  savingCents: number,
+) => ({
+  pick: asJson(chosen),
+  runnersUp: [shop.pick, ...shop.runnersUp.filter((q) => q.id !== chosen.id)]
+    .filter((q): q is StoredQuote => q !== null)
+    .map(asJson),
+  savingCents,
+});
+
+// Two retries of one tap start the switch once: the second is told it is under way.
+async function startOnce(
+  userId: string,
+  actionId: string,
+  options: Parameters<typeof startAgent>[2],
+) {
+  try {
+    return await startAgent(userId, actionId, { ...options, once: true });
+  } catch (error) {
+    if (error instanceof AgentAlreadyStarted) {
+      throw new AcceptShopError("That switch is already under way.");
+    }
+    throw error;
+  }
+}
 
 export async function acceptShop(
   userId: string,
@@ -60,14 +90,32 @@ export async function acceptShop(
         agentState: null,
         decision: { choice: "yes", options: { path: ["insuranceShopId"], equals: shop.id } },
       },
-      select: { id: true, decisionId: true },
+      select: { id: true, decisionId: true, decision: { select: { options: true } } },
     });
     if (stalled) {
+      // The quote the saved switch names, which the shop may not record yet (the shop write
+      // failed after the decision was saved): restore it before the agent binds the shop's pick.
+      const saved = stalled.decision?.options as Partial<InsuranceSwitchOptions> | null;
+      const quotes = [shop.pick, ...shop.runnersUp].filter((q): q is StoredQuote => q !== null);
+      const savedQuote =
+        shop.status === "open" && saved
+          ? quotes.find(
+              (q) =>
+                q.carrier.name === saved.insuranceCarrier &&
+                q.annualPremiumCents === saved.insuranceAnnualCents,
+            )
+          : undefined;
       await db.insuranceShops.updateMany({
         where: { id: shop.id, status: "open" },
-        data: { status: "accepted", answeredAt: now },
+        data: {
+          status: "accepted",
+          answeredAt: now,
+          ...(savedQuote && shop.pick && savedQuote.id !== shop.pick.id
+            ? pickData(shop, savedQuote, shop.currentAnnualCents - savedQuote.annualPremiumCents)
+            : {}),
+        },
       });
-      const agentJobId = await startAgent(userId, stalled.id, {
+      const agentJobId = await startOnce(userId, stalled.id, {
         client,
         now,
         source: by === "autopilot" ? "rule" : "chat",
@@ -165,13 +213,7 @@ export async function acceptShop(
       answeredAt: now,
       // Another of the shop's quotes was picked: it becomes the pick the agent binds (step
       // 105), before the agent starts below.
-      ...(chosen !== shop.pick
-        ? {
-            pick: asJson(chosen),
-            runnersUp: [shop.pick, ...shop.runnersUp.filter((q) => q.id !== chosen.id)].map(asJson),
-            savingCents,
-          }
-        : {}),
+      ...(chosen !== shop.pick ? pickData(shop, chosen, savingCents) : {}),
     },
   });
   await logAudit(
@@ -194,7 +236,7 @@ export async function acceptShop(
   });
   // Spec step 105: Jane's agent does the switch itself (src/lib/insurance/switch.ts).
   // An autopilot yes waits out the rules' hold, so it can be taken back first.
-  const agentJobId = await startAgent(userId, result.actionId, {
+  const agentJobId = await startOnce(userId, result.actionId, {
     client,
     now,
     source: by === "autopilot" ? "rule" : "chat",

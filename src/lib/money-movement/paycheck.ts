@@ -317,7 +317,8 @@ export async function undoPaycheckPlan(
   const row = await db.paycheckPlans.findFirst({ where: { id: planId }, select: { key: true } });
   if (!row) throw new PaycheckError("That paycheck's plan isn't there anymore.");
   const pending = await db.moneyTransfers.findMany({
-    where: { planKey: row.key, status: "pending" },
+    // Both: a transfer waiting on the partner is cancelled the same way (cancelTransfer).
+    where: { planKey: row.key, status: { in: ["pending", "awaiting_partner"] } },
     select: { id: true },
   });
   let cancelled = 0;

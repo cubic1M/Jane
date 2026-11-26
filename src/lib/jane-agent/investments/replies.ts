@@ -924,6 +924,9 @@ export function retirementAccountsReply(view: RetirementAccountsView): Reply {
 
 // Spec step 211: where each past employer's plan stands; a found plan's fees and the
 // rollover tap in demo advice mode.
+const oldPlanShown = (inv: { oldAccounts: { plans: OldAccountsView["plans"] } }) =>
+  inv.oldAccounts.plans.find((p) => p.status === "found" && (p.fees?.savedCents ?? 0) > 0);
+
 export function oldAccountsReply(view: OldAccountsView): Reply {
   const found = view.plans.find((p) => p.status === "found");
   // 401(k)s already linked from past jobs come first: they're what the suggestion counted.
@@ -1054,9 +1057,8 @@ export function yearlyReviewReply(inv: InvestmentSnapshot, year: number): Reply 
         : {}),
       ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
       // The same old plan the posted review names, so its Roll over button has what it acts on.
-      ...(inv.oldAccounts.plans.find((p) => p.status === "found")
-        ? { oldPlanId: inv.oldAccounts.plans.find((p) => p.status === "found")!.id }
-        : {}),
+      // The review lists only found plans that save something: the same ones.
+      ...(oldPlanShown(inv) ? { oldPlanId: oldPlanShown(inv)!.id } : {}),
     },
   };
 }

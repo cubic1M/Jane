@@ -88,12 +88,18 @@ export async function startAgent(
     client = defaultClient,
     now = new Date(),
     source = "card",
-  }: Options & { source?: DecisionSource } = {},
+    once = false,
+  }: Options & {
+    source?: DecisionSource;
+    // Start it only when nothing has: a second caller meeting an action already started gets an
+    // AgentAlreadyStarted instead of a second job (two retries of one tap).
+    once?: boolean;
+  } = {},
 ): Promise<string> {
   // Approvals made outside the app wait out the time to take them back.
   const holdHours = AGENT_HOLD_HOURS[source as keyof typeof AGENT_HOLD_HOURS] ?? 0;
   const startAt = new Date(now.getTime() + holdHours * 60 * 60 * 1000);
-  await scopedFor(userId, client).actions.updateMany({
+  const claim = await scopedFor(userId, client).actions.updateMany({
     where: { id: actionId, agentState: null },
     data: {
       agentState: "working",
@@ -101,7 +107,26 @@ export async function startAgent(
       replyToken: randomBytes(16).toString("hex"),
     },
   });
-  return enqueueJob("agent_step", { userId, actionId }, { client, now, runAt: startAt });
+  if (once && claim.count === 0) throw new AgentAlreadyStarted();
+  try {
+    return await enqueueJob("agent_step", { userId, actionId }, { client, now, runAt: startAt });
+  } catch (error) {
+    // No job was queued: give the action back, so a retry can start it (the resume lookup
+    // finds an action whose agent never started).
+    if (claim.count > 0) {
+      await scopedFor(userId, client).actions.updateMany({
+        where: { id: actionId, agentState: "working" },
+        data: { agentState: null, agentNextAt: null, replyToken: null },
+      });
+    }
+    throw error;
+  }
+}
+
+export class AgentAlreadyStarted extends Error {
+  constructor() {
+    super("That action has already been started.");
+  }
 }
 
 // Where to write: the directory's support email (added by the team, never guessed), or a

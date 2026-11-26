@@ -8,6 +8,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import {
@@ -294,8 +295,16 @@ export async function recordTaxPayments(
     create: { userId, taxPayments: list },
     update: { taxPayments: list },
   });
-  await audit(userId, "taxPayments", via);
-  for (const payment of payments) {
-    await track(userId, "tax_payment_recorded", { to: payment.to, via });
+  // The payments are saved: a failure of the records after them must not fail the call, or a
+  // retry would append the same payments again.
+  try {
+    await audit(userId, "taxPayments", via);
+    for (const payment of payments) {
+      await track(userId, "tax_payment_recorded", { to: payment.to, via });
+    }
+  } catch (error) {
+    log.error("Tax payment saved, but its audit or event failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }

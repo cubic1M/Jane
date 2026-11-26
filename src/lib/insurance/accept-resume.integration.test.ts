@@ -68,4 +68,71 @@ describe.runIf(url)("an accepted switch whose agent did not start", () => {
       /already been answered/,
     );
   });
+
+  async function stalledSwitch(quotePick: "runner-up" | "pick") {
+    const user = await client.user.create({
+      data: { email: `ins-resume-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    await client.plaidItem.create({
+      data: {
+        userId: user.id,
+        plaidItemId: `demo-${crypto.randomUUID()}`,
+        accessTokenEncrypted: "v1:unused",
+      },
+    });
+    await client.account.create({
+      data: {
+        userId: user.id,
+        source: "plaid",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    await ensureDemoPolicies(user.id, { client, now: NOW });
+    const [shop] = await reshopPerson(user.id, { client, now: NOW });
+    const runnerUp = shop.runnersUp[0];
+    const quoteId = quotePick === "runner-up" ? runnerUp?.id : undefined;
+    const first = await acceptShop(user.id, shop.id, { client, now: NOW, quoteId });
+    return { user, shop, runnerUp, first };
+  }
+
+  it("two retries of one tap start the switch once", async () => {
+    const { user, shop, first } = await stalledSwitch("pick");
+    await client.action.update({
+      where: { id: first.actionId },
+      data: { agentState: null, replyToken: null },
+    });
+    const results = await Promise.allSettled([
+      acceptShop(user.id, shop.id, { client, now: NOW }),
+      acceptShop(user.id, shop.id, { client, now: NOW }),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
+  });
+
+  it("a resumed switch restores the quote the person picked when the shop write was lost", async () => {
+    const { user, shop, runnerUp, first } = await stalledSwitch("runner-up");
+    expect(runnerUp).toBeTruthy();
+    // The decision was saved, but the shop write and the start were lost.
+    await client.action.update({
+      where: { id: first.actionId },
+      data: { agentState: null, replyToken: null },
+    });
+    await client.insuranceShop.update({
+      where: { id: shop.id },
+      data: {
+        status: "open",
+        answeredAt: null,
+        pick: shop.pick as never,
+        runnersUp: shop.runnersUp as never,
+        savingCents: shop.savingCents,
+      },
+    });
+    await acceptShop(user.id, shop.id, { client, now: NOW });
+    const after = await client.insuranceShop.findUniqueOrThrow({ where: { id: shop.id } });
+    expect((after.pick as { id: string }).id).toBe(runnerUp.id);
+    expect(after.status).toBe("accepted");
+  });
 });

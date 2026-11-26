@@ -220,10 +220,17 @@ export async function countGoalTransfer(
       data: { manualSavedCents: { increment: transfer.amountCents } },
     });
     if (added.count === 0) {
-      await db.savingsGoals.updateMany({
+      const first = await db.savingsGoals.updateMany({
         where: { id: transfer.goal.id, manualSavedCents: null },
         data: { manualSavedCents: transfer.amountCents },
       });
+      // Another transfer set the total between the two writes: add to it.
+      if (first.count === 0) {
+        await db.savingsGoals.updateMany({
+          where: { id: transfer.goal.id, manualSavedCents: { not: null } },
+          data: { manualSavedCents: { increment: transfer.amountCents } },
+        });
+      }
     }
   } catch (error) {
     // Counted but never added would be lost to every retry: the claim is taken back.
