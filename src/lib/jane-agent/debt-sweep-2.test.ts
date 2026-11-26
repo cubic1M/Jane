@@ -48,6 +48,10 @@ describe("debt questions, routed", () => {
       kind: "debt_decision",
       which: "payday_loan",
     });
+    // CodeRabbit #2293: "have" in a condition is not a question about the past.
+    expect(
+      parseDebtIntent("should i get a payday loan if i have no savings?", null, AS_OF),
+    ).toEqual({ kind: "debt_decision", which: "payday_loan" });
   });
 
   it("reaches the monthly credit answer through the public parser, not 'what did you check'", () => {

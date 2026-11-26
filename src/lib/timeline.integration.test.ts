@@ -123,6 +123,8 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
           runOn: new Date("2026-10-25T00:00:00Z"),
           partner: "stand-in",
           by: "person",
+          // After the Jane act, whatever the database clock says.
+          createdAt: new Date(Date.UTC(2026, 9, 2 + i)),
         },
       });
     }
