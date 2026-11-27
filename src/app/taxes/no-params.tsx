@@ -42,13 +42,15 @@ export function NoParamsPage({
 export async function orNoParams<T>(
   user: User,
   load: () => Promise<T>,
+  // False outside /taxes: the page has no way back to it.
+  back = true,
 ): Promise<{ page: ReactElement; value?: undefined } | { page: null; value: T }> {
   try {
     return { page: null, value: await load() };
   } catch (error) {
     if (error instanceof NoTaxParamsError) {
       return {
-        page: <NoParamsPage user={user} year={error.year} group={error.group} back />,
+        page: <NoParamsPage user={user} year={error.year} group={error.group} back={back} />,
       };
     }
     throw error;

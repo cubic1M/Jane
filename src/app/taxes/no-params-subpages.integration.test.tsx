@@ -101,6 +101,12 @@ const PAGES: {
   },
   { name: "years", load: () => import("./years/page") as never, year: 2028 },
   {
+    name: "tax-pack",
+    load: () => import("../tax-pack/page") as never,
+    props: { searchParams: Promise.resolve({}) },
+    year: 2028,
+  },
+  {
     name: "what-if",
     load: () => import("../what-if/page") as never,
     props: { searchParams: Promise.resolve({ s: "job_loss" }) },
@@ -124,6 +130,13 @@ describe.runIf(url)("a year with no IRS figures, on every sub-page", { timeout: 
     if (who.id) await deleteCheckPerson(who.id, { client }).catch(() => {});
     await client.$disconnect();
     vi.unstubAllEnvs();
+  });
+
+  // The year in the address (?year=) is the year named, too.
+  it("/tax-pack and /taxes/calendar say the sentence for the year asked in ?year=", async () => {
+    const asked = { searchParams: Promise.resolve({ year: "2028" }) };
+    expect(await html(() => import("../tax-pack/page") as never, asked)).toContain(sentence(2028));
+    expect(await html(() => import("./calendar/page") as never, asked)).toContain(sentence(2028));
   });
 
   it.each(PAGES)("$name renders, and says the sentence when it prices a year", async (page) => {
@@ -185,10 +198,10 @@ describe.runIf(url)("2027 on the freelance and business pages", { timeout: 120_0
 // A new sub-page is a failing test until it is listed above: the list is what keeps the sentence
 // and the error page from coming back.
 describe("the list of sub-pages", () => {
-  it("names every page.tsx under /taxes (but the Taxes page itself) and /what-if", () => {
+  it("names every page.tsx under /taxes (but the Taxes page itself), /what-if and /tax-pack", () => {
     const found = readdirSync(__dirname, { withFileTypes: true })
       .filter((d) => d.isDirectory() && existsSync(join(__dirname, d.name, "page.tsx")))
       .map((d) => d.name);
-    expect([...found, "what-if"].sort()).toEqual(PAGES.map((p) => p.name).sort());
+    expect([...found, "what-if", "tax-pack"].sort()).toEqual(PAGES.map((p) => p.name).sort());
   });
 });

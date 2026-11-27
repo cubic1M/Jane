@@ -1,3 +1,4 @@
+import { orNoParams } from "@/app/taxes/no-params";
 import { scopedFor } from "@/lib/db-scoped";
 import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
@@ -79,10 +80,18 @@ async function TaxPackContent({
   const today = await todayOf(user.id, { now });
   const { year: asked } = await searchParams;
   const year = taxYearFrom(typeof asked === "string" ? asked : undefined, today);
-  const [pack, first] = await Promise.all([
-    loadTaxPack(user.id, year, { now }),
-    scopedFor(user.id).transactions.aggregate({ _min: { date: true } }),
-  ]);
+  // A year without IRS figures (NoTaxParamsError) says so (W-N) instead of the error page.
+  const loaded = await orNoParams(
+    user,
+    () =>
+      Promise.all([
+        loadTaxPack(user.id, year, { now }),
+        scopedFor(user.id).transactions.aggregate({ _min: { date: true } }),
+      ]),
+    false,
+  );
+  if (loaded.page) return loaded.page;
+  const [pack, first] = loaded.value;
   const firstYear = first._min.date ? first._min.date.getUTCFullYear() : null;
   const groups = Object.keys(pack.preparer) as PreparerGroup[];
   const summary: (readonly [string, number])[] = [
