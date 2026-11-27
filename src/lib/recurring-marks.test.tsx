@@ -82,6 +82,15 @@ describe("recurring marks", () => {
     // A year older than the lookback, and tomorrow in the person's own day.
     expect(marks.forTransaction(row("old", "2025-10-14"))?.kind).toBe("subscription");
     expect(marks.forTransaction(row("next", "2026-11-14"))?.kind).toBe("subscription");
+    // Inside the days of another plan's run on the same card: a one-off.
+    const other = charge({
+      key: "merchant:netflix@2000",
+      transactionIds: ["m1"],
+      firstChargeDate: "2026-09-14",
+      lastChargeDate: "2026-11-14",
+    });
+    const two = recurringMarks([netflix, other]);
+    expect(two.forTransaction(row("gone", "2026-09-20"))).toBeNull();
     // Another account's Netflix is not this charge.
     expect(marks.forTransaction(row("old2", "2025-10-14", "a2"))).toBeNull();
   });

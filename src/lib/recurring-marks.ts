@@ -43,7 +43,11 @@ export const chargeAnchor = (key: string): string => `charge-${key}`;
 
 const PER: Partial<Record<RecurringCharge["frequency"], string>> = {
   WEEKLY: "a week",
+  BIWEEKLY: "every two weeks",
+  SEMI_MONTHLY: "twice a month",
   MONTHLY: "a month",
+  QUARTERLY: "a quarter",
+  SEMIANNUALLY: "every six months",
   ANNUALLY: "a year",
 };
 
@@ -66,8 +70,8 @@ function merchantMarkOf(list: readonly RecurringCharge[]): RepeatMark {
   return {
     kind: list.some((c) => c.subscription) ? "subscription" : "bill",
     label: `${list.length} repeating charges`,
-    amountCents: sameRhythm ? list.reduce((n, c) => n + c.lastAmountCents, 0) : null,
-    ...(sameRhythm && per ? { per } : {}),
+    amountCents: sameRhythm && per ? list.reduce((n, c) => n + c.lastAmountCents, 0) : null,
+    ...(per ? { per } : {}),
     href: markOf(first!).href,
   };
 }
@@ -99,14 +103,14 @@ export function recurringMarks(charges: readonly RecurringCharge[]): RecurringMa
       const key = merchantKeyOf(t.merchantName ?? t.description);
       if (!key || !t.accountId) return null;
       const same = byMerchantAccount.get(`${key}|${t.accountId}`) ?? [];
-      const own = same.find(
-        (c) =>
-          c.transactionIds.length === 0 ||
-          (t.date !== undefined &&
-            c.firstChargeDate !== null &&
-            c.lastChargeDate !== null &&
-            (t.date < c.firstChargeDate || t.date > c.lastChargeDate)),
-      );
+      const spans = (c: RecurringCharge) =>
+        c.firstChargeDate !== null && c.lastChargeDate !== null && t.date !== undefined;
+      const inside = (c: RecurringCharge) =>
+        spans(c) && t.date! >= c.firstChargeDate! && t.date! <= c.lastChargeDate!;
+      // Inside any stream's own days of this merchant and account, a payment that isn't one of
+      // its transactions is a one-off (a second plan's run covers the days of the first's).
+      if (same.some(inside)) return null;
+      const own = same.find((c) => c.transactionIds.length === 0 || spans(c));
       return own ? markOf(own) : null;
     },
     forMerchant: (merchant) => {
