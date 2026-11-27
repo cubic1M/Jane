@@ -318,7 +318,13 @@ async function noticeFacts(
         const line = `${t.description} ${t.merchantName ?? ""}`;
         // A payment whose line names another tax year ("USATAXPYMT 2025") is for that year's
         // balance: it is not counted toward this notice's.
-        const named = [...line.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+        // A year inside a date ("PAYMENT DATE 2026-10-06", "10/06/2026") says when it was paid,
+        // not which year it is for.
+        const named = [
+          ...line
+            .replace(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ")
+            .matchAll(/\b(20\d{2})\b/g),
+        ].map((m) => Number(m[1]));
         if (named.length > 0 && !named.includes(year)) return false;
         // A federal notice counts federal payments; a state one counts only lines that name a
         // state tax agency, never every payment that is not federal.

@@ -17,7 +17,13 @@ import { todayOf } from "@/lib/today";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+// Jane keeps no record of the household for a past year (no snapshot), so a review of one reads it
+// as it is today; said once, in plain words, with the review.
+export const householdAsToday = (year: number) =>
+  `This uses your household as it is today, because Jane has no record of it for ${year}.`;
+
 export type ReturnReview = Review & {
+  householdNote: string;
   filed: Fields;
   returnId: string;
   amendment: AmendmentView | null;
@@ -98,6 +104,7 @@ export async function loadReturnReviews(
     });
     reviews.push({
       ...review,
+      householdNote: householdAsToday(year),
       filed: r.fields,
       returnId: r.id,
       amendment: amendment

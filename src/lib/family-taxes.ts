@@ -36,6 +36,8 @@ export type FamilyView = {
   choices: FamilyChoice[];
   // What Jane assumed, said plainly.
   assumptions: string[];
+  // Children counted under 17 and no ages recorded: the care credit is held back until they are.
+  agesMissing: boolean;
 };
 
 export type FamilyDetails = {
@@ -81,7 +83,7 @@ export async function loadFamilyTaxes(
     ? [loaded.estimate, loaded.advice]
     : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
   const year = estimate.year;
-  if (!advice) return { year, advice, choices: [], assumptions: [] };
+  if (!advice) return { year, advice, choices: [], assumptions: [], agesMissing: false };
   const db = scopedFor(userId, client);
   const [stored, tags, college] = await Promise.all([
     db.taxProfiles.findFirst({
@@ -100,6 +102,7 @@ export async function loadFamilyTaxes(
   const assumptions: string[] = [];
 
   let children = parseChildren(stored?.familyChildren);
+  let agesMissing = false;
   if (children.length === 0 && college.plans.length > 0) {
     children = college.plans.map((p) => ({
       ageAtYearEnd: p.age,
@@ -114,6 +117,7 @@ export async function loadFamilyTaxes(
     // Ages unknown: known only to be under 17, so the child credit stands and no care credit is
     // worked out from a guessed age.
     children = childrenOrUnknownAges(null, input.childrenUnder17);
+    agesMissing = true;
     assumptions.push(
       "I don't know your children's ages, so I can't tell whether childcare counts for the care credit. Add their ages under family details.",
     );
@@ -172,7 +176,7 @@ export async function loadFamilyTaxes(
           paysOverHalfHome: stored?.paysOverHalfHome ?? false,
         }),
   ].filter((c): c is FamilyChoice => c !== null);
-  return { year, advice, choices, assumptions };
+  return { year, advice, choices, assumptions, agesMissing };
 }
 
 // The family details form. Checked here, whatever the page sent.

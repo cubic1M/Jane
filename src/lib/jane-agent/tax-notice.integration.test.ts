@@ -294,6 +294,8 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
     });
     // Labelled for another year: not this notice's balance.
     await pay("2026-10-07", "IRS USATAXPYMT 2025");
+    // A date in the line is when it was paid, not the year it is for.
+    await pay("2026-10-09", "IRS USATAXPYMT PAYMENT DATE 2026-10-09");
     const reading = (await readTaxNotice(userId, documentId, { client, now: LINKED }))!;
     const notice = (kind: string) => ({
       kind,
@@ -310,6 +312,7 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
     );
     expect(JSON.stringify(federal)).toContain("IRS USATAXPYMT 2024");
     expect(JSON.stringify(federal)).not.toContain("USATAXPYMT 2025");
+    expect(JSON.stringify(federal)).toContain("PAYMENT DATE 2026-10-09");
     const state = await checkNoticeFor(
       userId,
       {

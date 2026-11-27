@@ -136,6 +136,16 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       status: view.incomeKinds.status,
     },
   ];
+  // The care credit needs each child's age, which Jane does not have: asked here, with the form.
+  if (family.agesMissing) {
+    fields.push({
+      key: "child-ages",
+      label: "Children's ages",
+      value: "—",
+      status: "missing",
+      note: "Tell Jane how old each child is, so it can check whether childcare counts for the care credit.",
+    });
+  }
   const newIncome = view.newIncome.map((i) => INCOME_KINDS[i.kind].label.toLowerCase());
   const hasSideIncome = !!sideIncome.rental || sideIncome.platforms.length > 0;
 
