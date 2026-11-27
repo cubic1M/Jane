@@ -55,6 +55,8 @@ export async function correctCategory(
     pfcPrimary: category.primary,
     pfcDetailed: category.detailed,
     categorySource: "user" as const,
+    // Their own category for the row, not an answer to "is cash income" (src/categorize/cash-income.ts).
+    incomePlacement: "edited" as const,
   };
 
   const key = forMerchant ? merchantRuleKey(transaction.description) : null;
@@ -94,6 +96,8 @@ export async function setMerchantCategory(
     pfcPrimary: category.primary,
     pfcDetailed: category.detailed,
     categorySource: "user" as const,
+    // Their own category for the row, not an answer to "is cash income" (src/categorize/cash-income.ts).
+    incomePlacement: "edited" as const,
   };
   await db.merchantCategories.upsert({
     where: { userId_merchantKey: { userId, merchantKey: key } },

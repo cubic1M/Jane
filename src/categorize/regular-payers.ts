@@ -226,6 +226,15 @@ const OPEN_ROWS = {
   OR: [
     { pfcDetailed: null },
     { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } },
+    // Income this pass placed itself, looked at again: the sixth steady credit makes the earlier
+    // five paychecks, which were first read as other income (CodeRabbit sweep part 4, P4-O20).
+    // Not a line that names a person: that is a tenant's rent, never a paycheck.
+    {
+      categorySource: "rule",
+      incomePlacement: "inferred",
+      pfcDetailed: "INCOME_OTHER",
+      NOT: { description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" } },
+    },
     // Regular money by Zelle from someone: a tenant's rent, not a move of their own (debugger
     // 11-02). The rules call all of it a transfer. Moves of their own are left out below.
     {
@@ -234,6 +243,12 @@ const OPEN_ROWS = {
       description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
     },
   ],
+} satisfies Prisma.TransactionWhereInput;
+
+// Rows this pass placed itself as other income: looked at again for a paycheck, but a write that
+// would only put them back where they are leaves them alone (and is not counted as a change).
+const NOT_PLACED_BY_THIS_PASS = {
+  OR: [{ incomePlacement: null }, { incomePlacement: { not: "inferred" } }],
 } satisfies Prisma.TransactionWhereInput;
 
 // Runs with the cash deposits, after an import, a bank sync and each night, before detection.
@@ -265,8 +280,8 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
   let extrasChanged = 0;
   if (extras.length > 0) {
     const done = await db.transactions.updateMany({
-      where: { AND: [{ id: { in: extras } }, OPEN_ROWS] },
-      data: { ...INCOME, categorySource: "rule" },
+      where: { AND: [{ id: { in: extras } }, OPEN_ROWS, NOT_PLACED_BY_THIS_PASS] },
+      data: { ...INCOME, categorySource: "rule", incomePlacement: "inferred" },
     });
     extrasChanged = done.count;
   }
@@ -296,16 +311,16 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
   const [salary, other, contractor] = await Promise.all([
     db.transactions.updateMany({
       where: { AND: [{ id: { in: pay.paychecks } }, OPEN_ROWS] },
-      data: { ...SALARY, categorySource: "rule" },
+      data: { ...SALARY, categorySource: "rule", incomePlacement: "inferred" },
     }),
     db.transactions.updateMany({
-      where: { AND: [{ id: { in: regular } }, OPEN_ROWS] },
-      data: { ...INCOME, categorySource: "rule" },
+      where: { AND: [{ id: { in: regular } }, OPEN_ROWS, NOT_PLACED_BY_THIS_PASS] },
+      data: { ...INCOME, categorySource: "rule", incomePlacement: "inferred" },
     }),
     // Contractor income: what the side-gig fact and the tax estimate read.
     db.transactions.updateMany({
-      where: { AND: [{ id: { in: clients } }, OPEN_ROWS] },
-      data: { ...CLIENT_INCOME, categorySource: "rule" },
+      where: { AND: [{ id: { in: clients } }, OPEN_ROWS, NOT_PLACED_BY_THIS_PASS] },
+      data: { ...CLIENT_INCOME, categorySource: "rule", incomePlacement: "inferred" },
     }),
   ]);
   return extrasChanged + salary.count + other.count + contractor.count;

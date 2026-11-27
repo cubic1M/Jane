@@ -31,6 +31,9 @@ export type DepositRow = {
   amountCents: number;
   pfcDetailed: string | null;
   categorySource: string | null;
+  // transactions.income_placement: "declined" is the person's "not income"; "edited" is their own
+  // category for the row, which is not an answer to that question.
+  incomePlacement?: string | null;
 };
 
 export type CashIncome = { ids: string[]; percent: number };
@@ -56,8 +59,15 @@ const spread = (xs: number[]) => {
 };
 
 // The person said these deposits aren't income.
+// A row from before the marker existed (none) that the person owns is read as their "not income",
+// as it always was; one they set by hand since is not.
 export function saidNotIncome(rows: readonly DepositRow[]): boolean {
-  return rows.some((r) => isDeposit(r) && r.categorySource === "user");
+  return rows.some(
+    (r) =>
+      isDeposit(r) &&
+      r.categorySource === "user" &&
+      (r.incomePlacement === "declined" || !r.incomePlacement),
+  );
 }
 
 // The cash deposits that are income, and how sure, from `months` of statements; null when they
@@ -96,6 +106,7 @@ const SELECT = {
   amountCents: true,
   pfcDetailed: true,
   categorySource: true,
+  incomePlacement: true,
 } as const;
 
 async function loadDeposits(db: Pick<ScopedDb, "transactions">) {
@@ -172,7 +183,7 @@ export async function cashIncomeStatus(
 export async function declineCashIncome(db: Pick<ScopedDb, "transactions">): Promise<number> {
   const { count } = await db.transactions.updateMany({
     where: { categorySource: "cash_income" },
-    data: { ...DEPOSIT, categorySource: "user" },
+    data: { ...DEPOSIT, categorySource: "user", incomePlacement: "declined" },
   });
   return count;
 }
@@ -182,10 +193,12 @@ export async function countCashIncome(db: Pick<ScopedDb, "transactions">): Promi
   await db.transactions.updateMany({
     where: {
       categorySource: "user",
+      // Their "not income", not a category they set by hand.
+      OR: [{ incomePlacement: "declined" }, { incomePlacement: null }],
       amountCents: { lt: 0 },
       pfcDetailed: { in: [...CASH_INCOME_CATEGORIES] },
     },
-    data: { categorySource: "rule" },
+    data: { categorySource: "rule", incomePlacement: null },
   });
   return markCashIncome(db);
 }

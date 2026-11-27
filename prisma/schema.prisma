@@ -820,6 +820,11 @@ model Transaction {
   pfcPrimary         String?         @map("pfc_primary")
   pfcDetailed        String?         @map("pfc_detailed")
   categorySource     CategorySource? @map("category_source")
+  // Who put this deposit where it is, for the passes that sort deposits as income: "inferred"
+  // (the regular-payers pass placed it as income), "declined" (the person said cash deposits are
+  // not income) or "edited" (the person set its category by hand). Null on every row from before it
+  // existed, and on rows no such pass or person touched.
+  incomePlacement    String?         @map("income_placement")
   pending            Boolean         @default(false)
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
