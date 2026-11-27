@@ -393,7 +393,10 @@ export async function settleTransfers(
     // the transfer done and the goal never credited, and the next run skips a completed transfer.
     const completed = await db.transaction(async (tx) => {
       const { count } = await tx.moneyTransfers.updateMany({
-        where: { id: t.id, status: { in: ["pending", "releasing"] } },
+        // A run that took a lease completes only while it still holds it.
+        where: leaseEnd
+          ? { id: t.id, status: "releasing", claimExpiresAt: leaseEnd }
+          : { id: t.id, status: { in: ["pending", "releasing"] } },
         data: { status: "completed", completedAt: now, claimExpiresAt: null },
       });
       if (count === 0) return false;

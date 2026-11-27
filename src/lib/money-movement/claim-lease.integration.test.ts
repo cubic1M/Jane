@@ -138,6 +138,25 @@ describe.runIf(url)("claims on money that moves have a lease", { timeout: 60_000
     expect(after.claimExpiresAt?.getTime()).toBe(newHolder.getTime());
   });
 
+  it("does not complete a transfer whose claim another run took over while this one waited on the partner", async () => {
+    const row = await transfer("STALE2", PAST);
+    const newHolder = new Date(NOW.getTime() + CLAIM_LEASE_MS * 2);
+    const slow: MoneyMovementPartner = {
+      ...partner,
+      async settled() {
+        await client.moneyTransfer.update({
+          where: { id: row.id },
+          data: { claimExpiresAt: newHolder },
+        });
+        return true;
+      },
+    };
+    await settleTransfers(userId, { client, now: NOW, partner: slow });
+    const after = await client.moneyTransfer.findUniqueOrThrow({ where: { id: row.id } });
+    expect(after.status).toBe("releasing");
+    expect(after.claimExpiresAt?.getTime()).toBe(newHolder.getTime());
+  });
+
   it("stops a second tap on a plan a tap is still moving, and finishes one whose tap died", async () => {
     const live = await plan("paycheck:live", AHEAD);
     await expect(movePaycheckPlan(userId, live.id, { client, now: NOW, partner })).rejects.toThrow(
