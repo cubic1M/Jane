@@ -60,7 +60,7 @@ function walk(v: unknown, path: string, visit: (path: string, n: number) => void
 
 // The groups that carry a note today, by year, and why: a change to a list is a deliberate one.
 const EXPECTED_NOTES: Record<number, string[]> = {
-  2025: ["savers", "saversMatch", "rothCatchUp", "withholding"],
+  2025: ["savers", "saversMatch", "rothCatchUp"],
   2026: [
     "eitc",
     "selfEmployment",
@@ -77,7 +77,7 @@ const EXPECTED_NOTES: Record<number, string[]> = {
 };
 // The groups not read at a primary source (D6: a rule needing one shows no figure).
 const EXPECTED_UNCONFIRMED: Record<number, string[]> = {
-  2025: ["withholding"],
+  2025: [],
   2026: ["medical"],
 };
 

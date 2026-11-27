@@ -174,10 +174,7 @@ export const US_2025: FederalParams = {
     {
       source: "https://www.irs.gov/pub/irs-prior/p15t--2025.pdf",
       where:
-        "Pub. 15-T (2025), Worksheet 1A line 1g and the 2025 Percentage Method Tables, standard withholding rate schedule for single",
-      status: "unconfirmed",
-      verify:
-        "Not read at the source on 2026-11-27: the 2025 edition's PDF has no readable text for the tables. The 2026 edition was read ($8,600 and a $7,500 band, together the 2026 standard deduction of $16,100). For 2025 the band is $6,400 so that the two equal the 2025 standard deduction in Rev. Proc. 2024-40 ($15,000). Read the 2025 tables and set the status to verified.",
+        "Pub. 15-T (2025): Worksheet 1A line 1g ($8,600 if the taxpayer is not married filing jointly, page 9) and the 2025 Percentage Method Tables, STANDARD Withholding Rate Schedules, Single or Married Filing Separately: 0% on $0 to $6,400, 10% from $6,400 to $18,325 (page 11). Read 2026-11-27 from the PDF's text (macOS PDFKit). The two add to $15,000, the 2025 standard deduction in Rev. Proc. 2024-40, which is what the publication's tables were built on (the later law raised the 2025 standard deduction to $15,750; Pub. 15-T 2025 was not reissued with it)",
     },
   ),
   capitalLoss: cited(
