@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransiti
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
-import { DONE_ACTION, REVERT_ACTION } from "@/lib/jane-agent/choices";
+import { ALREADY_ANSWERED, DONE_ACTION, REVERT_ACTION } from "@/lib/jane-agent/choices";
 import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
 import {
   goneServerSnapshot,
@@ -60,6 +60,9 @@ if (typeof window !== "undefined") {
     }, 1_000);
   });
 }
+
+// A refused tap keeps its card, unless the message was answered already: nothing is left to tap.
+export const refusalKeepsCard = (error: string) => error !== ALREADY_ANSWERED;
 
 const STUDENT_NEXT_ACTION = "student.next";
 
@@ -207,6 +210,8 @@ export function SuggestionCards({
   const [unsent, setUnsent] = useState<readonly string[]>([]);
   // The server's own words for a tap it refused (a stale step, figures that moved), on that card;
   // "" for a card back on the stack with nothing to say (a student step moved on).
+  // The server's reason it would not bring a put-away card back, on its line.
+  const [notBack, setNotBack] = useState<{ id: string; reason: string } | null>(null);
   const [refused, setRefused] = useState<Readonly<Record<string, string>>>({});
   const cards = useMemo(
     () =>
@@ -236,6 +241,7 @@ export function SuggestionCards({
         unsent={unsent}
         refused={refused}
         putAway={away?.item.id ?? null}
+        putAwayNote={away && notBack?.id === away.item.id ? notBack.reason : null}
         onBringBack={(id) => {
           if (away?.item.id !== id) return;
           const back = away;
@@ -349,12 +355,23 @@ export function SuggestionCards({
       if (back && result?.error) {
         markGone(id);
         setReturned((now) => now.filter((r) => r.item.id !== id));
+        // Said on its line, which stays with the reason and no button.
+        setNotBack({ id, reason: result.error });
+        setAway(back);
       }
       // The server refused the tap (a step that moved on, figures that changed): the card is not
       // done. It stays or comes back with the server's reason, and the page catches up to the
       // latest one. A refused Revert or Done leaves the card as it is.
       // (A refused Bring back is handled above: the card stays put away, as the server has it.)
       if (!back && result.error && actionId !== REVERT_ACTION && actionId !== DONE_ACTION) {
+        // Already answered (in another tab, or the step after the last): nothing is left to tap, so
+        // the card goes, with no button to try again, and the page catches up.
+        if (!refusalKeepsCard(result.error)) {
+          setAway((now) => (now?.item.id === id ? null : now));
+          router.refresh();
+          onAnswered?.();
+          return;
+        }
         unmarkGone(id);
         setAway((now) => (now?.item.id === id ? null : now));
         setRefused((now) => ({ ...now, [id]: result.error! }));

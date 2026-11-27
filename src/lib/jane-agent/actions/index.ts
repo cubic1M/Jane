@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/log";
+import { ALREADY_ANSWERED } from "../choices";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { giveBack, hit } from "@/lib/rate-limit";
@@ -566,7 +567,7 @@ async function takeChatActionWork(
     : undefined;
   const on: readonly string[] = handler ? [handler.on].flat() : [];
   if (handler && !on.includes(message.status)) {
-    throw new ChatActionError("not_open", "This one's already been answered.");
+    throw new ChatActionError("not_open", ALREADY_ANSWERED);
   }
   const action = message.actions.find((a) => a.id === actionId && a.kind !== "link");
   if (!action || !handler) {

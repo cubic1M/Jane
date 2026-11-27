@@ -231,6 +231,7 @@ export function FloatingCards({
   unsent = NONE,
   refused = NO_REASONS,
   putAway = null,
+  putAwayNote = null,
   onBringBack,
 }: {
   cards: FloatingCardData[];
@@ -274,6 +275,9 @@ export function FloatingCards({
   // The card just put away, whose line in its place brings it back (founder, 11-16), and what to
   // do when it's tapped (the caller undoes the put-away on the server).
   putAway?: string | null;
+  // The server's reason it would not bring the card back: said on the line, which then has no
+  // button (trying again would be refused the same way).
+  putAwayNote?: string | null;
   onBringBack?: (id: string) => void;
 }) {
   const [state, setState] = useState(initialState);
@@ -517,19 +521,21 @@ export function FloatingCards({
             data-card-put-away=""
             className="pointer-events-auto mb-2 scroll-mt-14 flex items-center justify-between gap-3 border border-zinc-400 bg-[var(--background)] pl-3 text-sm shadow-sm dark:border-zinc-600"
           >
-            <span>{PUT_AWAY_WORDS}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setHeld(null);
-                setSlide(null);
-                setState((s) => bringBack(s, putAway));
-                onBringBack(putAway);
-              }}
-              className="inline-flex min-h-11 items-center px-3 font-semibold underline underline-offset-2"
-            >
-              {BRING_BACK_LABEL}
-            </button>
+            <span>{putAwayNote ?? PUT_AWAY_WORDS}</span>
+            {putAwayNote === null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setHeld(null);
+                  setSlide(null);
+                  setState((s) => bringBack(s, putAway));
+                  onBringBack(putAway);
+                }}
+                className="inline-flex min-h-11 items-center px-3 font-semibold underline underline-offset-2"
+              >
+                {BRING_BACK_LABEL}
+              </button>
+            )}
           </div>
         )}
         {/* The card and the edges of those behind it, in a box of their own: the edges fill it,

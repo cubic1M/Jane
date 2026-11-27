@@ -426,7 +426,8 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
         advice: true as const,
       },
       actions: deductibleActions(),
-      dedupeKey: `saving:${s.id}`,
+      // The figures are part of the key: when they move, the card for the new ones is posted.
+      dedupeKey: `saving:${s.id}:${termsOf(s)}`,
       priority: MESSAGE_PRIORITY.saving_deductible,
     })),
   ];

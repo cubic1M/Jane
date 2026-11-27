@@ -5,7 +5,14 @@ vi.mock("./actions", () => ({ tapButton: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 import type { MessageView } from "@/lib/jane-agent/view";
-import { SuggestionCards, cardOf, cardParts, stepAfterYes } from "./suggestion-cards";
+import { ALREADY_ANSWERED } from "@/lib/jane-agent/choices";
+import {
+  SuggestionCards,
+  cardOf,
+  cardParts,
+  refusalKeepsCard,
+  stepAfterYes,
+} from "./suggestion-cards";
 
 // The day's suggestions as floating cards (founder request): the short card with Yes and Not
 // now, the details already on the page, and nothing at all with none waiting.
@@ -186,5 +193,19 @@ describe("the step a Yes opens", () => {
     expect(stepAfterYes(null)).toBeNull();
     expect(stepAfterYes({ ...answered([]), error: "That's already been answered." })).toBeNull();
     expect(stepAfterYes(answered([{ label: "Open", href: "/subscriptions" }]))).toBeNull();
+  });
+});
+
+// Pre-deploy walk of 11-27: after the last student step, a stale tab's card stayed with "This one's
+// already been answered." and its button until a reload. That refusal leaves nothing to tap.
+describe("a refused tap", () => {
+  it("takes the card away only when the message was already answered", () => {
+    expect(refusalKeepsCard(ALREADY_ANSWERED)).toBe(false);
+    expect(refusalKeepsCard("That step has already moved on. Open the latest one.")).toBe(true);
+    expect(
+      refusalKeepsCard(
+        "The figures changed since I showed you this. Open it again for the new ones.",
+      ),
+    ).toBe(true);
   });
 });

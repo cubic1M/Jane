@@ -143,6 +143,12 @@ export async function rebuildUploadedBalances(
     select: { id: true, type: true, currentBalanceCents: true },
   });
   let saved = 0;
+  // An uploaded account with no balance (its only statement was removed) has nothing to work back
+  // from: the worked-back rows it kept would still show a change with no transactions to explain
+  // it, in the balance check on Home and Net worth.
+  await db.balanceSnapshots.deleteMany({
+    where: { source: DERIVED_SOURCE, account: { source: "csv", currentBalanceCents: null } },
+  });
   for (const account of accounts) {
     // Worked-back days are made again; the daily copies of today's balance (no source) say nothing
     // the statements don't, and held a stale balance on the days since a newer statement came.

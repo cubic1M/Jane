@@ -77,6 +77,18 @@ export function parseIsoDate(value: string): string | null {
   return match ? parseUsDate(`${match[2]}/${match[3]}/${match[1]}`) : null;
 }
 
+// A currency code written in an amount's own cell ("12.50 EUR"): not US dollars, whatever the
+// file's other columns say. parseAmount strips it, so it is looked for first.
+const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b|([€£¥])/i;
+const SYMBOL_CODE: Record<string, string> = { "€": "EUR", "£": "GBP", "¥": "JPY" };
+export function foreignCurrencyIn(...texts: string[]): string | null {
+  for (const text of texts) {
+    const found = FOREIGN_CODE.exec(text);
+    if (found) return found[1] ? found[1].toUpperCase() : SYMBOL_CODE[found[2]];
+  }
+  return null;
+}
+
 function parseCommon(
   dateText: string,
   amountText: string,
@@ -85,6 +97,9 @@ function parseCommon(
 ) {
   const date = readDate(dateText);
   if (!date) return { ok: false as const, reason: `Unreadable date "${dateText}"` };
+  // A euro amount is not US dollars, not an unreadable one ("EUR 35.00").
+  const foreign = foreignCurrencyIn(amountText);
+  if (foreign) return { ok: false as const, reason: `In ${foreign}, not US dollars` };
   const cents = parseMoneyToCents(amountText);
   if (cents === null) return { ok: false as const, reason: `Unreadable amount "${amountText}"` };
   if (!description.trim()) return { ok: false as const, reason: "Missing description" };
