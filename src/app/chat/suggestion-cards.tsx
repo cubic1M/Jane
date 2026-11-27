@@ -352,8 +352,9 @@ export function SuggestionCards({
         return;
       }
       // Brought back: shown again, even if a refusal of the tap it undoes marked it gone meanwhile
-      // (that tap was queued before this one and came back refused as already answered).
-      if (back && !result.error) unmarkGone(id);
+      // (that tap was queued before this one and came back refused as already answered). Only when no
+      // newer tap for the card is queued behind it: the newest tap decides.
+      if (back && !result.error && sending.current.get(id) === sent) unmarkGone(id);
       // The server wouldn't bring it back (too late): it stays put away, as the server has it.
       if (back && result?.error) {
         markGone(id);
