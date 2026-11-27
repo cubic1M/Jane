@@ -95,4 +95,10 @@ describe("sendSignInEmail", () => {
   it("reduces an address to the one Auth.js sends to", () => {
     expect(addressKey(" Ada@Example.COM,x ")).toBe("ada@example.com");
   });
+
+  it("counts a Gmail address's dots and +tag as one inbox, and no other host's", () => {
+    expect(addressKey("a.d.a+news@gmail.com")).toBe("ada@gmail.com");
+    expect(addressKey("ada@googlemail.com")).toBe("ada@gmail.com");
+    expect(addressKey("a.da@example.com")).toBe("a.da@example.com");
+  });
 });

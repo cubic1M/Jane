@@ -50,3 +50,7 @@ export const DIGEST_CHANGE_KINDS = [
 
 // At most this many lines under "What changed", the surest first.
 export const DIGEST_MAX_CHANGES = 8;
+
+// A weekly email whose send was not confirmed is asked for again, with the same key, for this long
+// (Resend keeps an idempotency key 24 hours); after that it is left and reported, never sent anew.
+export const DIGEST_SENDING_RETRY_MS = 23 * 60 * 60 * 1000;

@@ -1,6 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { SIGN_IN_LINK_HOURS, sendMagicLink } from "./email";
+import { SIGN_IN_LINK_HOURS, sendEmail, sendMagicLink } from "./email";
+
+describe("sendEmail idempotency key", () => {
+  const fetchMock = vi.fn();
+  const mail = { to: "a@b.com", subject: "s", html: "<p>h</p>", text: "t" };
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    vi.stubEnv("EMAIL_FROM", "Jane <hello@app.test>");
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("sends the key as Resend's Idempotency-Key header", async () => {
+    fetchMock.mockResolvedValue(new Response('{"id":"re_1"}', { status: 200 }));
+    await sendEmail({ ...mail, idempotencyKey: "digest-abc" });
+    expect(fetchMock.mock.calls[0][1].headers["Idempotency-Key"]).toBe("digest-abc");
+  });
+
+  it("counts a reused key as already accepted", async () => {
+    fetchMock.mockResolvedValue(
+      new Response('{"name":"invalid_idempotent_request","message":"used"}', { status: 409 }),
+    );
+    await expect(sendEmail({ ...mail, idempotencyKey: "digest-abc" })).resolves.toEqual({
+      id: null,
+    });
+  });
+
+  it("marks a lost answer and a server error as maybe sent, a refusal as not", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("timeout"));
+    await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: true });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 502 }));
+    await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: true });
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 422 }));
+    await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: false });
+  });
+});
 
 const URL_WITH_QUERY = "https://app.test/api/auth/callback/resend?token=abc&email=a%40b.com";
 

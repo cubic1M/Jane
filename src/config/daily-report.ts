@@ -40,6 +40,9 @@ export const DAILY_REPORT_MONTHS = 3;
 export const DAILY_REPORT_MAX_SUGGESTIONS = 3;
 // Changes Jane noticed and alerts raised since the last report, listed at most this many in all.
 export const DAILY_REPORT_MAX_HEADS_UP = 5;
+// How many alerts and changes are read as candidates: a sentence the guardrails leave out must not
+// use up one of the places above, so more are read than are listed (the builder checks, then cuts).
+export const DAILY_REPORT_HEADS_UP_CANDIDATES = 20;
 // The first report looks back this far for alerts and changes (later ones, to the last report).
 export const DAILY_REPORT_FIRST_LOOKBACK_DAYS = 2;
 

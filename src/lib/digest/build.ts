@@ -1,3 +1,4 @@
+import { ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { DIGEST_BUDGET_NEAR_SHARE, DIGEST_MAX_CHANGES } from "@/config/digest";
 import type { CheckStatus } from "@/detection/checkup";
 import { COUNT_ONLY_WHEN_APPROVED, REFUND_FINDING_TYPES } from "@/config/detection";
@@ -18,10 +19,12 @@ export type DigestInput = {
   moneyFoundCents: number;
   // The part of moneyFoundCents that comes back once (a double charge), not every year.
   moneyFoundOnceCents?: number;
-  // "Saved so far": the same total as /jane and Home (savedToDate in
+  // "Saved so far", the yearly part: the same items as /jane and Home (savedItems in
   // src/lib/membership/service.ts), so the email never shows a different number
   // (docs/feature-audit.md, cluster 9).
   savedToDateCents: number;
+  // Money that came back once (a refund): not a yearly figure.
+  savedToDateOnceCents?: number;
   // Whether the membership offer is due (src/lib/membership/offer.ts).
   membershipOffer: boolean;
   actions: {
@@ -80,6 +83,8 @@ export type DigestPlans = {
 export type DigestPayload = {
   savedThisWeekCents: number;
   savedToDateCents: number;
+  // Money that came back once (a refund): not a yearly figure.
+  savedToDateOnceCents?: number;
   moneyFoundCents: number;
   moneyFoundOnceCents?: number;
   finishedThisWeek: { title: string; annualSavingsCents: number | null }[];
@@ -96,6 +101,8 @@ export type DigestPayload = {
   }[];
   // Older payloads have no confidence on alerts, and no changes or checkup.
   alerts: { title: string; percent?: number | null }[];
+  // How many more alerts there were than the email lists (none when all are listed).
+  alertsMore?: number;
   changes?: { title: string; percent: number }[];
   checkup?: DigestCheckup | null;
   membershipOffer: boolean;
@@ -205,6 +212,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   return {
     savedThisWeekCents: total(finishedThisWeek),
     savedToDateCents: input.savedToDateCents,
+    ...(input.savedToDateOnceCents ? { savedToDateOnceCents: input.savedToDateOnceCents } : {}),
     moneyFoundCents: input.moneyFoundCents,
     ...(input.moneyFoundOnceCents ? { moneyFoundOnceCents: input.moneyFoundOnceCents } : {}),
     finishedThisWeek: finishedThisWeek.map(({ title, annualSavingsCents }) => ({
@@ -227,10 +235,11 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
         ? { onlyOnceApproved: true as const }
         : {}),
     })),
-    alerts: alerts.map(({ title, confidencePercent }) => ({
+    alerts: alerts.slice(0, ALERTS_PAGE_LIMIT).map(({ title, confidencePercent }) => ({
       title,
       percent: confidencePercent ?? null,
     })),
+    ...(alerts.length > ALERTS_PAGE_LIMIT ? { alertsMore: alerts.length - ALERTS_PAGE_LIMIT } : {}),
     changes,
     checkup: checkupCounts(input.checkup ?? []),
     membershipOffer: input.membershipOffer,

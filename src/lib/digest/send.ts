@@ -3,8 +3,8 @@ import { log } from "@/lib/log";
 import { actionWorthCents } from "@/lib/saved-amount";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { isHiddenPage } from "@/config/hidden-pages";
-import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
-import { DIGEST_CHANGE_KINDS } from "@/config/digest";
+import { ALERT_TYPES, ALERTS_PAGE_LIMIT, DIGEST_ALERT_MAX_PAGES } from "@/config/alerts";
+import { DIGEST_CHANGE_KINDS, DIGEST_SENDING_RETRY_MS } from "@/config/digest";
 import { moneyFoundParts } from "@/detection/engine";
 import { loadDetectionInput } from "@/detection/input";
 import { alertPrefs } from "@/lib/alerts";
@@ -17,9 +17,9 @@ import { findingSureFacts } from "@/lib/finding-sures";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
-import { offerFor, savedToDate } from "@/lib/membership/service";
+import { offerFor, savedItems } from "@/lib/membership/service";
 import { findingSure } from "@/lib/report-state";
-import { sendEmail } from "@/lib/email";
+import { EmailSendError, sendEmail } from "@/lib/email";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
@@ -66,6 +66,16 @@ type Options = {
   send?: typeof sendEmail;
 };
 
+type AlertRow = {
+  id: string;
+  type: string;
+  key: string;
+  title: string;
+  createdAt: Date;
+  emailedAt: Date | null;
+  confidencePercent: number | null;
+};
+
 const titleOf = (snapshot: unknown) => {
   const card = (snapshot ?? {}) as { title?: unknown; annualSavingsCents?: unknown };
   return {
@@ -102,7 +112,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     // For each finding's "% sure", as /report and /close say it.
     findingSureFacts(db, now, { client }),
     moneyFoundParts(userId, { client }),
-    savedToDate(userId, { client }),
+    savedItems(userId, { client }),
     db.digests.findFirst({
       where: { sentAt: { not: null } },
       orderBy: { sentAt: "desc" },
@@ -127,27 +137,35 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   const prefs = alertPrefs(user?.alertPrefs);
   // Alerts since the last digest that weren't already emailed, and still hold as the dock says
   // (src/lib/jane-agent/still-true.ts): a reminder for a bill due Nov 1 isn't news on Nov 2.
-  const raised = await db.alerts.findMany({
-    where: {
-      type: { in: ALERT_TYPES.filter((t) => prefs[t] !== "off") },
-      createdAt: { gt: last?.sentAt ?? new Date(0) },
-      emailedAt: null,
-    },
-    select: {
-      id: true,
-      type: true,
-      key: true,
-      title: true,
-      createdAt: true,
-      emailedAt: true,
-      confidencePercent: true,
-    },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: ALERTS_PAGE_LIMIT,
-  });
-  // Loaded here: the chat's checks reach most of the app.
   const { alertsThatHold } = await import("@/lib/jane-agent/still-true");
-  const alerts = await alertsThatHold(userId, raised, { client, now });
+  const alerts: Awaited<ReturnType<typeof alertsThatHold<AlertRow>>> = [];
+  // Read in pages by a cursor until none is left: the email shows at most ALERTS_PAGE_LIMIT and
+  // says how many more (build.ts), so an alert past the first page is never left behind sentAt.
+  let cursor: string | undefined;
+  for (let page = 0; page < DIGEST_ALERT_MAX_PAGES; page += 1) {
+    const raised: AlertRow[] = await db.alerts.findMany({
+      where: {
+        type: { in: ALERT_TYPES.filter((t) => prefs[t] !== "off") },
+        createdAt: { gt: last?.sentAt ?? new Date(0) },
+        emailedAt: null,
+      },
+      select: {
+        id: true,
+        type: true,
+        key: true,
+        title: true,
+        createdAt: true,
+        emailedAt: true,
+        confidencePercent: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: ALERTS_PAGE_LIMIT,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    alerts.push(...(await alertsThatHold(userId, raised, { client, now })));
+    if (raised.length < ALERTS_PAGE_LIMIT) break;
+    cursor = raised[raised.length - 1].id;
+  }
   const [plans, concierge] = await Promise.all([
     plansFor(userId, now, client),
     conciergeMode(userId, { client }),
@@ -164,7 +182,9 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     lastSentAt: last?.sentAt ?? null,
     moneyFoundCents: found.cents,
     moneyFoundOnceCents: found.onceCents,
-    savedToDateCents: saved,
+    // A year of savings and money that came back once are two figures, never one sum.
+    savedToDateCents: saved.filter((i) => i.yearly).reduce((sum, i) => sum + i.cents, 0),
+    savedToDateOnceCents: saved.filter((i) => !i.yearly).reduce((sum, i) => sum + i.cents, 0),
     membershipOffer: offer.show,
     actions: actions.map((a) => ({
       status: a.status,
@@ -326,11 +346,25 @@ export async function runDigests({
         continue;
       }
       const db = scopedFor(user.id, client);
-      if (await db.digests.findFirst({ where: { weekStart: week }, select: { id: true } })) {
+      const existing = await db.digests.findFirst({
+        where: { weekStart: week },
+        select: { id: true, sentAt: true, createdAt: true, payload: true },
+      });
+      // A row with no sentAt is a send that was started and not finished (the answer was lost,
+      // or the run stopped). Within the provider's key lifetime it is asked again with the same
+      // key, which cannot make a second email; after that it is left and reported.
+      if (existing?.sentAt) {
         run.alreadySent += 1;
         continue;
       }
-      const payload = await payloadFor(user.id, now, client);
+      if (existing && now.getTime() - existing.createdAt.getTime() > DIGEST_SENDING_RETRY_MS) {
+        log.error("Digest send never confirmed", { userId: user.id, digestId: existing.id });
+        run.failed += 1;
+        continue;
+      }
+      const payload = existing
+        ? (existing.payload as DigestPayload)
+        : await payloadFor(user.id, now, client);
       if (!payload) {
         run.skipped += 1;
         continue;
@@ -342,10 +376,12 @@ export async function runDigests({
         continue;
       }
 
-      const digest = await db.digests.create({
-        data: { userId: user.id, weekStart: week, payload: payload as DigestPayload },
-        select: { id: true },
-      });
+      const digest =
+        existing ??
+        (await db.digests.create({
+          data: { userId: user.id, weekStart: week, payload: payload as DigestPayload },
+          select: { id: true },
+        }));
       // A one-tap link for this week's no-risk items. Its token only goes in the email
       // (and the notification), never in the stored digest.
       // The one-tap go-ahead page (/plan/go) is hidden in the read-only beta.
@@ -374,6 +410,8 @@ export async function runDigests({
         sent = await send({
           to: user.email,
           ...email,
+          // The row's id: a retry of this same digest is one email.
+          idempotencyKey: `digest-${digest.id}`,
           headers: {
             // One-click unsubscribe from the mail app (RFC 8058).
             "List-Unsubscribe": `<${appBase()}/api/unsubscribe?token=${unsubscribeToken(user.id)}>`,
@@ -381,11 +419,15 @@ export async function runDigests({
           },
         });
       } catch (error) {
-        // Remove the row so tomorrow's run tries again (also when the email could not even be
-        // prepared, e.g. a missing signing secret: it was never attempted).
-        await db.digests.deleteMany({ where: { id: digest.id } });
         log.error("Digest email failed", { userId: user.id, error: String(error) });
         run.failed += 1;
+        // The provider may have accepted it: the row stays (sending) and the next run asks again
+        // with the same key. Anything else was never delivered, so the row goes and the next run
+        // starts fresh (also when the email could not even be prepared, e.g. a missing signing
+        // secret).
+        if (!(error instanceof EmailSendError && error.maybeSent)) {
+          await db.digests.deleteMany({ where: { id: digest.id } });
+        }
         continue;
       }
       await db.digests.updateMany({

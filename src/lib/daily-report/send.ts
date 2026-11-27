@@ -4,7 +4,7 @@ import {
   DAILY_REPORT_AHEAD_LIMIT,
   DAILY_REPORT_CHANGE_MEMORY_DAYS,
   DAILY_REPORT_FIRST_LOOKBACK_DAYS,
-  DAILY_REPORT_MAX_HEADS_UP,
+  DAILY_REPORT_HEADS_UP_CANDIDATES,
   DAILY_REPORT_MONTHS,
 } from "@/config/daily-report";
 import { CHAT_NOTIFY_MAX_AGE_HOURS } from "@/config/chat-notify";
@@ -176,7 +176,7 @@ async function reportInputFor(
     },
     select: { title: true, createdAt: true, emailedAt: true, confidencePercent: true },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-    take: DAILY_REPORT_MAX_HEADS_UP,
+    take: DAILY_REPORT_HEADS_UP_CANDIDATES,
   });
   // Changes are the ones no earlier report listed (by key), so one Jane noticed after the last report
   // is new even when its event is dated before it.
@@ -198,7 +198,7 @@ async function reportInputFor(
       })),
     new Set(remembered.flatMap((r) => r.changeKeys)),
     alerts,
-    DAILY_REPORT_MAX_HEADS_UP,
+    DAILY_REPORT_HEADS_UP_CANDIDATES,
   );
 
   const rows = comingUp(coming.bills, coming.deadlines, today, {
@@ -295,12 +295,14 @@ export async function runDailyReports({
         run.alreadySent += 1;
         continue;
       }
+      // The watermark is the newest report's own time. A row that kept no sentAt is a report that
+      // went out but whose time was not recorded (a failed send gives its row back): its claim time
+      // stands in, so what it listed is not listed again.
       const last = await db.dailyReports.findFirst({
-        where: { sentAt: { not: null } },
-        orderBy: { sentAt: "desc" },
-        select: { sentAt: true },
+        orderBy: { createdAt: "desc" },
+        select: { sentAt: true, createdAt: true },
       });
-      const lastSentAt = last?.sentAt ?? null;
+      const lastSentAt = last ? (last.sentAt ?? last.createdAt) : null;
       const token = unsubscribeToken(user.id);
       const links = {
         settings,

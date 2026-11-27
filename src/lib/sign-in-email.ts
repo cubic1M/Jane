@@ -11,7 +11,13 @@ import { hit } from "@/lib/rate-limit";
 // inbox, so they must count against the same limit (a local build sent four links this way).
 export function addressKey(email: string): string {
   const [local, domain = ""] = email.normalize("NFKC").toLowerCase().trim().split("@");
-  return `${local}@${domain.split(",")[0]}`;
+  const host = domain.split(",")[0];
+  // Gmail ignores dots and a +tag in the name, so a.da@ and ada+x@ are one inbox. This is the
+  // counter's key only: the link still goes to the address as typed.
+  if (host === "gmail.com" || host === "googlemail.com") {
+    return `${local.split("+")[0].replaceAll(".", "")}@gmail.com`;
+  }
+  return `${local}@${host}`;
 }
 
 // A hash, so the counter never holds the address.
@@ -49,6 +55,7 @@ export function emailFailureCode(error: unknown): string {
   const status = /Resend rejected the email \((\d{3})\)/.exec(words)?.[1];
   if (status) return `RESEND_${status}`;
   if (words.includes("KILL_EMAIL")) return "EMAIL_PAUSED";
+  if (words.includes("did not answer")) return "EMAIL_TIMEOUT";
   if (words.includes("must be set")) return "EMAIL_NOT_CONFIGURED";
   if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
     return "EMAIL_TIMEOUT";
