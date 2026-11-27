@@ -8,7 +8,12 @@
       "url": "https://www.law.cornell.edu/uscode/text/26/164",
       "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B), read 2026-11-27"
     },
-    "household": { "filingStatus": "married_separate", "childrenUnder17": 0, "otherDependants": 0, "state": null },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
     "income": { "wagesCents": 25000000 },
     "extra": { "stateWithheldCents": 3000000 },
     "expected": { "agi": 25000000, "itemizedStateLocal": 2000000 },
@@ -23,7 +28,12 @@
       "url": "https://www.law.cornell.edu/uscode/text/26/164",
       "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B), read 2026-11-27"
     },
-    "household": { "filingStatus": "married_separate", "childrenUnder17": 0, "otherDependants": 0, "state": null },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
     "income": { "wagesCents": 30000000 },
     "extra": { "stateWithheldCents": 3000000 },
     "expected": { "agi": 30000000, "itemizedStateLocal": 1250000 },
