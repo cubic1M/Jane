@@ -922,6 +922,34 @@ const SWITCH_CATEGORY: Record<string, PfcDetailed> = {
   internet_tv: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
 };
 
+// The checking side of money paid into an investment account (spec step 134): a filled deposit
+// leaves checking on its day. A rollover comes from a past employer's plan, not from checking.
+export function demoDepositTransactions(
+  demo: DemoSeed,
+  orders: readonly { id: string; side: string; ticker: string; amountCents: number; day: string }[],
+  after: string | null,
+  through: string,
+): Transaction[] {
+  return orders.flatMap((o) => {
+    if (o.side !== "deposit" || o.ticker === "ROLLOVER" || o.amountCents <= 0) return [];
+    if ((after !== null && o.day <= after) || o.day > through) return [];
+    return [
+      transaction(
+        {
+          key: `deposit-${o.id}`,
+          account: "checking",
+          name: "TRANSFER TO INVESTMENT ACCOUNT",
+          merchant: null,
+          category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+          amount: o.amountCents / 100,
+        },
+        o.day,
+        demo,
+      ),
+    ];
+  });
+}
+
 export function demoSwitchTransactions(
   demo: DemoSeed,
   switches: DemoSwitch[],

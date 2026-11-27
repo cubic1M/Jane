@@ -15,6 +15,7 @@ import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { inputFor } from "@/profile/sample";
 import { samplePracticeIdeas } from "@/profile/sample-practice";
 import { isTrialUser, startTrial } from "@/lib/trial";
+import { addDemoExtra, linkDemoBank } from "./demo";
 import { syncItem } from "./sync";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
 
@@ -96,5 +97,17 @@ describe.runIf(url)(
         );
       },
     );
+
+    it("takes no extra account for a sample person, whose accounts come from its own life", async () => {
+      const { id } = await client.user.create({
+        data: { email: `extra-${crypto.randomUUID()}@example.com` },
+      });
+      made.push(id);
+      await linkDemoBank(id, { client, now: LINKED, person: "equity" });
+      expect(await addDemoExtra(id, "hsa", { client })).toBeNull();
+      expect(
+        (await client.plaidItem.findFirstOrThrow({ where: { userId: id } })).demoExtras,
+      ).toEqual([]);
+    });
   },
 );

@@ -12,11 +12,13 @@ import {
   type DemoExtra,
   demoAccounts,
   demoLiabilities,
+  demoDepositTransactions,
   demoSwitchTransactions,
   demoTransactions,
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
 import { type DemoSeed } from "@/data-sources/demo/basics";
+import { isPersonSeed } from "@/data-sources/demo/demo-people";
 import { isPersonId, personById, type PersonId } from "@/config/people";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
@@ -149,6 +151,7 @@ export function demoPlaidApi(
   for (const t of [
     ...demoTransactions(demo, linkedThrough, through),
     ...demoSwitchTransactions(demo, switches, linkedThrough, through),
+    ...demoDepositTransactions(demo, orders, linkedThrough, through),
   ]) {
     moved.set(t.account_id, (moved.get(t.account_id) ?? 0) + Math.round(t.amount * 100));
   }
@@ -211,6 +214,7 @@ export function demoPlaidApi(
               : [
                   ...demoTransactions(demo, after, through),
                   ...demoSwitchTransactions(demo, switches, after, through),
+                  ...demoDepositTransactions(demo, orders, after, through),
                 ],
           modified: [],
           removed: [],
@@ -426,9 +430,12 @@ export async function addDemoExtra(
   const db = scopedFor(userId, client);
   const item = await db.plaidItems.findFirst({
     where: MAIN_DEMO_ITEM,
-    select: { id: true, demoExtras: true },
+    select: { id: true, demoExtras: true, accessTokenEncrypted: true },
   });
   if (!item) return null;
+  // A sample person's accounts come from its own life (demo-people.ts), which has no place for
+  // these: storing the extra would report a link that never shows an account.
+  if (isPersonSeed(seedOf(decrypt(item.accessTokenEncrypted)))) return null;
   if (!item.demoExtras.includes(extra)) {
     await db.plaidItems.updateMany({
       where: { id: item.id },

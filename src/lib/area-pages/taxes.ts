@@ -514,12 +514,23 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     );
   if (input.investments) {
     const { washSales, harvest } = input.investments;
+    // The loss-harvest card opens this item, so its figure is said here, worked out once (the
+    // card's own worth, not a second formula), and by the card's own wording (sweep class 11).
+    const harvestCard = (input.suggestions ?? []).find(
+      (x) =>
+        x.topic === "tax_loss_harvest" &&
+        decodeURIComponent(/[?&]focus=([^&#]+)/.exec(x.actionHref)?.[1] ?? "") ===
+          itemId("estimate", "investments"),
+    );
+    const harvestFigure = harvest > 0 && harvestCard ? worthFigure(harvestCard) : undefined;
     estimate.push(
       item("estimate", "investments", {
         label: "Investments",
         status: washSales > 0 || harvest > 0 ? "look" : "good",
-        figure: washSales > 0 ? plural(washSales, "wash sale") : undefined,
-        summary: "Gains and losses from the cost basis your broker reports.",
+        figure: washSales > 0 ? plural(washSales, "wash sale") : harvestFigure,
+        summary: harvestFigure
+          ? `Selling what is down could take about ${harvestFigure.replace("/yr", "")} off this year's tax.`
+          : "Gains and losses from the cost basis your broker reports.",
       }),
     );
   }

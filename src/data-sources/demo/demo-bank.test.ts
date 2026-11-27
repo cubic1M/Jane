@@ -5,6 +5,7 @@ import { normalizeAccount } from "@/data-sources/plaid/plaid-source";
 import { escrowChange } from "@/planning/mortgage";
 import {
   demoAccounts,
+  demoDepositTransactions,
   demoLiabilities,
   demoSwitchTransactions,
   demoTransactions,
@@ -196,5 +197,30 @@ describe("the demo bank after a switch", () => {
     ]);
     const gifts = rows.filter((t) => t.merchant_name === "Etsy").map((t) => t.date.slice(5, 7));
     expect(new Set(gifts)).toEqual(new Set(["11", "12"]));
+  });
+});
+
+describe("money paid into an investment account", () => {
+  const order = (id: string, ticker: string, day: string, side = "deposit") => ({
+    id,
+    side,
+    ticker,
+    amountCents: 25_000,
+    day,
+  });
+  const checking = demoAccounts(DEMO).find((a) => a.subtype === "checking")!.account_id;
+
+  it("leaves checking as a debit on its day, once, and a rollover does not", () => {
+    const orders = [
+      order("o1", "CASH", "2026-10-20"),
+      order("o2", "ROLLOVER", "2026-10-20"),
+      order("o3", "VTI", "2026-10-20", "buy"),
+    ];
+    const made = demoDepositTransactions(DEMO, orders, "2026-10-17", "2026-10-21");
+    expect(made).toHaveLength(1);
+    expect(made[0]).toMatchObject({ account_id: checking, amount: 250, date: "2026-10-20" });
+    // Only the days after the last sync, and nothing future.
+    expect(demoDepositTransactions(DEMO, orders, "2026-10-20", "2026-10-21")).toEqual([]);
+    expect(demoDepositTransactions(DEMO, orders, "2026-10-17", "2026-10-19")).toEqual([]);
   });
 });
