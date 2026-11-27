@@ -165,6 +165,12 @@ export type Connector = {
     signing: WebhookSigning;
     // Reads a body whose signature already checked out. Null for one the connector doesn't know.
     parse: (body: unknown) => WebhookEvent | LinkEvent | null;
+    // For a provider whose signature does not say which document it is about (SignWell's covers the
+    // event's type and time only): the delivery only says there is something to look at, and the
+    // state is read again from the provider's own API before anything acts on it. It returns the
+    // event as that state says it, or throws, which refuses the delivery so the provider sends it
+    // again.
+    confirm?: (event: WebhookEvent) => Promise<WebhookEvent>;
   };
 };
 

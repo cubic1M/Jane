@@ -40,6 +40,20 @@ export async function saveSnaptradeReads(
           closePriceCents: h.priceCents,
           closePriceAsOf: asOf,
         };
+        // A security saved before holdings were keyed by SnapTrade's instrument id was keyed by
+        // ticker: it takes the new key (and keeps its holdings and history) the first time it is
+        // read again, unless the new key already exists.
+        if (
+          !(await tx.securities.findFirst({
+            where: { plaidSecurityId: h.ref },
+            select: { id: true },
+          }))
+        ) {
+          await tx.securities.updateMany({
+            where: { plaidSecurityId: h.tickerRef },
+            data: { plaidSecurityId: h.ref },
+          });
+        }
         const { id: securityId } = await tx.securities.upsert({
           where: { userId_plaidSecurityId: { userId, plaidSecurityId: h.ref } },
           create: { userId, plaidSecurityId: h.ref, ...security },

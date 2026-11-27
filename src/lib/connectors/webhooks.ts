@@ -166,7 +166,11 @@ export async function receiveWebhook(
   // Marked as seen: from here, anything that goes wrong before the event is applied takes the
   // mark off again, so the provider's retry is not taken for a repeat of an event never applied.
   try {
-    return await applyDelivery(connector.id, event, eventId, { client, now });
+    const confirmed =
+      !isLinkEvent(event) && connector.webhook.confirm
+        ? await connector.webhook.confirm(event)
+        : event;
+    return await applyDelivery(connector.id, confirmed, eventId, { client, now });
   } catch (error) {
     await forgetDelivery(connector.id, eventId, client);
     throw error;
