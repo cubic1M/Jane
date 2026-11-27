@@ -3,7 +3,6 @@ import {
   PAYCHECK_BUFFER_MARGIN_CENTS,
   PAYCHECK_CUSHION_CENTS,
   PAYCHECK_FORECAST_DAYS,
-  PAYCHECK_CLAIM_MS,
   PAYCHECK_PLAN_DAYS,
 } from "@/config/money-movement";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -32,6 +31,9 @@ import { isoDay as iso } from "@/lib/dates";
 // on its own where its sector's autopilot allows it and the amount fits the caps (step 141);
 // the rest waits for one tap. Every transfer is on /transfers and can be undone while
 // pending. Only with a partner: the stand-in for demo-bank people, nobody else yet.
+
+// A paycheck plan claimed and not finished within this long is picked up again by the next run.
+const PAYCHECK_CLAIM_MS = 10 * 60 * 1000;
 
 type Options = { client?: PrismaClient; now?: Date; partner?: MoneyMovementPartner | null };
 

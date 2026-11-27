@@ -31,8 +31,6 @@ export const TRANSFER_DELAY_DAYS = 1;
 // never moved.
 export const PAYCHECK_CUSHION_CENTS = 10_000;
 // A paycheck this recent gets a plan; older ones are left alone.
-// A paycheck plan claimed and not finished within this long is picked up again by the next run.
-export const PAYCHECK_CLAIM_MS = 10 * 60 * 1000;
 export const PAYCHECK_PLAN_DAYS = 3;
 // Paychecks in a month, for each goal's share of its monthly amount, when the pay pattern
 // isn't clear.
