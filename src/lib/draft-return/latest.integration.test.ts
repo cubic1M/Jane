@@ -50,7 +50,8 @@ describe.runIf(url)("the latest checked draft return", () => {
     }));
   });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
+    // Never with an unset id: Prisma would drop the filter and delete every person.
+    if (userId) await client.user.deleteMany({ where: { id: userId } });
     await client.$disconnect();
   });
 
