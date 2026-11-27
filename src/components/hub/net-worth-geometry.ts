@@ -226,3 +226,138 @@ export function linePath(values: readonly number[], scale: ChartScale, width: nu
 
 // The one small control's words: what pressing it does.
 export const fitControlWords = (focused: boolean): string => (focused ? "Fit all" : "Focus");
+
+// ---- Where each break's label goes -------------------------------------------------------------
+// A break's label ("+$5,397 on Sep 28") sits near the top of the chart, and the scale's labels sit
+// in the corners: a step in the first or last few days would print the label over a corner figure.
+
+// A box on the chart, in pixels from its top-left corner.
+export type Box = { left: number; top: number; width: number; height: number };
+
+export type StepLabelPlace = {
+  // The label's anchor point across, in pixels: its left edge, its middle or its right edge.
+  x: number;
+  // Its top edge.
+  y: number;
+  anchor: "start" | "middle" | "end";
+  // The box it fills (the width given), for checks.
+  box: Box;
+};
+
+// The break label's text size (11px, no line gap) and padding (4px each side, 2px above and below).
+export const STEP_LABEL_FONT = 11;
+export const STEP_LABEL_H = STEP_LABEL_FONT + 4;
+const STEP_LABEL_PAD_X = 8;
+// The scale labels' text size (10px, no line gap).
+export const SCALE_LABEL_FONT = 10;
+// A digit, "$" or "+" is about 0.6 of the font size wide in the chart's tabular figures, the
+// letters a little less; the estimate leans wide (it would rather drop a label a line than print
+// it over a figure).
+const CHAR_EM = 0.62;
+// Space kept clear around every label, in pixels.
+const LABEL_CLEAR = 2;
+// The space between a break and its label, in pixels.
+export const STEP_LABEL_GAP = 6;
+// How far each row below the first sits, in pixels (the label's height and a little air).
+const ROW = STEP_LABEL_H + 1;
+
+// The width a break label's text takes (padding included), a safe estimate from its length.
+export const stepLabelWidth = (text: string): number =>
+  Math.ceil([...text].length * STEP_LABEL_FONT * CHAR_EM) + STEP_LABEL_PAD_X;
+
+// The width a scale label's text takes.
+export const scaleLabelWidth = (text: string): number =>
+  Math.ceil([...text].length * SCALE_LABEL_FONT * CHAR_EM);
+
+const apart = (a: Box, b: Box): boolean =>
+  a.left + a.width + LABEL_CLEAR <= b.left ||
+  b.left + b.width + LABEL_CLEAR <= a.left ||
+  a.top + a.height + LABEL_CLEAR <= b.top ||
+  b.top + b.height + LABEL_CLEAR <= a.top;
+
+// Where each break's label goes, by rule. `at` is each break's place across (largest step first),
+// `widths` its label's width. For each label, rows from the top (label k starts at row k, so labels
+// stack in step order), and within a row: beside the break on the side with more room (the look
+// when nothing is in the way), then beside it on the other side, then centred on it. Every try is
+// clamped inside the chart, and the first one that touches no corner scale label and no label
+// already placed wins; none in a row, and the next row down is tried. With no row free (a very
+// short chart), the last row on the roomier side.
+export function placeStepLabels(input: {
+  at: readonly number[];
+  widths: readonly number[];
+  width: number;
+  height: number;
+  // The scale labels' boxes (in the corners).
+  corners: readonly Box[];
+}): StepLabelPlace[] {
+  const { at, widths, width, height, corners } = input;
+  const placed: StepLabelPlace[] = [];
+  const clampLeft = (left: number, w: number) => Math.max(0, Math.min(left, width - w));
+  const make = (left: number, top: number, w: number, anchor: StepLabelPlace["anchor"]) => {
+    const box = { left, top, width: w, height: STEP_LABEL_H };
+    const x = anchor === "start" ? left : anchor === "end" ? left + w : left + w / 2;
+    return { x, y: top, anchor, box } satisfies StepLabelPlace;
+  };
+  for (let k = 0; k < at.length; k++) {
+    const a = at[k];
+    // A label wider than the chart is cut to the chart's width (the chart shows it with an ellipsis).
+    const w = Math.min(widths[k], width);
+    const roomier: "start" | "end" = a > width / 2 ? "end" : "start";
+    const beside = (side: "start" | "end", top: number) =>
+      make(
+        clampLeft(side === "end" ? a - STEP_LABEL_GAP - w : a + STEP_LABEL_GAP, w),
+        top,
+        w,
+        side,
+      );
+    const tries = (top: number) => [
+      beside(roomier, top),
+      beside(roomier === "end" ? "start" : "end", top),
+      make(clampLeft(a - w / 2, w), top, w, "middle"),
+    ];
+    const free = (p: StepLabelPlace) =>
+      corners.every((c) => apart(p.box, c)) && placed.every((q) => apart(p.box, q.box));
+    let found: StepLabelPlace | undefined;
+    for (let row = k; !found && row * ROW + STEP_LABEL_H <= height; row++) {
+      found = tries(row * ROW).find(free);
+    }
+    placed.push(found ?? beside(roomier, Math.max(0, height - STEP_LABEL_H)));
+  }
+  return placed;
+}
+
+// The scale labels' boxes as `Scale` draws them (the highest and lowest at the left edge, and at
+// the right edge when steps are taken out), for placeStepLabels. Only labels that are drawn: none
+// while the figures are hidden, and none whose height is off the chart.
+export function scaleLabelBoxes(input: {
+  width: number;
+  height: number;
+  y: (cents: number) => number;
+  left: { high: number; low: number };
+  right: { high: number; low: number } | null;
+  amounts: boolean;
+  text: (cents: number) => string;
+}): Box[] {
+  const { width, height, y, left, right, amounts, text } = input;
+  if (!amounts) return [];
+  const on = (cents: number) => y(cents) >= 0 && y(cents) <= height;
+  const boxes: Box[] = [];
+  const add = (shown: number, top: number, side: "left" | "right") => {
+    const w = scaleLabelWidth(text(shown));
+    boxes.push({
+      left: side === "left" ? 2 : width - 2 - w,
+      top,
+      width: w,
+      height: SCALE_LABEL_FONT,
+    });
+  };
+  const above = (cents: number) => Math.max(0, y(cents) - 12);
+  const below = (cents: number) => y(cents) + 2;
+  if (on(left.high)) add(left.high, above(left.high), "left");
+  if (left.low !== left.high && on(left.low)) add(left.low, below(left.low), "left");
+  if (right && on(left.high) && on(left.low)) {
+    add(right.high, above(left.high), "right");
+    add(right.low, below(left.low), "right");
+  }
+  return boxes;
+}

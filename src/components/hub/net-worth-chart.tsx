@@ -45,10 +45,14 @@ import {
   fitControlWords,
   fitScale,
   linePath,
+  placeStepLabels,
   scaleAt,
+  scaleLabelBoxes,
   sideLabels,
+  stepLabelWidth,
   stepWords,
   type ChartScale,
+  type StepLabelPlace,
 } from "./net-worth-geometry";
 import { dayLabel } from "@/lib/day-label";
 
@@ -91,11 +95,6 @@ const FIT_KEY = "jane:net-worth-fit";
 // The break mark's size where a big step is taken out of the line, in px.
 const BREAK_W = 8;
 const BREAK_H = 20;
-// Each break's label sits this far below the one before it, in px, so two close together don't
-// print over each other.
-const BREAK_LABEL_STAGGER = 14;
-// The space between a break and its label, in px.
-const STEP_MARKER_GAP = 6;
 
 // The scale's own range, eased to each new fit (SCALE_EASE_MS in net-worth-geometry.ts), so
 // zooming or focusing slides the line rather than jumping it. Reduced motion gets each fit at
@@ -558,6 +557,22 @@ export function NetWorthChart({
         k,
       }))
     : [];
+  // Where each break's label goes: never over a scale label, another break's label or off the chart.
+  const stepPlaces = placeStepLabels({
+    at: marks2.map((m) => m.at),
+    widths: marks2.map((m) => stepLabelWidth(m.words)),
+    width,
+    height: H,
+    corners: scaleLabelBoxes({
+      width,
+      height: H,
+      y,
+      left: labels.left,
+      right: labels.right,
+      amounts: figureShown,
+      text: dollars,
+    }),
+  });
 
   const place = open
     ? placeBoxes({
@@ -913,11 +928,8 @@ export function NetWorthChart({
                 <p
                   key={m.k}
                   data-net-worth-step=""
-                  className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
-                  style={{
-                    top: m.k * BREAK_LABEL_STAGGER,
-                    ...stepSide(m.at, width),
-                  }}
+                  className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium overflow-hidden text-ellipsis whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
+                  style={stepStyle(stepPlaces[m.k], width)}
                 >
                   {m.words}
                 </p>
@@ -1071,10 +1083,15 @@ export function NetWorthChart({
 
 type Opened = { kind: "day"; key: string } | { kind: "dot"; index: number; key: string };
 
-// The marker's place across: beside the step, on the side with more room (so it never runs off a
-// phone's screen, and never sits on the line's end).
-function stepSide(at: number, width: number): React.CSSProperties {
-  return at > width / 2 ? { right: width - at + STEP_MARKER_GAP } : { left: at + STEP_MARKER_GAP };
+// The label's place: its anchor edge across (or its middle), and its top, from placeStepLabels.
+function stepStyle(place: StepLabelPlace, width: number): React.CSSProperties {
+  const top = place.y;
+  // Never wider than the room from its anchor to the chart's edge (both edges, centred), so text
+  // wider than its estimate is cut with an ellipsis rather than crossing the chart's edge.
+  if (place.anchor === "start") return { top, left: place.x, maxWidth: width - place.x };
+  if (place.anchor === "end") return { top, right: width - place.x, maxWidth: place.x };
+  const half = Math.min(place.x, width - place.x);
+  return { top, left: place.x, maxWidth: half * 2, transform: "translateX(-50%)" };
 }
 
 // A range chip's days, as a window over the whole history.
