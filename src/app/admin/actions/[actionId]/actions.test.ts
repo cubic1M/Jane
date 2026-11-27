@@ -36,9 +36,9 @@ describe("updateAction", () => {
   it("is admin-only", async () => {
     vi.mocked(requireAdmin).mockRejectedValue(new Error("notFound"));
 
-    await expect(updateAction(null, form({ actionId: "a1", status: "done" }))).rejects.toThrow(
-      "notFound",
-    );
+    await expect(
+      updateAction(null, form({ actionId: "a1", status: "done", revision: "0" })),
+    ).rejects.toThrow("notFound");
     expect(changeActionStatus).not.toHaveBeenCalled();
   });
 
@@ -51,6 +51,7 @@ describe("updateAction", () => {
         minutesSpent: "15",
         notes: "  ",
         assignee: "sam@example.com",
+        revision: "4",
       }),
     );
 
@@ -59,6 +60,7 @@ describe("updateAction", () => {
       expect.objectContaining({ id: "admin_1" }),
       "a1",
       {
+        expectedRevision: 4,
         status: "done",
         assignee: "sam@example.com",
         notes: null,
@@ -72,10 +74,20 @@ describe("updateAction", () => {
   it("shows the queue rule that blocked the change", async () => {
     vi.mocked(changeActionStatus).mockRejectedValue(new ConciergeError("Enter the minutes spent."));
 
-    expect(await updateAction(null, form({ actionId: "a1", status: "done" }))).toEqual({
+    expect(
+      await updateAction(null, form({ actionId: "a1", status: "done", revision: "0" })),
+    ).toEqual({
       ok: false,
       message: "Enter the minutes spent.",
     });
+  });
+
+  it("refuses a save from a screen that did not say which version it showed", async () => {
+    expect(await updateAction(null, form({ actionId: "a1", status: "done" }))).toMatchObject({
+      ok: false,
+      message: expect.stringContaining("Someone changed this action"),
+    });
+    expect(changeActionStatus).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown status", async () => {
@@ -201,7 +213,7 @@ describe("updateAction assignment", () => {
   it("assigns to someone on the team", async () => {
     await updateAction(
       null,
-      form({ actionId: "a1", status: "in_progress", assignee: "sam@example.com" }),
+      form({ actionId: "a1", status: "in_progress", assignee: "sam@example.com", revision: "0" }),
     );
     expect(changeActionStatus).toHaveBeenCalledWith(
       expect.anything(),

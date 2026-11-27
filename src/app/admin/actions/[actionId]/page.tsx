@@ -249,9 +249,11 @@ async function ActionDetail({
         </section>
       ) : (
         <StatusForm
+          key={`${action.id}:${action.revision}`}
           actionId={action.id}
           status={action.status}
           assignee={action.assignee}
+          revision={action.revision}
           team={team}
           replies={replies}
           notes={action.notes}

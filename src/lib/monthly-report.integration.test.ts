@@ -8,6 +8,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import type { sendEmail } from "@/lib/email";
+import { MONTHLY_REPORT_CLAIM_MS } from "@/config/monthly-report";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { healthFor } from "@/lib/health-score";
 import { answerByRules } from "@/lib/jane-agent/answer";
@@ -192,6 +193,49 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(paths.filter(isHiddenPage)).toEqual([]);
     await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     expect(send.mock.calls.filter(([e]) => e.to === email)).toHaveLength(1);
+    await client.account.delete({ where: { id: own.id } });
+  });
+
+  it("does not count a claim as sent: a run that stopped before the send is taken over after the limit, a refusal is given back", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const own = await client.account.create({
+      data: { userId, source: "csv", name: "Own card 2", type: "credit" },
+    });
+    const row = () => client.monthlyReport.findFirstOrThrow({ where: { userId } });
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+
+    // A run took the report a minute ago and stopped: nobody has sent it, nothing says it was.
+    await client.monthlyReport.updateMany({
+      where: { userId },
+      data: { emailedAt: null, claimedAt: new Date(NOW.getTime() - 60_000) },
+    });
+    expect((await runMonthlyReports({ client, now: NOW, send, userIds: [userId] })).sent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+
+    // After the limit the next run takes it over, sends it once and marks it sent.
+    const later = new Date(NOW.getTime() + MONTHLY_REPORT_CLAIM_MS);
+    expect((await runMonthlyReports({ client, now: later, send, userIds: [userId] })).sent).toBe(1);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await row()).toMatchObject({ emailedAt: later });
+
+    // A refusal gives the claim back at once, and the report is not marked sent.
+    await client.monthlyReport.updateMany({
+      where: { userId },
+      data: { emailedAt: null, claimedAt: null },
+    });
+    send.mockRejectedValueOnce(new Error("Resend rejected the email (422)"));
+    await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
+    expect(await row()).toMatchObject({ emailedAt: null, claimedAt: null });
+
+    // A refused send does not clear a claim another run took over while it was sending.
+    const theirs = new Date(NOW.getTime() + 3_600_000);
+    send.mockImplementationOnce(async () => {
+      await client.monthlyReport.updateMany({ where: { userId }, data: { claimedAt: theirs } });
+      throw new Error("Resend rejected the email (422)");
+    });
+    await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
+    expect(await row()).toMatchObject({ emailedAt: null, claimedAt: theirs });
+    await client.monthlyReport.updateMany({ where: { userId }, data: { emailedAt: NOW } });
     await client.account.delete({ where: { id: own.id } });
   });
 
