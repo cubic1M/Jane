@@ -32,10 +32,19 @@ const DAY = 86_400_000;
 const move = (day: string | null | undefined, by: number) =>
   day ? new Date(Date.parse(`${day}T00:00:00Z`) + by * DAY).toISOString().slice(0, 10) : day;
 
-// The same stub for a sample-data person, paid five days before `today` (YYYY-MM-DD).
+// The same stub for a sample-data person, paid five days before `today` (YYYY-MM-DD). Paid a day
+// earlier still when that would start its pay period on the 1st or the 16th: a half-month period
+// starts there, so the stub would read as paid twice a month instead of every two weeks, and the
+// sample's pay frequency would change with the date (pinwheel.integration.test.ts, 11-27).
 export function samplePaystubs(today: string): PinwheelPaystub[] {
-  const by =
+  const base =
     Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse("2020-12-31T00:00:00Z")) / DAY) - 5;
+  const startsOnHalfMonth = (by: number) =>
+    PINWHEEL_DOCS_PAYSTUBS.some((s) => {
+      const day = move(s.pay_period_start, by)?.slice(8);
+      return day === "01" || day === "16";
+    });
+  const by = startsOnHalfMonth(base) ? base - 1 : base;
   return PINWHEEL_DOCS_PAYSTUBS.map((s) => ({
     ...s,
     pay_date: move(s.pay_date, by),
