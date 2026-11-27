@@ -3,6 +3,7 @@ import {
   PAYCHECK_BUFFER_MARGIN_CENTS,
   PAYCHECK_CUSHION_CENTS,
   PAYCHECK_FORECAST_DAYS,
+  PAYCHECK_CLAIM_MS,
   PAYCHECK_PLAN_DAYS,
 } from "@/config/money-movement";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -49,6 +50,25 @@ export type PaycheckPlanView = {
   // Spec step 206: what stayed for bills, the buffer, and went to investing.
   kept: { billsCents: number; bufferCents: number; investingCents: number } | null;
 };
+
+// A transfer this plan already saved for the same move: a retry after a crash reuses it instead of
+// scheduling the money a second time.
+async function savedTransfer(
+  db: ReturnType<typeof scopedFor>,
+  planKey: string,
+  move: Pick<PlannedMove, "purpose" | "toAccountId" | "goalId">,
+) {
+  return db.moneyTransfers.findFirst({
+    where: {
+      planKey,
+      purpose: move.purpose,
+      toAccountId: move.toAccountId ?? null,
+      goalId: move.goalId ?? null,
+      status: { in: ["pending", "awaiting_partner", "completed"] },
+    },
+    select: { id: true },
+  });
+}
 
 const movesOf = (value: Prisma.JsonValue): PlanMove[] =>
   Array.isArray(value) ? (value as unknown as PlanMove[]) : [];
@@ -111,7 +131,10 @@ export async function runPaycheckPlan(
   const key = `paycheck:${paycheck.id}`;
   const db = scopedFor(userId, client);
   const existing = await db.paycheckPlans.findFirst({ where: { key } });
-  if (existing) return viewOf(existing);
+  // A plan another run is still working on is left to it; one claimed and never finished is
+  // picked up again, and the moves it already saved are reused below.
+  if (existing && existing.status !== "claimed") return viewOf(existing);
+  if (existing && now.getTime() - existing.createdAt.getTime() < PAYCHECK_CLAIM_MS) return null;
 
   const checking = loaded.accounts.find((a) => a.type === "depository" && a.subtype === "checking");
   const home = await homeSummary(userId, { client, now });
@@ -165,9 +188,34 @@ export async function runPaycheckPlan(
     })),
     debt,
   });
+  // Claim the paycheck before anything is scheduled: of two runs at once only one gets the row,
+  // and the other stops here instead of scheduling the same moves again.
+  if (!existing) {
+    try {
+      await db.paycheckPlans.create({
+        data: {
+          userId,
+          key,
+          paycheckCents: paycheck.cents,
+          paidOn: new Date(`${paycheck.date}T00:00:00Z`),
+          moves: [],
+          status: "claimed",
+          createdAt: now,
+        },
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2002") return null;
+      throw error;
+    }
+  }
   // Autopilot first: each move its sector allows, within the caps, now.
   const moves: PlanMove[] = [];
   for (const move of plan.moves) {
+    const saved = await savedTransfer(db, key, move);
+    if (saved) {
+      moves.push({ ...move, status: "auto", transferId: saved.id });
+      continue;
+    }
     const allowed = await mayAct(
       userId,
       move.sector,
@@ -203,12 +251,9 @@ export async function runPaycheckPlan(
         : asked === moves.length
           ? "proposed"
           : "partial";
-  const row = await db.paycheckPlans.create({
+  await db.paycheckPlans.updateMany({
+    where: { key, status: "claimed" },
     data: {
-      userId,
-      key,
-      paycheckCents: paycheck.cents,
-      paidOn: new Date(`${paycheck.date}T00:00:00Z`),
       moves: moves as unknown as Prisma.InputJsonArray,
       summary: {
         billsCents: plan.wentTo.billsCents,
@@ -216,9 +261,9 @@ export async function runPaycheckPlan(
         investingCents: plan.wentTo.investingCents,
       },
       status,
-      createdAt: now,
     },
   });
+  const row = await db.paycheckPlans.findFirstOrThrow({ where: { key } });
   return viewOf(row);
 }
 
@@ -258,36 +303,59 @@ export async function movePaycheckPlan(
   if (!row || (row.status !== "proposed" && row.status !== "partial")) {
     throw new PaycheckError("That paycheck's plan was already answered.");
   }
+  // Claim the answer before scheduling anything: a second Move, or a Skip, now finds the plan
+  // taken and stops.
+  const claimed = await db.paycheckPlans.updateMany({
+    where: { id: planId, status: row.status },
+    data: { status: "moving" },
+  });
+  if (claimed.count === 0) throw new PaycheckError("That paycheck's plan was already answered.");
   const moves = movesOf(row.moves);
   const done: PlanMove[] = [];
   // What this tap did, apart from what autopilot had already moved.
   const scheduled: PlanMove[] = [];
   const skipped: PlanMove[] = [];
-  for (const move of moves) {
-    if (move.status !== "asked") {
-      done.push(move);
-      continue;
+  try {
+    for (const move of moves) {
+      if (move.status !== "asked") {
+        done.push(move);
+        continue;
+      }
+      const saved = await savedTransfer(db, row.key, move);
+      if (saved) {
+        const moved: PlanMove = { ...move, status: "moved", transferId: saved.id };
+        done.push(moved);
+        scheduled.push(moved);
+        continue;
+      }
+      try {
+        const { id } = await scheduleTransfer(
+          userId,
+          { ...move, amountCents: move.cents, planKey: row.key },
+          "person",
+          {
+            client,
+            now,
+            partner,
+          },
+        );
+        const moved: PlanMove = { ...move, status: "moved", transferId: id };
+        done.push(moved);
+        scheduled.push(moved);
+      } catch (error) {
+        if (!(error instanceof TransferError)) throw error;
+        const left: PlanMove = { ...move, status: "skipped" };
+        done.push(left);
+        skipped.push(left);
+      }
     }
-    try {
-      const { id } = await scheduleTransfer(
-        userId,
-        { ...move, amountCents: move.cents, planKey: row.key },
-        "person",
-        {
-          client,
-          now,
-          partner,
-        },
-      );
-      const moved: PlanMove = { ...move, status: "moved", transferId: id };
-      done.push(moved);
-      scheduled.push(moved);
-    } catch (error) {
-      if (!(error instanceof TransferError)) throw error;
-      const left: PlanMove = { ...move, status: "skipped" };
-      done.push(left);
-      skipped.push(left);
-    }
+  } catch (error) {
+    // Open the plan again for a retry; a move already saved is found and reused then.
+    await db.paycheckPlans.updateMany({
+      where: { id: planId, status: "moving" },
+      data: { status: row.status },
+    });
+    throw error;
   }
   await db.paycheckPlans.updateMany({
     where: { id: planId },
@@ -351,7 +419,11 @@ export async function latestPaycheckPlan(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<PaycheckPlanView | null> {
   const row = await scopedFor(userId, client).paycheckPlans.findFirst({
-    where: { paidOn: { gte: new Date(`${addDays(iso(now), -PAYCHECK_PLAN_DAYS * 3)}T00:00:00Z`) } },
+    where: {
+      paidOn: { gte: new Date(`${addDays(iso(now), -PAYCHECK_PLAN_DAYS * 3)}T00:00:00Z`) },
+      // A plan still being worked out is not one to show.
+      status: { not: "claimed" },
+    },
     orderBy: { paidOn: "desc" },
   });
   return row ? viewOf(row) : null;

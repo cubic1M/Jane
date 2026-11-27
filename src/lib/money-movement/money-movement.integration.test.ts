@@ -24,7 +24,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { moneyPartnerFor } from "./partner";
-import { movePaycheckPlan, runPaycheckPlan, undoPaycheckPlan } from "./paycheck";
+import { movePaycheckPlan, runPaycheckPlan, skipPaycheckPlan, undoPaycheckPlan } from "./paycheck";
 import {
   TransferError,
   cancelTransfer,
@@ -150,6 +150,89 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     await expect(
       cancelTransfer(userId, transfer.id, { client, now: NEXT_DAY }),
     ).rejects.toBeInstanceOf(TransferError);
+  });
+
+  it("two runs for one paycheck at once schedule each move once", async () => {
+    const userId = await demoPerson("money-twice");
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const [a, b] = await Promise.all([
+      runPaycheckPlan(userId, { client, now: LINKED }),
+      runPaycheckPlan(userId, { client, now: LINKED }),
+    ]);
+    const plan = (a ?? b)!;
+    expect(plan.moves.filter((m) => m.status === "auto").length).toBeGreaterThan(0);
+    expect(await client.moneyTransfer.count({ where: { userId } })).toBe(
+      plan.moves.filter((m) => m.status === "auto").length,
+    );
+    expect(await client.paycheckPlan.count({ where: { userId } })).toBe(1);
+  });
+
+  it("a run that stopped after scheduling is picked up again without scheduling twice", async () => {
+    const userId = await demoPerson("money-resume");
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const first = (await runPaycheckPlan(userId, { client, now: LINKED }))!;
+    const transfers = await client.moneyTransfer.count({ where: { userId } });
+    expect(transfers).toBeGreaterThan(0);
+    // The run died before it saved the plan: the claim is all that is left.
+    await client.paycheckPlan.updateMany({
+      where: { userId },
+      data: { status: "claimed", moves: [] },
+    });
+    const later = new Date(LINKED.getTime() + 3_600_000);
+    const again = (await runPaycheckPlan(userId, { client, now: later }))!;
+    expect(await client.moneyTransfer.count({ where: { userId } })).toBe(transfers);
+    expect(again.id).toBe(first.id);
+    expect(again.status).toBe(first.status);
+    expect(again.moves.map((m) => m.transferId)).toEqual(first.moves.map((m) => m.transferId));
+  });
+
+  it("an Undo that lands while a transfer is being released to the partner is refused", async () => {
+    const userId = await demoPerson("money-release");
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const plan = (await runPaycheckPlan(userId, { client, now: LINKED }))!;
+    const transferId = plan.moves.find((m) => m.transferId)!.transferId!;
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => (open = resolve));
+    let releasing!: () => void;
+    const started = new Promise<void>((resolve) => (releasing = resolve));
+    const partner = {
+      name: "queue",
+      simulated: true,
+      schedule: async () => ({ partnerRef: "q-1" }),
+      cancel: async () => true,
+      settled: async () => true,
+      release: async () => {
+        releasing();
+        await gate;
+        return { partnerRef: "real-1" };
+      },
+    };
+    await client.moneyTransfer.update({ where: { id: transferId }, data: { partnerRef: "q-1" } });
+    const settling = settleTransfers(userId, { client, now: NEXT_DAY, partner });
+    await started;
+    await expect(
+      cancelTransfer(userId, transferId, { client, now: NEXT_DAY, partner }),
+    ).rejects.toBeInstanceOf(TransferError);
+    open();
+    expect(await settling).toBeGreaterThanOrEqual(1);
+    const row = await client.moneyTransfer.findUniqueOrThrow({ where: { id: transferId } });
+    expect(row).toMatchObject({ status: "completed", partnerRef: "real-1" });
+  });
+
+  it("Move after a Skip schedules nothing", async () => {
+    const userId = await demoPerson("money-skip");
+    await setSectorAutopilot(userId, "goals", { level: "ask" }, { client, now: LINKED });
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const plan = (await runPaycheckPlan(userId, { client, now: LINKED }))!;
+    await skipPaycheckPlan(userId, plan.id, { client });
+    await expect(movePaycheckPlan(userId, plan.id, { client, now: LINKED })).rejects.toThrow(
+      /already answered/,
+    );
+    expect(await client.moneyTransfer.count({ where: { userId } })).toBe(0);
   });
 
   it("asks with one tap when the area always asks, and Undo works while pending", async () => {

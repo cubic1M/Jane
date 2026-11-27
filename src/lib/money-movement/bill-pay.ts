@@ -58,6 +58,27 @@ export type BillPayView = {
 
 const billKey = (b: Pick<DueBill, "accountId" | "dueOn">) => `bill:${b.accountId}:${b.dueOn}`;
 
+// Words that name any account of a kind rather than one account.
+const GENERIC_ACCOUNT_WORDS = new Set([
+  "card",
+  "credit",
+  "account",
+  "loan",
+  "mortgage",
+  "payment",
+  "auto",
+  "student",
+  "bank",
+  "the",
+  "and",
+]);
+const wordsOf = (text: string) => text.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+const namesAccount = (description: string, accountName: string): boolean => {
+  const named = wordsOf(accountName).filter((w) => !GENERIC_ACCOUNT_WORDS.has(w));
+  const said = new Set(wordsOf(description));
+  return named.some((w) => said.has(w));
+};
+
 async function dueBills(
   userId: string,
   input: DetectionInput,
@@ -89,8 +110,16 @@ async function dueBills(
     if (!account || !l.nextPaymentDueDate) return [];
     const dueOn = day(l.nextPaymentDueDate);
     const category = BILL_PAYMENT_CATEGORIES[l.kind];
+    // Two debts of one kind (two cards): a payment in that category could be for either, so it
+    // counts as this debt's autopay only when its own name says which account it pays.
+    const peers = liabilities.filter((o) => o.kind === l.kind).length;
     const autopay = payments
       .filter((s) => category && s.pfcDetailed === category)
+      .filter(
+        (s) =>
+          peers < 2 ||
+          namesAccount(`${s.merchant} ${s.charges.at(-1)?.description ?? ""}`, account.name),
+      )
       .flatMap((s) =>
         expectedDates(s, input.asOf, dueOn)
           .filter((d) => d > input.asOf && d <= dueOn)
@@ -262,8 +291,14 @@ export async function runBillPay(
   if (!movement) return 0;
   const view = await loadBillPay(userId, { client, now, input });
   let paid = 0;
-  for (const item of view.items) {
-    if (item.status !== "ask") continue;
+  for (const first of view.items) {
+    if (first.status !== "ask") continue;
+    // Earlier payments in this run changed checking's room: ask again for this bill's amount, so
+    // the cap check and the act record use what is paid, not what the first view showed.
+    const item = (await loadBillPay(userId, { client, now, input })).items.find(
+      (i) => i.planKey === first.planKey,
+    );
+    if (!item || item.status !== "ask") continue;
     const allowed = await mayAct(
       userId,
       "bills",
@@ -271,16 +306,28 @@ export async function runBillPay(
       { client, now },
     );
     if (!allowed.ok) continue;
+    let result;
     try {
-      await payBill(userId, item.planKey, "autopilot", { client, now, partner: movement, input });
+      result = await payBill(userId, item.planKey, "autopilot", {
+        client,
+        now,
+        partner: movement,
+        input,
+      });
     } catch (error) {
       if (error instanceof BillPayError) continue;
       throw error;
     }
-    await recordAct(userId, "bills", item.amountCents, `Scheduled the ${item.bill.name} payment`, {
-      client,
-      now,
-    });
+    await recordAct(
+      userId,
+      "bills",
+      result.amountCents,
+      `Scheduled the ${item.bill.name} payment`,
+      {
+        client,
+        now,
+      },
+    );
     paid += 1;
   }
   return paid;

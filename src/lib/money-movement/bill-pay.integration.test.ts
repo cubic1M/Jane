@@ -257,6 +257,38 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
     expect(said.body).toMatch(/ask the lender to move your due date to \w{3} \d+ or later/);
   });
 
+  it("with two cards, a card payment covers only the card its own name says", async () => {
+    const userId = await demoPerson("bills-two-cards");
+    const first = await client.account.findFirstOrThrow({
+      where: { userId, name: "Demo Credit Card" },
+    });
+    const second = await client.account.create({
+      data: {
+        userId,
+        source: first.source,
+        itemId: first.itemId,
+        name: "Other Visa",
+        type: "credit",
+        subtype: "credit card",
+        currentBalanceCents: 120_000,
+      },
+    });
+    await client.liability.create({
+      data: {
+        userId,
+        accountId: second.id,
+        kind: "credit",
+        minimumPaymentCents: 3_500,
+        nextPaymentDueDate: new Date("2026-10-26T00:00:00Z"),
+      },
+    });
+    const view = await loadBillPay(userId, { client, now: LINKED });
+    const status = (name: string) => view.items.find((i) => i.bill.name === name)!.status;
+    // "PAYMENT TO DEMO CARD" says the first card; nothing says the second is covered.
+    expect(status("Demo Credit Card")).toBe("autopay");
+    expect(status("Other Visa")).not.toBe("autopay");
+  });
+
   it("never pays bills for real accounts", async () => {
     const real = await client.user.create({
       data: { email: `bills-real-${crypto.randomUUID()}@example.com` },

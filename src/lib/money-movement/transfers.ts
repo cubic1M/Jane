@@ -198,7 +198,11 @@ export async function settleTransfers(
   if (!movement) return 0;
   const db = scopedFor(userId, client);
   const pending = await db.moneyTransfers.findMany({
-    where: { status: "pending", runOn: { lte: new Date(`${today(now)}T00:00:00Z`) } },
+    // A "releasing" row is one a run claimed and never finished: it is taken up again.
+    where: {
+      status: { in: ["pending", "releasing"] },
+      runOn: { lte: new Date(`${today(now)}T00:00:00Z`) },
+    },
     select: {
       id: true,
       runOn: true,
@@ -215,43 +219,68 @@ export async function settleTransfers(
   let settled = 0;
   for (const t of pending) {
     let partnerRef = t.partnerRef;
-    // Its day has come: a partner that queues in Jane gets it now, past its undo.
+    // Its day has come: a partner that queues in Jane gets it now, past its undo. Claimed first
+    // ("releasing"), so an Undo tap that lands meanwhile finds it no longer undoable instead of
+    // cancelling a row whose transfer is being created at the partner.
     if (movement.release && partnerRef) {
-      const released = await movement.release(partnerRef, {
-        fromAccountId: t.fromAccountId,
-        toAccountId: t.toAccountId,
-        toName: t.toName,
-        amountCents: t.amountCents,
-        runOn: today(t.runOn),
-        memo: t.planKey ?? t.purpose,
+      const claim = await db.moneyTransfers.updateMany({
+        where: { id: t.id, status: { in: ["pending", "releasing"] } },
+        data: { status: "releasing" },
       });
-      if (released.partnerRef !== partnerRef) {
+      if (claim.count === 0) continue;
+      try {
+        const released = await movement.release(partnerRef, {
+          fromAccountId: t.fromAccountId,
+          toAccountId: t.toAccountId,
+          toName: t.toName,
+          amountCents: t.amountCents,
+          runOn: today(t.runOn),
+          memo: t.planKey ?? t.purpose,
+        });
+        if (released.partnerRef !== partnerRef) {
+          await db.moneyTransfers.updateMany({
+            where: { id: t.id, status: "releasing" },
+            data: { partnerRef: released.partnerRef },
+          });
+          partnerRef = released.partnerRef;
+        }
+      } catch (error) {
         await db.moneyTransfers.updateMany({
-          where: { id: t.id, status: "pending" },
-          data: { partnerRef: released.partnerRef },
+          where: { id: t.id, status: "releasing" },
+          data: { status: "pending" },
         });
-        partnerRef = released.partnerRef;
+        throw error;
       }
     }
-    if (!(await movement.settled({ runOn: today(t.runOn), partnerRef }, today(now)))) continue;
-    const { count } = await db.moneyTransfers.updateMany({
-      where: { id: t.id, status: "pending" },
-      data: { status: "completed", completedAt: now },
-    });
-    if (count === 0) continue;
-    settled += 1;
-    if (t.goalId) {
-      const goal = await db.savingsGoals.findFirst({
-        where: { id: t.goalId, accountId: null },
-        select: { manualSavedCents: true },
+    if (!(await movement.settled({ runOn: today(t.runOn), partnerRef }, today(now)))) {
+      await db.moneyTransfers.updateMany({
+        where: { id: t.id, status: "releasing" },
+        data: { status: "pending" },
       });
-      if (goal) {
-        await db.savingsGoals.updateMany({
-          where: { id: t.goalId },
-          data: { manualSavedCents: (goal.manualSavedCents ?? 0) + t.amountCents },
+      continue;
+    }
+    // The completion and the goal's credit commit together: a failure between them would leave
+    // the transfer done and the goal never credited, and the next run skips a completed transfer.
+    const completed = await db.transaction(async (tx) => {
+      const { count } = await tx.moneyTransfers.updateMany({
+        where: { id: t.id, status: { in: ["pending", "releasing"] } },
+        data: { status: "completed", completedAt: now },
+      });
+      if (count === 0) return false;
+      if (t.goalId) {
+        // A hand-tracked goal that has saved nothing yet holds null: start it at zero, then add.
+        await tx.savingsGoals.updateMany({
+          where: { id: t.goalId, accountId: null, manualSavedCents: null },
+          data: { manualSavedCents: 0 },
+        });
+        await tx.savingsGoals.updateMany({
+          where: { id: t.goalId, accountId: null },
+          data: { manualSavedCents: { increment: t.amountCents } },
         });
       }
-    }
+      return true;
+    });
+    if (completed) settled += 1;
   }
   return settled;
 }
