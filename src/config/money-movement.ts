@@ -31,6 +31,11 @@ export const TRANSFER_DELAY_DAYS = 1;
 // reference after this long never reached the partner, and is failed so the move can be retried.
 export const UNSCHEDULED_RESERVATION_MS = 60 * 60 * 1000;
 
+// A run that claims a transfer ("releasing") or a paycheck plan ("moving") holds it this long;
+// past it, the next run takes it over. Longer than the partner's own timeout, so a run still
+// working is not taken from.
+export const CLAIM_LEASE_MS = 10 * 60 * 1000;
+
 // Safe to spend keeps at least this much after any move (spec step 144): money it needs is
 // never moved.
 export const PAYCHECK_CUSHION_CENTS = 10_000;

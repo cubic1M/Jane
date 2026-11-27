@@ -4243,36 +4243,39 @@ model ControllerRun {
 // stand-in until a licensed partner is connected, which moves nothing real. Undoable while
 // pending, until runOn.
 model MoneyTransfer {
-  id            String    @id @default(cuid())
-  userId        String    @map("user_id")
-  fromAccountId String    @map("from_account_id")
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  fromAccountId  String    @map("from_account_id")
   // The person's own account it goes to; null for a payment to someone else (a bill).
-  toAccountId   String?   @map("to_account_id")
-  toName        String    @map("to_name")
-  amountCents   Int       @map("amount_cents")
+  toAccountId    String?   @map("to_account_id")
+  toName         String    @map("to_name")
+  amountCents    Int       @map("amount_cents")
   // goal, debt or bill; the sector whose autopilot caps it counts against.
-  purpose       String
-  sector        String
-  goalId        String?   @map("goal_id")
+  purpose        String
+  sector         String
+  goalId         String?   @map("goal_id")
   // pending, completed, cancelled or failed; awaiting_partner while a big move out of a shared
   // account waits for the other partner's tap (spec step 242), not yet sent to the partner.
-  status        String    @default("pending")
+  status         String    @default("pending")
   // The household partner whose tap let a big move go (spec step 242).
-  approvedById  String?   @map("approved_by_id")
-  runOn         DateTime  @map("run_on") @db.Date
-  partner       String
-  partnerRef    String?   @map("partner_ref")
+  approvedById   String?   @map("approved_by_id")
+  runOn          DateTime  @map("run_on") @db.Date
+  partner        String
+  partnerRef     String?   @map("partner_ref")
   // autopilot or person.
-  by            String
+  by             String
   // What it came from: "paycheck:<transaction id>", "bill:<key>".
-  planKey       String?   @map("plan_key")
+  planKey        String?   @map("plan_key")
   // One transfer for one move of a plan: a second try to schedule the same move finds this row
   // instead of making another. Null for a transfer with no plan, and for every row from before it
   // existed; cleared when the transfer is cancelled or fails, so the move can be scheduled again.
-  uniqueKey     String?   @map("unique_key")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
-  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  uniqueKey      String?   @map("unique_key")
+  // While a run holds this transfer as "releasing": when its hold ends. A hold past its end (or
+  // with none, as on rows from before this existed) is taken over by the next run.
+  claimExpiresAt DateTime? @map("claim_expires_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(3)
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -4297,6 +4300,9 @@ model PaycheckPlan {
   summary       Json?
   status        String   @default("proposed")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // While a tap holds the plan as "moving": when its hold ends; past it, the next tap takes over.
+  claimExpiresAt DateTime? @map("claim_expires_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

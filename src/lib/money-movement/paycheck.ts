@@ -1,4 +1,5 @@
 import {
+  CLAIM_LEASE_MS,
   DEFAULT_PAYCHECKS_PER_MONTH,
   PAYCHECK_BUFFER_MARGIN_CENTS,
   PAYCHECK_CUSHION_CENTS,
@@ -318,14 +319,30 @@ export async function movePaycheckPlan(
 ): Promise<{ moves: PlanMove[]; scheduled: PlanMove[]; skipped: PlanMove[] }> {
   const db = scopedFor(userId, client);
   const row = await db.paycheckPlans.findFirst({ where: { id: planId } });
-  if (!row || (row.status !== "proposed" && row.status !== "partial")) {
+  // A plan a tap left "moving" with its hold past its end (the tap died) is taken over.
+  const heldPastEnd = !row?.claimExpiresAt || row.claimExpiresAt < now;
+  if (
+    !row ||
+    !(
+      row.status === "proposed" ||
+      row.status === "partial" ||
+      (row.status === "moving" && heldPastEnd)
+    )
+  ) {
     throw new PaycheckError("That paycheck's plan was already answered.");
   }
   // Claim the answer before scheduling anything: a second Move, or a Skip, now finds the plan
-  // taken and stops.
+  // taken and stops. The claim is a lease: a second tap while the first still runs stops, and
+  // one after the first has gone quiet takes the plan over.
   const claimed = await db.paycheckPlans.updateMany({
-    where: { id: planId, status: row.status },
-    data: { status: "moving" },
+    where: {
+      id: planId,
+      status: row.status,
+      ...(row.status === "moving"
+        ? { OR: [{ claimExpiresAt: null }, { claimExpiresAt: { lt: now } }] }
+        : {}),
+    },
+    data: { status: "moving", claimExpiresAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
   });
   if (claimed.count === 0) throw new PaycheckError("That paycheck's plan was already answered.");
   const moves = movesOf(row.moves);
@@ -369,14 +386,18 @@ export async function movePaycheckPlan(
     }
     await db.paycheckPlans.updateMany({
       where: { id: planId },
-      data: { moves: done as unknown as Prisma.InputJsonArray, status: "moved" },
+      data: {
+        moves: done as unknown as Prisma.InputJsonArray,
+        status: "moved",
+        claimExpiresAt: null,
+      },
     });
   } catch (error) {
     // Open the plan again for a retry (also when only the final write failed); a move already
     // saved is found and reused then.
     await db.paycheckPlans.updateMany({
       where: { id: planId, status: "moving" },
-      data: { status: row.status },
+      data: { status: row.status, claimExpiresAt: null },
     });
     throw error;
   }

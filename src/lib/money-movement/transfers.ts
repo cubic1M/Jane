@@ -1,4 +1,8 @@
-import { TRANSFER_DELAY_DAYS, UNSCHEDULED_RESERVATION_MS } from "@/config/money-movement";
+import {
+  CLAIM_LEASE_MS,
+  TRANSFER_DELAY_DAYS,
+  UNSCHEDULED_RESERVATION_MS,
+} from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Sector } from "@/config/autopilot-sectors";
 import { addDays } from "@/detection/units";
@@ -321,9 +325,20 @@ export async function settleTransfers(
     // ("releasing"), so an Undo tap that lands meanwhile finds it no longer undoable instead of
     // cancelling a row whose transfer is being created at the partner.
     if (movement.release && partnerRef) {
+      // A claim another run still holds is left to it; one past its end (or with none, as on
+      // rows from before the lease) is taken over, and held again from now.
       const claim = await db.moneyTransfers.updateMany({
-        where: { id: t.id, status: { in: ["pending", "releasing"] } },
-        data: { status: "releasing" },
+        where: {
+          id: t.id,
+          OR: [
+            { status: "pending" },
+            {
+              status: "releasing",
+              OR: [{ claimExpiresAt: null }, { claimExpiresAt: { lt: now } }],
+            },
+          ],
+        },
+        data: { status: "releasing", claimExpiresAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
       });
       if (claim.count === 0) continue;
       try {
@@ -345,7 +360,7 @@ export async function settleTransfers(
       } catch (error) {
         await db.moneyTransfers.updateMany({
           where: { id: t.id, status: "releasing" },
-          data: { status: "pending" },
+          data: { status: "pending", claimExpiresAt: null },
         });
         throw error;
       }
@@ -353,7 +368,7 @@ export async function settleTransfers(
     if (!(await movement.settled({ runOn: today(t.runOn), partnerRef }, today(now)))) {
       await db.moneyTransfers.updateMany({
         where: { id: t.id, status: "releasing" },
-        data: { status: "pending" },
+        data: { status: "pending", claimExpiresAt: null },
       });
       continue;
     }
@@ -362,7 +377,7 @@ export async function settleTransfers(
     const completed = await db.transaction(async (tx) => {
       const { count } = await tx.moneyTransfers.updateMany({
         where: { id: t.id, status: { in: ["pending", "releasing"] } },
-        data: { status: "completed", completedAt: now },
+        data: { status: "completed", completedAt: now, claimExpiresAt: null },
       });
       if (count === 0) return false;
       if (t.goalId) {
