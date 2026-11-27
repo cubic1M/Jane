@@ -14,6 +14,15 @@ describe("health year questions", () => {
     expect(parseInsurance(normalize(text))?.ask).toBe("health_year");
   });
 
+  it("keeps a car or home deductible out of the health plan's year", () => {
+    const read = parseInsurance(normalize("how much is left on my car deductible"));
+    expect(read?.ask).not.toBe("health_year");
+    expect(read?.policyKind).toBe("auto");
+    expect(parseInsurance(normalize("how much have I met of my health deductible"))?.ask).toBe(
+      "health_year",
+    );
+  });
+
   // The direct questions get a short answer (./decisions.ts).
   it.each([
     "how much of my deductible have I met",
