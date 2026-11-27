@@ -262,7 +262,12 @@ async function TaxesContent({
   );
   details[itemId("estimate", "refund")] = <RefundSection refunds={refunds} />;
   details[itemId("estimate", "investments")] = (
-    <InvestmentsSection view={investments} estimate={estimate} advice={advice} />
+    <InvestmentsSection
+      view={investments}
+      estimate={estimate}
+      advice={advice}
+      harvestWorthCents={suggestions.find((x) => x.topic === "tax_loss_harvest")?.worthCents ?? 0}
+    />
   );
 
   details[itemId("records", "forms")] = <FormsCard forms={forms} year={year} />;

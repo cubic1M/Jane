@@ -15,10 +15,13 @@ export function InvestmentsSection({
   view,
   estimate,
   advice,
+  harvestWorthCents = 0,
 }: {
   view: InvestmentTaxesView;
   estimate: TaxEstimateView;
   advice: boolean;
+  // The loss-harvest card's own figure (src/detectors/taxes.ts): said once here, as on the card.
+  harvestWorthCents?: number;
 }) {
   // Nothing to count until what's in the account is known (a typed balance has no cost basis).
   if (view.taxableAccounts === 0 || !view.holdingsKnown) return null;
@@ -54,10 +57,18 @@ export function InvestmentsSection({
       ))}
       {advice && (view.harvest.length > 0 || view.location.length > 0) && (
         <div className="flex flex-col gap-2 border border-zinc-300 p-3 text-sm dark:border-zinc-700">
+          {harvestWorthCents > 0 && view.harvest.length > 0 && (
+            <p>
+              Selling what is down before Dec 31 could take about{" "}
+              {formatWholeDollars(harvestWorthCents)} off this year&apos;s tax, by my estimate.
+            </p>
+          )}
           {view.harvest.map((h) => (
             <p key={h.holding.securityId}>
-              {h.holding.name} is down {formatCents(h.lossCents)}: selling it before Dec 31 would
-              mean about {formatWholeDollars(harvestSaving(h, estimate))} less tax, by my estimate
+              {h.holding.name} is down {formatCents(h.lossCents)}
+              {harvestWorthCents > 0
+                ? ""
+                : `: selling it before Dec 31 would mean about ${formatWholeDollars(harvestSaving(h, estimate))} less tax, by my estimate`}
               {h.washRisk.reinvests ? " (turn off dividend reinvestment first)" : ""}.
             </p>
           ))}

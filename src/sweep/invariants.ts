@@ -805,12 +805,7 @@ const near = (figure: number, shown: readonly { value: number; off: number }[]) 
 // each out of this list once its page says it.
 // None left (debug 3, 11-22: Giving and Family say the charity receipts' and the childcare FSA's
 // cards, figure and working, while they're offered).
-const PAGE_GAPS: Record<string, string> = {
-  // Priya's bond fund (taxes lane: bought dear, now worth less) was overwritten by another lane's
-  // lot until the sample added them up (CodeRabbit sweep part 4); the harvest card now fires, and
-  // the Investments taxes item does not say its tax saving yet.
-  "taxes:tax_loss_harvest": "the Investments taxes item doesn't say the harvest's tax saving",
-};
+const PAGE_GAPS: Record<string, string> = {};
 
 export function cardOpensItsFigure(flat: Flat): string[] {
   return [...suggestionPages(flat), ...policyPages(flat)];
