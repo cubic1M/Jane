@@ -14,7 +14,7 @@ import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadEquityTax } from "@/lib/equity-tax";
-import { loadMultiYear, retireYearProblem } from "@/lib/multi-year";
+import { loadMultiYear, retireYearProblemFor } from "@/lib/multi-year";
 import { yearsReply } from "./multi-year-message";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { propertyReply } from "./property-tax-message";
@@ -193,7 +193,7 @@ export async function answerTaxIntent(
       return yearsReply(await loadMultiYear(userId, { client, now }));
     case "retire_year": {
       // Asked about, never saved on the spot (open O27); a year that can't be used says so now.
-      const problem = retireYearProblem(intent.year, now);
+      const problem = await retireYearProblemFor(userId, intent.year, { client, now });
       if (problem) return { body: problem, refs: {}, actions: [] };
       return setRetireYearReply(intent.year);
     }

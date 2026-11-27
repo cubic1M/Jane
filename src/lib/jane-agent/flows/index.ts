@@ -16,6 +16,7 @@ import type { ActionContext } from "../actions/handler";
 import { monthLabel } from "../replies";
 import { loadSnapshot, type SnapshotFinding } from "../snapshot";
 import { shortName } from "../sources/findings";
+import { sentence } from "../sources/source";
 import type { ChatMessage, MessageAction, MessageRefs } from "../types";
 import type { Answers, FlowContext, FlowDef, FlowId } from "./engine";
 import { shiftMonth } from "@/lib/dates";
@@ -299,7 +300,11 @@ const dispute: FlowDef<DisputeData> = {
       ask: (answers, data) => {
         const finding = data.findings.find((f) => f.findingId === answers.finding);
         return {
-          question: `${finding?.title ?? "That charge"}. ${finding?.savings ?? ""} Should I ask for it back?`,
+          // Each part a sentence of its own: "Could get back about $13.99" had no full stop.
+          question: `${[finding?.title ?? "That charge", finding?.savings ?? ""]
+            .filter((part) => part.trim() !== "")
+            .map(sentence)
+            .join(" ")} Should I ask for it back?`,
           options: [{ label: "Yes, ask for it back", value: "yes" }],
         };
       },

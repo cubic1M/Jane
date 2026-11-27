@@ -97,6 +97,21 @@ describe.runIf(url)("guided flows against a real database", () => {
     ).toEqual([{ name: "A new laptop", targetCents: 150_000 }]);
   });
 
+  // Walk 11-26: a question typed while the goal flow waited for a name became the goal's name.
+  it("does not take a typed question as a goal's name", async () => {
+    const first = await say("start a goal");
+    expect(first.body).toMatch(/1 of 3: What are you saving for/);
+    const asked = await say("How much do you need for what is safe to spend?");
+    expect(asked.body).not.toMatch(/2 of 3/);
+    // Still waiting for a name, or never started: no goal carries the question.
+    expect(
+      await client.savingsGoal.count({ where: { userId, name: { contains: "safe to spend" } } }),
+    ).toBe(0);
+    const resumed = await say("continue");
+    expect(resumed.body).toMatch(/1 of 3: What are you saving for/);
+    await tap(resumed, "Cancel");
+  });
+
   it("changes nothing when cancelled", async () => {
     const before = await client.budget.count({ where: { userId } });
     const first = await say("set up a budget");
@@ -129,6 +144,8 @@ describe.runIf(url)("guided flows against a real database", () => {
     expect(first.body).toMatch(/^Disputing a charge, 1 of 2: Which charge\?/);
     const confirm = await tap(first, first.actions[0].label);
     expect(confirm.body).toMatch(/Should I ask for it back\?$/);
+    // Walk 11-26: "Could get back about $13.99 Should I ask..." had no full stop between.
+    expect(confirm.body).toMatch(/[.!?] Should I ask for it back\?$/);
     const done = await tap(confirm, "Yes, ask for it back");
     expect(done.refs.note).toMatch(/^Got it\. I'll ask for the money back today/);
   });

@@ -9,6 +9,7 @@ import type { OfferedOptions } from "@/lib/option-card";
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
 // by the person.
 
+import { isHiddenPage } from "@/config/hidden-pages";
 import { DEBT_ACTION_IDS } from "./debt-action-ids";
 
 const MESSAGE_KINDS = ["brief", "decision", "done", "heads_up", "reply", "user"] as const;
@@ -415,6 +416,12 @@ export const openLink = (label: string, href: string): MessageAction => ({
   kind: "link",
   href,
 });
+
+// A link to a page the beta shows: none for a hidden page (src/config/hidden-pages.ts), whose link
+// lands on an area page that doesn't show what the link names ("See my tax years" opened Taxes,
+// walk 11-26). Spread it into a list of actions.
+export const shownLink = (label: string, href: string): MessageAction[] =>
+  isHiddenPage(href) ? [] : [openLink(label, href)];
 
 // What a message is about. Every field is optional; each source and action uses its own.
 export type CardExtras = {

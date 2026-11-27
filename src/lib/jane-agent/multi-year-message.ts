@@ -1,7 +1,7 @@
 import type { MultiYearView } from "@/lib/multi-year";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { Move } from "@/planning/multi-year";
-import { openLink, type MessageParts } from "./types";
+import { openLink, shownLink, type MessageParts } from "./types";
 
 // Tax moves over several years in the chat (spec step 220): the move that saves the most
 // (demo advice), and the answer to "my taxes over the years", "Roth conversion".
@@ -14,7 +14,7 @@ export function yearsMoveMessage(view: MultiYearView, move: Move): MessageParts 
     refs: { advice: true, taxYear: view.year, yearsMove: move.key },
     actions: [
       { id: "tax.years_plan", label: "Put it on my plan", kind: "primary" },
-      openLink("See my tax years", YEARS_HREF),
+      ...shownLink("See my tax years", YEARS_HREF),
     ],
   };
 }
@@ -29,10 +29,17 @@ export function yearsReply(view: MultiYearView): MessageParts {
     };
   }
   const first = view.rows[0];
+  const retiresInView = view.rows.some((r) => r.year === view.retireYear);
   const last = view.rows.find((r) => r.year === view.retireYear) ?? view.rows[view.rows.length - 1];
   const lines = [
     `${first.year} (your estimate): ${formatCents(first.totalTaxCents)} of federal tax, at a top rate of ${Math.round(first.marginalRate * 100)}%.`,
-    `${last.year}${view.retireAssumed ? " (when I assumed you retire)" : " (when you retire)"}: about ${formatCents(last.totalTaxCents)}, at a top rate of ${Math.round(last.marginalRate * 100)}%.`,
+    `${last.year}${
+      !retiresInView
+        ? ` (the last year I project; ${view.retireAssumed ? "I assumed you retire" : "you retire"} in ${view.retireYear})`
+        : view.retireAssumed
+          ? " (when I assumed you retire)"
+          : " (when you retire)"
+    }: about ${formatCents(last.totalTaxCents)}, at a top rate of ${Math.round(last.marginalRate * 100)}%.`,
     `About ${formatCents(view.lifetimeTaxCents)} of federal tax over ${view.rows.length} years in all.`,
   ];
   if (view.advice) {
@@ -55,7 +62,7 @@ export function yearsReply(view: MultiYearView): MessageParts {
             },
           ]
         : []),
-      openLink("See my tax years", YEARS_HREF),
+      ...shownLink("See my tax years", YEARS_HREF),
     ],
   };
 }

@@ -73,6 +73,12 @@ describe("typedAnswer", () => {
     expect(typedAnswer("amount", "0")).toBeNull();
     expect(typedAnswer("text", "a new laptop")).toBe("a new laptop");
     expect(typedAnswer("text", "x")).toBeNull();
+    // A question is not a name (walk 11-26).
+    expect(typedAnswer("text", "How much do you need for what is safe to spend??")).toBeNull();
+    expect(typedAnswer("text", "what is my safe to spend")).toBeNull();
+    expect(typedAnswer("text", "Trip?")).toBeNull();
+    expect(typedAnswer("text", "Can opener")).toBe("Can opener");
+    expect(typedAnswer("text", "Emergency fund")).toBe("Emergency fund");
     expect(typedAnswer(undefined, "anything")).toBeNull();
   });
 });
@@ -98,5 +104,30 @@ describe("starting a flow", () => {
     expect(parseIntent("how much is my budget", TODAY).kind).not.toBe("flow");
     expect(parseIntent("my tax profile", TODAY)).toMatchObject({ kind: "tax" });
     expect(parseIntent("my risk profile", TODAY)).toMatchObject({ kind: "investments" });
+  });
+});
+
+// Walk 11-26: "Could get back about $13.99 Should I ask for it back?" had no full stop.
+describe("the dispute flow's confirm question", () => {
+  const ask = async (title: string, savings: string) => {
+    const { FLOWS } = await import("./index");
+    const step = (FLOWS.dispute as FlowDef<never>).steps[1];
+    const finding = { findingId: "f1", title, savings };
+    return step.ask({ finding: "f1" }, { findings: [finding] } as never).question;
+  };
+
+  it("puts a full stop after the saving", async () => {
+    expect(await ask("Netflix charged twice", "Could get back about $13.99")).toBe(
+      "Netflix charged twice. Could get back about $13.99. Should I ask for it back?",
+    );
+  });
+
+  it("keeps punctuation that is already there and skips an empty saving", async () => {
+    expect(await ask("Netflix charged twice.", "Could get back about $13.99.")).toBe(
+      "Netflix charged twice. Could get back about $13.99. Should I ask for it back?",
+    );
+    expect(await ask("Netflix charged twice", "")).toBe(
+      "Netflix charged twice. Should I ask for it back?",
+    );
   });
 });

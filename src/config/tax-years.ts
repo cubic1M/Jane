@@ -18,6 +18,11 @@ export const RETIREMENT_GROWTH_RATE = 0.05;
 // withdrawals run past it, to at most MAX_YEARS.
 export const PROJECTION_YEARS = 10;
 export const MAX_PROJECTION_YEARS = 35;
+// The latest retirement year a person can give: at this age when their age is known, and never more
+// than this many years ahead (a 20-year-old retires after 2060; the projection itself stops at
+// MAX_PROJECTION_YEARS and shows the years it has).
+export const RETIRE_YEAR_LATEST_AGE = 90;
+export const RETIRE_YEAR_MAX_YEARS_AHEAD = 70;
 // Withdrawals from a traditional account start in the retirement year and run this long.
 export const WITHDRAWAL_YEARS = 20;
 // Without a retirement year from the person, Jane assumes this many years ahead.

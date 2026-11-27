@@ -1,7 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { ScenarioRun } from "@/planning/what-if";
 import type { Reply } from "./replies";
-import { openLink } from "./types";
+import { shownLink } from "./types";
 
 // What if (spec step 203) in the chat: one message with the cash picture first, then each
 // sector's own line, then the plan with one button that adopts it. Adopting changes
@@ -49,7 +49,8 @@ export function whatIfReply(run: ScenarioRun | null): Reply {
     actions: [
       { id: "whatif.adopt", label: "Use this plan", kind: "primary" },
       // The months the reply ran for, so the page shows the same run.
-      openLink(
+      // Not drawn while /what-if is hidden: it would land on Plans & goals with no what-if on it.
+      ...shownLink(
         "See the details",
         `/what-if?s=${run.scenario}${run.params.months > 0 ? `&m=${run.params.months}` : ""}`,
       ),
