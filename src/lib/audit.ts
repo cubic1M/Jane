@@ -283,6 +283,9 @@ export type AuditEvent =
   | "accountant_link_revoked"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
+  // A sensitive tax fact written to the household record (src/lib/tax-facts/write.ts): its key and
+  // where it came from, never its value.
+  | "tax_fact_recorded"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
   // a merchant, never which.
   | "tax_tag_changed"
