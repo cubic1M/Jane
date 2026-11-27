@@ -103,6 +103,11 @@ export const FACT_SPECS = [
   // Married filing separately only (Tax T6): whether the spouse itemizes (then the person has no
   // standard deduction, 26 USC 63(c)(6)(A)). Told only; "unsure" reads as not known.
   F("spouse_itemizes", "Your spouse itemizes", "choice", { choices: ["yes", "no", "unsure"] }),
+  // Married filing separately only (Tax T6): lived with the spouse at any time in the year, which sets
+  // the base amount for taxing Social Security benefits (Pub. 915). Told only.
+  F("lived_with_spouse", "You lived with your spouse at some time in the year", "choice", {
+    choices: ["yes", "no", "unsure"],
+  }),
   // At least half time decides the American opportunity credit; an undergraduate is in the first
   // four years it covers. Either is a student for the Saver's Credit.
   F("enrollment", "How you're enrolled in school", "choice", {

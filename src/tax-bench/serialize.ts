@@ -18,7 +18,6 @@ import type { BenchCase } from "./types";
 export const FUTURE_INPUTS: Readonly<Record<string, string>> = {
   qualifyingChildren: "T16",
   medicareWagesCents: "T28",
-  livedWithSpouse: "unowned",
 };
 
 // The estimator's input for a person: whatever is left out is zero, and Social Security wages are the
@@ -80,6 +79,9 @@ const INPUT_KEY_FLAGS: Record<keyof EstimateInput, true> = {
   mortgageInterestCents: true,
   mortgageBalanceCents: true,
   spouseItemizes: true,
+  livedWithSpouse: true,
+  birthDate: true,
+  spouseBirthDate: true,
   charityCents: true,
   medicalCents: true,
   otherStateLocalTaxCents: true,

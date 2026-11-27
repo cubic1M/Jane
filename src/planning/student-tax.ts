@@ -199,7 +199,10 @@ export function studentYearOf(
       t.amountCents < 0 &&
       t.date.startsWith(`${year}-`) &&
       t.date <= data.today &&
-      (t.pfc === "INCOME_GIG_ECONOMY" || t.pfc === "INCOME_CONTRACTOR"),
+      (t.pfc === "INCOME_GIG_ECONOMY" || t.pfc === "INCOME_CONTRACTOR") &&
+      // Pay from a school's payroll is already in `wages` (studentMoney): a bank that files it as
+      // gig or contractor income must not count it a second time.
+      !money.schoolPay.includes(t),
   );
   const said = facts.school_deposit?.value;
   const wages = grossPay(money.wages);

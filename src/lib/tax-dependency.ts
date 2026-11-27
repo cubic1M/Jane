@@ -30,6 +30,13 @@ export const loadToldDependency = (
   options: { client?: PrismaClient } = {},
 ): Promise<boolean | null> => loadToldYesNo(userId, "claimed_as_dependent", options);
 
+// Whether they lived with their spouse at any time in the year ("lived_with_spouse"), asked of a person
+// filing married filing separately who gets Social Security: the base amount is $0 if they did (Pub. 915).
+export const loadToldLivedWithSpouse = (
+  userId: string,
+  options: { client?: PrismaClient } = {},
+): Promise<boolean | null> => loadToldYesNo(userId, "lived_with_spouse", options);
+
 // Whether their spouse itemizes ("spouse_itemizes"), asked of a person who files married filing
 // separately: the standard deduction is then zero for both (26 USC 63(c)(6)(A)).
 export const loadToldSpouseItemizes = (
