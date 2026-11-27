@@ -156,6 +156,22 @@ async function Content() {
               <SignForm year={ret.year} />
             </section>
           )}
+          {current && earlier && earlier.status !== "accepted" && (
+            <section aria-labelledby="earlier" className={CARD_ROOMY}>
+              <h2 id="earlier" className="text-xl font-semibold">
+                Your {earlier.year} return is still open
+              </h2>
+              {earlier.status === "ready_for_review" ? (
+                <SignForm year={earlier.year} />
+              ) : (
+                <p className="text-sm">
+                  {earlier.status === "submitted"
+                    ? `Signed by ${earlier.signerName} and sent. Waiting for it to be accepted.`
+                    : "Rejected: Jane will tell you why."}
+                </p>
+              )}
+            </section>
+          )}
           {!current && season && (
             <section aria-labelledby="start-new" className={CARD_ROOMY}>
               <h2 id="start-new" className="text-xl font-semibold">
