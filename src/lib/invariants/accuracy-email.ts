@@ -34,9 +34,15 @@ export async function sendAccuracyEmail({
   const failing = fresh?.summary.checks.filter((c) => c.failed > 0) ?? [];
   const unreached = fresh ? fresh.summary.notChecked + fresh.summary.errored : 0;
   // Tax T32: a missing or stale tax year rides in this email (names and years only).
-  const tax = taxReady(taxCheckDay(now));
-  const taxLines = tax.state === "ok" ? [] : tax.messages;
-  if (failing.length === 0 && unreached === 0 && taxLines.length === 0) return false;
+  const taxDay = taxCheckDay(now);
+  const tax = taxReady(taxDay);
+  const accuracyReason = failing.length > 0 || unreached > 0;
+  // Less email noise: a tax warning alone is sent on Mondays only (stateless: the weekday of the
+  // check's day). Red is sent every day, and anything rides along when the email goes out anyway.
+  const monday = new Date(`${taxDay}T00:00:00Z`).getUTCDay() === 1;
+  const taxSends = tax.state === "red" || (tax.state === "warning" && monday);
+  const taxLines = tax.state === "ok" || (!accuracyReason && !taxSends) ? [] : tax.messages;
+  if (!accuracyReason && taxLines.length === 0) return false;
   const key = `accuracy:${now.toISOString().slice(0, 10)}`;
   const { count } = await systemDb(WHY, client).healthNotice.createMany({
     data: [{ key, reportedAt: now }],
