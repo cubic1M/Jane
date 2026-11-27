@@ -32,7 +32,7 @@ import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { lawYearFor } from "@/config/tax-params";
-import { filingStatusOf } from "@/planning/student-tax";
+import { filingNoteOf, filingStatusOf } from "@/planning/student-tax";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import { IP_PIN_TOOL_DOWN, ipPinToolOpen } from "@/planning/tax-identity";
@@ -52,8 +52,8 @@ const T = DETECTOR_RATES.tax;
 const annual = (monthly: unknown) => (typeof monthly === "number" ? monthly * 12 : 0);
 const month = (today: string) => Number(today.slice(5, 7));
 
-// The return they file: the filing status they reported, else a joint one for a couple or a family
-// (the household fact) and a single one for anyone else.
+// The return they file: the filing status they reported, else a joint one on a sign of a partner and
+// a single one for anyone else (T8b: head of household is never guessed; see filingStatusFor).
 type Facts = Parameters<typeof filingStatusOf>[0];
 const statusOf = (facts: Facts) => filingStatusOf(facts);
 
@@ -1248,6 +1248,39 @@ const draftReturnCheck: Detector = {
   },
 };
 
+// The cards whose figure turns on how the person files (a bracket, a deduction, a threshold). One
+// who has not said how they file, with children and no sign of a partner, is priced as single: these
+// cards say so, as the estimate does (filingNoteOf).
+const PRICED_BY_STATUS: ReadonlySet<string> = new Set([
+  "withholding_gap",
+  "roth_conversion",
+  "childcare_tax_break",
+  "year_end_moves",
+  "charity_receipts",
+  "tax_loss_harvest",
+  "s_corp_election",
+  "home_office_deduction",
+  "vehicle_deduction",
+  "inherited_ira",
+  "inherited_ira_spread",
+  "disaster_relief",
+  "hsa_over_limit",
+  "medical_deduction",
+  "irmaa_watch",
+  "social_security_tax",
+  "ptc_repayment",
+]);
+const withFilingNote = (d: Detector): Detector =>
+  PRICED_BY_STATUS.has(d.topic)
+    ? {
+        ...d,
+        detect: (ctx) => {
+          const found = d.detect(ctx);
+          return found ? { ...found, why: found.why + filingNoteOf(ctx.profile.facts) } : found;
+        },
+      }
+    : d;
+
 export const TAX_DETECTORS: readonly Detector[] = [
   draftReturnCheck,
   socialSecurityTaxDetector,
@@ -1270,4 +1303,4 @@ export const TAX_DETECTORS: readonly Detector[] = [
   rothConversion,
   childcareTaxBreak,
   identityPin,
-];
+].map(withFilingNote);

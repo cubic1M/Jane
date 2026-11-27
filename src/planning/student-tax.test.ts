@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ESTIMATED_TAX } from "@/config/student-taxes";
-import { federalTaxOf, nextEstimatedDate, standardDeductionOf } from "./student-tax";
+import {
+  ageOf,
+  federalTaxOf,
+  marginalRateFor,
+  nextEstimatedDate,
+  standardDeductionOf,
+} from "./student-tax";
 import { studentMoney } from "./student-money";
 
 // The arithmetic behind the student tax cards (suggest-taxes, 11-18), worked by hand from
@@ -85,5 +91,26 @@ describe("a student's money", () => {
     });
     expect(m.schoolDeposits.map((t) => t.amountCents)).toEqual([-50_000]);
     expect(m.stipendNamed).toBe(true);
+  });
+});
+
+describe("the age reaches the card's tax (T5 deferred item)", () => {
+  // 2026 single: $16,100 standard deduction plus $2,050 at 65 or older (Rev. Proc. 2025-32 4.14),
+  // so tax starts at $18,150, not $16,100.
+  it("adds the extra standard deduction from 65 in the tax and the marginal rate", () => {
+    expect(standardDeductionOf("single", false, 0, 2026, 65)).toBe(1_610_000 + 205_000);
+    expect(federalTaxOf(1_815_000, "single", false, 1_815_000, 2026, 65)).toBe(0);
+    expect(federalTaxOf(1_815_100, "single", false, 1_815_100, 2026, 65)).toBe(10);
+    expect(federalTaxOf(1_815_100, "single", false, 1_815_100, 2026, 64)).toBe(
+      federalTaxOf(1_815_100, "single", false, 1_815_100, 2026),
+    );
+    expect(marginalRateFor(1_700_000, "single", false, 1_700_000, 2026, 65)).toBe(0);
+    expect(marginalRateFor(1_700_000, "single", false, 1_700_000, 2026, 30)).toBe(0.1);
+  });
+
+  it("reads the age only when it is a number", () => {
+    expect(ageOf({ age: { value: 66 } })).toBe(66);
+    expect(ageOf({ age: { value: "66" } })).toBeNull();
+    expect(ageOf({})).toBeNull();
   });
 });

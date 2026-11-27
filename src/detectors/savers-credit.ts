@@ -1,5 +1,5 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { filingStatusWithEarners } from "@/planning/student-tax";
+import { filingNoteOf, filingStatusOf } from "@/planning/student-tax";
 import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
 import { federalParams } from "@/config/tax-params";
 import { SAVERS_CREDIT, SAVERS_MATCH } from "@/config/tax-rates";
@@ -15,8 +15,9 @@ import { dayLabel } from "@/lib/day-label";
 // is the person's. Pure; see ./contract.ts.
 
 // How they file is read as everywhere else (filingStatusOf, src/planning/student-tax.ts, which goes
-// through filingStatusFor): what they said, else a couple, or a family with two earners, files
-// jointly and one earner with children is a head of household (debugger 11-06).
+// through filingStatusFor): what they said, else married filing jointly on a sign of a partner, else
+// single. Head of household is never guessed (T8b; IRS Pub. 501): a person it could fit is priced as
+// single and the card says so (filingNoteOf), as the estimate does.
 
 // The year's income as every income-tested card reads it (yearIncomeOf), so "income near" is one
 // figure (debug 2, upload S6, 11-19).
@@ -40,7 +41,7 @@ const saversCredit: Detector = {
     if (facts.debt_trouble.value === true) return null;
     const agi = agiOf(input, SAVERS_CREDIT.taxYear);
     if (agi <= 0) return null;
-    const status = filingStatusWithEarners(facts);
+    const status = filingStatusOf(facts);
     const limit = SAVERS_CREDIT.agiLimit[status];
     if (agi > limit) return null;
     const people = status === "married_joint" ? 2 : 1;
@@ -74,7 +75,7 @@ const saversCredit: Detector = {
         },
       ]),
       urgency: "later",
-      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${dayLabel(SAVERS_CREDIT.iraDeadline, { long: true, year: true })}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
+      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${dayLabel(SAVERS_CREDIT.iraDeadline, { long: true, year: true })}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.${filingNoteOf(facts)}`,
       action: { label: "See your tax plan", href: "/taxes" },
     });
   },
@@ -96,7 +97,7 @@ const saversMatch: Detector = {
     if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     const agi = agiOf(input);
     if (agi <= 0) return null;
-    const status = filingStatusWithEarners(facts);
+    const status = filingStatusOf(facts);
     const [from, to] = SAVERS_MATCH.phaseOut[status];
     if (agi >= to) return null;
     const people = status === "married_joint" ? 2 : 1;
@@ -126,7 +127,7 @@ const saversMatch: Detector = {
         },
       ]),
       urgency: "later",
-      why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With ${incomeYearOf(data)} income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.`,
+      why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With ${incomeYearOf(data)} income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.${filingNoteOf(facts)}`,
       action: { label: "See your tax plan", href: "/taxes" },
     });
   },

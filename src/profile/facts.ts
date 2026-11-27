@@ -37,6 +37,9 @@ export const FACT_SPECS = [
   F("monthly_income", "Money coming in each month", "cents"),
   F("household", "Your household", "choice", { choices: ["single", "couple", "family"] }),
   F("has_children", "You have children at home", "boolean"),
+  // Seen from a joint account or two employers paying together (the signs the tax estimate takes as a
+  // couple), or told. It decides whether a person who has not said how they file is read as married.
+  F("has_partner", "You share your finances with a partner", "boolean"),
   F("housing", "Where you live", "choice", { choices: ["own", "rent", "unknown"] }),
   F("county", "The county you live in", "text"),
   F("mortgage_rate_bps", "Your mortgage rate", "number", { correctable: false }),

@@ -1,3 +1,4 @@
+import type { FilingStatus } from "@/config/tax";
 import { ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -28,6 +29,7 @@ import {
   type PtcCheck,
 } from "./health-taxes";
 import { marginalRateOf } from "./tax-estimate";
+import { filingStatusOf } from "./student-tax";
 
 // The tax side of health insurance (spec step 269), read from a person's profile and the rows
 // behind it. Pure. The detectors (src/detectors/taxes.ts), the chat and /taxes/health all use
@@ -37,7 +39,7 @@ const T = DETECTOR_RATES.tax;
 
 export type HealthTaxes = {
   year: number;
-  status: "single" | "married_joint";
+  status: FilingStatus;
   householdSize: number;
   // Income for the year from deposits (profit for the self-employed, gross for take-home pay),
   // projected month by month.
@@ -82,8 +84,11 @@ export type HealthTaxes = {
   };
 };
 
-const statusOf = (household: unknown) =>
-  household === "couple" || household === "family" ? "married_joint" : "single";
+// How they file, as every other tax figure reads it (filingStatusOf: what they said, else married
+// filing jointly on a sign of a partner, else single), kept as told: head of household and married
+// filing separately use their own deduction and brackets. The household fact says how many people
+// (below), not how they file.
+const statusOf = (f: Profile["facts"]): FilingStatus => filingStatusOf(f);
 
 export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTaxes {
   const f = profile.facts;
@@ -108,7 +113,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
           ? 1
           : T.netToGross;
   const pace = incomePace(incomeByMonth(data.transactions, year, share), month);
-  const status = statusOf(f.household.value);
+  const status = statusOf(f);
   const adults = status === "married_joint" ? 2 : 1;
   const children = f.household.value === "family" ? T.familyChildren : 0;
   const size = adults + children;
@@ -177,7 +182,10 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   const contributed = useReported ? reported.cents : fromRows;
   const depositCount = useReported ? reported.count : puts.length;
   const projected = Math.round(contributed + (contributed / month) * (12 - month));
-  const family = status === "married_joint";
+  // Cover is not a filing status: a married filer, or a household of a couple or a family, is read as
+  // family cover (the higher limit), as it always was, so a parent filing single keeps it.
+  const family =
+    status === "married_joint" || f.household.value === "couple" || f.household.value === "family";
   const limit = hsaLimitFor(family, toldNumber(f.age.value));
   const excess = hsaExcess({
     contributedCents: contributed,

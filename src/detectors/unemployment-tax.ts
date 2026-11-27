@@ -3,7 +3,14 @@ import { ownLawYear } from "@/config/tax-params";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
 import { formatCents } from "@/lib/money";
 import { sumCents } from "@/planning/student-money";
-import { dependentOf, federalTaxOf, filingStatusOf, studentYearOf } from "@/planning/student-tax";
+import {
+  dependentOf,
+  federalTaxOf,
+  filingNoteOf,
+  filingStatusOf,
+  studentYearOf,
+  ageOf,
+} from "@/planning/student-tax";
 import { rateMonthsOf } from "@/profile/build";
 import { type Detector, type Suggestion, suggestion } from "./contract";
 import { evidence, headlineOf, weakest } from "./helpers";
@@ -68,8 +75,8 @@ const unemploymentTax: Detector = {
     // Unemployment is not earned income; a taxable fellowship is (Pub. 501), for a dependent's limit.
     const earned = other.earnedCents + other.stipendCents;
     const tax =
-      federalTaxOf(base + paid, status, dependent, earned, ownLawYear(year)) -
-      federalTaxOf(base, status, dependent, earned, ownLawYear(year));
+      federalTaxOf(base + paid, status, dependent, earned, ownLawYear(year), ageOf(facts)) -
+      federalTaxOf(base, status, dependent, earned, ownLawYear(year), ageOf(facts));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const ca = facts.home_state.value === "CA" ? " California doesn't tax it (FTB)." : "";
     return suggestion("taxes", "unemployment_tax", {
@@ -83,7 +90,7 @@ const unemploymentTax: Detector = {
         { percent: 55, reason: "I can't see whether 10% is already withheld from it" },
       ]),
       urgency: "later",
-      why: `You've been paid ${formatCents(paid)} of unemployment this year. It counts in federal income (IRS Topic 418): with your other income at its pace, about ${formatCents(tax)} of federal tax. The payer withholds federal tax only when a Form W-4V asks it to, at ${Math.round(UNEMPLOYMENT_W4V_RATE * 100)}% of each payment, and the Form 1099-G in January shows what was paid and withheld.${ca} ${datesLine(profile.today, facts.home_state.value)}`,
+      why: `You've been paid ${formatCents(paid)} of unemployment this year. It counts in federal income (IRS Topic 418): with your other income at its pace, about ${formatCents(tax)} of federal tax. The payer withholds federal tax only when a Form W-4V asks it to, at ${Math.round(UNEMPLOYMENT_W4V_RATE * 100)}% of each payment, and the Form 1099-G in January shows what was paid and withheld.${ca} ${datesLine(profile.today, facts.home_state.value)}${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [
         { label: "IRS: unemployment compensation", href: SOURCES.unemploymentIrs.url },

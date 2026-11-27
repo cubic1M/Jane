@@ -1,5 +1,6 @@
 import { QUESTIONS, UNLOCK, type QuestionSpec } from "@/config/questions";
 import { DETECTORS, runDetectors } from "@/detectors";
+import { filingReadOf } from "@/planning/student-tax";
 import { payingBillUnknown } from "@/detectors/student-money";
 import { buildProfile, type Profile, type ProfileInput, type ProfileTx } from "./build";
 import type { FactKey } from "./facts";
@@ -83,9 +84,12 @@ function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
           ? UNLOCK.ageRetiredCents
           : 0;
     case "filing_status":
+      // Also a person the one guess prices as single beside children (T8b): head of household may
+      // apply to them, and Jane cannot see the facts that decide it (IRS Pub. 501), so it asks.
       return f.income_pattern.value === "uneven" ||
         f.income_pattern.value === "business" ||
-        f.has_stock_plan.value === true
+        f.has_stock_plan.value === true ||
+        filingReadOf(f).assumption !== null
         ? Math.round(annualIncome(profile) * UNLOCK.filingShareOfIncome)
         : 0;
     case "business_structure":

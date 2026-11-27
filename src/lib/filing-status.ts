@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { savePreference } from "@/lib/jane-agent/preferences";
 import { systemDb } from "@/lib/system-db";
+import { listFacts, toldFromFacts } from "@/lib/memory/facts";
 import { factWords } from "@/profile/facts";
 import { filingStatusFor, type FilingRead, type StoredFiling } from "@/planning/tax-profile";
 
@@ -105,6 +106,34 @@ export async function loadFiling(
     : null;
   const told = toldValue ? { value: toldValue, at: toldAt } : null;
   return { told, stored, read: filingStatusFor({ filing_status: told ?? undefined }, stored) };
+}
+
+// Whether the person has told Jane they have a partner: true (a partner, or a household of a
+// couple), false (a household of one), null (not said). The same reading the profile's facts make
+// (a correction on the card wins over what memory holds), for the callers with no profile built,
+// so the estimate and the cards guess a person's filing status from the same word (T8b).
+export async function loadToldPartner(
+  userId: string,
+  { client = defaultClient }: Options = {},
+): Promise<boolean | null> {
+  const db = scopedFor(userId, client);
+  const [prefs, known] = await Promise.all([
+    db.janePreferences.findMany({
+      where: { kind: "fact", key: { in: ["profile:has_partner", "profile:household"] } },
+      select: { key: true, value: true },
+    }),
+    listFacts(userId, { client }),
+  ]);
+  const told = toldFromFacts(known);
+  for (const p of prefs) {
+    const value = valueOf(p.value);
+    if (p.key === "profile:has_partner" && typeof value === "boolean") told.has_partner = value;
+    if (p.key === "profile:household" && typeof value === "string") told.household = value;
+  }
+  if (typeof told.has_partner === "boolean") return told.has_partner;
+  if (told.household === "couple") return true;
+  if (told.household === "single") return false;
+  return null;
 }
 
 // The person's answer, as a told fact (what the question card saves), with the instant it was said.

@@ -12,11 +12,13 @@ import {
   dependentOf,
   federalTaxOf,
   lawYearOf,
+  filingNoteOf,
   filingStatusOf,
   marginalRateFor,
   onStudentVisa,
   studentYearOf,
   yearCoverageMonths,
+  ageOf,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
 import { RESIDENCY_NOTE, residentOnlyAllowed } from "@/planning/tax-engine/residency-gate";
@@ -91,6 +93,7 @@ const educationCredit: Detector = {
       dependent,
       year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
+      ageOf(facts),
     );
     // The refundable 40% isn't paid to a full-time student under 24 with a living parent (Form 8863
     // line 7): only someone known to be 24 or older counts on it (the credit has no upper age).
@@ -147,7 +150,7 @@ const educationCredit: Detector = {
           : []),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(paid)} in tuition to ${nameOf(money.tuition[0]).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately (IRS Pub. 970); tuition a scholarship paid isn't in the figure. ${RESIDENCY_NOTE} The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}`,
+      why: `You paid ${formatCents(paid)} in tuition to ${nameOf(money.tuition[0]).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately (IRS Pub. 970); tuition a scholarship paid isn't in the figure. ${RESIDENCY_NOTE} The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS: Form 8863 instructions", href: SOURCES.form8863.url }],
     });
@@ -186,6 +189,7 @@ const studentLoanInterest: Detector = {
       false,
       year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
+      ageOf(facts),
     );
     // The interest part isn't in a payment. The lender's own year to date, paced to the year by its
     // payments (the ones seen here) or the day it was read; else a year's interest from the balance
@@ -263,7 +267,7 @@ const studentLoanInterest: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });
@@ -331,7 +335,7 @@ const earnedIncomeCreditCard: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `Pay and gig earnings of about ${formatCents(year.earnedCents)} a year at your deposits' pace${year.stipendCents > 0 ? `, with ${formatCents(year.stipendCents)} of fellowship in income (it isn't earned income for this credit, IRS Pub. 596)` : ""}, put the earned income credit for someone without children at about ${formatCents(credit)}: up to ${formatWholeDollars(eitc.maxCredit[0])}, shrinking to nothing at ${formatWholeDollars(end)} of income. It's paid even with no tax owed. It's for ages 25 to 64 at the year's end, a US citizen or resident all year with a valid Social Security number, not someone else's dependent, with no more than ${formatWholeDollars(eitc.investmentIncomeLimit)} of interest and other unearned income (IRS).`,
+      why: `Pay and gig earnings of about ${formatCents(year.earnedCents)} a year at your deposits' pace${year.stipendCents > 0 ? `, with ${formatCents(year.stipendCents)} of fellowship in income (it isn't earned income for this credit, IRS Pub. 596)` : ""}, put the earned income credit for someone without children at about ${formatCents(credit)}: up to ${formatWholeDollars(eitc.maxCredit[0])}, shrinking to nothing at ${formatWholeDollars(end)} of income. It's paid even with no tax owed. It's for ages 25 to 64 at the year's end, a US citizen or resident all year with a valid Social Security number, not someone else's dependent, with no more than ${formatWholeDollars(eitc.investmentIncomeLimit)} of interest and other unearned income (IRS).${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS: who qualifies for the EITC", href: SOURCES.eitcWho.url }],
     });
@@ -382,7 +386,7 @@ const caRentersCredit: Detector = {
             ),
       ]),
       urgency: "later",
-      why: `You paid rent to ${nameOf(rent[0]).replace(/\s+Rent.*$/i, "")} in ${span(profile)}, and ${incomeYearOf(data)} income near ${formatCents(year.agiCents)} is under the ${formatWholeDollars(limit)} limit (the ${CA_RENTERS_CREDIT.limitsYear} return's; 2026's is set later and indexed up). California takes ${formatWholeDollars(credit)} off state income tax for someone who rented in California at least half the year, in a place that isn't exempt from property tax (campus housing usually is), and didn't live with someone who has them as a dependent (FTB). It lowers California tax owed and isn't paid beyond it.`,
+      why: `You paid rent to ${nameOf(rent[0]).replace(/\s+Rent.*$/i, "")} in ${span(profile)}, and ${incomeYearOf(data)} income near ${formatCents(year.agiCents)} is under the ${formatWholeDollars(limit)} limit (the ${CA_RENTERS_CREDIT.limitsYear} return's; 2026's is set later and indexed up). California takes ${formatWholeDollars(credit)} off state income tax for someone who rented in California at least half the year, in a place that isn't exempt from property tax (campus housing usually is), and didn't live with someone who has them as a dependent (FTB). It lowers California tax owed and isn't paid beyond it.${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "FTB: renter's credit", href: SOURCES.ftbRenters.url }],
     });
