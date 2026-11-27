@@ -330,7 +330,8 @@ export const US_2027: FederalParams = {
       },
       maxContribution: $(2_000),
       lowestRate: 0.1,
-      iraDeadline: "2028-04-15",
+      // April 15, 2028 is a Saturday and April 17 is the observed Emancipation Day holiday.
+      iraDeadline: "2028-04-18",
       rule: "26 USC 25B; IRS Form 8880",
     },
     {
