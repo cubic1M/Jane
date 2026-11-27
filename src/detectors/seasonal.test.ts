@@ -18,6 +18,9 @@ const on = (id: PersonId, today: string, change: (d: ProfileInput) => ProfileInp
   return runDetectors(
     { profile: buildProfile(data), data },
     DETECTORS.filter((d) => d.capability === "taxes"),
+    (_detector, error) => {
+      throw error;
+    },
   ).map((s) => s.topic as string);
 };
 const who = (topic: string, today: string) =>
