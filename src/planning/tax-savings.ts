@@ -9,7 +9,13 @@ import {
   SELF_EMPLOYMENT_TAX,
 } from "@/config/tax-rates";
 import { formatWholeDollars } from "@/lib/money";
-import { estimateTaxes, type EstimateInput, type TaxEstimate } from "./tax-estimate";
+import { federalParams } from "@/config/tax-params";
+import {
+  estimateTaxes,
+  nonItemizerGift,
+  type EstimateInput,
+  type TaxEstimate,
+} from "./tax-estimate";
 import { addDays } from "@/lib/dates";
 
 // The tax savings finder (spec step 122): every way Jane can see for the person to pay less,
@@ -272,11 +278,22 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
 
   const d = s.estimate.deduction;
   if (d.kind === "itemized") {
-    const margin = d.itemizedCents - d.standardCents;
+    // Against what a person who does not itemize deducts: the standard deduction plus the gifts they
+    // may take beside it (Tax T6; none before 2026).
+    const standardPath =
+      d.standardCents +
+      (d.standardCents === 0
+        ? 0
+        : nonItemizerGift(
+            federalParams(s.estimate.year),
+            s.estimate.filingStatus,
+            base.charityCents,
+          ));
+    const margin = d.itemizedCents - standardPath;
     out.push({
       key: "itemize",
       title: "Itemize: it's worth more than the standard deduction",
-      why: `Your mortgage interest, state taxes and gifts come to about ${formatWholeDollars(d.itemizedCents)}, more than the ${formatWholeDollars(d.standardCents)} standard deduction. Keep the receipts; your tax tags and forms have them.`,
+      why: `Your mortgage interest, state taxes and gifts come to about ${formatWholeDollars(d.itemizedCents)}, more than the ${formatWholeDollars(standardPath)} you'd deduct without itemizing. Keep the receipts; your tax tags and forms have them.`,
       estimateCents: Math.round(margin * s.estimate.marginalRate),
       action: { kind: "link", label: "See tax tags", href: "/taxes/tags" },
     });

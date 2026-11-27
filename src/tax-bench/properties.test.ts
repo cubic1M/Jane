@@ -172,12 +172,11 @@ describe("the estimate, for any person", () => {
   it("owes no less before refundable credits as wages rise (nothing else changing)", () => {
     fc.assert(
       fc.property(person, money(100_000_000), (input, more) => {
-        // Charity is held at zero: today the estimator picks itemizing or the standard deduction
-        // before it adds the non-itemizer gift deduction, so more wages can flip a person from
-        // itemizing to standard plus gifts and lower the tax (the HE-4 expected failure, T6).
+        // Gifts are not held at zero any more: since Tax T6 the itemized total is compared with the
+        // standard deduction plus the gift deduction, so more wages cannot flip a person from
+        // itemizing to a larger standard-plus-gifts and lower the tax.
         const base: EstimateInput = {
           ...input,
-          charityCents: 0,
           income: { ...input.income, selfEmploymentCents: 0 },
         };
         const raised: EstimateInput = {

@@ -1,0 +1,61 @@
+[
+  {
+    "id": "he4-2025-no-gift-deduction-before-2026",
+    "title": "2025 single, itemized $17,000 against standard $15,750: itemizes, and there is no non-itemizer gift deduction to add",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p) and (b)(1)(I) start with taxable years beginning after December 31, 2025 (Pub. L. 119-21 sections 70424 to 70429); Rev. Proc. 2025-32 section 3.01: standard deduction $15,750"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "mortgageInterestCents": 1600000,
+      "charityCents": 100000
+    },
+    "expected": {
+      "standardDeduction": 1575000,
+      "itemizedMortgage": 1600000,
+      "itemizedCharity": 100000,
+      "nonItemizerCharity": 0,
+      "taxable": 8300000
+    },
+    "note": "2025 has no 0.5% floor, so the whole $1,000 of gifts counts when itemizing: 16,000 + 1,000 = 17,000, over the standard 15,750 (and no gift is added to the standard path in 2025). Taxable 100,000 - 17,000 = 83,000."
+  },
+  {
+    "id": "mortgage-2025-over-the-limit",
+    "title": "2025 single, $40,000 of mortgage interest on a $1,000,000 loan: $30,000 counts",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p936",
+      "where": "Publication 936 (2025), Reminders and the Part II worksheet line 8: $750,000 ($375,000 if married filing separately) of indebtedness"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 30000000
+    },
+    "extra": {
+      "mortgageInterestCents": 4000000,
+      "mortgageBalanceCents": 100000000
+    },
+    "expected": {
+      "itemizedMortgage": 3000000,
+      "taxable": 27000000
+    },
+    "note": "750,000 / 1,000,000 = 75% of the 40,000 = 30,000 (the share of the loan under the limit; Pub. 936 gives the limit, the proration is by the average balance). Taxable 300,000 - 30,000 = 270,000."
+  }
+]

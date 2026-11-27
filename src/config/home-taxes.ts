@@ -1,17 +1,10 @@
-// Homeowner taxes (spec step 170). FOR REVIEW, like src/config/tax-rates.ts (the state
-// and local tax cap is ITEMIZED.saltCap there; the energy credits ENERGY_CREDITS_2025 and
-// ENERGY_CREDITS_END).
+// Homeowner taxes (spec step 170). FOR REVIEW, like src/config/tax-rates.ts (the energy credits
+// ENERGY_CREDITS_2025 and ENERGY_CREDITS_END). The state and local tax cap and the mortgage debt
+// limit are in the year's parameters (src/config/tax-params: salt, mortgageDebt).
 //
-// Sources: IRS Publication 936 (home mortgage interest: on up to $750,000 of acquisition
-// debt, $375,000 married filing separately, made permanent by the 2025 law; points on a
-// purchase deductible the year paid, on a refinance over the loan's life), Publication 523
-// (selling your home: up to $250,000 of gain excluded, $500,000 married filing jointly,
-// after owning and living in it 2 of the last 5 years).
-
-export const MORTGAGE_DEBT_LIMIT = {
-  normal: 75_000_000,
-  marriedSeparate: 37_500_000,
-} as const;
+// Sources: IRS Publication 936 (points on a purchase deductible the year paid, on a refinance over
+// the loan's life), Publication 523 (selling your home: up to $250,000 of gain excluded, $500,000
+// married filing jointly, after owning and living in it 2 of the last 5 years).
 
 export const HOME_SALE_EXCLUSION = {
   normal: 25_000_000,

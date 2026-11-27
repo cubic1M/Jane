@@ -68,15 +68,13 @@ const EXPECTED_NOTES: Record<number, string[]> = {
     "savers",
     "saversMatch",
     "rothCatchUp",
-    "charity",
-    "medical",
     "dependentCare",
     "education",
     "energy",
   ],
 };
 // The groups not read at a primary source (D6: a rule needing one shows no figure).
-const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["medical"] };
+const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: [] };
 
 describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   const params = federalParams(year);
@@ -108,6 +106,7 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
         "rothCatchUp",
         "studentLoanInterest",
         "salt",
+        "mortgageDebt",
         "charity",
         "medical",
         "contributionLimits",

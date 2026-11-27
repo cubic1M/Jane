@@ -28,6 +28,7 @@ import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
+import { deductibleMortgageInterest } from "@/planning/home-taxes";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageFigure } from "@/planning/self-employed";
 import { loadEquityIncome } from "@/lib/equity-income";
@@ -36,7 +37,7 @@ import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
-import { loadToldDependency } from "@/lib/tax-dependency";
+import { loadToldDependency, loadToldSpouseItemizes } from "@/lib/tax-dependency";
 import { earnedIncomeHeldLine } from "@/planning/tax-engine/residency-gate";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -233,6 +234,16 @@ function profileAssumptions({
 const DEPENDENT_QUESTION_BELOW_AGE = 24;
 export const DEPENDENCY_UNKNOWN_LINE =
   "Jane counted the full standard deduction because you haven't said whether someone can claim you as a dependent.";
+
+// Tax T6: what the itemized deduction assumed, said as facts.
+export const ITEMIZED_PAID_SO_FAR_LINE =
+  "Jane counted gifts and medical costs paid so far this year, not projected to the year's end.";
+export const SPOUSE_ITEMIZES_UNKNOWN_LINE =
+  "Jane doesn't know whether your spouse itemizes. If they do, a separate return has no standard deduction and the deductions Jane can see are itemized.";
+export const mortgageLimitLine = (limitCents: number, countedCents: number, paidCents: number) =>
+  `Mortgage interest counts on the first ${formatCents(limitCents)} of the loans: ${formatCents(countedCents)} of the ${formatCents(paidCents)} counts. Jane used the balance as the loan's size, and a loan taken out before December 16, 2017 has a higher limit.`;
+export const mortgageBalanceUnknownLine = (year: number, limitCents: number) =>
+  `Jane counted all of the mortgage interest: it has no loan balance read in ${year} to check the ${formatCents(limitCents)} limit against.`;
 
 // An age told on a day, at the tax year's last day: older for a later year, and younger for an earlier
 // one (a person told 65 in November 2026 was 64 at the end of 2025: the 65-and-over amounts and the
@@ -754,6 +765,21 @@ async function loadTaxEstimateFrom(
   // Whether someone else can claim them as a dependent: it limits the standard deduction. Not said (or
   // "not sure") is the full deduction, and said so when it could matter (someone under 24).
   const dependent = await loadToldDependency(userId, { client });
+  // A person who files separately from their spouse is asked nothing; what they said about the
+  // spouse's itemizing counts, and without it the better deduction is taken as for anyone else.
+  const spouseItemizes =
+    filingStatus === "married_separate" ? await loadToldSpouseItemizes(userId, { client }) : null;
+  // What the mortgages total, for the $750,000 limit: today's balance stands in for the year's
+  // debt only when the lender's reading was taken in this same year; a balance read later says
+  // nothing about an earlier year's loan, and then the limit is not applied and the line says so.
+  const mortgages = loans.filter((l) => l.kind === "mortgage");
+  const mortgageBalance =
+    mortgages.length > 0 &&
+    mortgages.every(
+      (l) => l.account.currentBalanceCents !== null && iso(l.updatedAt).startsWith(`${year}-`),
+    )
+      ? mortgages.reduce((s, l) => s + Math.abs(l.account.currentBalanceCents ?? 0), 0)
+      : null;
   const input: EstimateInput = {
     year,
     filingStatus,
@@ -781,6 +807,8 @@ async function loadTaxEstimateFrom(
     ...(fixes.deductionCents > 0 ? { otherAdjustmentsCents: fixes.deductionCents } : {}),
     amtPreferenceCents: equity.amtPreferenceCents,
     mortgageInterestCents: loanInterest("mortgage"),
+    mortgageBalanceCents: mortgageBalance,
+    ...(spouseItemizes === null ? {} : { spouseItemizes }),
     charityCents: tags.totals.donation.totalCents,
     medicalCents: tags.totals.medical.totalCents,
     // Spec step 170: property tax paid this year.
@@ -825,6 +853,29 @@ async function loadTaxEstimateFrom(
   }
   if (dependent === null && age !== null && age < DEPENDENT_QUESTION_BELOW_AGE) {
     assumptions.push(DEPENDENCY_UNKNOWN_LINE);
+  }
+  // Itemized deductions (Tax T6): gifts and medical costs are what was paid so far, not paced.
+  if (input.charityCents > 0 || input.medicalCents > 0) {
+    assumptions.push(ITEMIZED_PAID_SO_FAR_LINE);
+  }
+  const mortgageCounted = deductibleMortgageInterest(federalParams(year), {
+    status: filingStatus,
+    interestCents: input.mortgageInterestCents,
+    balanceCents: mortgageBalance,
+  });
+  if (mortgageCounted.limited) {
+    assumptions.push(
+      mortgageLimitLine(
+        mortgageCounted.limitCents,
+        mortgageCounted.cents,
+        input.mortgageInterestCents,
+      ),
+    );
+  } else if (input.mortgageInterestCents > 0 && mortgageBalance === null) {
+    assumptions.push(mortgageBalanceUnknownLine(year, mortgageCounted.limitCents));
+  }
+  if (filingStatus === "married_separate" && spouseItemizes === null) {
+    assumptions.push(SPOUSE_ITEMIZES_UNKNOWN_LINE);
   }
   // Spec step 219: crypto, ESPP and ISO income, said plainly.
   if (equity.ordinaryCents > 0) {

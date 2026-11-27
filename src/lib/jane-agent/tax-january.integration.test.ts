@@ -83,6 +83,9 @@ describe.runIf(url)("taxes on autopilot against a real database", () => {
       client,
       now: LINKED,
     });
-    expect(reply.body).toMatch(/^(?:Itemize|Take the standard)\b.*standard deduction is \$16,100/);
+    // The standard deduction with the $100 of gifts they may take beside it (Tax T6): $16,100 + $100.
+    expect(reply.body).toMatch(
+      /^(?:Itemize|Take the standard)\b.*standard deduction, with \$100\.00 of gifts, is \$16,200\.00/,
+    );
   });
 });
