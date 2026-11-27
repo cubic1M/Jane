@@ -310,6 +310,8 @@ async function TaxesContent({
   );
   for (const f of fields) details[itemId("profile", f.key)] = profileCard;
   details[itemId("profile", "new-income")] = profileCard;
+  // The question about the children's ages is answered in the family form.
+  details[itemId("profile", "child-ages")] = <FamilySection view={family} />;
 
   for (const branch of ["filing", "topics"] as const)
     for (const t of TOPICS[branch])

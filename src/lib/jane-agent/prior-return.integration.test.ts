@@ -141,6 +141,9 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
     const { reviews } = await loadReturnReviews(userId, { client, now: LINKED });
     const review = reviews[0];
     expect(review.year).toBe(2025);
+    expect(review.householdNote).toBe(
+      "This uses your household as it is today, because Jane has no record of it for 2025.",
+    );
     expect(review.findings.map((f) => f.key)).toContain("education_credit");
     expect(review.amendBy).toBe("2029-04-15");
     expect(review.worthAmending).toBe(true);

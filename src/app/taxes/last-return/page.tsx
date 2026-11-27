@@ -50,6 +50,7 @@ async function Content() {
       {reviews.map((r) => (
         <section key={r.returnId} aria-label={`Your ${r.year} return`} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">Your {r.year} return</h2>
+          <p className="text-xs text-zinc-500">{r.householdNote}</p>
           {r.findings.length === 0 ? (
             <p className="text-sm">
               I didn&apos;t find anything left behind against your accounts.

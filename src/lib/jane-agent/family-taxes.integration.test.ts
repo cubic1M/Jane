@@ -205,6 +205,37 @@ describe.runIf(url)("family taxes against a real database", { timeout: 120_000 }
     );
   });
 
+  // CodeRabbit sweep part 4: with children counted and no ages given, the page asks for the ages
+  // (a missing "Children's ages" line in the profile) and the care credit stays held back.
+  it("asks for the children's ages when it has none, and not when it has them", async () => {
+    const userId = await family("family-ages", 4_000_000);
+    expect((await loadFamilyTaxes(userId, { client, now: LINKED })).agesMissing).toBe(false);
+    await client.taxProfile.update({ where: { userId }, data: { familyChildren: [] } });
+    const view = await loadFamilyTaxes(userId, { client, now: LINKED });
+    expect(view.agesMissing).toBe(true);
+    const care = view.choices.find((c) => c.key === "care");
+    expect(care === undefined || care.sides.every((s) => !s.eligible)).toBe(true);
+  });
+
+  it("asks for the other children's ages when only one child has a college plan", async () => {
+    const userId = await family("family-ages-plan", 4_000_000);
+    await client.taxProfile.update({ where: { userId }, data: { familyChildren: [] } });
+    const before = await loadFamilyTaxes(userId, { client, now: LINKED });
+    expect(before.agesMissing).toBe(true);
+    await client.collegePlan.create({
+      data: {
+        userId,
+        childName: "Sam",
+        childAge: 5,
+        ageOn: new Date("2026-10-01T00:00:00Z"),
+        collegeType: "public",
+      },
+    });
+    const view = await loadFamilyTaxes(userId, { client, now: LINKED });
+    expect(view.agesMissing).toBe(true);
+    expect(view.assumptions.join(" ")).toContain("ages of your other children");
+  });
+
   it("checks the family details, and shows nothing for real accounts", async () => {
     const userId = await family("family-check", 0);
     await expect(

@@ -28,6 +28,7 @@ import {
   type NoticeFacts,
   type Source,
 } from "@/planning/tax-notice";
+import { US_STATES } from "@/config/referrals";
 import { readNotice } from "./read";
 import { meteredClaude } from "@/lib/claude-budget";
 import { todayOf } from "@/lib/today";
@@ -263,8 +264,12 @@ export async function dismissTaxNotice(
 // What Jane knows that bears on a notice: the forms it collected for its year, the income
 // the accounts show from each payer, and payments to the IRS and the state.
 // A line that names a state tax agency: its own name, or a state's code in front ("CA FTB", "NYS DTF").
-const STATE_AGENCY =
-  /\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)[A-Z]{2} (?:TAX|REV|DTF|DOR)\b/i;
+// "NY DTF", "CA TAX": a real state's two-letter code, never a word like TO ("PAYMENT TO TAX COLLECTOR").
+const STATE_CODES = US_STATES.map((st) => st.code).join("|");
+const STATE_AGENCY = new RegExp(
+  String.raw`\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT\.? OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)(?:${STATE_CODES}) (?:TAX|REV|DTF|DOR)\b`,
+  "i",
+);
 
 async function noticeFacts(
   userId: string,
@@ -318,7 +323,13 @@ async function noticeFacts(
         const line = `${t.description} ${t.merchantName ?? ""}`;
         // A payment whose line names another tax year ("USATAXPYMT 2025") is for that year's
         // balance: it is not counted toward this notice's.
-        const named = [...line.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+        // A year inside a date ("PAYMENT DATE 2026-10-06", "10/06/2026") says when it was paid,
+        // not which year it is for.
+        const named = [
+          ...line
+            .replace(/\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ")
+            .matchAll(/\b(20\d{2})\b/g),
+        ].map((m) => Number(m[1]));
         if (named.length > 0 && !named.includes(year)) return false;
         // A federal notice counts federal payments; a state one counts only lines that name a
         // state tax agency, never every payment that is not federal.
