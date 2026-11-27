@@ -14,6 +14,8 @@ const rentQuestion = {
   amountCents: 90_000,
   months: 3,
   transactionIds: ["a", "b", "c"],
+  firstChargeDate: null,
+  lastChargeDate: null,
 };
 const snapshot = (rent: typeof rentQuestion | null) =>
   ({ findings: [], concierge: false, rentQuestion: rent }) as unknown as Snapshot;

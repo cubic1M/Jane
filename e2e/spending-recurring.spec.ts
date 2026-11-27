@@ -43,6 +43,21 @@ test("a subscription in spending is marked and the mark opens its row", async ({
   // The first visit to /subscriptions compiles on the dev server.
   await expect(page).toHaveURL(/\/subscriptions#charge-/, { timeout: 90_000 });
   const hash = decodeURIComponent(new URL(page.url()).hash.slice(1));
-  await expect(page.locator(`[id="${hash}"]`)).toBeVisible();
+  await expect(page.locator(`[id="${hash}"]`)).toBeInViewport({ timeout: 20_000 });
   await expect(page.locator(`[id="${hash}"]`)).toContainText("Netflix");
+
+  // A charge far down the Subscriptions list: the mark lands on its row, not at the top.
+  await page.goto("/subscriptions");
+  const rows = page.locator('li[id^="charge-"]');
+  const last = rows.last();
+  const lastId = (await last.getAttribute("id"))!;
+  const name = ((await last.locator("span.font-medium").first().innerText()) ?? "").trim();
+  await page.goto(`/transactions?q=${encodeURIComponent(name)}`);
+  await page
+    .locator(`[data-repeat-mark][href*="${encodeURIComponent(lastId)}"]`)
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/subscriptions#charge-/, { timeout: 90_000 });
+  await expect(page.locator(`[id="${lastId}"]`)).toBeInViewport({ timeout: 20_000 });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 });

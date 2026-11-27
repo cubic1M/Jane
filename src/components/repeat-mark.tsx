@@ -49,9 +49,10 @@ export function RepeatMark({
     >
       <Glyph />
       <span>{mark.label}</span>
-      {withAmount && (
+      {withAmount && mark.amountCents !== null && (
         <span className="tabular-nums">
           · {hidden ? <Blinded /> : formatCents(mark.amountCents)}
+          {mark.per ? ` ${mark.per}` : ""}
         </span>
       )}
     </Link>

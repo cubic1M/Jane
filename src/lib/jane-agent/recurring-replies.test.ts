@@ -14,6 +14,8 @@ const charge = (over: Partial<Charge>): Charge => ({
   merchant: "Netflix",
   accountId: null,
   transactionIds: [],
+  firstChargeDate: null,
+  lastChargeDate: null,
   frequency: "MONTHLY",
   lastAmountCents: 1_799,
   lastDate: "2026-10-14",

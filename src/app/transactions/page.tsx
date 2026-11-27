@@ -180,7 +180,8 @@ async function Transactions({
                 ? `${categoryLabel(t.pfcPrimary)} · ${detailedLabel(t.pfcPrimary, t.pfcDetailed)}`
                 : "Uncategorized";
             // Only a charge (money out) repeats; a refund or deposit is never marked.
-            const repeat = t.amountCents > 0 ? marks.forTransaction(t) : null;
+            const repeat =
+              t.amountCents > 0 ? marks.forTransaction({ ...t, date: isoDay(t.date) }) : null;
             return (
               <li key={t.id} className="px-4 py-3 [overflow-wrap:anywhere]">
                 <details>
