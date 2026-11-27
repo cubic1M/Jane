@@ -43,9 +43,11 @@ const NEGATIVE_WORDS =
 // Politeness is no answer: "Tap the button below. Thanks for asking." says nothing.
 const COURTESY =
   /\b(?:thanks|thank you|you're welcome|no problem|happy to help|hope that helps)\b/i;
+// It starts with the courtesy ("Thanks for asking."); "Rent is paid, thanks." has an answer in it.
+const COURTESY_START = new RegExp(`^\\W*(?:${COURTESY.source.slice(5, -3)})`, "i");
 // A courtesy sentence is short and says nothing else: no figure, and only a few words.
 const isCourtesy = (sentence: string) =>
-  COURTESY.test(sentence) &&
+  COURTESY_START.test(sentence) &&
   !/\d/.test(sentence) &&
   sentence.split(/\s+/).filter(Boolean).length <= 5;
 const NOT_ANSWERED = [unknownReply().body, CHAT_UNAVAILABLE_TEXT, ASK_BLOCKED_REPLY];

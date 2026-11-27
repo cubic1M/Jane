@@ -132,6 +132,7 @@ describe("the bank's patterns (CodeRabbit sweep)", () => {
     expect(mentions.test("Your employer is Acme.")).toBe(false);
     expect(mentions.test("Your next pay from Acme lands on Dec 5.")).toBe(true);
     expect(mentions.test("Acme pays you on Friday.")).toBe(true);
+    expect(mentions.test("Your next pay from Acme lands on December 5th.")).toBe(true);
   });
 
   it("the August follow-up must say August, and a mixed ask must offer its confirmation", () => {

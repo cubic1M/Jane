@@ -233,6 +233,7 @@ describe("fixedChecks: sign, button-only and capped (CodeRabbit sweep)", () => {
       false,
     );
     expect(onlyPointsAtButton("Tap the button below. Thanks for asking.")).toBe(true);
+    expect(onlyPointsAtButton("Rent is paid, thanks. Tap the button.")).toBe(false);
   });
   it("a capped turn is not answered", () => {
     const checks = fixedChecks(

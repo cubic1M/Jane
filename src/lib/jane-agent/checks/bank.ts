@@ -63,7 +63,7 @@ const WHOLE_MONTH: Expect = { intent: "whole_picture", list: true, maxChars: 900
 // The employer and when the next pay lands: a date or a day word, not only the name.
 const PAYROLL: Expect = {
   mentions:
-    /(?=[\s\S]*acme)(?=[\s\S]*\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}|(?:mon|tues|wednes|thurs|fri|satur|sun)day|\d{4}-\d{2}-\d{2}|today|tomorrow)\b)/i,
+    /(?=[\s\S]*acme)(?=[\s\S]*\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?|(?:mon|tues|wednes|thurs|fri|satur|sun)day|\d{4}-\d{2}-\d{2}|today|tomorrow)\b)/i,
   avoid: /interest|\$1\.02/i,
 };
 const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
