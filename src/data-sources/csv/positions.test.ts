@@ -149,6 +149,38 @@ describe("Robinhood account activity", () => {
   });
 });
 
+// CodeRabbit sweep (ds-02).
+describe("positions that are not what their words suggest", () => {
+  it("does not read a company with cash in its name as cash", () => {
+    const vanguard = text("vanguard.csv").replace(
+      "VANGUARD TOTAL INTL STOCK INDEX FUND ADMIRAL CL,VTIAX",
+      "FIRSTCASH HOLDINGS INC,FCFS",
+    );
+    const result = readPositionsFile(vanguard);
+    if ("error" in result) throw new Error(result.error);
+    const first = result.accounts[0].positions.find((p) => p.ticker === "FCFS");
+    expect(first?.isCash).toBe(false);
+  });
+
+  it("says when Robinhood shares came in by transfer with no price in the report", () => {
+    const withTransfer = text("robinhood.csv").replace(
+      '"08/01/2026","08/01/2026","08/01/2026","","ACH Deposit"',
+      '"08/02/2026","08/02/2026","08/02/2026","ZZZ","Zed Corp","ACATI","10","",""\n"08/01/2026","08/01/2026","08/01/2026","","ACH Deposit"',
+    );
+    const result = readPositionsFile(withTransfer);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.notes.join(" ")).toMatch(/ZZZ came into the account without a trade/);
+  });
+
+  it("leaves the cash out and says so when the report shows more going out than in", () => {
+    const noDeposit = text("robinhood.csv").replace(/"08\/01\/2026".*ACH Deposit.*\n/, "");
+    const result = readPositionsFile(noDeposit);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.accounts[0].positions.some((p) => p.isCash)).toBe(false);
+    expect(result.notes.join(" ")).toMatch(/more money leaving the account than coming in/);
+  });
+});
+
 describe("what isn't a positions file", () => {
   it("refuses a bank statement and says which downloads work", () => {
     const bank = readFileSync(

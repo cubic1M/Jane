@@ -150,13 +150,19 @@ export class PlaidDataSource implements DataSource {
       .map(normalizeAccount)
       .filter((a): a is NormalizedAccount => a !== null);
     const keptRefs = new Set(kept.filter((a) => keepsTransactions(a.kind)).map((a) => a.ref));
+    // A transaction a later patch makes ineligible (another currency, an amount that is no cents)
+    // must also go from what is stored, or the old copy stays (CodeRabbit sweep).
+    const eligible = (t: Transaction) =>
+      keptRefs.has(t.account_id) && inDollars(t) && toCents(t.amount) !== null;
+    const all = [...changed.values()];
     return {
       accounts: kept,
-      transactions: [...changed.values()]
-        .filter((t) => keptRefs.has(t.account_id) && inDollars(t) && toCents(t.amount) !== null)
-        .map(normalizeTransaction),
+      transactions: all.filter(eligible).map(normalizeTransaction),
       skipped: [],
-      removedTransactionIds: [...removed],
+      removedTransactionIds: [
+        ...removed,
+        ...all.filter((t) => !eligible(t)).map((t) => t.transaction_id),
+      ],
       nextCursor: cursor ?? "",
       notReady,
     };

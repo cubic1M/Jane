@@ -18,6 +18,36 @@ describe("readOfx", () => {
     expect(card.ok && card.balances).toEqual([{ date: "2026-10-15", balanceCents: 21045 }]);
   });
 
+  // CodeRabbit sweep (ds-02).
+  it("refuses a statement in another currency instead of reading euros as dollars", () => {
+    const eur = fixture("checking-sgml.ofx");
+    eur.text = eur.text.replace("<CURDEF>USD", "<CURDEF>EUR");
+    const result = readOfx(eur);
+    expect(!result.ok && result.error).toMatch(/EUR/);
+  });
+
+  it("returns the balance of every statement in the file, oldest first", () => {
+    const one = fixture("checking-sgml.ofx");
+    const june = one.text.replace("20261015\n</LEDGERBAL>", "20260630\n</LEDGERBAL>");
+    const may = june.replace("1234.56", "999.00").replace("20260630", "20260531");
+    // Same account, two statements; the later one comes second in the file's order here.
+    const both =
+      june.replace("</OFX>", "") +
+      may.slice(may.indexOf("<LEDGERBAL>")).replace(/<LEDGERBAL>/, "<LEDGERBAL>");
+    const result = readOfx({ name: "both.ofx", text: both });
+    expect(result.ok && result.balances.map((b) => b.date)).toEqual(["2026-05-31", "2026-06-30"]);
+  });
+
+  it("counts a bank account and a card with the same number as two accounts", () => {
+    const bank = fixture("checking-sgml.ofx").text;
+    const card = fixture("card-xml.qfx").text;
+    const joined = bank
+      .replace("<ACCTID>0000000000", "<ACCTID>0000")
+      .replace("</OFX>", `${card.slice(card.indexOf("<CCACCTFROM>"))}</OFX>`);
+    const result = readOfx({ name: "both.ofx", text: joined });
+    expect(!result.ok && result.error).toMatch(/holds 2 accounts/);
+  });
+
   it("reads an OFX 1.x (SGML) checking statement", () => {
     const result = readOfx(fixture("checking-sgml.ofx"));
     if (!result.ok) throw new Error(result.error);

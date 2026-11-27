@@ -262,7 +262,8 @@ const CASH_TICKERS = new Set([
   "SNVXX",
   "SNSXX",
 ]);
-const CASH_WORDS = /money market|cash|sweep|settlement fund|fdic-insured deposit/i;
+// Whole words: "FIRSTCASH HOLDINGS" is a company, not cash (CodeRabbit sweep).
+const CASH_WORDS = /\b(?:money market|cash|sweeps?|settlement fund|fdic-insured deposit)\b/i;
 
 const isCashPosition = (ticker: string | null, name: string) =>
   (ticker !== null && CASH_TICKERS.has(ticker)) || CASH_WORDS.test(name);
@@ -568,6 +569,20 @@ const readRobinhood: Reader = (records, at) => {
   if (short) {
     notes.push(
       "This report starts after some of your trades (it sells shares it never bought), so the counts may be off. Download it again from the day you opened the account.",
+    );
+  }
+  // Shares that came in by transfer with no trade of the ticker in this report have no price here.
+  const unpriced = account.positions.filter((p) => !p.isCash && p.priceCents === 0);
+  if (unpriced.length > 0) {
+    notes.push(
+      `${unpriced.map((p) => p.ticker ?? p.name).join(", ")} came into the account without a trade in this report, so Jane has no price for ${unpriced.length === 1 ? "it" : "them"} and counts ${unpriced.length === 1 ? "it" : "them"} at $0. A report from the day you opened the account would include its price.`,
+    );
+  }
+  // More cash went out than came in: the report starts after the deposits that paid for it, so the
+  // cash isn't known, and a negative cash line would only hide that.
+  if (cash < 0) {
+    notes.push(
+      "This report shows more money leaving the account than coming in, so it likely starts after some of your deposits. Jane leaves the cash out; download the report from the day you opened the account.",
     );
   }
   if (cash > 0) {

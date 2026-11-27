@@ -17,6 +17,7 @@ export function looksLikeOfx(name: string, text: string): boolean {
 
 // Enough to reach a statement's <ACCTID> from the tag that opens its account.
 const ACCOUNT_BLOCK_CHARS = 300;
+const LEDGER_BLOCK_CHARS = 400;
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 const decode = (value: string) =>
@@ -86,9 +87,11 @@ function* transactionBlocks(text: string): Generator<{ block: string; line: numb
 // several statements is one.
 function accountsIn(text: string): number {
   const ids = new Set<string>();
-  for (const from of text.matchAll(/<(?:BANK|CC)ACCTFROM>/gi)) {
-    const id = field(text.slice(from.index, from.index + ACCOUNT_BLOCK_CHARS), "ACCTID");
-    if (id) ids.add(id);
+  for (const from of text.matchAll(/<(BANK|CC)ACCTFROM>/gi)) {
+    const block = text.slice(from.index, from.index + ACCOUNT_BLOCK_CHARS);
+    const id = field(block, "ACCTID");
+    // A bank account and a card can share an account number: the kind and the bank are part of it.
+    if (id) ids.add(`${from[1].toUpperCase()}|${field(block, "BANKID") ?? ""}|${id}`);
   }
   return ids.size;
 }
@@ -99,6 +102,16 @@ export function readOfx(
 ): OfxResult {
   if (!/<OFX>/i.test(file.text)) {
     return { ok: false, file: file.name, error: "This doesn't look like an OFX or QFX file." };
+  }
+  // Money here is dollars: a statement in another currency would be read as dollars at its face.
+  for (const [, code] of file.text.matchAll(/<CURDEF>\s*([A-Za-z]{3})/gi)) {
+    if (code.toUpperCase() !== "USD") {
+      return {
+        ok: false,
+        file: file.name,
+        error: `This file is in ${code.toUpperCase()}. Jane reads US dollar statements only.`,
+      };
+    }
   }
   // Everything here goes into one account: rather than merge them, ask for them apart (debugger
   // 11-04: a credit union's checking and savings read as one, and savings' balance was lost).
@@ -227,16 +240,21 @@ export function readOfx(
 // <LEDGERBAL><BALAMT>…<DTASOF>…: the balance on that day. A card statement's is negative
 // for what's owed (OFX's sign), so it's turned round.
 function ledgerBalance(text: string): { date: string; balanceCents: number }[] {
-  // Two steps, not a lazy pattern, for the same reason as transactionBlocks.
-  const open = /<LEDGERBAL>/i.exec(text);
-  if (!open) return [];
-  const rest = text.slice(open.index + open[0].length);
-  const end = rest.search(/<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>/i);
-  const block = end === -1 ? "" : rest.slice(0, end);
-  if (!block) return [];
-  const amount = ofxAmount(field(block, "BALAMT"));
-  const date = ofxDate(field(block, "DTASOF"));
-  if (amount === null || !date) return [];
   const card = /<CCSTMTRS>/i.test(text);
-  return [{ date, balanceCents: card ? -amount || 0 : amount }];
+  const found: { date: string; balanceCents: number }[] = [];
+  // One per statement: a file of two months holds two, and the later one is the closing balance.
+  // Two steps, not a lazy pattern, for the same reason as transactionBlocks.
+  for (const open of text.matchAll(/<LEDGERBAL>/gi)) {
+    // A balance block is a few tags long: look only that far, so a file of unclosed tags stays fast.
+    const from = open.index + open[0].length;
+    const rest = text.slice(from, from + LEDGER_BLOCK_CHARS);
+    const end = rest.search(/<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>/i);
+    const block = end === -1 ? "" : rest.slice(0, end);
+    if (!block) continue;
+    const amount = ofxAmount(field(block, "BALAMT"));
+    const date = ofxDate(field(block, "DTASOF"));
+    if (amount === null || !date) continue;
+    found.push({ date, balanceCents: card ? -amount || 0 : amount });
+  }
+  return found.sort((a, b) => a.date.localeCompare(b.date));
 }

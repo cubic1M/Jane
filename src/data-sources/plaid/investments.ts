@@ -41,6 +41,11 @@ export type NormalizedInvestmentTransaction = {
   subtype: string;
 };
 
+const inDollars = (x: {
+  iso_currency_code?: string | null;
+  unofficial_currency_code?: string | null;
+}) => (x.iso_currency_code ? x.iso_currency_code === "USD" : !x.unofficial_currency_code);
+
 const day = (value: string | null | undefined) =>
   value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
 
@@ -53,7 +58,8 @@ export function normalizeSecurity(s: Security): NormalizedSecurity {
     type: s.type ?? null,
     subtype: s.subtype ?? null,
     isCashEquivalent: s.is_cash_equivalent ?? false,
-    closePriceCents: toCents(s.close_price),
+    // Dollars only, like holdings: a price in another currency is no figure in cents.
+    closePriceCents: inDollars(s) ? toCents(s.close_price) : null,
     closePriceAsOf: day(s.close_price_as_of),
     sector: s.sector ?? null,
   };
@@ -62,15 +68,22 @@ export function normalizeSecurity(s: Security): NormalizedSecurity {
 // Only USD holdings: money in the app is dollars. Others are left out (and so don't add up
 // to the account's balance, which the page says).
 export function normalizeHolding(h: Holding): NormalizedHolding | null {
-  if (h.iso_currency_code && h.iso_currency_code !== "USD") return null;
-  if (!h.iso_currency_code && h.unofficial_currency_code) return null;
+  if (!inDollars(h)) return null;
+  // Plaid's types say price and value are always there; if one is missing, the other and the
+  // share count give it, and if neither can, the holding is left out rather than counted at $0
+  // (CodeRabbit sweep).
+  let price = toCents(h.institution_price);
+  let value = toCents(h.institution_value);
+  if (value === null && price !== null) value = Math.round(h.quantity * price);
+  if (price === null && value !== null && h.quantity > 0) price = Math.round(value / h.quantity);
+  if (value === null) return null;
   return {
     accountRef: h.account_id,
     securityRef: h.security_id,
     quantity: h.quantity,
-    priceCents: toCents(h.institution_price) ?? 0,
+    priceCents: price ?? 0,
     priceAsOf: day(h.institution_price_as_of ?? h.institution_price_datetime),
-    valueCents: toCents(h.institution_value) ?? 0,
+    valueCents: value,
     costBasisCents: toCents(h.cost_basis),
   };
 }
@@ -78,19 +91,22 @@ export function normalizeHolding(h: Holding): NormalizedHolding | null {
 export function normalizeInvestmentTransaction(
   t: InvestmentTransaction,
 ): NormalizedInvestmentTransaction | null {
-  if (t.iso_currency_code && t.iso_currency_code !== "USD") return null;
-  if (!t.iso_currency_code && t.unofficial_currency_code) return null;
+  if (!inDollars(t)) return null;
+  // An amount Plaid did not send is unknown, not $0: the transaction is left out.
+  const amountCents = toCents(t.amount);
+  if (amountCents === null) return null;
   return {
     ref: t.investment_transaction_id,
     accountRef: t.account_id,
     securityRef: t.security_id ?? null,
     date: t.date,
-    name: t.name,
-    quantity: t.quantity,
-    amountCents: toCents(t.amount) ?? 0,
+    // The columns are not nullable: a field Plaid leaves null gets a plain value.
+    name: t.name ?? "",
+    quantity: t.quantity ?? 0,
+    amountCents,
     priceCents: toCents(t.price) ?? 0,
     feesCents: toCents(t.fees),
-    type: t.type,
-    subtype: t.subtype,
+    type: t.type ?? "",
+    subtype: t.subtype ?? "",
   };
 }

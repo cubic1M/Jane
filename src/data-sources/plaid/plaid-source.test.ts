@@ -174,6 +174,23 @@ describe("PlaidDataSource", () => {
     expect(batch.transactions.map((t) => t.externalId)).toEqual(["txn_1", "no_code"]);
   });
 
+  // CodeRabbit sweep (ds-02): a stored dollar transaction a later patch turns into euros goes.
+  it("removes a stored transaction that a later patch makes ineligible", async () => {
+    const sync = vi.fn().mockResolvedValueOnce(
+      syncPage({
+        modified: [
+          plaidTransaction({ transaction_id: "was_usd", iso_currency_code: "EUR", amount: 35 }),
+        ],
+        next_cursor: "c1",
+      }),
+    );
+
+    const batch = await new PlaidDataSource(apiWith(sync), "access-sandbox-x", "c0").load();
+
+    expect(batch.transactions).toEqual([]);
+    expect(batch.removedTransactionIds).toEqual(["was_usd"]);
+  });
+
   it("keeps loan accounts for their balance, but not their transactions", async () => {
     const loan = plaidAccount({ account_id: "acc_loan", type: "loan", subtype: "auto" } as never);
     const sync = vi.fn().mockResolvedValueOnce(
