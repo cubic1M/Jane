@@ -297,21 +297,31 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
   });
 
   it("doesn't spend its budget on people already sent this month's report", async () => {
-    const sent = vi.fn<(e: Email) => Promise<void>>(async () => {});
-    const first = await runMonthlyReports({ client, now: NOW, send: sent, userIds: [userId] });
-    expect(
-      await client.monthlyReport.count({ where: { userId, emailedAt: { not: null } } }),
-    ).toBeGreaterThan(0);
-    const again = await runMonthlyReports({
+    const person = async (name: string) => {
+      const user = await client.user.create({
+        data: { email: `report-${name}-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      await client.account.create({
+        data: { userId: user.id, source: "csv", name: "Card", type: "credit" },
+      });
+      return user;
+    };
+    const done = await person("done");
+    const waiting = await person("waiting");
+    await client.monthlyReport.create({
+      data: { userId: done.id, month: "2026-09", figures: {}, emailedAt: NOW },
+    });
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    // No time at all: only the person still waiting is left over for tomorrow.
+    const run = await runMonthlyReports({
       client,
       now: new Date(NOW.getTime() + 86_400_000),
-      send: sent,
-      userIds: [userId],
+      send,
+      userIds: [done.id, waiting.id],
       budgetMs: 0,
     });
-    // Already emailed (by this or an earlier test): not even counted as left for later.
-    expect(again.deferred).toBe(0);
-    expect(first.failed).toBe(0);
+    expect(run.deferred).toBe(1);
   });
 
   it("isn't made after the first days of the month, or for an empty month", async () => {

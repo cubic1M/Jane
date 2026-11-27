@@ -2,7 +2,7 @@ import { escapeHtml } from "@/lib/escape-html";
 import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
-import { siteBase } from "@/lib/site-origin";
+import { siteOrigin } from "@/lib/site-origin";
 
 // A beta tester's feedback, emailed to the founders (ADMIN_EMAILS) as it arrives. Only what the
 // person wrote and the page's path: never a balance, a transaction, an account or the screenshot
@@ -14,16 +14,17 @@ export async function emailFeedback(
 ): Promise<boolean> {
   const to = teamEmails();
   if (to.length === 0) return false;
-  const link = `${siteBase()}/admin/reports`;
+  const origin = siteOrigin();
+  const link = origin ? `${origin}/admin/reports` : null;
   const extra = report.screenshot ? "A screenshot is attached on /admin/reports." : null;
   const text = [
     `Feedback from a beta tester, on ${report.path}:`,
     report.message,
     ...(extra ? [extra] : []),
-    `All feedback: ${link}`,
+    link ? `All feedback: ${link}` : "All feedback is on /admin/reports.",
     ...(report.replyTo ? ["Reply to this email to answer them."] : []),
   ].join("\n\n");
-  const html = `<p>Feedback from a beta tester, on <code>${escapeHtml(report.path)}</code>:</p><blockquote style="white-space:pre-wrap">${escapeHtml(report.message)}</blockquote>${extra ? `<p>${escapeHtml(extra)}</p>` : ""}<p>All feedback: <a href="${escapeHtml(link)}">/admin/reports</a></p>${report.replyTo ? "<p>Reply to this email to answer them.</p>" : ""}`;
+  const html = `<p>Feedback from a beta tester, on <code>${escapeHtml(report.path)}</code>:</p><blockquote style="white-space:pre-wrap">${escapeHtml(report.message)}</blockquote>${extra ? `<p>${escapeHtml(extra)}</p>` : ""}<p>${link ? `All feedback: <a href="${escapeHtml(link)}">/admin/reports</a>` : "All feedback is on /admin/reports."}</p>${report.replyTo ? "<p>Reply to this email to answer them.</p>" : ""}`;
   try {
     await Promise.all(
       to.map((address) =>

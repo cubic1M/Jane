@@ -419,6 +419,7 @@ describe.runIf(url)("runDigests against a real database", () => {
         where: { userId: ids.late },
         data: { createdAt: new Date("2026-10-31T00:00:00Z") },
       });
+      await client.digest.deleteMany({ where: { userId: ids.news } });
       // Whoever is sent to first files a spam complaint from the other one, mid-batch.
       send.mockImplementation(async (mail: { to: string }) => {
         const other = mail.to.startsWith("news-") ? ids.late : ids.news;

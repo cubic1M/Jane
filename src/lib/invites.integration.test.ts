@@ -58,6 +58,10 @@ describe.runIf(url)("invite codes against a real database", () => {
         const value = Reflect.get(target, prop, receiver);
         if (prop !== "$transaction") return value;
         return async (...args: unknown[]) => {
+          // Reads go through as a batch; only the redemption passes a function.
+          if (typeof args[0] !== "function") {
+            return (value as (...a: unknown[]) => unknown).apply(target, args);
+          }
           await other.inviteCode.update({ where: { code: c }, data: { revokedAt: new Date() } });
           return (value as (...a: unknown[]) => unknown).apply(target, args);
         };

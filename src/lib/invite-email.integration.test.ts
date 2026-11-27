@@ -75,11 +75,11 @@ describe.runIf(url)("emailing an invite", () => {
   it("still says sent when only the note of it fails, and never counts a try's address as sent", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const c = await code({ email: "d@example.edu" });
-    const spy = vi
-      .spyOn(client.inviteCode, "update")
-      .mockRejectedValueOnce(new Error("db blip") as never);
+    // The code is deleted while the email goes out, so writing "emailed at" afterwards fails.
+    send.mockImplementationOnce(async () => {
+      await client.inviteCode.delete({ where: { code: c } });
+    });
     expect((await emailInvite(c, { client, send })).result).toBe("sent");
-    spy.mockRestore();
     send.mockClear();
     const trial = await code({ email: "someone@try.jane.invalid" });
     expect((await emailInvite(trial, { client, send })).result).toBe("failed");

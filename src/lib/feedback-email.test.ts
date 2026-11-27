@@ -41,6 +41,19 @@ describe("emailFeedback", () => {
     expect(mail.text).toContain("https://jane.example/admin/reports");
   });
 
+  it("gives no link at all, never a relative or localhost one, when the site's address is unknown", async () => {
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+    await emailFeedback(
+      { path: "/home", message: "hi", screenshot: false, replyTo: null },
+      { send },
+    );
+    const [mail] = sent();
+    expect(mail.text).not.toContain("localhost");
+    expect(mail.html).not.toMatch(/href=/);
+    expect(mail.text).toContain("All feedback is on /admin/reports.");
+  });
+
   it("sends nothing with no team, and never throws when the email fails", async () => {
     vi.stubEnv("ADMIN_EMAILS", "");
     const report = { path: "/home", message: "Hi", screenshot: false, replyTo: null };
