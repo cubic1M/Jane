@@ -1057,6 +1057,16 @@ describe("a gig driver's money", () => {
     },
   );
 
+  it("a membership named before the company is a membership too", () => {
+    expect(rule("MEMBERSHIP EARNIN", 100)).not.toBe("LOAN_PAYMENTS_EWA");
+    expect(rule("EARNIN MEMBERSHIP", 100)).not.toBe("LOAN_PAYMENTS_EWA");
+  });
+
+  it("a plain sewer bill is sewage, a water and sewer bill is water", () => {
+    expect(rule("CITY SEWER", 4_000)).toBe("RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT");
+    expect(rule("WATER & SEWER DEPT", 4_000)).toBe("RENT_AND_UTILITIES_WATER");
+  });
+
   it("the advance itself is still borrowed money", () => {
     expect(rule("EARNIN CASH OUT", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");
   });

@@ -71,7 +71,7 @@ export const LOANS_AND_LAST: readonly Rule[] = [
   {
     category: "LOAN_PAYMENTS_EWA",
     pattern:
-      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
+      /(?<![A-Z0-9])(?:(?:(?<!MEMBERSHIP.*)(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP))|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
     direction: "out",
   },
   {
