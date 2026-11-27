@@ -196,7 +196,6 @@ async function Transactions({
                         {t.categorySource === "cash_income" &&
                           " (a cash deposit, counted as income)"}
                       </span>
-                      {repeat && <RepeatMarkTag mark={repeat} />}
                     </span>
                     <span className={t.amountCents < 0 ? "text-emerald-700" : ""}>
                       {t.amountCents < 0 ? "+" : ""}
@@ -205,6 +204,12 @@ async function Transactions({
                   </summary>
                   <CategoryForm transactionId={t.id} current={t.pfcDetailed} groups={groups} />
                 </details>
+                {/* Outside the summary: a link inside it would catch the click that opens the row. */}
+                {repeat && (
+                  <div className="mt-1">
+                    <RepeatMarkTag mark={repeat} />
+                  </div>
+                )}
               </li>
             );
           })}
