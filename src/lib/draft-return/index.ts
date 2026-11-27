@@ -344,8 +344,14 @@ export async function latestDraftCheck(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<{ id: string; year: number; findings: DraftFinding[] } | null> {
-  const confirmed = await listDraftReturns(userId, { client, status: "confirmed" });
-  const last = confirmed.at(-1);
+  // The one confirmed last, not uploaded last: a draft uploaded first and checked after another is
+  // the newer check (CodeRabbit sweep).
+  const latest = await scopedFor(userId, client).draftReturns.findFirst({
+    where: { status: "confirmed" },
+    select: { id: true },
+    orderBy: [{ confirmedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
+  });
+  const last = latest ? await getDraftReturn(userId, latest.id, { client }) : null;
   return last && last.year !== null
     ? { id: last.id, year: last.year, findings: last.findings }
     : null;
