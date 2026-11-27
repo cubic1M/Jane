@@ -105,3 +105,33 @@ test("a suggestion put away comes back from the line in its place, after a reloa
   stack = await stackOf(page, isMobile);
   await stepTo(page, stack, headline);
 });
+
+// Walk 11-27: with ONE card left, putting it away removed the whole box and its "Bring it back".
+// The dock now keeps the line, so the last card can be taken back too.
+test("the last card put away leaves its line, and it comes back", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  test.skip(isMobile, "the box above the chat is the computer's");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  userId = await demoPerson(context, page, baseURL);
+  await page.goto("/home");
+  const stack = await stackOf(page, false);
+  const showing = stack.locator('[data-card-state="showing"]');
+  const line = stack.locator("[data-card-put-away]");
+  // Close every card; each leaves a line that the next close replaces.
+  for (let i = 0; i < 40 && (await showing.count()) > 0; i += 1) {
+    const headline = ((await showing.locator("h3").first().textContent()) ?? "").trim();
+    await showing.getByRole("button", { name: "Close card" }).click();
+    await expect(line).toBeVisible();
+    if ((await showing.count()) === 0) {
+      // The last one: its line still brings it back.
+      await line.getByRole("button", { name: "Bring it back" }).click();
+      await expect(showing.locator("h3").first()).toHaveText(headline);
+      return;
+    }
+  }
+  throw new Error("The stack never ran out of cards");
+});

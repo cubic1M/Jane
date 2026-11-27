@@ -12,6 +12,7 @@ const { calls, log, m } = vi.hoisted(() => {
 
 vi.mock("@/categorize/card-payments", () => ({ matchCardPayments: (m.match = log("match", 0)) }));
 vi.mock("@/categorize/cash-income", () => ({ markCashIncome: log("cash income", 0) }));
+vi.mock("@/categorize/reapply", () => ({ reapplyRules: log("re-sort", 0) }));
 vi.mock("@/categorize/categorize", () => ({
   categorizeLeftovers: (m.leftovers = log("leftovers", 0)),
 }));
@@ -67,11 +68,13 @@ describe("finishImport", () => {
   it("goes through each stage in order, refreshes every sector, then says done", async () => {
     await finishImport("u1", "run_1");
     const done = calls.indexOf("stage:done");
-    expect(calls.slice(0, 8)).toEqual([
+    expect(calls.slice(0, 9)).toEqual([
       "stage:matching",
       "match",
       // Regular cash deposits count as income before Jane reads the month.
       "cash income",
+      // A move between their own accounts is re-sorted now, not at the nightly run.
+      "re-sort",
       "stage:balances",
       "balances",
       "stage:looking",

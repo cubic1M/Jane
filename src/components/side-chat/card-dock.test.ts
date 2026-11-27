@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/app/chat/suggestion-cards", () => ({ SuggestionCards: () => null }));
 
 import type { MessageView } from "@/lib/jane-agent/view";
-import { keepShowing, keptCards } from "./card-dock";
+import { dockMounted, keepShowing, keptCards } from "./card-dock";
 
 const m = (id: string) => ({ id }) as MessageView;
 
@@ -26,6 +26,24 @@ describe("the dock reloading its cards", () => {
 
   it("lets a card go once nothing is showing it", () => {
     expect(keepShowing([m("a"), m("b")], [m("a")], null).map((c) => c.id)).toEqual(["a"]);
+  });
+});
+
+// Walk 11-27: putting away the ONLY card showed no "Put away. Bring it back" line. The last card's
+// answer empties the dock's cards a render before the stack reports its line, and the dock
+// unmounted the stack (and the line) in between.
+describe("the dock's stack after the only card is put away", () => {
+  it("stays in the page once it has shown cards, even with none left and no line reported yet", () => {
+    expect(dockMounted(0, null, true)).toBe(true);
+  });
+
+  it("is not in the page before it has ever had anything", () => {
+    expect(dockMounted(0, null, false)).toBe(false);
+  });
+
+  it("is in the page with cards, or with a line", () => {
+    expect(dockMounted(2, null, false)).toBe(true);
+    expect(dockMounted(0, "m1", false)).toBe(true);
   });
 });
 

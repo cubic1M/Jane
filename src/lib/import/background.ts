@@ -1,6 +1,7 @@
 import { matchCardPayments } from "@/categorize/card-payments";
 import { markCashIncome } from "@/categorize/cash-income";
 import { categorizeLeftovers } from "@/categorize/categorize";
+import { reapplyRules } from "@/categorize/reapply";
 import { IMPORT_DONE_SHOWN_MINUTES, IMPORT_RUN_SHOWN_HOURS } from "@/config/import";
 import { moneyFoundYearly, runDetection } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -87,6 +88,7 @@ export async function refreshAfterRemoval(userId: string, options: Options = {})
   const client = options.client ?? defaultClient;
   return withReadCache(client, async (client) => {
     const now = options.now ?? new Date();
+    await reapplyRules(userId, { client });
     await runDetection(userId, { client, now });
     // What a market change could help them with, from what's left (src/lib/live/watches.ts).
     await refreshWatchesSafely(userId, { client });
@@ -122,6 +124,9 @@ async function workOut(userId: string, options: Options, stage: (s: ImportStage)
   await stage("matching");
   await matchCardPayments(db);
   await markCashIncome(db);
+  // A move between their own accounts is only seen once both statements are here: re-sorted now,
+  // not at the nightly run (which a trial person never gets).
+  await reapplyRules(userId, { client: options.client });
   await stage("balances");
   await rebuildUploadedBalances(db, options.now);
   await stage("looking");
