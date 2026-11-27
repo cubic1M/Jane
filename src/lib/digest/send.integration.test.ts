@@ -465,6 +465,18 @@ describe.runIf(url)("runDigests against a real database", () => {
       expect((await digestsOf("news"))[0].sentAt).not.toBeNull();
     });
 
+    it("keeps the row when the first attempt was uncertain and the retry is then refused outright", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send
+        .mockRejectedValueOnce(new EmailSendError("Resend did not answer", true))
+        .mockRejectedValueOnce(new EmailSendError("Email is paused (KILL_EMAIL)", false));
+
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(await digestsOf("news")).toHaveLength(1);
+    });
+
     it("sends once when only the first answer was lost: the run asks again with the same key", async () => {
       await client.digest.deleteMany({ where: { userId: ids.news } });
       send

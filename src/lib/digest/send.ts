@@ -392,6 +392,8 @@ export async function runDigests({
       // The one-tap go-ahead page (/plan/go) is hidden in the read-only beta.
       let goAhead: Awaited<ReturnType<typeof createPlanLink>> | null = null;
       let sent: Awaited<ReturnType<typeof send>>;
+      // Set once any attempt may have reached the provider, whatever the later ones said.
+      let maybeSent = false;
       try {
         goAhead = isHiddenPage("/plan/go")
           ? null
@@ -431,6 +433,7 @@ export async function runDigests({
           // 24-hour key, so the one retry is made now, with the same key: it cannot make a second
           // email. Anything else (a refusal) is not retried.
           if (!(error instanceof EmailSendError && error.maybeSent)) throw error;
+          maybeSent = true;
           sent = await send(mail);
         }
       } catch (error) {
@@ -442,7 +445,8 @@ export async function runDigests({
         // secret).
         // A row an earlier attempt may have sent is never released, and never one another run has
         // since marked sent.
-        if (!existing && !(error instanceof EmailSendError && error.maybeSent)) {
+        const uncertain = maybeSent || (error instanceof EmailSendError && error.maybeSent);
+        if (!existing && !uncertain) {
           await db.digests.deleteMany({ where: { id: digest.id, sentAt: null } });
         }
         continue;
