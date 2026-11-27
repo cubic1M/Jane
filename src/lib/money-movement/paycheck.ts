@@ -127,6 +127,9 @@ export async function runPaycheckPlan(
   const lowest = forecastAccounts(loaded, PAYCHECK_FORECAST_DAYS).find(
     (f) => f.accountId === checking.id,
   )?.lowest.balanceCents;
+  // No forecast for this account (no balance of its own): nothing is known about what can leave it,
+  // and "no limit" is not an answer (CodeRabbit sweep).
+  if (lowest === undefined) return null;
   const pendingOut = (
     await db.moneyTransfers.findMany({
       where: { status: "pending", fromAccountId: checking.id },
@@ -141,8 +144,7 @@ export async function runPaycheckPlan(
       })
     )?.amountCents ?? 0;
   const plan = paycheckPlan({
-    forecastRoomCents:
-      lowest === undefined ? null : Math.max(0, lowest - pendingOut - PAYCHECK_BUFFER_MARGIN_CENTS),
+    forecastRoomCents: Math.max(0, lowest - pendingOut - PAYCHECK_BUFFER_MARGIN_CENTS),
     investedCents: invested,
     paycheckCents: paycheck.cents,
     paychecksPerMonth: paycheck.perMonth,
