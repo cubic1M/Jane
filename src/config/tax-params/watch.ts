@@ -41,6 +41,16 @@ export const TAX_YEAR_SOURCES = [
     seen: ["2027: Rev. Proc. 2026-35, news release IR-2026-133, 2026-11-05"],
   },
   {
+    key: "pub_15t",
+    what: "Publication 15-T: the withholding adjustment and the percentage-method tables for the coming year (an early draft is posted at the IRS drafts page first; it is not the final)",
+    url: "https://www.irs.gov/publications/p15t",
+    window: "December of the year before, usually",
+    feeds: ["withholding"],
+    seen: [
+      "2027: the final is not out (the page says For use in 2026); the early draft p15t--dft.pdf, read 2026-11-27, still carries 2026's $8,600 and $7,500 band (16,100), not the 2027 standard deduction of 16,600, so it is not used",
+    ],
+  },
+  {
     key: "retirement_notice",
     what: "The notice with the coming year's retirement plan and IRA limits, the Roth catch-up wage threshold and the saver's credit limits",
     url: "https://www.irs.gov/retirement-plans/cola-increases-for-dollar-limitations-on-benefits-and-contributions",
