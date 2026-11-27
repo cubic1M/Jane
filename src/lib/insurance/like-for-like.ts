@@ -26,10 +26,10 @@ export function compareCover(kind: PolicyKind, current: Cover, quoted: Cover): C
 
   if (current.deductibleCents === null) {
     if (quoted.deductibleCents !== null) unknown.push("Deductible");
-  } else if (
-    quoted.deductibleCents !== null &&
-    quoted.deductibleCents !== current.deductibleCents
-  ) {
+  } else if (quoted.deductibleCents === null) {
+    // The quote does not state its deductible: it can't be called the same as yours.
+    differences.push(`Deductible not stated, and yours is ${formatCents(current.deductibleCents)}`);
+  } else if (quoted.deductibleCents !== current.deductibleCents) {
     const line = `Deductible ${formatCents(quoted.deductibleCents)} instead of your ${formatCents(current.deductibleCents)}`;
     if (quoted.deductibleCents > current.deductibleCents) differences.push(line);
     else better.push(line);
@@ -58,4 +58,23 @@ export function compareCover(kind: PolicyKind, current: Cover, quoted: Cover): C
     else better.push(line);
   }
   return { same: differences.length === 0, differences, better, unknown };
+}
+
+// The comparison for a kept quote against the policy as it is NOW: a policy edited after the
+// quote was stored (a new deductible, a new limit) must not leave "same cover" on the card.
+export function recheckCover<
+  Q extends {
+    sameCover: boolean;
+    differences: string[];
+    deductibleCents: number | null;
+    coverage: Coverage;
+  },
+>(kind: PolicyKind, current: Cover, quotes: readonly Q[]): Q[] {
+  return quotes.map((q) => {
+    const cover = compareCover(kind, current, q);
+    // Shown as "same" only when nothing differs either way: a quote with a lower deductible than
+    // the edited policy is not the same cover, so the line is spelled out.
+    const differences = [...cover.differences, ...cover.better];
+    return { ...q, sameCover: differences.length === 0, differences };
+  });
 }

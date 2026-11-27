@@ -93,6 +93,7 @@ const SAVED: Record<string, string> = {
   changes: "Done. Your insurance is up to date.",
   called: "Jane called your insurer. What they said is below and in the chat.",
   saving: "Done. Your policy is updated and your insurer confirmed it.",
+  saving_gone: "That saving is no longer on offer, so nothing changed.",
   risk: "Thanks. Jane has noted it.",
 };
 
@@ -239,7 +240,8 @@ async function InsuranceContent({
     area,
   } = loaded;
   const familyError = one("family");
-  const saved = SAVED[one("saved")];
+  const savedKey = one("saved");
+  const saved = Object.hasOwn(SAVED, savedKey) ? SAVED[savedKey] : undefined;
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";

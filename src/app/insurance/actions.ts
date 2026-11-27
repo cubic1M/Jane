@@ -162,9 +162,16 @@ export async function skipRenewal(formData: FormData): Promise<void> {
 // Spec step 196: a cheaper way to pay for the same cover, on the person's tap, or not.
 export async function applyOneSaving(formData: FormData): Promise<void> {
   const user = await requireUser();
-  await ignoring(SavingError, () => applySaving(user.id, text(formData, "savingId")));
+  // "Done" only when the saving applied: one already dismissed or no longer on offer says so.
+  let gone = false;
+  try {
+    await applySaving(user.id, text(formData, "savingId"));
+  } catch (e) {
+    if (!(e instanceof SavingError)) throw e;
+    gone = true;
+  }
   refreshOthers();
-  redirect("/insurance?saved=saving&focus=savings");
+  redirect(`/insurance?saved=${gone ? "saving_gone" : "saving"}&focus=savings`);
 }
 
 export async function skipSaving(formData: FormData): Promise<void> {

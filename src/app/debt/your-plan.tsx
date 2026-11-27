@@ -67,10 +67,9 @@ export function YourPlan({
   const pick = summary.pick;
   const first: Strategy = pick?.strategy ?? "avalanche";
   const order: Strategy[] = [first, first === "avalanche" ? "snowball" : "avalanche"];
-  const isStored =
-    stored &&
-    stored.extraCents === summary.extraCents &&
-    (!pick || stored.strategy === pick.strategy);
+  // A saved plan is the person's own choice: it stays recognised (and can be stopped) whichever
+  // order Jane would pick today.
+  const isStored = stored && stored.extraCents === summary.extraCents;
 
   return (
     <section

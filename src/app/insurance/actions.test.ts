@@ -17,6 +17,10 @@ vi.mock("@/lib/insurance/negotiate", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/insurance/negotiate")>()),
   negotiationsDue: vi.fn(async () => []),
 }));
+vi.mock("@/lib/insurance/savings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/insurance/savings")>()),
+  applySaving: vi.fn(),
+}));
 vi.mock("@/lib/insurance/household", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/insurance/household")>()),
   saveHousehold: vi.fn(),
@@ -26,8 +30,9 @@ vi.mock("@/lib/insurance/household", async (importOriginal) => ({
 import { revalidatePath } from "next/cache";
 import { HouseholdFactsError, dismissGap, saveHousehold } from "@/lib/insurance/household";
 import { negotiationsDue } from "@/lib/insurance/negotiate";
+import { SavingError, applySaving } from "@/lib/insurance/savings";
 import { PolicyError, addPolicy, removePolicy, updatePolicy } from "@/lib/insurance/policies";
-import { deletePolicy, notNeeded, saveHouseholdFacts, savePolicy } from "./actions";
+import { applyOneSaving, deletePolicy, notNeeded, saveHouseholdFacts, savePolicy } from "./actions";
 import { form } from "@/lib/__fixtures__/form";
 
 // The insurance page's actions (spec step 102).
@@ -111,5 +116,16 @@ describe("insurance page actions", () => {
     vi.mocked(dismissGap).mockClear();
     await expect(notNeeded(form({ gap: "boats" }))).rejects.toThrow("REDIRECT");
     expect(dismissGap).not.toHaveBeenCalled();
+  });
+
+  it("says a saving is gone, not done, when it was dismissed or no longer applies", async () => {
+    vi.mocked(applySaving).mockRejectedValueOnce(new SavingError("gone"));
+    await expect(applyOneSaving(form({ savingId: "s1" }))).rejects.toThrow(
+      "REDIRECT /insurance?saved=saving_gone&focus=savings",
+    );
+    vi.mocked(applySaving).mockResolvedValueOnce(undefined as never);
+    await expect(applyOneSaving(form({ savingId: "s1" }))).rejects.toThrow(
+      "REDIRECT /insurance?saved=saving&focus=savings",
+    );
   });
 });

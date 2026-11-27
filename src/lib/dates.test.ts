@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DAY_MS, addDays, addMonths, daysBetween, isoDay, shiftMonth } from "./dates";
+import { DAY_MS, addDays, addMonths, daysBetween, isoDay, isYearMonth, shiftMonth } from "./dates";
 
 describe("date helpers", () => {
   it("has one day in milliseconds", () => {
@@ -39,5 +39,12 @@ describe("month and day arithmetic", () => {
     expect(daysBetween("2026-10-01", "2026-10-31")).toBe(30);
     expect(daysBetween("2026-10-31", "2026-10-01")).toBe(-30);
     expect(daysBetween("2026-03-07", "2026-03-09")).toBe(2);
+  });
+});
+
+describe("isYearMonth", () => {
+  it("accepts months 01 to 12 only", () => {
+    expect(["2026-01", "2026-12"].every(isYearMonth)).toBe(true);
+    expect(["2025-00", "2025-13", "2025-1", "2025-01-01"].some(isYearMonth)).toBe(false);
   });
 });

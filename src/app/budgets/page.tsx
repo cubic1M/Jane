@@ -122,8 +122,8 @@ async function Budgets({ searchParams }: { searchParams: PageProps<"/budgets">["
                   {formatCents(item.nextAmountCents)}.
                 </p>
                 <p className="text-sm">
-                  By now: {formatCents(item.byNowCents)} of {formatCents(item.nextAmountCents)} set
-                  aside for it.
+                  Putting a little aside each month since the last one would have built up{" "}
+                  {formatCents(item.byNowCents)} of {formatCents(item.nextAmountCents)} by now.
                 </p>
               </li>
             ))}

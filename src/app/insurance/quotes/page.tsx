@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { kindWords } from "@/lib/insurance/gaps";
-import { compareCover } from "@/lib/insurance/like-for-like";
+import { compareCover, recheckCover } from "@/lib/insurance/like-for-like";
 import { isQuotable, partnerFor } from "@/lib/insurance/partner";
 import { POLICY_SELECT, toPolicy, yearlyPremium } from "@/lib/insurance/policies";
 import { quotesFor, type StoredQuote } from "@/lib/insurance/quotes";
@@ -144,7 +144,9 @@ async function QuotesContent({
   const [partner, quotes, shops, accepted] = policy
     ? await Promise.all([
         partnerFor(user.id),
-        quotesFor(user.id, policy.id, { now }),
+        quotesFor(user.id, policy.id, { now }).then((kept) =>
+          recheckCover(policy.kind, policy, kept),
+        ),
         openShops(user.id, { now }),
         acceptedShop(user.id, policy.id),
       ])

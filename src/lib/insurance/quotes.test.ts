@@ -5,7 +5,8 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { DEMO_CARRIERS, demoCarrier } from "@/data-sources/demo/demo-carriers";
 import { DEMO_POLICY } from "./profile";
 import { basePremium, demoPartner, nearestDeductible, quotedCoverage } from "./demo-partner";
-import { compareCover } from "./like-for-like";
+import { compareCover, recheckCover } from "./like-for-like";
+import { formatCents } from "@/lib/money";
 import type { QuoteRequest } from "./partner";
 
 // The quote engine (spec step 103): the stand-in partner's fixed pricing rules and the
@@ -175,5 +176,30 @@ describe("like for like", () => {
       better: [],
       unknown: ["Deductible", "Your belongings"],
     });
+  });
+  it("does not call a quote the same when its deductible is not stated", () => {
+    const out = compareCover("auto", geico, { deductibleCents: null, coverage: geico.coverage });
+    expect(out.same).toBe(false);
+    expect(out.differences).toEqual([
+      `Deductible not stated, and yours is ${formatCents(geico.deductibleCents as number)}`,
+    ]);
+  });
+
+  it("rechecks a kept quote against the policy as it is now", () => {
+    const kept = {
+      sameCover: true,
+      differences: [] as string[],
+      deductibleCents: geico.deductibleCents,
+      coverage: geico.coverage,
+    };
+    const edited = { ...geico, deductibleCents: (geico.deductibleCents as number) + 50_000 };
+    const [q] = recheckCover("auto", edited, [kept]);
+    expect(q?.sameCover).toBe(false);
+    expect(q?.differences[0]).toMatch(/^Deductible/);
+    expect(recheckCover("auto", geico, [kept])[0]?.sameCover).toBe(true);
+    const lower = { ...geico, deductibleCents: (geico.deductibleCents as number) - 50_000 };
+    const [r] = recheckCover("auto", lower, [kept]);
+    expect(r?.sameCover).toBe(false);
+    expect(r?.differences[0]).toMatch(/^Deductible/);
   });
 });
