@@ -23,9 +23,13 @@ export async function savePull(
     select: { id: true, kind: true, carrier: true, source: true },
   });
   let saved = 0;
+  const seen = new Set<string>();
   for (const policy of policiesFromPull(pull)) {
     const same = have.filter((h) => h.kind === policy.kind && sameName(h.carrier, policy.carrier));
-    if (same.some((h) => h.source !== "canopy")) continue;
+    if (same.some((h) => h.source !== "canopy")) {
+      for (const h of same) seen.add(h.id);
+      continue;
+    }
     const data = {
       kind: policy.kind,
       carrier: policy.carrier,
@@ -37,13 +41,29 @@ export async function savePull(
       renewalDate: policy.renewalDate ? new Date(`${policy.renewalDate}T00:00:00Z`) : null,
     };
     const mine = same.find((h) => h.source === "canopy");
-    if (mine) await db.insurancePolicies.updateMany({ where: { id: mine.id }, data });
-    else {
+    if (mine) {
+      await db.insurancePolicies.updateMany({ where: { id: mine.id }, data });
+      seen.add(mine.id);
+    } else {
       await db.insurancePolicies.create({
         data: { ...data, userId, source: "canopy", status: "active" },
       });
     }
     saved += 1;
+  }
+  // A policy an earlier pull saved for this insurer that this one no longer reports in force
+  // (lapsed, cancelled, replaced) stops counting as cover. Other sources' rows are never touched.
+  const insurer = pull.insurance_provider_friendly_name;
+  if (insurer) {
+    const gone = have.filter(
+      (h) => h.source === "canopy" && sameName(h.carrier, insurer) && !seen.has(h.id),
+    );
+    if (gone.length > 0) {
+      await db.insurancePolicies.updateMany({
+        where: { id: { in: gone.map((h) => h.id) }, source: "canopy" },
+        data: { status: "cancelled" },
+      });
+    }
   }
   return {
     saved,
