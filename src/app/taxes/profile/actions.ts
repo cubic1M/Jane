@@ -87,15 +87,15 @@ export async function saveResidencyAction(
       // The form shows only the first of several moves: an edit to it keeps the others.
       const { told } = await loadResidency(user.id, moveYear);
       const later = told && told.length > 1 ? told.slice(1) : [];
-      // The form shows only the first move, so a date past the next one would reorder them and a
-      // repeat of the same form would then keep the wrong move: refuse it instead.
-      if (later.length > 0 && entry.move.date >= later[0]!.date)
-        return {
-          ok: false,
-          message: `Moves are kept in date order. Pick a date before ${later[0]!.date}, the next move you told me about.`,
-        };
       const same = (m: { date: string; from: string; to: string }) =>
         m.date === entry.move?.date && m.from === entry.move.from && m.to === entry.move.to;
+      // The form shows only the first move, so a date past the next one would reorder them and a
+      // repeat of the same form would then keep the wrong move: refuse it instead.
+      if (later.length > 0 && !same(told![0]!) && entry.move.date > later[0]!.date)
+        return {
+          ok: false,
+          message: `Moves are kept in date order. Pick a date on or before ${later[0]!.date}, the next move you told me about.`,
+        };
       if (!(later.length > 0 && same(told![0]!)))
         await saveMoves(user.id, moveYear, [entry.move, ...later], { now, via: "page" });
     } else if (entry.oneState) {

@@ -487,6 +487,25 @@ describe("answers the form must not lose or flip (CodeRabbit sweep, part 6)", ()
     expect(saveMoves).not.toHaveBeenCalled();
   });
 
+  it("lets an unchanged first move through when two moves share a date", async () => {
+    vi.mocked(loadResidency).mockResolvedValueOnce({
+      told: [
+        { date: "2026-03-01", from: "CA", to: "OR" },
+        { date: "2026-03-01", from: "OR", to: "NY" },
+      ],
+    } as never);
+    const result = await saveResidencyAction(
+      null,
+      form([
+        ["movedOn", "2026-03-01"],
+        ["movedFrom", "CA"],
+        ["movedTo", "OR"],
+      ]),
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(saveMoves).not.toHaveBeenCalled();
+  });
+
   it("'None of these' wins over a ticked income box", () => {
     expect(
       answersFrom(
