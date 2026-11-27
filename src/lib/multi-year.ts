@@ -1,6 +1,7 @@
 import {
-  MAX_PROJECTION_YEARS,
   PLANNED_EVENT_KINDS,
+  RETIRE_YEAR_LATEST_AGE,
+  RETIRE_YEAR_MAX_YEARS_AHEAD,
   type PlannedEventKind,
 } from "@/config/tax-years";
 import { DEADLINE_MAX_YEARS_AHEAD } from "@/config/deadlines";
@@ -140,18 +141,42 @@ export async function loadMultiYear(
   };
 }
 
-// Why a retirement year can't be used, or null: it has to be a year from this one to the end of
-// the projection.
-export function retireYearProblem(retireYear: number, now: Date): string | null {
+// The latest retirement year: when the person's age is known, the year they reach
+// RETIRE_YEAR_LATEST_AGE; else (or for the very young) RETIRE_YEAR_MAX_YEARS_AHEAD years out. Never
+// before this year.
+export function latestRetireYear(thisYear: number, age: number | null): number {
+  const ahead =
+    age === null
+      ? RETIRE_YEAR_MAX_YEARS_AHEAD
+      : Math.min(RETIRE_YEAR_MAX_YEARS_AHEAD, RETIRE_YEAR_LATEST_AGE - age);
+  return thisYear + Math.max(0, ahead);
+}
+
+// Why a retirement year can't be used, or null: it has to be a year from this one to the latest one
+// (above); `age` is the person's, when it is known.
+export function retireYearProblem(
+  retireYear: number,
+  now: Date,
+  age: number | null = null,
+): string | null {
   const thisYear = now.getUTCFullYear();
-  if (
-    !Number.isInteger(retireYear) ||
-    retireYear < thisYear ||
-    retireYear > thisYear + MAX_PROJECTION_YEARS - 1
-  ) {
-    return `Give a year from ${thisYear} to ${thisYear + MAX_PROJECTION_YEARS - 1}.`;
+  const latest = latestRetireYear(thisYear, age);
+  if (!Number.isInteger(retireYear) || retireYear < thisYear || retireYear > latest) {
+    return `Give a year from ${thisYear} to ${latest}.`;
   }
   return null;
+}
+
+// The same check for a person, with their own age and day.
+export async function retireYearProblemFor(
+  userId: string,
+  retireYear: number,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<string | null> {
+  const today = await todayOf(userId, { client, now });
+  const age = currentAge(await profileOf(userId, { client }), today);
+  // The year is the person's own day's, not UTC's (a Dec 31 evening in California is Jan 1 in UTC).
+  return retireYearProblem(retireYear, new Date(`${today}T12:00:00Z`), age);
 }
 
 export async function setRetireYear(
@@ -159,7 +184,8 @@ export async function setRetireYear(
   retireYear: number | null,
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
-  const problem = retireYear === null ? null : retireYearProblem(retireYear, now);
+  const problem =
+    retireYear === null ? null : await retireYearProblemFor(userId, retireYear, { client, now });
   if (problem) throw new MultiYearError(problem);
   await scopedFor(userId, client).taxProfiles.upsert({
     where: { userId },

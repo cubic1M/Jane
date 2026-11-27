@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { fromOldStatementsReply, type BillLine } from "./replies-old-bills";
 import { savingsTransfersReply, sentByAppReply, type MoveLine } from "./replies-money-moves";
 import { netWorthReply } from "./replies-networth";
@@ -141,7 +142,10 @@ describe("money for two, the timeline and what-if", () => {
     );
   });
 
-  it("carries the months the reply ran for to the details page", () => {
+  // Walk 11-26: "See the details" opened Plans & goals, which has no what-if. While /what-if is
+  // hidden the reply carries its plan in words and draws no link (the months it ran for ride on the
+  // link when the page is shown: replies-whatif-link.test.ts).
+  it("draws no details link while the what-if page is hidden", () => {
     const run = {
       scenario: "job_loss",
       label: "Losing your job",
@@ -157,7 +161,8 @@ describe("money for two, the timeline and what-if", () => {
       },
       plan: [],
     } as unknown as ScenarioRun;
+    expect(isHiddenPage("/what-if")).toBe(true);
     const links = whatIfReply(run).actions.map((a) => ("href" in a ? a.href : ""));
-    expect(links).toContain("/what-if?s=job_loss&m=6");
+    expect(links.filter(Boolean)).toEqual([]);
   });
 });

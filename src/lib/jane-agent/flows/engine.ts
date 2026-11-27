@@ -107,6 +107,20 @@ export function stepMessage<D>(
   };
 }
 
+// A typed question is not a name: "How much do you need for what is safe to spend?" asked while
+// the goal flow waited for a name was saved as the goal's name (walk 11-26). It ends in a question
+// mark, or opens like a question and is a few words long ("Can opener" stays a name).
+const QUESTION_OPENER =
+  /^(?:how|what|why|when|where|who|which|can|could|should|would|will|do|does|did|is|are|am)\b/i;
+const QUESTION_MIN_WORDS = 3;
+export function looksLikeQuestion(text: string): boolean {
+  const words = text.trim();
+  return (
+    /\?\s*$/.test(words) ||
+    (QUESTION_OPENER.test(words) && words.split(/\s+/).length >= QUESTION_MIN_WORDS)
+  );
+}
+
 // A typed answer for a step that takes one, or null when it doesn't fit.
 export function typedAnswer(kind: FlowQuestion["typed"], text: string): string | null {
   const words = text.trim();
@@ -114,6 +128,8 @@ export function typedAnswer(kind: FlowQuestion["typed"], text: string): string |
     const cents = parseMoneyToCents(words.replace(/^\$/, "").replace(/\s*(?:a|per) month$/i, ""));
     return cents !== null && cents > 0 ? String(cents) : null;
   }
-  if (kind === "text") return words.length >= 2 && words.length <= 60 ? words : null;
+  if (kind === "text") {
+    return words.length >= 2 && words.length <= 60 && !looksLikeQuestion(words) ? words : null;
+  }
   return null;
 }

@@ -139,10 +139,7 @@ export function setStateReply(state: string): Reply {
 export function setCountyReply(county: string): Reply {
   return {
     body: `Want me to put ${county} County on your tax profile as where you live? I'll check disaster relief for it.`,
-    actions: [
-      { id: "tax.county_set", label: "Yes, put it on", kind: "primary" },
-      link("See my tax profile"),
-    ],
+    actions: [{ id: "tax.county_set", label: "Yes, put it on", kind: "primary" }],
     refs: { taxField: "county", taxCounty: county },
   };
 }
@@ -150,10 +147,7 @@ export function setCountyReply(county: string): Reply {
 export function setRetireYearReply(year: number): Reply {
   return {
     body: `Want me to put ${year} on your tax profile as the year you plan to retire? I'll use it for your taxes over the next several years.`,
-    actions: [
-      { id: "tax.retire_set", label: "Yes, put it on", kind: "primary" },
-      link("See my tax profile"),
-    ],
+    actions: [{ id: "tax.retire_set", label: "Yes, put it on", kind: "primary" }],
     refs: { taxField: "retireYear", retireYear: year },
   };
 }

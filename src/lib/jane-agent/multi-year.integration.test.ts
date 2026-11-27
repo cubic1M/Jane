@@ -83,6 +83,13 @@ describe.runIf(url)(
       await expect(
         setRetireYear(userId, 1999, { client, now: LINKED, via: "page" }),
       ).rejects.toBeInstanceOf(MultiYearError);
+      // No age on their profile: the fixed bound, wider than the old 2060 (the age bound is unit
+      // tested in tax-typed-facts.test.ts).
+      await expect(
+        setRetireYear(userId, 2200, { client, now: LINKED, via: "page" }),
+      ).rejects.toThrow(/^Give a year from \d{4} to \d{4}\.$/);
+      await setRetireYear(userId, 2070, { client, now: LINKED, via: "page" });
+      await setRetireYear(userId, 2040, { client, now: LINKED, via: "page" });
       await addPlanEvent(
         userId,
         { kind: "withdrawal", year: 2030, amountCents: 8_000_000 },
