@@ -3,6 +3,7 @@ import { CONTRIBUTION_LIMITS, PAYROLL_TAX } from "@/config/tax-rates";
 import { savingMessage } from "@/lib/jane-agent/tax-saving-message";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "./tax-estimate";
 import { findTaxSavings, type SavingsInput } from "./tax-savings";
+import { withoutEarnedIncomeCredit } from "./tax-engine/residency-gate";
 
 // Spec step 122: every way to pay less, each estimated with the config rates by running the
 // estimate again with the change.
@@ -165,6 +166,40 @@ describe("findTaxSavings", () => {
     expect(key(input(), { residentOnlyAllowed: undefined })).toBe(false);
     // Neither education credit is open to married filing separately (Form 8863 instructions).
     expect(key(input({ filingStatus: "married_separate" }), {})).toBe(false);
+  });
+
+  it("works every saving out without the earned income credit until the person says they are a citizen or green card holder", () => {
+    // Age 27, $12,000 of pay: the credit is worth something, and the page leaves it out when the
+    // status is not known, so a saving must not be that credit (CodeRabbit on #2367).
+    const low = input({
+      age: 27,
+      income: { ...NO_INCOME, wagesCents: $(12_000), socialSecurityWagesCents: $(12_000) },
+      studentLoanInterestCents: $(1_200),
+      federalWithheldCents: 0,
+      stateWithheldCents: 0,
+    });
+    expect(estimateTaxes(low).credits.earnedIncomeCreditCents).toBeGreaterThan(0);
+    const loan = (o: Partial<SavingsInput>) =>
+      savings(low, o).find((x) => x.key === "student_loan")!.estimateCents;
+    // As the loader hands it over: the page's estimate, which already leaves the credit out.
+    const held = loan({
+      residentOnlyAllowed: false,
+      estimate: withoutEarnedIncomeCredit(estimateTaxes(low)),
+    });
+    const gate = (i: EstimateInput) => {
+      const e = withoutEarnedIncomeCredit(estimateTaxes(i));
+      return e.totalTaxCents + (e.state?.taxCents ?? 0);
+    };
+    // What taking the interest away would cost, both sides without the credit.
+    expect(held).toBe(-(gate(low) - gate({ ...low, studentLoanInterestCents: 0 })));
+    // An ungated recalculation would count the credit as part of the saving.
+    expect(held).not.toBe(
+      -(
+        gate(low) -
+        (estimateTaxes({ ...low, studentLoanInterestCents: 0 }).totalTaxCents +
+          (estimateTaxes(low).state?.taxCents ?? 0))
+      ),
+    );
   });
 
   it("leaves out savings too small to matter, and lists the biggest first", () => {

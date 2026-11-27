@@ -1,3 +1,4 @@
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { parseChildren } from "@/planning/family-taxes";
 import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
@@ -268,6 +269,12 @@ async function loadProfileInputFrom(
       told[key as FactKey] = value as string | number | boolean;
     }
   }
+
+  // Everything a sample person has is the demo bank's: a made-up US citizen, so the credits that
+  // are for residents only (src/planning/tax-engine/residency-gate.ts) show on their pages. Not
+  // stored (the demo bank leaves no trace), and anything they answer wins.
+  if (told.tax_residency === undefined && (await onlyDemoBank(userId, client)))
+    told.tax_residency = "citizen";
 
   const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
   return {

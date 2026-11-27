@@ -141,6 +141,9 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     // What they told Jane that no bank shows (people-extras/told.ts), their investor profile's
     // age and risk (spec step 129), then anything a test says.
     told: {
+      // Every sample person is a made-up US citizen, as the loader reads them (src/lib/profile.ts):
+      // the credits that are for residents only stay on their pages.
+      tax_residency: "citizen",
       ...demoToldFor(person, SAMPLE_TODAY),
       ...(investor ? { age: investor.age, risk: investor.dropReaction } : {}),
       ...told,

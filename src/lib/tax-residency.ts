@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { PROFILE_FACT_PREFIX } from "@/lib/profile";
 import { residencyKind, type ResidencyKind } from "@/planning/tax-engine/residency-gate";
 
@@ -25,6 +26,8 @@ export async function loadToldResidency(
   const value =
     typeof said === "string"
       ? said
-      : toldFromFacts(await listFacts(userId, { client })).tax_residency;
+      : (toldFromFacts(await listFacts(userId, { client })).tax_residency ??
+        // A sample person is a made-up US citizen (as src/lib/profile.ts reads them).
+        ((await onlyDemoBank(userId, client)) ? "citizen" : undefined));
   return { kind: residencyKind(value), allowed: value === "citizen" };
 }

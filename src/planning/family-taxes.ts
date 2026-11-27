@@ -303,27 +303,33 @@ export function educationChoice(input: {
   const withLlc = federal({ ...base, otherCreditsCents: (base.otherCreditsCents ?? 0) + llc });
   const held =
     input.residency === "citizen" ? null : educationHeldWhy(input.residency ?? "unknown");
-  const aotcWhy = held ? [held.why] : aotcRules(input.student, status);
-  const llcWhy = held ? [held.why] : llcRules(status);
+  // What is known to rule a side out comes first and settles it; the status for US tax is the one
+  // condition left open when nothing else does ("may be open"), or a student visa's usual closing.
+  const aotcWhy = aotcRules(input.student, status);
+  const llcWhy = llcRules(status);
+  const unknown = Boolean(held?.open);
   return choice("education", "Tuition: which education credit fits", [
     {
       label: `American Opportunity Credit (${formatWholeDollars(aotc)})`,
       taxCents: withAotc,
       credit: { nonrefundableCents: aotc - refundable, refundableCents: refundable },
-      eligible: aotcWhy.length === 0,
-      ...(held?.open ? { unknown: true } : {}),
+      eligible: aotcWhy.length === 0 && !held,
+      ...(unknown && aotcWhy.length === 0 ? { unknown: true } : {}),
       why:
-        aotcWhy.length > 0
-          ? aotcWhy
+        aotcWhy.length > 0 || held
+          ? [...aotcWhy, ...(held ? [held.why] : [])]
           : ["100% of the first $2,000 of tuition and 25% of the next $2,000; 40% is refundable."],
     },
     {
       label: `Lifetime Learning Credit (${formatWholeDollars(llc)})`,
       taxCents: withLlc,
       credit: { nonrefundableCents: llc, refundableCents: 0 },
-      eligible: llcWhy.length === 0,
-      ...(held?.open ? { unknown: true } : {}),
-      why: llcWhy.length > 0 ? llcWhy : ["20% of up to $10,000 of tuition, any year of study."],
+      eligible: llcWhy.length === 0 && !held,
+      ...(unknown && llcWhy.length === 0 ? { unknown: true } : {}),
+      why:
+        llcWhy.length > 0 || held
+          ? [...llcWhy, ...(held ? [held.why] : [])]
+          : ["20% of up to $10,000 of tuition, any year of study."],
     },
   ]);
 }

@@ -12,6 +12,7 @@ import {
   federalTaxOf,
   filingStatusOf,
   marginalRateFor,
+  onStudentVisa,
   studentYearOf,
   yearCoverageMonths,
 } from "@/planning/student-tax";
@@ -152,8 +153,11 @@ const studentLoanInterest: Detector = {
   needs: ["claimed_as_dependent"],
   detect({ profile, data }): Suggestion | null {
     const { facts } = profile;
-    // A nonresident alien can take it too (IRS Pub. 519, Deductions: student loan interest).
-    if (dependentOf(facts) === "yes") return null;
+    // IRS Pub. 519 says a nonresident alien can take this deduction, so it is not held for an
+    // unknown or another status. A told student visa stays out until its figure is worked out for a
+    // nonresident, who has no standard deduction (Pub. 519, Standard deduction): the rate below
+    // would be a resident's (CodeRabbit on #2367; belongs to T15).
+    if (dependentOf(facts) === "yes" || onStudentVisa(facts)) return null;
     const status = filingStatusOf(facts);
     const range = STUDENT_LOAN_INTEREST.phaseOut[status];
     if (!range) return null;

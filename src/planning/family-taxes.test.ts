@@ -281,6 +281,22 @@ describe("each choice shows both sides' tax", () => {
     expect(visa.better).toBeNull();
     // The answer brings it back.
     expect(ask("citizen").better).toBe(0);
+    // What is known to close a side stays closed, whatever the status: married filing separately
+    // can't take either credit, and past four years only the lifetime learning credit is open.
+    const separate = educationChoice({
+      estimate: { ...base, filingStatus: "married_separate" },
+      tuitionCents: 500_000,
+      student: { yearsOfCollegeBefore: 1, halfTime: true },
+    })!;
+    expect(separate.sides.every((s) => !s.unknown && !s.eligible)).toBe(true);
+    expect(separate.sides[0].why[0]).toContain("Married filing separately can't claim it.");
+    const late = educationChoice({
+      estimate: base,
+      tuitionCents: 500_000,
+      student: { yearsOfCollegeBefore: 4, halfTime: true },
+    })!;
+    expect(late.sides[0].unknown).toBeUndefined();
+    expect(late.sides[1].unknown).toBe(true);
   });
 
   it("a 529's state break: state tax with and without the deduction", () => {

@@ -45,7 +45,8 @@ describe.runIf(url)(
     beforeAll(async () => {
       vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
-      id = await createCheckPerson({ client, now: NOW, person: "debt" });
+      // An account of their own beside the demo bank: not a sample person, so nothing is told yet.
+      id = await createCheckPerson({ client, now: NOW, person: "debt", ownAccount: true });
       // About $10,000 of pay so far: low enough for the credit, and age 27 is inside 25 to 64.
       await client.taxCorrection.create({
         data: { userId: id, year: 2026, kind: "wages", label: "Pay", cents: 1_000_000 },
@@ -57,8 +58,9 @@ describe.runIf(url)(
       await client.$disconnect();
     });
 
-    it("is counted for a sample person, who comes told to be a citizen (the original demo bank too)", async () => {
-      // Nothing is said here: the sample person's own bank link told it.
+    it("is counted for a person who said so, and a sample person comes as a citizen without anything stored", async () => {
+      // A sample person (the demo bank's made-up life) and the original demo bank are citizens as
+      // the loaders read them; the demo bank leaves no trace, so nothing is stored for it.
       for (const person of ["debt", undefined] as const) {
         const other = await createCheckPerson({ client, now: NOW, ...(person ? { person } : {}) });
         try {
@@ -66,10 +68,17 @@ describe.runIf(url)(
             kind: "citizen",
             allowed: true,
           });
+          expect(
+            await client.janePreference.count({
+              where: { userId: other, key: "profile:tax_residency" },
+            }),
+          ).toBe(0);
         } finally {
           await deleteCheckPerson(other, { client }).catch(() => {});
         }
       }
+      // Someone with an account of their own is not asked for nothing: unknown until they say.
+      expect(await loadToldResidency(id, { client })).toEqual({ kind: "unknown", allowed: false });
       await say("citizen");
       expect((await loadToldResidency(id, { client })).allowed).toBe(true);
       const v = await view();

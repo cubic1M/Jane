@@ -80,9 +80,10 @@ describe("the resident-only cards", () => {
     expect(card.why).toContain(RESIDENCY_NOTE);
   });
 
-  it("keep the student loan interest card for a nonresident (Pub. 519: the deduction is open)", () => {
-    for (const said of [undefined, "unsure", "student_visa", "other_visa", "citizen"])
+  it("keep the student loan interest card unless a student visa is told (Pub. 519 leaves the deduction open; a nonresident has no standard deduction, so that figure waits for T15)", () => {
+    for (const said of [undefined, "unsure", "other_visa", "citizen"])
       expect(run(f1(answers(said), HIGH_PAY)), String(said)).toContain("student_loan_interest");
+    expect(run(f1(answers("student_visa"), HIGH_PAY))).not.toContain("student_loan_interest");
   });
 
   it("do not tie California's renter's credit to a visa (the FTB's conditions name none)", () => {
