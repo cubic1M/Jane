@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { MAX_FILE_NAME_LENGTH } from "@/config/documents";
+import { identityOf, isStoredCopy, storedKeysOf } from "@/lib/import/ofx-keys";
 import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
@@ -193,17 +194,29 @@ async function accountHoldingRows(
     },
     files,
   ).load();
-  const keys = [...new Set(batch.transactions.map((t) => t.externalId))];
+  const keys = [...new Set(batch.transactions.map(identityOf))];
   if (keys.length === 0) return null;
   const there = await db.transactions.findMany({
-    where: { source: "csv", dedupeKey: { in: keys } },
-    select: { accountId: true, dedupeKey: true },
+    where: {
+      source: "csv",
+      dedupeKey: { in: [...new Set(batch.transactions.flatMap(storedKeysOf))] },
+    },
+    select: { accountId: true, dedupeKey: true, date: true, amountCents: true },
   });
+  // A bank's row id (FITID) is an id only within its own account: the same id in another
+  // account's file is the same row only on the same day and amount (src/lib/import/ofx-keys.ts).
   const byAccount = new Map<string, Set<string>>();
+  const sentBy = new Map<string, typeof batch.transactions>();
+  for (const sent of batch.transactions) {
+    for (const key of storedKeysOf(sent)) sentBy.set(key, [...(sentBy.get(key) ?? []), sent]);
+  }
   for (const row of there) {
-    const set = byAccount.get(row.accountId) ?? new Set<string>();
-    set.add(row.dedupeKey ?? "");
-    byAccount.set(row.accountId, set);
+    for (const sent of sentBy.get(row.dedupeKey ?? "") ?? []) {
+      if (!isStoredCopy(row, sent)) continue;
+      const set = byAccount.get(row.accountId) ?? new Set<string>();
+      set.add(identityOf(sent));
+      byAccount.set(row.accountId, set);
+    }
   }
   const [top] = [...byAccount.entries()].sort((a, b) => b[1].size - a[1].size);
   if (!top || top[1].size < keys.length * NEW_ACCOUNT_SAME_ROWS_SHARE) return null;

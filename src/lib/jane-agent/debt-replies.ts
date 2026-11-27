@@ -225,6 +225,14 @@ function outcome(plan: PayoffPlan, asOf: string, partial = false): string {
   return `${partial ? "done with these by" : "debt-free by"} ${monthLabel(monthAfter(asOf, plan.months), { long: true })} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
 }
 
+// A whole sentence: "Paying $25.00 a month, you'd be done by March 2028 (...)." or, when the plan
+// has no end, "Paying $25.00 a month, it doesn't finish within 50 years." ("you'd be" only goes
+// before a month, never before "it doesn't finish").
+function paceSentence(paying: string, plan: PayoffPlan, asOf: string, partial = false): string {
+  const result = outcome(plan, asOf, partial);
+  return `${paying}, ${plan.ok ? `you'd be ${result}` : result}.`;
+}
+
 // The buttons that start the plan, Jane's pick first in demo advice mode.
 function planButtons(first: Strategy, label: (s: Strategy) => string): MessageAction[] {
   const other: Strategy = first === "avalanche" ? "snowball" : "avalanche";
@@ -258,14 +266,12 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
   // outcome twice, "highest rate first" and "smallest balance first", with a button each).
   const one = summary.cards.length === 1;
   if (one) {
-    lines.push(`${paying}, you'd be ${outcome(summary.avalanche, asOf)}.`);
+    lines.push(paceSentence(paying, summary.avalanche, asOf));
   } else if (pick) {
     lines.push(`Here's how I'd pay them off: ${STRATEGY_NAME[pick.strategy]}.`);
     lines.push(...pick.order.map((name, i) => `${i + 1}. ${name}`));
     lines.push(...pick.why);
-    lines.push(
-      `${paying}, you'd be ${outcome(summary[pick.strategy], asOf, summary.leftOut.length > 0)}.`,
-    );
+    lines.push(paceSentence(paying, summary[pick.strategy], asOf, summary.leftOut.length > 0));
   } else {
     lines.push(`${paying}, here's how two common orders would go:`);
     for (const s of ["avalanche", "snowball"] as const) {

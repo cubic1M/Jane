@@ -92,6 +92,8 @@ describe("starting a flow", () => {
     ["set up a budget", "budget"],
     ["help me make a budget", "budget"],
     ["start a goal", "goal"],
+    ["set a goal", "goal"],
+    ["let's set a savings goal", "goal"],
     ["create a savings goal", "goal"],
     ["switch my phone plan", "switch"],
     ["find me a cheaper internet", "switch"],

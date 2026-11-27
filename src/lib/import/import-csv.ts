@@ -15,6 +15,7 @@ import { addDays, isoDay } from "@/lib/dates";
 import type { Prisma } from "@/generated/prisma/client";
 import { planCorrections, type IncomingRow } from "@/lib/import/corrections";
 import { crossFormatTwins } from "@/lib/import/cross-format";
+import { isOfxKey, reusedIdKey, storedKeysOf, type KeyedRow } from "@/lib/import/ofx-keys";
 
 export const MAX_FILES = 10;
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
@@ -142,13 +143,9 @@ export async function importCsvFiles(
     },
     files,
   ).load();
-  // Overlapping files in one upload share rows; keep the first copy of each.
-  const seen = new Set<string>();
-  const unique = batch.transactions.filter((t) => {
-    if (seen.has(t.externalId)) return false;
-    seen.add(t.externalId);
-    return true;
-  });
+  // Overlapping files in one upload share rows; keep the first copy of each (an OFX row whose id is
+  // reused for another day or amount is another row, and is kept under a key of its own).
+  const unique = await distinctRows(db, account.id, batch.transactions);
   // The same rows from the account's statement in the other format (a CSV, then its QFX) are
   // already there under other keys: dropped too (src/lib/import/cross-format.ts).
   const fresh = await withoutCrossFormatTwins(db, account.id, unique);
@@ -226,6 +223,50 @@ async function correctStoredRows(db: ScopedDb, accountId: string, rows: Incoming
     });
   }
   return { corrections: corrections.length, rekeyed };
+}
+
+// The upload's rows, once each: an identical copy is dropped (it is skipped as stored, or is the
+// same row in an overlapping file); an OFX row whose id is taken, here or earlier in the upload, by
+// another day or amount is a different transaction and gets its key (./ofx-keys.ts).
+async function distinctRows<T extends KeyedRow>(
+  db: ScopedDb,
+  accountId: string,
+  rows: T[],
+): Promise<T[]> {
+  const ofx = rows.filter((r) => isOfxKey(r.externalId));
+  const there =
+    ofx.length === 0
+      ? []
+      : await db.transactions.findMany({
+          where: { accountId, dedupeKey: { in: [...new Set(ofx.flatMap(storedKeysOf))] } },
+          select: { dedupeKey: true, date: true, amountCents: true },
+        });
+  const stored = new Map(there.map((t) => [t.dedupeKey, t]));
+  const claimed = new Map<string, T>();
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    let key = row.externalId;
+    if (isOfxKey(key)) {
+      const apart = reusedIdKey(row);
+      const bare = stored.get(key);
+      const earlier = claimed.get(key);
+      const differs = (o: { date: string; amountCents: number }) =>
+        o.date !== row.date || o.amountCents !== row.amountCents;
+      if (
+        stored.has(apart) ||
+        (bare && differs({ date: isoDay(bare.date), amountCents: bare.amountCents })) ||
+        (earlier && differs(earlier))
+      ) {
+        key = apart;
+      }
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (key === row.externalId) claimed.set(key, row);
+    out.push(key === row.externalId ? row : { ...row, externalId: key });
+  }
+  return out;
 }
 
 // The rows less those whose twin from the other format is in the account already, or earlier in

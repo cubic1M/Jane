@@ -33,12 +33,22 @@ function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// A keyword this long also matches with a trailing S: a statement drops the apostrophe of a
+// possessive ("TRADER JOES" for "Trader Joe's") and a plural is the same merchant. Shorter ones
+// (BP, GAP) stay exact: with an S they are other words.
+const PLURAL_MIN_LENGTH = 4;
+
 // Whole-word match: "UBER" matches "UBER *TRIP" but not "UBEREATS" or "TUBER".
+export function keywordPattern(keywords: readonly string[]): RegExp {
+  const alternatives = keywords.map(
+    (k) => `${escape(k)}${k.length >= PLURAL_MIN_LENGTH ? "S?" : ""}`,
+  );
+  return new RegExp(`(?<![A-Z0-9])(?:${alternatives.join("|")})(?![A-Z0-9])`);
+}
+
 const COMPILED = RULES.map((rule) => ({
   ...rule,
-  pattern: rule.keywords
-    ? new RegExp(`(?<![A-Z0-9])(?:${rule.keywords.map(escape).join("|")})(?![A-Z0-9])`)
-    : (rule.pattern ?? null),
+  pattern: rule.keywords ? keywordPattern(rule.keywords) : (rule.pattern ?? null),
 }));
 
 export type RuleInput = Pick<NormalizedTransaction, "description" | "amountCents" | "hints">;
