@@ -90,8 +90,19 @@ export async function scheduleTransfer(
     if (!uniqueKey) return null;
     const found = await db.moneyTransfers.findFirst({
       where: { uniqueKey },
-      select: { id: true, runOn: true, status: true },
+      select: { id: true, runOn: true, status: true, partnerRef: true },
     });
+    // A move saved ahead of the partner call that has no reference yet is not scheduled: whoever
+    // asks again is told it is still being sent, never handed an id that may never go anywhere.
+    if (found && found.status === "pending" && !found.partnerRef) {
+      throw new TransferError("That move is still being sent. Try again in a minute.");
+    }
+    // A move the partner never confirmed keeps its key so it cannot be sent a second time.
+    if (found && found.status === "failed") {
+      throw new TransferError(
+        "That move could not be confirmed with the partner, so Jane will not send it again on its own.",
+      );
+    }
     return found
       ? {
           id: found.id,
@@ -172,10 +183,16 @@ export async function scheduleTransfer(
     throw error;
   }
   if (reserved) {
-    await db.moneyTransfers.updateMany({
+    const { count } = await db.moneyTransfers.updateMany({
       where: { id: reserved.id, status: "pending" },
       data: { partnerRef },
     });
+    if (count === 0) {
+      // The reservation was closed while the partner was answering: what it returned is undone
+      // at the partner rather than dropped.
+      await movement.cancel(partnerRef).catch(() => false);
+      throw new TransferError("That move was closed while it was being sent. Try it again.");
+    }
   }
   const row =
     reserved ??
@@ -210,10 +227,15 @@ export async function cancelTransfer(
   const row = await db.moneyTransfers.findFirst({
     // Spec step 242: a big move still waiting for the partner can be undone too.
     where: { id: transferId, status: { in: ["pending", "awaiting_partner"] } },
-    select: { id: true, partnerRef: true, runOn: true },
+    select: { id: true, partnerRef: true, runOn: true, status: true },
   });
   if (!row || today(row.runOn) < today(now)) {
     throw new TransferError("That transfer has already gone through or been undone.");
+  }
+  // A move saved ahead of the partner call has no reference until the partner answers: undoing it
+  // now could free its key while the partner still takes it.
+  if (row.status === "pending" && !row.partnerRef) {
+    throw new TransferError("That transfer is still being sent. Try again in a minute.");
   }
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
   // A partner that says it's too late (already being processed) keeps the transfer going.
@@ -246,15 +268,31 @@ export async function settleTransfers(
   const db = scopedFor(userId, client);
   // A move saved ahead of the partner call (a unique key, no partner reference) that has waited
   // this long never reached the partner: it is failed, which frees its key for a new try.
-  await db.moneyTransfers.updateMany({
+  const unconfirmed = await db.moneyTransfers.findMany({
     where: {
       status: "pending",
       uniqueKey: { not: null },
       partnerRef: null,
       createdAt: { lt: new Date(now.getTime() - UNSCHEDULED_RESERVATION_MS) },
     },
-    data: { status: "failed", uniqueKey: null },
+    select: { id: true },
   });
+  for (const { id } of unconfirmed) {
+    // Failed, but the key stays: the partner may have taken it and the reference write been lost,
+    // so asking again would send the money twice. Asking again says it could not be confirmed.
+    const { count } = await db.moneyTransfers.updateMany({
+      where: { id, status: "pending", partnerRef: null },
+      data: { status: "failed" },
+    });
+    if (count > 0) {
+      await logAudit(
+        { type: "user", id: userId },
+        "money_transfer_unconfirmed",
+        { type: "money_transfer", id },
+        {},
+      );
+    }
+  }
   const pending = await db.moneyTransfers.findMany({
     // A "releasing" row is one a run claimed and never finished: it is taken up again. A move
     // still waiting on the partner call has no reference yet and is left alone.

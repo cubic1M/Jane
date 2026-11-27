@@ -72,6 +72,8 @@ async function savedTransfer(
       toAccountId: move.toAccountId ?? null,
       goalId: move.goalId ?? null,
       status: { in: ["pending", "awaiting_partner", "releasing", "completed"] },
+      // Saved ahead of the partner call and never answered is not a scheduled move.
+      OR: [{ partnerRef: { not: null } }, { status: "awaiting_partner" }],
     },
     select: { id: true },
   });

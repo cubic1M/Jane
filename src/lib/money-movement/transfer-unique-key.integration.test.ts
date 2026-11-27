@@ -74,7 +74,7 @@ describe.runIf(url)("one transfer for one move of a plan", { timeout: 60_000 }, 
   it("schedules the same move once when asked twice at the same moment", async () => {
     const calls = { n: 0 };
     const partner = partnerOf(calls);
-    const [a, b] = await Promise.all([
+    const results = await Promise.allSettled([
       scheduleTransfer(userId, move("paycheck:test|goal|a"), "autopilot", {
         client,
         now: NOW,
@@ -86,13 +86,27 @@ describe.runIf(url)("one transfer for one move of a plan", { timeout: 60_000 }, 
         partner,
       }),
     ]);
-    expect(a.id).toBe(b.id);
+    // The one that lost the race is told the move is still being sent, or gets the first's id.
+    const won = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    for (const r of results) {
+      if (r.status === "rejected") expect(String(r.reason)).toContain("still being sent");
+    }
+    expect(won.length).toBeGreaterThan(0);
     expect(calls.n).toBe(1);
     expect(
       await client.moneyTransfer.count({ where: { userId, uniqueKey: "paycheck:test|goal|a" } }),
     ).toBe(1);
+    const a = won[0]!;
     const row = await client.moneyTransfer.findUniqueOrThrow({ where: { id: a.id } });
     expect(row.partnerRef).toBe("REF-1");
+    // Asked again once the partner has answered, it is the same transfer.
+    const again = await scheduleTransfer(userId, move("paycheck:test|goal|a"), "person", {
+      client,
+      now: NOW,
+      partner,
+    });
+    expect(again.id).toBe(a.id);
+    expect(calls.n).toBe(1);
   });
 
   it("keeps a move without a key as it was: two calls, two transfers", async () => {
@@ -167,6 +181,47 @@ describe.runIf(url)("one transfer for one move of a plan", { timeout: 60_000 }, 
     await settleTransfers(userId, { client, now: later, partner: partnerOf(calls) });
     const failed = await client.moneyTransfer.findUniqueOrThrow({ where: { id: row.id } });
     expect(failed.status).toBe("failed");
-    expect(failed.uniqueKey).toBeNull();
+    // The partner may have taken it and the reference been lost: the key stays, so asking again
+    // is refused instead of sending the money twice.
+    expect(failed.uniqueKey).toBe("paycheck:test|goal|d");
+    await expect(
+      scheduleTransfer(userId, move("paycheck:test|goal|d"), "person", {
+        client,
+        now: later,
+        partner: partnerOf(calls),
+      }),
+    ).rejects.toThrow("could not be confirmed");
+    expect(calls.n).toBe(0);
+  });
+
+  it("does not undo a move that is still being sent, and answers a repeat with 'still being sent'", async () => {
+    const row = await client.moneyTransfer.create({
+      data: {
+        userId,
+        fromAccountId: from,
+        toAccountId: to,
+        toName: "Savings",
+        amountCents: 5_000,
+        purpose: "cash",
+        sector: "goals",
+        runOn: new Date("2026-10-20T00:00:00Z"),
+        partner: "Test partner",
+        by: "person",
+        uniqueKey: "paycheck:test|goal|e",
+        createdAt: NOW,
+      },
+    });
+    await expect(
+      cancelTransfer(userId, row.id, { client, now: NOW, partner: partnerOf({ n: 0 }) }),
+    ).rejects.toThrow("still being sent");
+    await expect(
+      scheduleTransfer(userId, move("paycheck:test|goal|e"), "person", {
+        client,
+        now: NOW,
+        partner: partnerOf({ n: 0 }),
+      }),
+    ).rejects.toThrow("still being sent");
+    const kept = await client.moneyTransfer.findUniqueOrThrow({ where: { id: row.id } });
+    expect([kept.status, kept.uniqueKey]).toEqual(["pending", "paycheck:test|goal|e"]);
   });
 });

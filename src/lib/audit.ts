@@ -203,6 +203,7 @@ export type AuditEvent =
   // Money that moves itself (spec steps 144–145): a transfer or payment scheduled or undone.
   | "money_transfer_scheduled"
   | "money_transfer_cancelled"
+  | "money_transfer_unconfirmed"
   // A what-if plan the person adopted (spec step 203).
   | "what_if_adopted"
   // The lean plan switched on or off (spec step 204).

@@ -218,7 +218,7 @@ async function handleDeposits(
     // A part already moved keeps its amount; the other is what is left of the deposit, so a
     // changed estimate can't move more than the deposit in all (CodeRabbit on #2261).
     const moved0 = await db.moneyTransfers.findMany({
-      where: { planKey: { in: [`${key}:tax`, `${key}:buffer`] } },
+      where: { planKey: { in: [`${key}:tax`, `${key}:buffer`] }, status: { not: "failed" } },
       select: { planKey: true, amountCents: true },
     });
     const done = (suffix: string) => moved0.find((t) => t.planKey === `${key}:${suffix}`);
@@ -241,7 +241,10 @@ async function handleDeposits(
       // Each part has its own planKey: one the caps held back is tried again next time.
       const partKey = `${key}:${part.suffix}`;
       if (
-        await db.moneyTransfers.findFirst({ where: { planKey: partKey }, select: { id: true } })
+        await db.moneyTransfers.findFirst({
+          where: { planKey: partKey, status: { not: "failed" } },
+          select: { id: true },
+        })
       ) {
         continue;
       }
