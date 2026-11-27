@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { estimateTaxes, NO_INCOME } from "@/planning/tax-estimate";
 import {
   ALLOWED_SOURCE_HOSTS,
+  DRAFT_TAX_YEARS,
+  draftParams,
   federalParams,
   NoTaxParamsError,
   PARAMS_VERSION,
@@ -185,6 +187,42 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
     const amt = params.amt.value;
     for (const s of ["single", "married_joint", "married_separate", "head_of_household"] as const) {
       expect(amt.exemption[s]).toBeLessThan(amt.phaseOutStart[s]);
+    }
+  });
+
+  it("matches the fingerprint in params-version.json (change a figure and update it on purpose)", () => {
+    const hash = createHash("sha256").update(canonical(params)).digest("hex");
+    if (process.env.PARAMS_VERSION_WRITE === "1") {
+      const all = JSON.parse(readFileSync(VERSION_FILE, "utf8")) as Record<string, string>;
+      writeFileSync(VERSION_FILE, JSON.stringify({ ...all, [year]: hash }, null, 2) + "\n");
+      return;
+    }
+    expect(PARAMS_VERSION[String(year)]).toBe(hash);
+  });
+});
+
+// A draft year (Tax T32) is not priced, but its figures are fingerprinted and cited the same way.
+describe.each(DRAFT_TAX_YEARS)("draft federal parameters %i", (year) => {
+  const params = draftParams(year);
+  const draftGroups = Object.entries(params as unknown as Record<string, unknown>).filter(
+    (e): e is [string, Cited<unknown>] =>
+      typeof e[1] === "object" && e[1] !== null && "status" in e[1],
+  );
+
+  it("is for the year it is filed under and cites every group on an allow-listed host", () => {
+    expect(params.year).toBe(year);
+    const today = new Date().toISOString().slice(0, 10);
+    for (const [key, g] of draftGroups) {
+      for (const address of [g.source, ...(g.alsoSources ?? [])]) {
+        const url = new URL(address);
+        expect(url.protocol, `${key} ${address}`).toBe("https:");
+        expect(
+          ALLOWED_SOURCE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith(`.${h}`)),
+          `${key} ${address}`,
+        ).toBe(true);
+      }
+      expect(g.where.length, `${key} where`).toBeGreaterThan(10);
+      expect(g.checkedOn <= today, `${key} checked in the future`).toBe(true);
     }
   });
 

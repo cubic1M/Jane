@@ -31,6 +31,7 @@ export const ALLOWED_SOURCE_HOSTS = [
   "ftb.ca.gov",
   "law.cornell.edu",
   "congress.gov",
+  "federalregister.gov",
 ] as const;
 
 // A bracket: the rate applies to income over `over` (cents), up to the next bracket.

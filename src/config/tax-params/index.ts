@@ -2,6 +2,7 @@ import versions from "./params-version.json";
 import type { FederalParams, ParamStatus } from "./types";
 import { US_2025 } from "./us-2025";
 import { US_2026 } from "./us-2026";
+import { US_2027 } from "./us-2027";
 
 export type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 export { ALLOWED_SOURCE_HOSTS } from "./types";
@@ -43,7 +44,9 @@ export function federalParams(year: number): FederalParams {
 // A year whose file exists but whose figures are not all published (Tax T32): kept so the nightly
 // check knows what is awaited. Never priced: federalParams refuses it, so nothing can use a
 // figure that is not confirmed. It moves to FEDERAL and SUPPORTED_TAX_YEARS when complete.
-const DRAFT: Readonly<Record<number, FederalParams>> = {};
+const DRAFT: Readonly<Record<number, FederalParams>> = {
+  2027: deepFreeze(US_2027),
+};
 
 export const DRAFT_TAX_YEARS: readonly number[] = Object.keys(DRAFT).map(Number);
 
@@ -91,7 +94,7 @@ export const PARAMS_VERSION: Readonly<Record<string, string>> = versions;
 // Every group of a year whose figures are not all confirmed at the source, with what is missing.
 // The completeness test pins this list, so a new note, or a cleared one, is a visible change.
 export function verifyNotes(year: number): { key: string; status: string; note: string }[] {
-  const params = federalParams(year);
+  const params = FEDERAL[year] ?? draftParams(year);
   return Object.entries(params).flatMap(([key, group]) =>
     typeof group === "object" && group !== null && "status" in group
       ? group.status !== "verified" || group.verify
