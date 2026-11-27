@@ -570,6 +570,15 @@ export async function runInsuranceTool(
   if (name === "insurance_documents") {
     await loadInsurance(userId, { client, now });
     const readings = await listReadings(userId, { client });
+    // The dollar amounts the lines say are figures this answer may state: counted in cents, as the
+    // other insurance answers do, so none is left out of the check on what Claude says.
+    for (const r of readings.filter((x) => x.status !== "dismissed")) {
+      for (const line of [...readingLines(r), ...noteLines(r)]) {
+        for (const m of line.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
+          cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));
+        }
+      }
+    }
     return {
       content: JSON.stringify({
         documents: readings
