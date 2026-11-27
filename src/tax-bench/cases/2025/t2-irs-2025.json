@@ -1,0 +1,149 @@
+[
+  {
+    "id": "i1040gi-2025-tax-table-example",
+    "title": "Form 1040 instructions (2025), Tax Table example: joint, taxable income $25,300: tax $2,562",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf",
+      "where": "Instructions for Form 1040 (2025), page 68, the Tax Table example"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": { "wagesCents": 5680000 },
+    "expected": { "taxable": 2530000, "incomeTax": 256200 },
+    "expectedFailure": {
+      "steps": ["T4", "T23"],
+      "figures": ["taxable", "incomeTax"],
+      "reason": "Wages 56,800 less the 2025 joint standard deduction (31,500, Publication 17 (2025)) are 25,300 taxable, but the estimate prices every year with 2026 law (T4) and uses the bracket formula, where the Tax Table uses the middle of each $50 band (T23): 2025 brackets at 25,325 give 2,385 + 12% x 1,475 = 2,562."
+    },
+    "note": "The IRS example gives the tax from the table, 2,562; 2025 joint brackets are 10% to 23,850 and 12% above (Rev. Proc. 2024-40), so the table's middle of the band, 25,325, gives 2,385 + 177 = 2,562."
+  },
+  {
+    "id": "p596-2025-agi-over-limit",
+    "title": "Publication 596 (2025), page 5: single, one qualifying child, AGI $53,000: no earned income credit",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p596.pdf",
+      "where": "Publication 596 (2025), page 5, Example: AGI is more than limit ($50,434 for one child)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 1,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": { "wagesCents": 5300000 },
+    "expected": { "earnedIncomeCredit": 0 },
+    "note": "AGI 53,000 is over the 2025 limit 50,434. It also gives 0 under the estimate's 2026 table; it is a year-2025 case that will be checked on 2025 law once the estimator reads the year (T4)."
+  },
+  {
+    "id": "p501-2025-dependent-example-1",
+    "title": "Publication 501 (2025), Example 1: 16-year-old dependent, wages $150, interest $780: standard deduction $1,350",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p501.pdf",
+      "where": "Publication 501 (2025), Standard Deduction for Dependents, Example 1"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 16,
+      "state": null
+    },
+    "income": { "wagesCents": 15000, "interestCents": 78000 },
+    "extra": { "claimedAsDependent": true },
+    "expected": { "standardDeduction": 135000 },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate gives a dependent the full standard deduction (audit 4.5.7); T5 adds the limit."
+    },
+    "note": "Earned income 150 + 450 = 600; the larger of 600 and 1,350 is 1,350, under the regular 15,750."
+  },
+  {
+    "id": "p501-2025-dependent-example-2",
+    "title": "Publication 501 (2025), Example 2: 22-year-old student filing separately, wages $3,800: standard deduction $4,250",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p501.pdf",
+      "where": "Publication 501 (2025), Standard Deduction for Dependents, Example 2"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 22,
+      "state": null
+    },
+    "income": { "wagesCents": 380000, "interestCents": 150000 },
+    "extra": { "claimedAsDependent": true },
+    "expected": { "standardDeduction": 425000 },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate gives a dependent the full standard deduction (audit 4.5.7); T5 adds the limit."
+    },
+    "note": "3,800 + 450 = 4,250, under the regular 15,750."
+  },
+  {
+    "id": "p501-2025-dependent-example-3",
+    "title": "Publication 501 (2025), Example 3: blind 18-year-old dependent, wages $2,900, interest $1,300: standard deduction $5,350",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p501.pdf",
+      "where": "Publication 501 (2025), Standard Deduction for Dependents, Example 3"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 18,
+      "state": null
+    },
+    "income": { "wagesCents": 290000, "interestCents": 130000 },
+    "extra": { "claimedAsDependent": true, "blind": true },
+    "expected": { "standardDeduction": 535000 },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate gives a dependent the full standard deduction and ignores blindness (audit 4.5.2, 4.5.7); T5 adds both."
+    },
+    "note": "2,900 + 450 = 3,350, then 2,000 more for an unmarried blind person: 5,350."
+  },
+  {
+    "id": "p501-2025-dependent-example-4",
+    "title": "Publication 501 (2025), Example 4: 18-year-old dependent, wages $7,000, business loss $3,000: standard deduction $4,450",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p501.pdf",
+      "where": "Publication 501 (2025), Standard Deduction for Dependents, Example 4"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 18,
+      "state": null
+    },
+    "income": { "wagesCents": 700000, "selfEmploymentCents": -300000, "interestCents": 50000 },
+    "extra": { "claimedAsDependent": true },
+    "expected": { "standardDeduction": 445000 },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate gives a dependent the full standard deduction (audit 4.5.7); T5 adds the limit."
+    },
+    "note": "Earned income 7,000 - 3,000 = 4,000, plus 450 = 4,450."
+  }
+]

@@ -1,0 +1,144 @@
+[
+  {
+    "id": "pub915-2026-worksheet-a-example",
+    "title": "Publication 915 (2026), page 4: single, $1,500 of benefits, pension $17,000, interest $700: none taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915 (2026), page 4, the Worksheet A example"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 1700000,
+      "interestCents": 70000,
+      "socialSecurityBenefitsCents": 150000
+    },
+    "expected": {
+      "socialSecurityTaxable": 0
+    },
+    "note": "Income 17,700 + half the benefits 750 = 18,450, under the 25,000 base for single."
+  },
+  {
+    "id": "pub915-2026-example-1",
+    "title": "Publication 915 (2026), Example 1: single, benefits $5,980, other income $28,990: $2,990 taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915 (2026), page 8, Example 1 with its filled-in Worksheet 1"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 1860000,
+      "wagesCents": 940000,
+      "interestCents": 99000,
+      "socialSecurityBenefitsCents": 598000
+    },
+    "expected": {
+      "socialSecurityTaxable": 299000
+    },
+    "note": "Worksheet 1 line 6 is 31,980, 6,980 over the 25,000 base; half of that is 3,490, the smaller of that and half the benefits (2,990) is taxable."
+  },
+  {
+    "id": "pub915-2026-example-2",
+    "title": "Publication 915 (2026), Example 2: joint, benefits $5,600, a $1,000 IRA deduction: none taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915 (2026), page 9, Example 2 with its filled-in Worksheet 1 (line 7)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 1550000,
+      "wagesCents": 1400000,
+      "interestCents": 25000,
+      "socialSecurityBenefitsCents": 560000
+    },
+    "extra": {
+      "otherAdjustmentsCents": 100000
+    },
+    "expected": {
+      "socialSecurityTaxable": 0
+    },
+    "expectedFailure": {
+      "steps": ["unowned"],
+      "figures": ["socialSecurityTaxable"],
+      "reason": "Worksheet 1 line 7 takes the above-the-line adjustments off before the base is compared (31,550 is under 32,000); the estimate counts the other income before them (32,550) and makes 275.00 taxable. No roadmap step owns Social Security in the estimate."
+    },
+    "note": "Line 6 is 32,550; less the 1,000 IRA deduction, 31,550, under the 32,000 joint base, so nothing is taxable."
+  },
+  {
+    "id": "pub915-2026-example-3",
+    "title": "Publication 915 (2026), Example 3: joint, benefits $10,000, other income $40,500: $6,275 taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915 (2026), page 10, Example 3 with its filled-in Worksheet 1"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 3800000,
+      "interestCents": 250000,
+      "socialSecurityBenefitsCents": 1000000
+    },
+    "expected": {
+      "socialSecurityTaxable": 627500
+    },
+    "note": "The savings bond interest is left out, as the worksheet does: interest 2,300 + 200 = 2,500 on Schedule B line 2. Line 8 is 45,500, 1,500 over 44,000: 85% x 1,500 = 1,275 plus the smaller of 5,000 and 50% x 12,000 = 5,000, so 6,275, under 85% of the benefits (8,500)."
+  },
+  {
+    "id": "pub915-2026-example-4",
+    "title": "Publication 915 (2026), Example 4: married filing separately, lived together, benefits $4,000: $3,400 taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915 (2026), page 11, Example 4 and the note on Worksheet 1 line 9"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 800000,
+      "socialSecurityBenefitsCents": 400000
+    },
+    "expected": {
+      "socialSecurityTaxable": 340000
+    },
+    "expectedFailure": {
+      "steps": ["unowned"],
+      "figures": ["socialSecurityTaxable"],
+      "reason": "A married person filing separately who lived with the spouse has a base of 0, so 85% of the benefits count; the estimate gives married filing separately the single base (25,000) and counts none. No roadmap step owns Social Security in the estimate."
+    },
+    "note": "85% x 4,000 = 3,400.",
+    "extra": {
+      "livedWithSpouse": true
+    }
+  }
+]
