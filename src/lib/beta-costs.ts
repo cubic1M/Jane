@@ -50,6 +50,11 @@ export async function betaCosts({
   const mine = (id: unknown) => !userIds || (typeof id === "string" && userIds.includes(id));
   const start = monthStartUtc(now);
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+  // The week can start before the month does (Nov 2: the week began Oct 26): read from the earlier.
+  const weekDay = new Date(
+    Date.UTC(weekAgo.getUTCFullYear(), weekAgo.getUTCMonth(), weekAgo.getUTCDate()),
+  );
+  const activityFrom = weekDay < start ? weekDay : start;
   const [items, removed, spentCents, rows, active] = await Promise.all([
     systemDb(WHY, client).plaidItem.findMany({
       where: { userId: { not: { startsWith: TRIAL_ID_PREFIX } } },
@@ -74,7 +79,7 @@ export async function betaCosts({
       FROM activity_events
       WHERE user_id IS NOT NULL
         AND NOT starts_with(user_id, ${TRIAL_ID_PREFIX})
-        AND created_at >= ${start} AND created_at < ${now}`,
+        AND created_at >= ${activityFrom} AND created_at < ${now}`,
   ]);
   const real = items.filter((i) => mine(i.userId) && !isDemoItemId(i.plaidItemId));
   const removedThisMonth = removed.filter((r) => {
