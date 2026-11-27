@@ -348,12 +348,23 @@ async function renew(
     refreshToken: tokens.refreshToken ?? secrets.refreshToken,
   };
   const saved = sealSecrets(next);
-  await db.robinhoodConnections.updateMany({
-    where: { id: connectionId, OR: [{ syncingSince: now }, { secretsEncrypted: sealed }] },
-    data: { secretsEncrypted: saved, accessExpiresAt: tokens.expiresAt },
-  });
+  // Written again if the write fails, without asking Robinhood twice: the old refresh token is
+  // already retired, so these are the only copy of the new ones.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await db.robinhoodConnections.updateMany({
+        where: { id: connectionId, OR: [{ syncingSince: now }, { secretsEncrypted: sealed }] },
+        data: { secretsEncrypted: saved, accessExpiresAt: tokens.expiresAt },
+      });
+      break;
+    } catch (error) {
+      if (attempt >= TOKEN_SAVE_ATTEMPTS) throw error;
+    }
+  }
   return { sealed: saved, secrets: next };
 }
+
+const TOKEN_SAVE_ATTEMPTS = 3;
 
 // Refreshes one person's connection. Only ever throws for a bug: every expected failure is recorded
 // on the connection, and the person is shown it.
@@ -374,9 +385,13 @@ export async function refreshConnection(
   if (count === 0) {
     return (await db.robinhoodConnections.count()) === 0 ? "none" : "busy";
   }
-  const row = await db.robinhoodConnections.findFirstOrThrow({
+  // Read under the lease just taken: a sign-in that replaced the credentials and released the
+  // lease in between leaves nothing here, and this refresh stops before it uses the new ones.
+  const row = await db.robinhoodConnections.findFirst({
+    where: { syncingSince: now },
     select: { id: true, secretsEncrypted: true, clientId: true, accessExpiresAt: true },
   });
+  if (!row) return "busy";
   try {
     let credentials: Credentials = {
       sealed: row.secretsEncrypted,
