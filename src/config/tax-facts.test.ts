@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   LEGACY_DONE_KEY,
   RESIDENCY_FROM_TOLD,
@@ -8,6 +8,7 @@ import {
   TAX_FACT_SPECS,
   TOLD_FROM_RESIDENCY,
   isTaxFactKey,
+  type TaxFactKey,
   taxFactSpec,
 } from "@/config/tax-facts";
 
@@ -30,6 +31,12 @@ describe("the tax fact keys", () => {
     for (const origin of TAX_FACT_ORIGINS) expect(TAX_FACT_CONFIDENCE[origin]).toBeGreaterThan(0);
     expect(TAX_FACT_ORIGINS[0]).toBe("answer");
     expect(TAX_FACT_ORIGINS.at(-1)).toBe("legacy");
+  });
+
+  it("keeps each key as a literal, so a key that is not registered fails type checking", () => {
+    expectTypeOf<TaxFactKey>().not.toEqualTypeOf<string>();
+    expectTypeOf<"filing.status">().toExtend<TaxFactKey>();
+    expectTypeOf<"filing.nonsense">().not.toExtend<TaxFactKey>();
   });
 
   it("knows its own keys, and the marker is one of them", () => {

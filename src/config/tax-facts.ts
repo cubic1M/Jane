@@ -21,12 +21,12 @@ export type TaxFactSpec = Readonly<{
   label: string;
 }>;
 
-const spec = (
-  key: string,
+const spec = <const K extends string>(
+  key: K,
   type: TaxFactType,
   label: string,
   more: Partial<Omit<TaxFactSpec, "key" | "type" | "label">> = {},
-): TaxFactSpec => ({
+): TaxFactSpec & { readonly key: K } => ({
   key,
   type,
   label,
