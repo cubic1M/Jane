@@ -49,7 +49,7 @@ const PROFILE_SELECT = {
   answered: true,
 } as const;
 
-async function loadTaxFacts(
+export async function loadTaxFacts(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ found: FoundFacts; stored: StoredTaxProfile | null }> {
