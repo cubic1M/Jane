@@ -160,11 +160,18 @@ export function CardDock({ userId }: { userId: string }) {
     return keepWheel(box);
   }, [hasCards]);
 
-  if ((shown.length === 0 && !putAway) || !code) return null;
+  // Once it has shown cards the stack stays mounted, hidden while empty: putting away the only card
+  // empties `shown` a render before its line reports itself (onPutAway), and unmounting then lost
+  // the line and its "Bring it back" (walk 11-27).
+  const [started, setStarted] = useState(shown.length > 0);
+  if (shown.length > 0 && !started) setStarted(true);
+  if (!code || !dockMounted(shown.length, putAway, started)) return null;
   const { SuggestionCards } = code;
   return (
     <FollowHeight
-      className="shrink-0 border-b border-zinc-300 dark:border-zinc-700"
+      className={`shrink-0 border-b border-zinc-300 dark:border-zinc-700${
+        shown.length === 0 && !putAway ? " hidden" : ""
+      }`}
       slideIn={!fromKept}
     >
       <div
@@ -189,6 +196,12 @@ export function CardDock({ userId }: { userId: string }) {
       </div>
     </FollowHeight>
   );
+}
+
+// Whether the dock's stack is in the page: while it has cards or a put-away line, and after that
+// once it has shown any (so a line that is about to report itself is not unmounted with it).
+export function dockMounted(cards: number, putAway: string | null, started: boolean): boolean {
+  return cards > 0 || putAway !== null || started;
 }
 
 // The reloaded cards, with the one showing kept in its place if the reload left it out.

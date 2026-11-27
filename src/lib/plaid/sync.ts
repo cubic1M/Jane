@@ -25,6 +25,7 @@ import {
 } from "@/config/funds";
 import { runDetection } from "@/detection/engine";
 import { markCashIncome } from "@/categorize/cash-income";
+import { reapplyRules } from "@/categorize/reapply";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { decrypt } from "@/lib/crypto";
@@ -918,6 +919,8 @@ async function syncItemWork(
   timing.mark("cursor_and_track");
   // Regular cash deposits count as income before Jane reads the month (src/categorize/cash-income.ts).
   await markCashIncome(db);
+  // New rows can show a move between their own accounts (see src/categorize/reapply.ts).
+  await reapplyRules(item.userId, { client });
   const detection = await runDetection(item.userId, { client, now });
   // When the findings existed, on the sync's own clock: its "now" may be set (a test, a replay).
   const foundAt = new Date(now.getTime() + (Date.now() - wallStart));
