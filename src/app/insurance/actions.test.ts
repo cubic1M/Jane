@@ -119,9 +119,11 @@ describe("insurance page actions", () => {
   });
 
   it("says a saving is gone, not done, when it was dismissed or no longer applies", async () => {
-    vi.mocked(applySaving).mockRejectedValueOnce(new SavingError("gone"));
+    vi.mocked(applySaving).mockRejectedValueOnce(
+      new SavingError("That one's already been answered."),
+    );
     await expect(applyOneSaving(form({ savingId: "s1" }))).rejects.toThrow(
-      "REDIRECT /insurance?saved=saving_gone&focus=savings",
+      "REDIRECT /insurance?savingNote=That%20one's%20already%20been%20answered.&focus=savings",
     );
     vi.mocked(applySaving).mockResolvedValueOnce(undefined as never);
     await expect(applyOneSaving(form({ savingId: "s1" }))).rejects.toThrow(

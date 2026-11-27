@@ -93,7 +93,6 @@ const SAVED: Record<string, string> = {
   changes: "Done. Your insurance is up to date.",
   called: "Jane called your insurer. What they said is below and in the chat.",
   saving: "Done. Your policy is updated and your insurer confirmed it.",
-  saving_gone: "That saving is no longer on offer, so nothing changed.",
   risk: "Thanks. Jane has noted it.",
 };
 
@@ -240,6 +239,7 @@ async function InsuranceContent({
     area,
   } = loaded;
   const familyError = one("family");
+  const savingNote = one("savingNote");
   const savedKey = one("saved");
   const saved = Object.hasOwn(SAVED, savedKey) ? SAVED[savedKey] : undefined;
   const add = one("add");
@@ -613,6 +613,14 @@ async function InsuranceContent({
         </nav>
       </div>
 
+      {savingNote && (
+        <p
+          role="alert"
+          className="bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+        >
+          {savingNote} Nothing changed.
+        </p>
+      )}
       {(saved || result) && (
         <p
           role="status"
