@@ -1,9 +1,8 @@
-import { ownLawYear } from "@/config/tax-params";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { TAXABLE_GAINS_SHARE } from "@/config/retirement-income";
 import { IRA_DISTRIBUTION, IRMAA_WATCH, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
-import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { rateMonthsOf, type Profile, type ProfileInput } from "@/profile/build";
 import type { Balances } from "./retirement-income";
 import {
@@ -63,6 +62,8 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   // NoTaxParamsError (held back by the detector runner, W-N in the chat tool), never priced with
   // another year's law.
   const year = ownLawYear(Number(profile.today.slice(0, 4)));
+  // And read from that year's own brackets and standard deduction (T32b), never the 2026 constants.
+  const law = federalParams(year);
   // The status the person reported, as every other tax figure reads it (filingStatusOf); this
   // reading knows only joint and single, so the others file as single.
   const status: Status = filingStatusOf(f) === "married_joint" ? "married_joint" : "single";
@@ -124,8 +125,8 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   const ssTax = socialSecurityTax({ benefitsCents: ss, otherIncomeCents: other, status });
   const magi = other + ssTax.taxableCents;
   const bracket = marginalRateOf(
-    Math.max(0, magi - STANDARD_DEDUCTION[status]),
-    FEDERAL_BRACKETS[status],
+    Math.max(0, magi - law.standardDeduction.value[status]),
+    law.brackets.value[status],
   );
   const age = typeof f.age.value === "number" ? f.age.value : null;
   const stage = f.life_stage.value;

@@ -1,0 +1,716 @@
+[
+  {
+    "id": "t32b-single-50k",
+    "title": "2027 hand case: single, wages $50,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "expected": {
+      "agi": 5000000,
+      "standardDeduction": 1660000,
+      "taxable": 3340000,
+      "incomeTax": 375200,
+      "totalTax": 375200
+    },
+    "note": "Taxable 50,000 - 16,600 = 33,400. Tax 10% x 12,800 = 1,280 plus 12% x (33,400 - 12,800 = 20,600) = 2,472, total 3,752.00."
+  },
+  {
+    "id": "t32b-single-refund",
+    "title": "2027 hand case: single, W-2 box 1 $40,000, box 2 $3,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "extra": {
+      "federalWithheldCents": 300000
+    },
+    "expected": {
+      "taxable": 2340000,
+      "incomeTax": 255200,
+      "paid": 300000,
+      "refund": 44800
+    },
+    "note": "Taxable 40,000 - 16,600 = 23,400. Tax 1,280 + 12% x (23,400 - 12,800 = 10,600) = 1,280 + 1,272 = 2,552.00. Refund 3,000 - 2,552 = 448.00."
+  },
+  {
+    "id": "t32b-single-taxable-40k",
+    "title": "2027 hand case: single, taxable income exactly $40,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5660000
+    },
+    "expected": {
+      "taxable": 4000000,
+      "incomeTax": 454400
+    },
+    "note": "Wages 56,600 - 16,600 = 40,000. Tax 1,280 + 12% x (40,000 - 12,800 = 27,200) = 1,280 + 3,264 = 4,544.00."
+  },
+  {
+    "id": "t32b-joint-taxable-40k",
+    "title": "2027 hand case: married filing jointly, taxable income exactly $40,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 7320000
+    },
+    "expected": {
+      "standardDeduction": 3320000,
+      "taxable": 4000000,
+      "incomeTax": 428800
+    },
+    "note": "Wages 73,200 - 33,200 = 40,000. Tax 2,560 + 12% x (40,000 - 25,600 = 14,400) = 2,560 + 1,728 = 4,288.00."
+  },
+  {
+    "id": "t32b-hoh-taxable-40k",
+    "title": "2027 hand case: head of household, taxable income exactly $40,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "head_of_household",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 6492500
+    },
+    "expected": {
+      "standardDeduction": 2492500,
+      "taxable": 4000000,
+      "incomeTax": 443500
+    },
+    "note": "Wages 64,925 - 24,925 = 40,000. Tax 1,825 + 12% x (40,000 - 18,250 = 21,750) = 1,825 + 2,610 = 4,435.00."
+  },
+  {
+    "id": "t32b-separate-taxable-40k",
+    "title": "2027 hand case: married filing separately, taxable income exactly $40,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5660000
+    },
+    "expected": {
+      "standardDeduction": 1660000,
+      "taxable": 4000000,
+      "incomeTax": 454400
+    },
+    "note": "Wages 56,600 - 16,600 = 40,000. Table 4 is the same as the single table up to $264,550: 1,280 + 12% x 27,200 = 4,544.00."
+  },
+  {
+    "id": "t32b-joint-two-children",
+    "title": "2027 hand case: married filing jointly, wages $85,632, two children",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 (tax tables) and 3.15(1) (standard deduction); 3.05 (child tax credit $2,300)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 2,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 8563200,
+      "socialSecurityWagesCents": 9132000
+    },
+    "expected": {
+      "taxable": 5243200,
+      "incomeTax": 577984,
+      "childTaxCredit": 460000,
+      "totalTax": 117984
+    },
+    "note": "Taxable 85,632 - 33,200 = 52,432. Tax 2,560 + 12% x (52,432 - 25,600 = 26,832) = 2,560 + 3,219.84 = 5,779.84. Credit 2 x 2,300 = 4,600. Total 1,179.84."
+  },
+  {
+    "id": "t32b-joint-family-itemizes",
+    "title": "2027 hand case: joint, wages $120,000, 2 children and 1 other dependant, itemizes",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 sections 3.01, 3.05, 3.15; 26 USC 164(b)(7) (state and local cap), 170(b)(1)(I) (0.5 percent floor), 213(a) (7.5 percent floor), 221"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 2,
+      "otherDependants": 1,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 12000000
+    },
+    "extra": {
+      "studentLoanInterestCents": 100000,
+      "mortgageInterestCents": 2000000,
+      "charityCents": 500000,
+      "medicalCents": 1500000,
+      "stateWithheldCents": 480000,
+      "otherStateLocalTaxCents": 300000,
+      "federalWithheldCents": 1000000
+    },
+    "expected": {
+      "totalIncome": 12000000,
+      "studentLoanInterest": 100000,
+      "agi": 11900000,
+      "itemizedStateLocal": 780000,
+      "itemizedMortgage": 2000000,
+      "itemizedCharity": 440500,
+      "itemizedMedical": 607500,
+      "nonItemizerCharity": 0,
+      "qbi": 0,
+      "taxable": 8072000,
+      "incomeTax": 917440,
+      "childTaxCredit": 460000,
+      "otherDependantCredit": 50000,
+      "additionalChildTaxCredit": 0,
+      "socialSecurityTaxable": 0,
+      "amt": 0,
+      "selfEmploymentTax": 0,
+      "halfSelfEmploymentTax": 0,
+      "additionalMedicare": 0,
+      "netInvestmentIncomeTax": 0,
+      "totalTax": 407440,
+      "paid": 1000000,
+      "refund": 592560,
+      "standardDeduction": 3320000
+    },
+    "note": "AGI 120,000 - 1,000 student loan interest = 119,000. Itemized: state and local 4,800 + 3,000 = 7,800 (under the 40,804 cap); mortgage 20,000; gifts 5,000 less 0.5% x 119,000 (595) = 4,405; medical 15,000 - 7.5% x 119,000 (8,925) = 6,075. Total 7,800 + 20,000 + 4,405 + 6,075 = 38,280, over the 33,200 standard. Taxable 119,000 - 38,280 = 80,720. Tax 2,560 + 12% x (80,720 - 25,600 = 55,120) = 2,560 + 6,614.40 = 9,174.40. Credits 2 x 2,300 + 500 = 5,100. Total 4,074.40. Paid 10,000; refund 5,925.60."
+  },
+  {
+    "id": "t32b-gifts-nonitemizer-single",
+    "title": "2027 hand case: single, gifts $1,500 without itemizing",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p): $1,000 ($2,000 joint), not indexed"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "extra": {
+      "charityCents": 150000
+    },
+    "expected": {
+      "nonItemizerCharity": 100000
+    },
+    "note": "Gifts 1,500 are capped at 1,000 for a single filer."
+  },
+  {
+    "id": "t32b-gifts-nonitemizer-joint",
+    "title": "2027 hand case: joint, gifts $1,500 without itemizing",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p): $1,000 ($2,000 joint), not indexed"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "extra": {
+      "charityCents": 150000
+    },
+    "expected": {
+      "nonItemizerCharity": 150000
+    },
+    "note": "Gifts 1,500 are under the 2,000 joint cap."
+  },
+  {
+    "id": "t32b-se-60k-qbi",
+    "title": "2027 hand case: single, self-employment $60,000: self-employment tax and the QBI deduction",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.28 (threshold $208,300) and 3.15; Schedule SE; 26 USC 199A"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "selfEmploymentCents": 6000000
+    },
+    "expected": {
+      "selfEmploymentTax": 847773,
+      "halfSelfEmploymentTax": 423887,
+      "agi": 5576113,
+      "qbi": 783223,
+      "taxable": 3132890,
+      "incomeTax": 350347,
+      "totalTax": 1198120
+    },
+    "note": "Earnings 60,000 x 0.9235 = 55,410. SE tax 55,410 x 15.3% = 8,477.73; half 4,238.865 rounds to 4,238.87. AGI 55,761.13. After the standard deduction 39,161.13. QBI the smaller of 20% x (60,000 - 4,238.87) = 11,152.23 and 20% x 39,161.13 = 7,832.23, so 7,832.23. Taxable 31,328.90. Tax 1,280 + 12% x 18,528.90 = 2,223.47, so 3,503.47. Total 3,503.47 + 8,477.73 = 11,981.20."
+  },
+  {
+    "id": "t32b-student-loan-interest-phase-out",
+    "title": "2027 hand case: single, student loan interest $805.50 a tenth into the phase-out",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.31: phase-out from $90,000 to $105,000"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 9150000
+    },
+    "extra": {
+      "studentLoanInterestCents": 80550
+    },
+    "expected": {
+      "studentLoanInterest": 72495
+    },
+    "note": "91,500 is 1,500 into the 15,000 range, a tenth. 805.50 x 0.9 = 724.95."
+  },
+  {
+    "id": "t32b-hoh-two-children-credits",
+    "title": "2027 hand case: head of household, wages $30,000, two children: child credit, refundable part and earned income credit",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 sections 3.05 ($2,300; $1,800 refundable) and 3.06 (earned income credit table); 26 USC 24(d)(1)(B)(i), 32(b)(1)"
+    },
+    "household": {
+      "filingStatus": "head_of_household",
+      "childrenUnder17": 2,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "expected": {
+      "taxable": 507500,
+      "incomeTax": 50750,
+      "childTaxCredit": 50750,
+      "additionalChildTaxCredit": 360000,
+      "earnedIncomeCredit": 642740,
+      "totalTax": -1002740
+    },
+    "note": "Taxable 30,000 - 24,925 = 5,075; tax 10% = 507.50. Credit 2 x 2,300 = 4,600 allowed, 507.50 used against tax. Refundable: the smallest of 4,600 - 507.50 = 4,092.50, 2 x 1,800 = 3,600 and 15% x (30,000 - 2,500) = 4,125, so 3,600. Earned income credit, two children: the smaller of 7,552 and 40% x 30,000 (12,000) = 7,552, less 21.06% x (30,000 - 24,660 = 5,340) = 1,124.604, so 6,427.40 (head of household uses the single thresholds). Total 507.50 - 507.50 - 3,600 - 6,427.40 = -10,027.40."
+  },
+  {
+    "id": "t32b-other-dependant-credit",
+    "title": "2027 hand case: single, wages $40,000, one other dependant",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.01 and 3.15; 26 USC 24(h)(4) ($500)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 1,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "expected": {
+      "otherDependantCredit": 50000,
+      "totalTax": 205200
+    },
+    "note": "Tax 2,552.00 as in the refund case, less the 500 credit (nonrefundable, within the tax): 2,052.00."
+  },
+  {
+    "id": "t32b-eitc-childless-plateau",
+    "title": "2027 hand case: single age 30, wages $9,000, no children: the earned income credit",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.06(1): maximum credit $685 for no children"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 30,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 900000
+    },
+    "expected": {
+      "earnedIncomeCredit": 68500,
+      "incomeTax": 0,
+      "totalTax": -68500,
+      "refund": 68500
+    },
+    "note": "7.65% x 9,000 = 688.50, over the 685 maximum, so 685. Wages are under the 16,600 standard deduction, so no income tax."
+  },
+  {
+    "id": "t32b-niit-single",
+    "title": "2027 hand case: single, wages $150,000 and interest $100,000: the net investment income tax",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/1411",
+      "where": "26 USC 1411(a)(1) and (b): 3.8 percent over $200,000 (not indexed)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 15000000,
+      "interestCents": 10000000
+    },
+    "expected": {
+      "agi": 25000000,
+      "netInvestmentIncomeTax": 190000,
+      "additionalMedicare": 0
+    },
+    "note": "AGI 250,000, 50,000 over 200,000, smaller than the 100,000 of interest: 3.8% x 50,000 = 1,900. Wages 150,000 are under 200,000, so no Additional Medicare tax."
+  },
+  {
+    "id": "t32b-additional-medicare-single",
+    "title": "2027 hand case: single, wages $250,000: the Additional Medicare tax",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/3101",
+      "where": "26 USC 3101(b)(2): 0.9 percent over $200,000 (not indexed)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 25000000
+    },
+    "expected": {
+      "additionalMedicare": 45000
+    },
+    "note": "0.9% x (250,000 - 200,000) = 450.00."
+  },
+  {
+    "id": "t32b-high-earner-se-over-wage-base",
+    "title": "2027 hand case: single, wages $195,000 over the $192,300 wage base, self-employment $40,000, interest $6,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.federalregister.gov/d/2026-21796",
+      "where": "SSA notice 2026-21796 (wage base $192,300); Schedule SE; Forms 8959 and 8960"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 19500000,
+      "selfEmploymentCents": 4000000,
+      "interestCents": 600000
+    },
+    "expected": {
+      "totalIncome": 24100000,
+      "selfEmploymentTax": 107126,
+      "halfSelfEmploymentTax": 53563,
+      "additionalMedicare": 28746,
+      "netInvestmentIncomeTax": 22800
+    },
+    "note": "Wages already pass the 192,300 Social Security wage base, so self-employment tax is only Medicare: 92.35% x 40,000 = 36,940 x 2.9% = 1,071.26; half 535.63. Additional Medicare: (195,000 + 36,940 - 200,000) = 31,940 x 0.9% = 287.46. AGI = 241,000 - 535.63 = 240,464.37; NIIT = 3.8% x min(6,000, 40,464.37) = 228.00."
+  },
+  {
+    "id": "t32b-capital-gains-stacked",
+    "title": "2027 hand case: single, wages $60,000 and long-term gains $20,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.03: 0% up to $51,050 for all other individuals; 3.01 and 3.15"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 6000000,
+      "longTermGainsCents": 2000000
+    },
+    "expected": {
+      "totalIncome": 8000000,
+      "taxable": 6340000,
+      "incomeTax": 680450
+    },
+    "note": "Taxable 80,000 - 16,600 = 63,400; ordinary 43,400 taxed 1,280 + 12% x 30,600 = 4,952. The gains sit from 43,400 to 63,400: 0% up to 51,050 (7,650), 15% on 12,350 = 1,852.50. Total 6,804.50."
+  },
+  {
+    "id": "t32b-social-security-worksheet",
+    "title": "2027 hand case: single retiree, $30,000 of benefits and $25,000 pension",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/86",
+      "where": "26 USC 86(c): base amounts $25,000 and $34,000 for a single filer (not indexed); Publication 915 Worksheet 1"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 2500000,
+      "socialSecurityBenefitsCents": 3000000
+    },
+    "expected": {
+      "socialSecurityTaxable": 960000
+    },
+    "note": "Provisional income 25,000 + 15,000 = 40,000. Line 9 = 15,000; line 10 = 9,000; line 11 = 6,000; line 12 = min(15,000, 9,000) = 9,000; line 13 = 4,500; line 14 = min(15,000, 4,500) = 4,500; line 15 = 85% x 6,000 = 5,100; line 16 = 9,600; line 17 = 85% x 30,000 = 25,500; taxable = 9,600."
+  },
+  {
+    "id": "t32b-child-credit-refundable-part",
+    "title": "2027 hand case: single, wages $20,000, one child: the refundable part of the credit",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040s8.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.05 ($2,300; $1,800 refundable); Schedule 8812: the smaller of the unused credit, $1,800 and 15% of earned income over $2,500"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 1,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 2000000
+    },
+    "expected": {
+      "taxable": 340000,
+      "incomeTax": 34000,
+      "childTaxCredit": 34000,
+      "additionalChildTaxCredit": 180000
+    },
+    "note": "Taxable 20,000 - 16,600 = 3,400; tax 10% = 340. The credit 2,300 uses 340 of it; the unused 1,960 is capped at 1,800 (15% x 17,500 = 2,625 is larger)."
+  },
+  {
+    "id": "t32b-amt-iso-no-phase-out",
+    "title": "2027 hand case: single, wages $200,000, ISO preference $315,950: alternative minimum taxable income exactly at the phase-out start",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.11: exemption $93,000, 28% above $252,500, phase-out from $515,950; Form 6251"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 20000000
+    },
+    "extra": {
+      "amtPreferenceCents": 31595000
+    },
+    "expected": {
+      "incomeTax": 3637500,
+      "amt": 7700100,
+      "totalTax": 11337600
+    },
+    "note": "Taxable 183,400; regular tax 18,549 + 24% x 74,275 (17,826) = 36,375. AMT income 183,400 + 16,600 + 315,950 = 515,950, exactly at the phase-out start, so the full 93,000 exemption: base 422,950; 26% x 252,500 = 65,650 plus 28% x 170,450 = 47,726, tentative 113,376. AMT 113,376 - 36,375 = 77,001."
+  },
+  {
+    "id": "t32b-amt-exemption-phase-out-50-percent",
+    "title": "2027 hand case: single, wages $400,000, ISO preference $300,000: the exemption phases out at 50 percent",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.11; 26 USC 55(d)(2) and (d)(4)(A)(ii)(IV) (50 percent)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 40000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "amt": 8873050
+    },
+    "note": "Taxable 383,400; regular tax 60,349 + 35% x 118,850 (41,597.50) = 101,946.50. AMT income 383,400 + 16,600 + 300,000 = 700,000. Exemption 93,000 - 50% x (700,000 - 515,950 = 184,050) = 93,000 - 92,025 = 975. Base 699,025: 26% x 252,500 = 65,650 plus 28% x 446,525 = 125,027, tentative 190,677. AMT 190,677 - 101,946.50 = 88,730.50."
+  },
+  {
+    "id": "t32b-amt-gains-keep-their-rates",
+    "title": "2027 hand case, Form 6251 Part III: single, wages $100,000, gains $50,000, ISO preference $300,000",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/f6251.pdf",
+      "where": "Form 6251 lines 5 and 12 to 40; Rev. Proc. 2026-35 sections 3.03 and 3.11"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000,
+      "longTermGainsCents": 5000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "taxable": 13340000,
+      "incomeTax": 2038950,
+      "amt": 6802050
+    },
+    "note": "AGI 150,000; standard 16,600; taxable 133,400 (ordinary 83,400 + gains 50,000). Regular tax 5,987 + 22% x 31,375 (6,902.50) = 12,889.50 plus 15% x 50,000 = 20,389.50. AMT income 450,000, exemption 93,000, line 12 = 357,000; line 17 = 307,000: 26% x 252,500 + 28% x 54,500 = 65,650 + 15,260 = 80,910; line 31 = 7,500; line 38 = 88,410; line 39 = 94,910; line 40 = 88,410; AMT = 88,410 - 20,389.50 = 68,020.50."
+  },
+  {
+    "id": "t32b-salt-mfs-at-phase-down-start",
+    "title": "2027 hand case: married filing separately, AGI $255,025: the state and local cap, no cut yet",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/164",
+      "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B): 2027 cap $40,804 and threshold $510,050, each halved for a separate return"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 25502500
+    },
+    "extra": {
+      "stateWithheldCents": 3000000
+    },
+    "expected": {
+      "agi": 25502500,
+      "itemizedStateLocal": 2040200
+    },
+    "note": "No cut yet: the whole-return limit $40,804 is halved for a separate return: $20,402."
+  },
+  {
+    "id": "t32b-salt-mfs-100k-over",
+    "title": "2027 hand case: married filing separately, AGI $355,025: $100,000 over the halved threshold",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/164",
+      "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B)"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 35502500
+    },
+    "extra": {
+      "stateWithheldCents": 3000000
+    },
+    "expected": {
+      "agi": 35502500,
+      "itemizedStateLocal": 540200
+    },
+    "note": "Excess over the halved threshold $255,025 is $100,000. The cut comes first: $40,804 - 30% x $100,000 = $10,804 (above the $10,000 floor); the halving comes after: $5,402."
+  }
+]

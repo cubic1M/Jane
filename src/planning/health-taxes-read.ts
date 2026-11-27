@@ -1,5 +1,5 @@
 import type { FilingStatus } from "@/config/tax";
-import { ownLawYear } from "@/config/tax-params";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import {
@@ -9,12 +9,6 @@ import {
   NOT_HEALTH_MARKETPLACE,
 } from "@/config/health-taxes";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
-import {
-  ADDITIONAL_STANDARD_65,
-  FEDERAL_BRACKETS,
-  ITEMIZED,
-  STANDARD_DEDUCTION,
-} from "@/config/tax-rates";
 import type { Profile, ProfileInput } from "@/profile/build";
 import {
   benchmarkYear,
@@ -96,6 +90,9 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   // NoTaxParamsError (held back by the detector runner, W-N in the chat tool), never priced with
   // another year's law.
   const year = ownLawYear(Number(profile.today.slice(0, 4)));
+  // And read from that year's own figures (T32b): in 2027 the 2027 brackets, standard deduction,
+  // SALT cap and HSA limits, never the 2026 constants.
+  const law = federalParams(year);
   // The month the data reaches, not today's (gate C's calendar sweep, 11-16: with a bank that
   // hadn't synced, each new month counted as one more with no pay and no HSA deposits, so the
   // year's pace sagged on the 1st). Before this year's data, no month of it is complete.
@@ -120,15 +117,15 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   const older =
     f.life_stage.value === "retired" || (typeof f.age.value === "number" && f.age.value >= 65);
   const standard =
-    STANDARD_DEDUCTION[status] +
+    law.standardDeduction.value[status] +
     (older
       ? status === "married_joint"
-        ? 2 * ADDITIONAL_STANDARD_65.married
-        : ADDITIONAL_STANDARD_65.unmarried
+        ? 2 * law.additionalStandard.value.married
+        : law.additionalStandard.value.unmarried
       : 0);
   const marginalRate = marginalRateOf(
     Math.max(0, pace.projectedCents - standard),
-    FEDERAL_BRACKETS[status],
+    law.brackets.value[status],
   );
 
   // The Marketplace credit.
@@ -186,7 +183,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   // family cover (the higher limit), as it always was, so a parent filing single keeps it.
   const family =
     status === "married_joint" || f.household.value === "couple" || f.household.value === "family";
-  const limit = hsaLimitFor(family, toldNumber(f.age.value));
+  const limit = hsaLimitFor(family, toldNumber(f.age.value), year);
   const excess = hsaExcess({
     contributedCents: contributed,
     projectedCents: projected,
@@ -207,7 +204,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   const gifts = data.transactions
     .filter((t) => inYear(t) && t.pfc === "GOVERNMENT_AND_NON_PROFIT_DONATIONS")
     .reduce((s, t) => s + t.amountCents, 0);
-  const other = Math.min(salt, ITEMIZED.saltCap.normal) + gifts;
+  const other = Math.min(salt, law.salt.value.cap.normal) + gifts;
   const med = medicalDeduction({
     medicalCents: spent,
     agiCents: pace.projectedCents,
@@ -236,7 +233,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
       projectedCents: projected,
       family,
       coverageAssumed: family,
-      selfLimitCents: hsaLimitFor(false, toldNumber(f.age.value)),
+      selfLimitCents: hsaLimitFor(false, toldNumber(f.age.value), year),
       limitCents: limit,
       ...excess,
     },

@@ -121,11 +121,11 @@ describe("the return's filing-year calendar (finding 13)", () => {
     expect(observedFilingDay("2027-04-15")).toBe("2027-04-15");
   });
 
-  it("holds the 2027 return's card back (no IRS figures for 2027) rather than pricing it with 2026 law", () => {
-    const gig = every("2027-09-01", "2027-12-20", 7).map((d) =>
+  it("holds the 2028 return's card back (no IRS figures for 2028) rather than pricing it with 2027 law", () => {
+    const gig = every("2028-09-01", "2028-12-20", 7).map((d) =>
       tx(d, -40_000, "DOORDASH DASHER PAYMENT", "INCOME_GIG_ECONOMY"),
     );
-    const rows = [...groceries("2027-09-01", "2028-04-17"), ...gig];
-    expect(run(input(rows, {}, "2028-04-17"), "filing_extension")).toBeNull();
+    const rows = [...groceries("2028-09-01", "2029-04-17"), ...gig];
+    expect(run(input(rows, {}, "2029-04-17"), "filing_extension")).toBeNull();
   });
 });

@@ -63,20 +63,20 @@ describe("the safe-harbour and California cutoffs (findings 4 and 10)", () => {
 });
 
 describe("the income year's schedule (finding 5)", () => {
-  it("holds a 2027 estimate back instead of pricing it with 2026 law", () => {
+  it("holds a 2028 estimate back instead of pricing it with 2027 law", () => {
     const data = student(
-      [stipend("2027-10-01"), stipend("2027-11-02")],
+      [stipend("2028-10-01"), stipend("2028-11-02")],
       { home_state: "CA" },
-      "2027-11-15",
+      "2028-11-15",
     );
     data.transactions = [
-      ...["2027-09-18", "2027-10-02", "2027-10-16", "2027-10-30", "2027-11-13"].map((d) =>
+      ...["2028-09-18", "2028-10-02", "2028-10-16", "2028-10-30", "2028-11-13"].map((d) =>
         tx(d, 6_000, "SAFEWAY #1234 MOUNTAIN VIEW CA", "FOOD_AND_DRINK_GROCERIES"),
       ),
       ...data.transactions.filter((t) => t.amountCents < 0),
     ];
-    // Jane has no IRS figures for 2027, so a card that prices its tax is held back, never priced
-    // with 2026 law and labelled 2027 (and so never carries 2026's deadlines either).
+    // Jane has no IRS figures for 2028, so a card that prices its tax is held back, never priced
+    // with 2027 law and labelled 2028 (and so never carries 2026's deadlines either).
     expect(run(data)).toBeNull();
     expect(run(data, "withholding_two_jobs")).toBeNull();
   });

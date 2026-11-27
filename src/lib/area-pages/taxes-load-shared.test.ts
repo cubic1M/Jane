@@ -98,17 +98,17 @@ describe("the Taxes page's shared loads", () => {
   });
 
   it("refuses a year with no IRS figures before reading anything (W-N)", async () => {
-    // From May 1, 2027 the year gathered is 2027, which has no parameters.
-    day.today = "2027-05-01";
+    // From May 1, 2028 the year gathered is 2028, which has no parameters.
+    day.today = "2028-05-01";
     await expect(
-      loadTaxesArea("u1", { now: new Date("2027-05-01T19:00:00Z") }),
+      loadTaxesArea("u1", { now: new Date("2028-05-01T19:00:00Z") }),
     ).rejects.toBeInstanceOf(NoTaxParamsError);
     expect(loadInvestmentTaxes).not.toHaveBeenCalled();
     expect(findMany).not.toHaveBeenCalled();
-    // Until the end of April it is still 2026's.
-    day.today = "2027-04-30";
+    // Until the end of April it is still 2027's.
+    day.today = "2028-04-30";
     await expect(
-      loadTaxesArea("u1", { now: new Date("2027-04-30T19:00:00Z") }),
+      loadTaxesArea("u1", { now: new Date("2028-04-30T19:00:00Z") }),
     ).resolves.toBeDefined();
   });
 

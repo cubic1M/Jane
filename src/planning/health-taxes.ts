@@ -11,7 +11,8 @@ import {
   REPAYMENT_CAPS,
   fplFor,
 } from "@/config/health-taxes";
-import { CONTRIBUTION_LIMITS, ITEMIZED } from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
+import { ITEMIZED } from "@/config/tax-rates";
 
 // The tax side of health insurance (spec step 269). Pure: the premium tax credit a household is
 // allowed at its real income against the advance credit set from the income it expected (so a
@@ -130,11 +131,13 @@ export function ptcCheck(input: {
   };
 }
 
-// The year's HSA limit for the coverage, with the catch-up from 55.
-export function hsaLimitFor(family: boolean, age: number | null) {
+// The tax year's HSA limit for the coverage, with the catch-up from 55: that year's own figures
+// (Rev. Proc. 2026-24 for 2027), never another year's.
+export function hsaLimitFor(family: boolean, age: number | null, year: number) {
+  const limits = federalParams(year).contributionLimits.value;
   return (
-    (family ? CONTRIBUTION_LIMITS.hsaFamily : CONTRIBUTION_LIMITS.hsaSelf) +
-    (age !== null && age >= HSA_CATCH_UP_AGE ? CONTRIBUTION_LIMITS.hsaCatchUp55 : 0)
+    (family ? limits.hsaFamily : limits.hsaSelf) +
+    (age !== null && age >= HSA_CATCH_UP_AGE ? limits.hsaCatchUp55 : 0)
   );
 }
 

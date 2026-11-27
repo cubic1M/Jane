@@ -8,6 +8,7 @@ import {
   DRAFT_TAX_YEARS,
   draftParams,
   federalParams,
+  isAwaited,
   NoTaxParamsError,
   PARAMS_VERSION,
   SUPPORTED_TAX_YEARS,
@@ -74,12 +75,21 @@ const EXPECTED_NOTES: Record<number, string[]> = {
     "education",
     "energy",
   ],
+  2027: [
+    "selfEmployment",
+    "obbba",
+    "savers",
+    "saversMatch",
+    "rothCatchUp",
+    "dependentCare",
+    "mileage",
+    "withholding",
+  ],
 };
 // The groups not read at a primary source (D6: a rule needing one shows no figure).
-const EXPECTED_UNCONFIRMED: Record<number, string[]> = {
-  2025: [],
-  2026: ["medical"],
-};
+const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["medical"], 2027: [] };
+// The groups awaited (not yet published by their source, holding no value), by year (Tax T32b).
+const EXPECTED_AWAITED: Record<number, string[]> = { 2025: [], 2026: [], 2027: ["mileage", "withholding"] };
 
 describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   const params = federalParams(year);
@@ -124,6 +134,13 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
       ].sort(),
     );
     for (const [key, g] of groups(year)) {
+      if (isAwaited(g)) {
+        // An awaited group holds no value: its read throws, naming the year and the group.
+        expect(() => g.value, key).toThrow(
+          expect.objectContaining({ name: "NoTaxParamsError", year, group: key }),
+        );
+        continue;
+      }
       expect(g.value, key).not.toBeNull();
       expect(g.value, key).not.toBeUndefined();
     }
@@ -144,12 +161,13 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
       expect(g.checkedOn, key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(Number.isNaN(Date.parse(g.checkedOn)), key).toBe(false);
       expect(g.checkedOn <= today, `${key} checked in the future`).toBe(true);
-      expect(["verified", "draft", "unconfirmed"], key).toContain(g.status);
+      expect(["verified", "draft", "unconfirmed", "awaited"], key).toContain(g.status);
     }
   });
 
   it("keeps money in whole cents", () => {
-    walk(Object.fromEntries(groups(year).map(([k, g]) => [k, g.value])), "", (path, n) => {
+    const priced = groups(year).filter(([, g]) => !isAwaited(g));
+    walk(Object.fromEntries(priced.map(([k, g]) => [k, g.value])), "", (path, n) => {
       if (isNotMoney(path)) return;
       expect(Number.isInteger(n), `${path} = ${n}`).toBe(true);
     });
@@ -245,6 +263,18 @@ describe.each(DRAFT_TAX_YEARS)("draft federal parameters %i", (year) => {
 describe.each(SUPPORTED_TAX_YEARS)(
   "what is still not confirmed at the source, %i (reported)",
   (year) => {
+    it("lists exactly the awaited groups: no value, a note saying what is awaited", () => {
+      const awaitedKeys = verifyNotes(year)
+        .filter((n) => n.status === "awaited")
+        .map((n) => n.key);
+      expect(awaitedKeys.sort()).toEqual(EXPECTED_AWAITED[year]);
+      for (const key of awaitedKeys) {
+        const group = (federalParams(year) as unknown as Record<string, Cited<unknown>>)[key]!;
+        expect(group.verify, key).toMatch(/^AWAITED/);
+        expect(() => group.value, key).toThrow(NoTaxParamsError);
+      }
+    });
+
     it("lists exactly these groups, each with its note", () => {
       const notes = verifyNotes(year);
       expect(notes.map((n) => n.key).sort()).toEqual([...(EXPECTED_NOTES[year] ?? [])].sort());
@@ -270,11 +300,18 @@ describe("a caller can't change the shared table", () => {
 });
 
 describe("a year with no figures is refused, never priced with another year's law", () => {
-  it("throws NoTaxParamsError for 2024 and 2027", () => {
-    for (const year of [2024, 2027]) {
+  it("throws NoTaxParamsError for 2024 and 2028", () => {
+    for (const year of [2024, 2028]) {
       expect(() => federalParams(year)).toThrow(NoTaxParamsError);
     }
-    expect(() => federalParams(2027)).toThrow(/2027/);
+    expect(() => federalParams(2028)).toThrow(/2028/);
+    expect(new NoTaxParamsError(2028, "US").group).toBeUndefined();
+  });
+
+  it("has no draft year today: 2027 is supported with its mileage rate awaited", () => {
+    expect(DRAFT_TAX_YEARS).toEqual([]);
+    expect(() => draftParams(2027)).toThrow(NoTaxParamsError);
+    expect(federalParams(2027).year).toBe(2027);
   });
 });
 

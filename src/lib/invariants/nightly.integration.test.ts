@@ -85,9 +85,10 @@ describe.runIf(url)("the nightly invariants", () => {
     expect(red.taxYear.state).toBe("red");
     expect(red.taxYear.problems).toBeGreaterThanOrEqual(1);
     expect(red.broken).toContain("taxYearReady");
-    // Mid-year in a supported year: nothing to say.
+    // Mid-year in a supported year: red is never raised; the only thing to say is that the 2027
+    // mileage rate is awaited (a warning, T32b), not a broken invariant.
     const ok = await runInvariants({ client, now: new Date("2026-06-15T12:00:00Z") });
-    expect(ok.taxYear).toEqual({ state: "ok", problems: 0 });
+    expect(ok.taxYear).toEqual({ state: "warning", problems: 1 });
     expect(ok.broken).not.toContain("taxYearReady");
   });
 

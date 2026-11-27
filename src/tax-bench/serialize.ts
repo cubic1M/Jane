@@ -112,9 +112,9 @@ export const CASE_YEARS = readdirSync(CASES_DIR)
   .map(Number)
   .sort();
 
-// The years the estimator prices from tables for that year: 2026 today. T4 makes it read the year,
-// and adds 2025 here with the cases T3 writes.
-export const ESTIMATOR_YEARS = [2025, 2026] as const;
+// The years the estimator prices from tables for that year: 2025 and 2026 (T3, T4) and 2027 (T32b,
+// with its mileage rate awaited: that group is not read by the estimator, see probes.ts).
+export const ESTIMATOR_YEARS = [2025, 2026, 2027] as const;
 
 export function loadCases(year: number): BenchCase[] {
   const dir = join(CASES_DIR, String(year));

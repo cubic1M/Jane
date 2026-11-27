@@ -224,8 +224,10 @@ export const taxCheckDay = (now: Date): string => localDate(now, TAX_CHECK_ZONE)
 
 // Does Jane have figures for the year people are in, and for the year about to start? From
 // December 1 a missing next year warns; from January 1 a missing current year is red; a draft
-// year or an IRS-draft figure not looked at for TAX_DRAFT_MAX_DAYS warns. Pure: the figures
-// come in as arguments (the real ones by default). Tax T32, docs/tax/law-change.md.
+// year or an IRS-draft figure not looked at for TAX_DRAFT_MAX_DAYS warns; a supported year with an
+// awaited group (not yet published by its source) warns naming the group, and says "look again"
+// when it was last read more than TAX_DRAFT_MAX_DAYS ago. Pure: the figures come in as arguments
+// (the real ones by default). Tax T32, T32b, docs/tax/law-change.md.
 export function taxYearReady(
   day: string,
   {
@@ -263,7 +265,17 @@ export function taxYearReady(
   }
   const limit = dayOf(day) - TAX_DRAFT_MAX_DAYS * DAY_MS;
   for (const g of pending) {
-    if (dayOf(g.checkedOn) < limit) {
+    const stale = dayOf(g.checkedOn) < limit;
+    if (g.status === "awaited" && supported.includes(g.year)) {
+      // A supported year with an awaited group (Tax T32b): the year prices normally and only the
+      // figure that needs the group says it is missing, so this is a warning, never red.
+      raise(
+        "warning",
+        stale
+          ? `${g.year} ${g.key} is still awaited, last read ${g.checkedOn}: look again at its source`
+          : `${g.year} ${g.key} is awaited: its source has not published it yet; ${g.year} is supported without it (last read ${g.checkedOn})`,
+      );
+    } else if (stale) {
       raise("warning", `${g.year} ${g.key} is still ${g.status}, last read ${g.checkedOn}`);
     }
   }

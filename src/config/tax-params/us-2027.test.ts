@@ -12,13 +12,13 @@ import {
 } from "./index";
 import type { Bracket, Cited } from "./types";
 
-// Tax T32: the 2027 federal figures, a DRAFT year. Every table is checked against a second
+// Tax T32, T32b: the 2027 federal figures. Every table is checked against a second
 // reading: the "tax is" base amounts of Rev. Proc. 2026-35 section 3.01 (a different column from
 // the thresholds typed into the file), the EITC table's own arithmetic, the AMT phase-out
-// arithmetic, and the Code. One group (the mileage rate) is not published, so the year is not in
-// SUPPORTED_TAX_YEARS and nothing can price with it.
+// arithmetic, and the Code. One group (the mileage rate) is not published, so it is awaited: it
+// holds no value and anything that needs it says so; the year is supported (Tax T32b).
 
-const p = draftParams(2027);
+const p = federalParams(2027);
 const $ = (dollars: number) => Math.round(dollars * 100);
 const STATUSES: FilingStatus[] = [
   "single",
@@ -38,11 +38,12 @@ function taxOn(list: readonly Bracket[], taxable: number): number {
 const tax = (status: FilingStatus, taxableCents: number) =>
   taxOn(p.brackets.value[status], taxableCents);
 
-describe("2027 is a draft year, refused by the estimator's lookup", () => {
-  it("is not supported and federalParams refuses it", () => {
-    expect(SUPPORTED_TAX_YEARS).not.toContain(2027);
-    expect(DRAFT_TAX_YEARS).toEqual([2027]);
-    expect(() => federalParams(2027)).toThrow(NoTaxParamsError);
+describe("2027 is a supported year with two awaited groups", () => {
+  it("is supported, priced by federalParams, and has no draft year left", () => {
+    expect(SUPPORTED_TAX_YEARS).toContain(2027);
+    expect(DRAFT_TAX_YEARS).toEqual([]);
+    expect(federalParams(2027)).toBe(p);
+    expect(() => draftParams(2027)).toThrow(NoTaxParamsError);
     expect(p.year).toBe(2027);
   });
 
@@ -50,12 +51,15 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
     expect(Object.keys(p).sort()).toEqual(Object.keys(federalParams(2026)).sort());
   });
 
-  it("has exactly two groups not final: the mileage rate and the withholding amounts, awaited, never copied from 2026", () => {
+  it("has exactly two groups not final, the mileage rate and the withholding amounts, awaited, never copied from 2026", () => {
     expect(
       pendingGroups()
         .filter((g) => g.year === 2027)
-        .map((g) => g.key),
-    ).toEqual(["withholding", "mileage"]);
+        .map((g) => [g.key, g.status]),
+    ).toEqual([
+      ["withholding", "awaited"],
+      ["mileage", "awaited"],
+    ]);
     // They hold no value at all: any read throws, naming the year and the group (awaited.ts).
     for (const group of ["mileage", "withholding"] as const) {
       expect(p[group].status).toBe("awaited");
@@ -90,13 +94,22 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
     );
   });
 
-  it("keeps the nightly check warning, naming what is awaited, until the year is supported", () => {
+  it("warns, naming the awaited group, and is never red for it; red only for no parameters at all", () => {
     const r = taxYearReady("2026-12-01");
     expect(r.state).toBe("warning");
-    expect(r.messages[0]).toBe(
-      "No tax figures for 2027 yet; 2027 starts soon (a draft file exists; not final: withholding, mileage)",
-    );
-    expect(taxYearReady("2027-01-01").state).toBe("red");
+    expect(r.messages).toEqual([
+      "2027 withholding is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
+      "2027 mileage is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
+    ]);
+    expect(taxYearReady("2027-01-01").state).toBe("warning");
+    expect(taxYearReady("2027-05-01").state).toBe("warning");
+    // Not read for TAX_DRAFT_MAX_DAYS (60): look again.
+    expect(taxYearReady("2027-01-27").messages).toEqual([
+      "2027 withholding is still awaited, last read 2026-11-27: look again at its source",
+      "2027 mileage is still awaited, last read 2026-11-27: look again at its source",
+    ]);
+    // Once both are filled nothing is pending, and December 1 is quiet.
+    expect(taxYearReady("2026-12-01", { pending: [] }).state).toBe("ok");
   });
 });
 

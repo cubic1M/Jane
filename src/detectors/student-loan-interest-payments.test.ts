@@ -125,21 +125,26 @@ describe("a lender's interest so far, paced by payments", () => {
     // the month number (src/planning/lender-interest.test.ts).
   });
 
-  // January 2027 has no IRS figures yet (a card priced for a year without them is held back), so the
-  // January case runs one year earlier, in January 2026.
-  it("is held back in a year with no IRS figures yet (January 2027)", () => {
-    expect(
-      card(
-        person({
-          today: "2027-01-20",
-          pay: payroll("2026-07-24", "2027-01-15", 250_000),
-          payments: ["2026-11-05", "2026-12-05", "2027-01-08"],
-          ytd: 7_400,
-          lastPayment: "2027-01-08",
-          readOn: "2027-01-19",
-        }),
-      ),
-    ).toBeUndefined();
+  // January 2028 has no IRS figures (a card priced for a year without them is held back); January
+  // 2027 has (T32b), with its own phase-out.
+  const january = (year: number) =>
+    person({
+      today: `${year}-01-20`,
+      pay: payroll(`${year - 1}-07-24`, `${year}-01-15`, 250_000),
+      payments: [`${year - 1}-11-05`, `${year - 1}-12-05`, `${year}-01-08`],
+      ytd: 7_400,
+      lastPayment: `${year}-01-08`,
+      readOn: `${year}-01-19`,
+    });
+
+  it("is held back in a year with no IRS figures (January 2028)", () => {
+    expect(card(january(2028))).toBeUndefined();
+  });
+
+  it("is priced in January 2027 with 2027's own phase-out, $90,000 to $105,000", () => {
+    const s = card(january(2027));
+    expect(s).toBeDefined();
+    expect(s.why).toContain("$90,000 to $105,000");
   });
 
   it("in January, one payment's interest is the balance and rate", () => {

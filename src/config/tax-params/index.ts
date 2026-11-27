@@ -8,8 +8,10 @@ import { US_2027 } from "./us-2027";
 export type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 export { ALLOWED_SOURCE_HOSTS } from "./types";
 
-// The tax years Jane has complete, cited figures for: 2026 (Tax T1) and 2025 (Tax T3).
-export const SUPPORTED_TAX_YEARS = [2025, 2026] as const;
+// The tax years Jane prices: every group of the year is verified at its source or AWAITED (not yet
+// published by its source, so it holds no value and any read of it throws, see awaited.ts). 2026
+// (Tax T1), 2025 (Tax T3) and 2027 (Tax T32b: its mileage rate is awaited until the IRS notice).
+export const SUPPORTED_TAX_YEARS = [2025, 2026, 2027] as const;
 
 // A year with no figures is refused, never priced with another year's law; an awaited group of a
 // supported year is refused the same way, naming the group (awaited.ts).
@@ -28,6 +30,7 @@ function deepFreeze<T>(value: T): T {
 const FEDERAL: Readonly<Record<number, FederalParams>> = {
   2025: deepFreeze(US_2025),
   2026: deepFreeze(US_2026),
+  2027: deepFreeze(US_2027),
 };
 
 export function federalParams(year: number): FederalParams {
@@ -36,12 +39,11 @@ export function federalParams(year: number): FederalParams {
   return params;
 }
 
-// A year whose file exists but whose figures are not all published (Tax T32): kept so the nightly
-// check knows what is awaited. Never priced: federalParams refuses it, so nothing can use a
-// figure that is not confirmed. It moves to FEDERAL and SUPPORTED_TAX_YEARS when complete.
-const DRAFT: Readonly<Record<number, FederalParams>> = {
-  2027: deepFreeze(US_2027),
-};
+// A year whose file exists but has a group that is neither verified nor awaited (Tax T32): kept so
+// the nightly check knows what is missing. Never priced: federalParams refuses it, so nothing can
+// use a figure that is not confirmed. It moves to FEDERAL and SUPPORTED_TAX_YEARS when every group
+// is verified or awaited. Empty today: 2027 is supported, with its mileage rate awaited.
+const DRAFT: Readonly<Record<number, FederalParams>> = {};
 
 export const DRAFT_TAX_YEARS: readonly number[] = Object.keys(DRAFT).map(Number);
 

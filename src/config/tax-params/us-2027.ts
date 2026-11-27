@@ -8,11 +8,13 @@ import type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 // limits, IR-2026-136), Rev. Proc. 2026-24 (Health Savings Accounts, IRB 2026-25), the Social
 // Security Administration's Federal Register notice of the 2027 wage base, and the Code.
 //
-// THIS YEAR IS A DRAFT. Two groups are not published yet: the business standard mileage rate for 2027
-// and the withholding amounts of Publication 15-T (the IRS usually publishes both in December).
-// Both are AWAITED (awaited.ts): no value, a read throws, nothing is guessed or copied from 2026. Until it is published and the file is complete, 2027 stays out
-// of SUPPORTED_TAX_YEARS: `federalParams(2027)` refuses it, and the nightly check keeps warning
-// (docs/tax/law-change.md). All money is in cents; rates are fractions.
+// THIS YEAR IS SUPPORTED (Tax T32b) WITH TWO AWAITED GROUPS: the business standard mileage rate and
+// the withholding amounts of Publication 15-T for 2027 are not published yet (the IRS usually
+// publishes both in December). They hold no value, not a guess and not 2026's: any read throws
+// NoTaxParamsError(2027, <group>) (awaited.ts), the figures that need them say so, and everything
+// else prices normally. The nightly check warns, naming them, until both are out
+// (docs/tax/law-change.md). Every other group was re-read at its primary source on 2026-11-27. All
+// money is in cents; rates are fractions.
 //
 // FOR REVIEW by someone qualified before it is relied on.
 
@@ -239,7 +241,7 @@ export const US_2027: FederalParams = {
       source: SSA_NOTICE,
       alsoSources: [SSA_NOTICE_PDF, code("1401"), code("1402")],
       where:
-        "The Social Security Administration's notice 'Cost-of-Living Increase and Other Determinations for 2027' (Federal Register document 2026-21796, public inspection copy read 2026-11-27; scheduled for publication 2026-10-26): the OASDI contribution and benefit base is $192,300 for self-employment income earned in tax years beginning in 2027 (1994 base $60,600 times the 2025 wage index $72,800.33 over $22,935.42 is $192,353.14, rounded to a multiple of $300). 26 USC 1401(a) 12.4 percent and (b)(1) 2.9 percent; 1402(a)(12) (one half of the sum of the rates, so 92.35 percent); 1402(b)(2) ($400) re-read 2026-11-27.",
+        "The Social Security Administration's notice 'Cost-of-Living Increase and Other Determinations for 2027' (Federal Register document 2026-21796, 91 FR 67380, published 2026-10-26; the published text and the public inspection copy were both read 2026-11-27): the OASDI contribution and benefit base is $192,300 for self-employment income earned in tax years beginning in 2027 (1994 base $60,600 times the 2025 wage index $72,800.33 over $22,935.42 is $192,353.14, rounded to a multiple of $300). 26 USC 1401(a) 12.4 percent and (b)(1) 2.9 percent; 1402(a)(12) (one half of the sum of the rates, so 92.35 percent); 1402(b)(2) ($400) re-read 2026-11-27.",
       verify:
         "The SSA's own pages (ssa.gov) refused automated reading (HTTP 403) on 2026-11-27, so the wage base was read in its Federal Register notice. The 2027 Schedule SE instructions are not out.",
     },
@@ -387,7 +389,7 @@ export const US_2027: FederalParams = {
       where:
         "Notice 2026-48, section III: phase-out ranges $41,000 to $71,000 joint, $30,750 to $53,250 head of household, $20,500 to $35,500 others; the amounts are statutory for 2027 and inflation-adjusted only for taxable years after 2027 (26 USC 6433(h)(1), quoted in the notice)",
       verify:
-        "The notice announces regulations the IRS intends to propose; the rules are not final, so the figures stay labelled 'proposed' wherever they show.",
+        "The notice announces regulations the IRS intends to propose; the rules are not final, so the figures stay labelled 'proposed' wherever they show. The notice itself carries no release date: shownFrom (2026-08-07) is the date the earlier build recorded, not re-read at the source on 2026-11-27 (it only decides when the figures start showing; the notice is in Internal Revenue Bulletin 2026-35).",
     },
   ),
   rothCatchUp: cited(

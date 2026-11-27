@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { NoTaxParamsError, pendingGroups } from "@/config/tax-params";
 import { businessMileageCentsOn, mileageRateNote, undatedMileageCentsIn } from "@/config/tax-rates";
 import { TAX_DETECTORS } from "@/detectors/taxes";
@@ -14,15 +14,8 @@ import { inputFor } from "@/profile/sample";
 import { mileageDeduction, mileageFigure } from "./self-employed";
 
 // Tax T32b, the proof that nothing can reach a number in an awaited group. 2027 is the year whose
-// IRS mileage rate is not published yet; until the year is switched on (the next PR) the
-// year-keyed reader is pointed at its draft file here, so every reader below runs the very path it
-// will run on January 1, 2027.
-vi.mock("@/config/tax-params", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/config/tax-params")>();
-  const federalParams = (year: number) =>
-    year === 2027 ? actual.draftParams(2027) : actual.federalParams(year);
-  return { ...actual, federalParams };
-});
+// IRS mileage rate is not published yet: every reader below runs, for a 2027 date, the very path it
+// runs on January 1, 2027.
 
 const W_N_2027 =
   "Jane doesn't have the IRS's 2027 mileage rate yet, so it hasn't counted those miles.";

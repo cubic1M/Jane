@@ -16,6 +16,7 @@ the first person's day reaches the date.
 | any day | the current year is missing | red: the invariant is broken, the team is alerted, and the line is in the accuracy email every day |
 | from `TAX_PARAMS_LEAD_DAYS` (31) days before January 1, so December 1 | the coming year is missing | warning: in the accuracy email on Mondays only (every day if the email goes out anyway for an accuracy reason) |
 | any day | a draft year, or a figure read from an IRS draft, was last read more than `TAX_DRAFT_MAX_DAYS` (60) days ago | warning: in the accuracy email on Mondays only (every day if the email goes out anyway for an accuracy reason) |
+| any day | a supported year has an AWAITED group (its source has not published it yet; today the 2027 mileage rate) | warning naming the group, never red: the year prices normally and only the figure that needs the group is held back. Older than `TAX_DRAFT_MAX_DAYS` since it was last read: "look again at its source". Same Monday rule |
 
 Only years and group names are written: nothing about a person. Sample (trial) people and analytics
 are not touched. Both limits are in `src/config/invariants.ts`.
@@ -49,18 +50,29 @@ A window is general knowledge unless the row says it was read at the source.
 
 1. October to November: read `inflation_rev_proc`, `retirement_notice`, `ss_wage_base`; in
    December `mileage_notice` and `pub_15t`. Write `us-<year>.ts` following `us-2026.ts`: one `Cited` group per
-   figure with its source address, the place in it, the day read and the status. A figure that is
-   not published yet is `unconfirmed` with a note saying what is awaited; it is never copied from
-   the year before.
-2. Put the file in the draft list (`DRAFT` in `src/config/tax-params/index.ts`) while any group is
-   not verified. A draft year is never priced (`federalParams` refuses it) and the nightly check
-   keeps warning until it is complete.
+   figure with its source address, the place in it, the day read and the status. A figure that its
+   source has not published yet is an AWAITED group (`awaited(year, key, {...})` in
+   `src/config/tax-params/awaited.ts`): it holds no value, its note says what is awaited and when
+   it is usually out, and reading `.value` throws `NoTaxParamsError` carrying the year and the
+   group. It is never a zero, never copied from the year before, never a guess.
+2. A year is SUPPORTED (in `FEDERAL` and `SUPPORTED_TAX_YEARS`) when every group is either verified
+   at its source or awaited. Everything else of the year prices normally from the first day; the
+   one figure that needs an awaited group says so in its own words (for the mileage rate: "Jane
+   doesn't have the IRS's 2027 mileage rate yet, so it hasn't counted those miles.") and shows no
+   number. The nightly check only warns (never red) while a supported year has an awaited group,
+   naming it, and says "look again" when one has not been read for `TAX_DRAFT_MAX_DAYS`. A year with a group that
+   is neither verified nor awaited goes in `DRAFT` and is not priced at all. When an awaited group
+   is published, replace `awaited(...)` with `cited(...)`, set it `verified`, write the fingerprint
+   and the bench cases that use it, delete the note, and turn the 2027 "awaited" assertions
+   (`src/planning/mileage-readers.test.ts`, `src/config/tax-params/us-2027.test.ts`,
+   `src/lib/invariants/tax-year-ready.test.ts`'s "today" case, the surface tests for 2027) into
+   priced ones.
 3. Second reading: a figure becomes `verified` when the Revenue Procedure (or the statute) and the
    form instructions agree. If they conflict the statute wins and the conflict goes in `where`.
    Write the hand examples as `us-<year>.test.ts` (one per filing status).
 4. January: read `final_instructions` against every table (Tax Table, EIC table, the capital gain
    worksheet).
-5. When every group is verified: move the year from `DRAFT` to `FEDERAL`, add it to
+5. When every group is verified or awaited: move the year from `DRAFT` to `FEDERAL`, add it to
    `SUPPORTED_TAX_YEARS`, write the fingerprint (`PARAMS_VERSION_WRITE=1 npx vitest run
    src/config/tax-params/params.test.ts`), extend the test's key and note lists, and satisfy the
    accuracy bench: `src/tax-bench` requires a passing case for every figure of a supported year
