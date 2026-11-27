@@ -36,10 +36,7 @@ import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
-import {
-  earnedIncomeHeldLine,
-  withoutEarnedIncomeCredit,
-} from "@/planning/tax-engine/residency-gate";
+import { earnedIncomeHeldLine } from "@/planning/tax-engine/residency-gate";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
   NO_PAY,
@@ -757,14 +754,21 @@ async function loadTaxEstimateFrom(
   // counted (src/planning/tax-engine/residency-gate.ts).
   const toldStatus = await loadToldResidency(userId, { client });
   const eligibleAge = federalParams(input.year).eitc.value.childlessMinAge;
-  const withCredit = estimateTaxes(input);
-  const base = toldStatus.allowed ? withCredit : withoutEarnedIncomeCredit(withCredit);
+  // Left out INSIDE the estimator (EstimateInput.residentCreditsAllowed), so every re-run of the
+  // pure estimator on view.input (what-ifs, family, giving, business structure, multi-year) leaves
+  // it out too. The default stays true, so the bench and the goldens do not move.
+  if (!toldStatus.allowed) input.residentCreditsAllowed = false;
+  const base = estimateTaxes(input);
+  const withCredit = toldStatus.allowed
+    ? base
+    : estimateTaxes({ ...input, residentCreditsAllowed: true });
   if (!toldStatus.allowed) {
     // With an unknown age and no children the credit is left out for that too: what it would be at
     // an eligible age is what is held.
     const heldCents =
       age === null && input.childrenUnder17 === 0
-        ? estimateTaxes({ ...input, age: eligibleAge }).credits.earnedIncomeCreditCents
+        ? estimateTaxes({ ...input, residentCreditsAllowed: true, age: eligibleAge }).credits
+            .earnedIncomeCreditCents
         : withCredit.credits.earnedIncomeCreditCents;
     if (heldCents > 0) assumptions.push(earnedIncomeHeldLine(toldStatus.kind, heldCents));
   }

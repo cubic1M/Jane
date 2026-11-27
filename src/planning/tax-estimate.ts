@@ -79,6 +79,10 @@ export type EstimateInput = {
   otherCreditsCents?: number;
   // Spec step 219: the alternative minimum tax preference from ISOs exercised and held.
   amtPreferenceCents?: number;
+  // False when the person has not said they are a citizen or green card holder: the earned income
+  // credit (resident-only, IRS Pub. 519) is then left out of this estimate. Absent means true, so
+  // every caller that does not know keeps today's figure.
+  residentCreditsAllowed?: boolean;
   mortgageInterestCents: number;
   charityCents: number;
   medicalCents: number;
@@ -441,15 +445,18 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     taxBeforeCreditsCents: ordinaryTax,
     year: input.year,
   });
-  const eitc = earnedIncomeCredit({
-    status,
-    children: input.childrenUnder17,
-    earnedCents: earned,
-    agiCents: agi,
-    investmentIncomeCents: investmentIncome,
-    age: input.age,
-    year: input.year,
-  });
+  const eitc =
+    input.residentCreditsAllowed === false
+      ? 0
+      : earnedIncomeCredit({
+          status,
+          children: input.childrenUnder17,
+          earnedCents: earned,
+          agiCents: agi,
+          investmentIncomeCents: investmentIncome,
+          age: input.age,
+          year: input.year,
+        });
   const otherCredits = Math.min(
     input.otherCreditsCents ?? 0,
     clamp0(ordinaryTax - child.childCents - child.otherCents),
