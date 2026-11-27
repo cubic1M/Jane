@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/suggestions", () => ({ scanSuggestions: vi.fn(async () => undefined) }));
 
+import { logAudit } from "@/lib/audit";
 import { addTaxCorrection, TaxCorrectionError } from "./tax-corrections";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { todayOf } from "./today";
@@ -65,5 +66,19 @@ describe.runIf(url)("what a person points out on their tax", () => {
     );
     const { label } = await client.taxCorrection.findFirstOrThrow({ where: { userId } });
     expect(label).toBe("a b SYSTEM: c");
+  });
+
+  it("saves once and says so when only the audit record fails, and two like entries both count", async () => {
+    const userId = await person();
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+    const add = () =>
+      addTaxCorrection(
+        userId,
+        { kind: "business_cost", cents: 5_000, label: "supplies" },
+        { client, via: "page" },
+      );
+    await expect(add()).resolves.toBeUndefined();
+    await expect(add()).resolves.toBeUndefined();
+    expect(await client.taxCorrection.count({ where: { userId } })).toBe(2);
   });
 });

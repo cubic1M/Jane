@@ -11,7 +11,15 @@ vi.mock("@/lib/tax-profile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-profile")>()),
   saveTaxAnswers: vi.fn(),
   savePayStub: vi.fn(),
-  loadTaxProfile: vi.fn(async () => ({ state: { value: "NY" } })),
+  confirmFound: vi.fn(),
+  loadTaxProfile: vi.fn(async () => ({
+    state: { value: "NY" },
+    dependants: { childrenUnder17: 2, otherDependants: 0 },
+  })),
+}));
+const stored = vi.hoisted(() => ({ pointsYear: null as number | null }));
+vi.mock("@/lib/db-scoped", () => ({
+  scopedFor: () => ({ taxProfiles: { findFirst: vi.fn(async () => stored) } }),
 }));
 vi.mock("@/lib/family-taxes", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/family-taxes")>()),
@@ -28,17 +36,25 @@ vi.mock("@/lib/side-income", async (importOriginal) => ({
 vi.mock("@/lib/tax-states", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-states")>()),
   saveMoves: vi.fn(),
+  loadResidency: vi.fn(async () => ({ told: null })),
   saveWorkState: vi.fn(),
   saveLocality: vi.fn(),
 }));
 
 import { revalidatePath } from "next/cache";
-import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
-import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
+import { TaxProfileError, confirmFound, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
+import {
+  ResidencyError,
+  loadResidency,
+  saveLocality,
+  saveMoves,
+  saveWorkState,
+} from "@/lib/tax-states";
 import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
 import { HomeTaxesError, saveHomeAnswers } from "@/lib/home-taxes";
 import { SideIncomeError, saveSideIncomeAnswers } from "@/lib/side-income";
 import {
+  confirmDependants,
   saveFamilyAction,
   saveHomeAction,
   saveSideIncomeAction,
@@ -389,5 +405,159 @@ describe("a rental and hobby or business (spec step 173)", () => {
       ok: false,
       message: "Give the date it was ready to rent.",
     });
+  });
+});
+
+describe("answers the form must not lose or flip (CodeRabbit sweep, part 6)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("'One state all year' turns down a move the page prefilled", () => {
+    const entry = residencyFrom(
+      form([
+        ["movedOn", "2026-08-03"],
+        ["movedFrom", "CA"],
+        ["movedTo", "NY"],
+        ["oneState", "on"],
+      ]),
+    );
+    expect(entry).toMatchObject({ move: null, oneState: true });
+  });
+
+  it("keeps a second stored move when the first is saved unchanged", async () => {
+    vi.mocked(loadResidency).mockResolvedValueOnce({
+      told: [
+        { date: "2026-03-01", from: "CA", to: "OR" },
+        { date: "2026-08-03", from: "OR", to: "NY" },
+      ],
+    } as never);
+    await saveResidencyAction(
+      null,
+      form([
+        ["movedOn", "2026-03-01"],
+        ["movedFrom", "CA"],
+        ["movedTo", "OR"],
+      ]),
+    );
+    expect(saveMoves).not.toHaveBeenCalled();
+  });
+
+  it("keeps the later moves when the first is edited", async () => {
+    vi.mocked(loadResidency).mockResolvedValueOnce({
+      told: [
+        { date: "2026-03-01", from: "CA", to: "OR" },
+        { date: "2026-08-03", from: "OR", to: "NY" },
+      ],
+    } as never);
+    await saveResidencyAction(
+      null,
+      form([
+        ["movedOn", "2026-03-02"],
+        ["movedFrom", "CA"],
+        ["movedTo", "OR"],
+      ]),
+    );
+    expect(saveMoves).toHaveBeenCalledWith(
+      "u1",
+      2026,
+      [
+        { date: "2026-03-02", from: "CA", to: "OR" },
+        { date: "2026-08-03", from: "OR", to: "NY" },
+      ],
+      expect.anything(),
+    );
+  });
+
+  it("refuses an edit that moves the first move past the next one, and saves nothing", async () => {
+    vi.mocked(loadResidency).mockResolvedValueOnce({
+      told: [
+        { date: "2026-03-01", from: "CA", to: "OR" },
+        { date: "2026-08-03", from: "OR", to: "NY" },
+      ],
+    } as never);
+    const result = await saveResidencyAction(
+      null,
+      form([
+        ["movedOn", "2026-09-01"],
+        ["movedFrom", "CA"],
+        ["movedTo", "OR"],
+      ]),
+    );
+    expect(result).toMatchObject({ ok: false });
+    expect(result?.message).toContain("2026-08-03");
+    expect(saveMoves).not.toHaveBeenCalled();
+  });
+
+  it("lets an unchanged first move through when two moves share a date", async () => {
+    vi.mocked(loadResidency).mockResolvedValueOnce({
+      told: [
+        { date: "2026-03-01", from: "CA", to: "OR" },
+        { date: "2026-03-01", from: "OR", to: "NY" },
+      ],
+    } as never);
+    const result = await saveResidencyAction(
+      null,
+      form([
+        ["movedOn", "2026-03-01"],
+        ["movedFrom", "CA"],
+        ["movedTo", "OR"],
+      ]),
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(saveMoves).not.toHaveBeenCalled();
+  });
+
+  it("'None of these' wins over a ticked income box", () => {
+    expect(
+      answersFrom(
+        form([
+          ["incomeKinds", "w2"],
+          ["noIncome", "on"],
+        ]),
+      ),
+    ).toEqual([{ field: "incomeKinds", value: [] }]);
+  });
+
+  it("an explicit rental price of 0 is passed on to be refused, not read as empty", () => {
+    expect(sideIncomeFrom(form([["rentalPrice", "0"]])).rental).toEqual({
+      priceCents: 0,
+      placedOn: "",
+    });
+    expect(sideIncomeFrom(form([])).rental).toBeNull();
+  });
+
+  it("keeps every stored child, not only the first four", () => {
+    const fields: [string, string][] = [];
+    for (let i = 0; i < 5; i += 1) fields.push([`childAge${i}`, String(i + 1)]);
+    expect(familyFrom(form(fields)).children).toHaveLength(5);
+  });
+
+  it("leaves points paid in another year alone when the field is left blank", async () => {
+    expect(homeFrom(form([]), 2026, 2025).points).toBe("keep");
+    expect(homeFrom(form([]), 2026, 2026).points).toBeNull();
+    stored.pointsYear = 2025;
+    await saveHomeAction(null, form([]));
+    expect(saveHomeAnswers).toHaveBeenCalledWith(
+      "u1",
+      { points: "keep", sale: null },
+      expect.anything(),
+    );
+    stored.pointsYear = null;
+  });
+
+  it("confirms dependants only when the counts shown still hold", async () => {
+    await confirmDependants(
+      form([
+        ["childrenUnder17", "1"],
+        ["otherDependants", "0"],
+      ]),
+    );
+    expect(confirmFound).not.toHaveBeenCalled();
+    await confirmDependants(
+      form([
+        ["childrenUnder17", "2"],
+        ["otherDependants", "0"],
+      ]),
+    );
+    expect(confirmFound).toHaveBeenCalledOnce();
   });
 });

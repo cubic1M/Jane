@@ -62,6 +62,8 @@ export type PropertyTaxView = {
   gap: Gap | null;
   comps: Comparable[];
   window: Window;
+  // The date the person gave for the assessment notice (shown back so a save keeps it).
+  noticeOn: string | null;
   // An appeal is worth suggesting (advice, over the config threshold, window not closed,
   // comparables in hand).
   suggested: boolean;
@@ -150,6 +152,8 @@ export async function loadPropertyTax(
     gap,
     comps,
     window,
+    // The date the person gave for the assessment notice: shown back so a save keeps it.
+    noticeOn: profile?.homeNoticeOn ? iso(profile.homeNoticeOn) : null,
     suggested: Boolean(
       advice &&
       gap?.worthAppealing &&

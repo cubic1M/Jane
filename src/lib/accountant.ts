@@ -293,12 +293,13 @@ export async function revokeAllAccountantLinks(
   return live.length;
 }
 
+// `ids`: only the answers the person was shown (one that arrived since stays new).
 export async function markNotesSeen(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), ids }: Options & { ids?: string[] } = {},
 ): Promise<number> {
   const { count } = await scopedFor(userId, client).accountantNotes.updateMany({
-    where: { seenAt: null },
+    where: { seenAt: null, ...(ids ? { id: { in: ids } } : {}) },
     data: { seenAt: now },
   });
   return count;

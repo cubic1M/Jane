@@ -53,12 +53,23 @@ const BADGE: Readonly<Record<FieldStatus, string>> = {
   missing: "Not set yet",
 };
 
-function Row({ label, value, status }: { label: string; value: string; status: FieldStatus }) {
+function Row({
+  label,
+  value,
+  status,
+  note,
+}: {
+  label: string;
+  value: string;
+  status: FieldStatus;
+  note?: string;
+}) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-zinc-200 pt-2 first:border-0 first:pt-0 dark:border-zinc-800">
       <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
       <dd className="flex flex-col items-end text-right">
         <span className="[overflow-wrap:anywhere]">{value}</span>
+        {note && <span className="text-xs text-zinc-600 dark:text-zinc-400">{note}</span>}
         <span className={`text-xs ${status === "yours" ? "text-zinc-500" : "font-semibold"}`}>
           {status === "yours" ? "" : "▲ "}
           {BADGE[status]}
@@ -94,7 +105,7 @@ function ProfileCard({
       </div>
       <dl className="flex flex-col gap-2 text-sm">
         {fields.map((f) => (
-          <Row key={f.key} label={f.label} value={f.value} status={f.status} />
+          <Row key={f.key} label={f.label} value={f.value} status={f.status} note={f.note} />
         ))}
       </dl>
       {confirm}

@@ -56,7 +56,7 @@ export function GivingSection({ view }: { view: GivingView }) {
           stand-in for now).
         </p>
       )}
-      {view.advice && view.options.length > 0 && (
+      {view.advice && !view.dismissed && view.options.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="font-semibold">More good for the same money</h3>
           <table className="w-full text-sm">

@@ -48,6 +48,12 @@ export function InvestmentsSection({
       <p className="text-xs text-zinc-500">
         From the cost basis your broker reports, at each holding&apos;s average cost.
       </p>
+      {view.soldOutSales > 0 && (
+        <p className="text-sm">
+          Not counted above: {view.soldOutSales} {view.soldOutSales === 1 ? "sale" : "sales"} in{" "}
+          {view.year} of holdings you no longer have, so their gains aren&apos;t known here.
+        </p>
+      )}
       {view.washSales.map((w) => (
         <p key={`${w.securityId}${w.date}`} className="text-sm font-medium">
           Wash sale: {w.ticker ?? w.name} sold at a loss on {dayLabel(w.date, { year: true })} and

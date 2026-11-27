@@ -38,11 +38,11 @@ async function Content() {
         </h2>
         {v.income.crypto.holdings.length === 0 && v.income.crypto.yearSales.length === 0 ? (
           <p className="text-sm">
-            No exchange connected.{" "}
+            No crypto holdings or sales found for {v.year}.{" "}
             <Link href="/investments/crypto" className={LINK}>
-              Connect one
+              Connect an exchange
             </Link>{" "}
-            and Jane works out the gains by lot.
+            if you haven&apos;t, and Jane works out the gains by lot.
           </p>
         ) : (
           <>

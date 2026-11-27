@@ -42,7 +42,12 @@ export async function accountantAction(
       return { ok: true, message: "Revoked. That link no longer works." };
     }
     if (intent === "seen") {
-      await markNotesSeen(user.id);
+      const ids = formData.has("ids")
+        ? text(formData, "ids")
+            .split(",")
+            .filter((id) => id !== "")
+        : undefined;
+      await markNotesSeen(user.id, { ids });
       revalidatePath("/taxes/accountant");
       return { ok: true, message: "Marked as read." };
     }

@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/session";
 import { adviceMode } from "@/lib/advice-mode";
 import { DeadlineError, addDeadline } from "@/lib/deadlines";
 import { GoalError, addGoal } from "@/lib/goals";
-import { dismissSaving, loadTaxSavings } from "@/lib/tax-savings";
+import { completeSaving, dismissSaving, loadTaxSavings } from "@/lib/tax-savings";
 import { RefundError, applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
@@ -107,6 +107,8 @@ export async function savingAction(_previous: FormState, formData: FormData): Pr
         kind: "other",
         note: action.note,
       });
+      await completeSaving(user.id, year, saving.key);
+      revalidatePath("/taxes");
       return { ok: true, message: "Added to your deadlines. Jane will remind you." };
     }
     if (intent === "goal" && action.kind === "goal") {
@@ -117,6 +119,8 @@ export async function savingAction(_previous: FormState, formData: FormData): Pr
         accountId: "",
         saved: "",
       });
+      await completeSaving(user.id, year, saving.key);
+      revalidatePath("/taxes");
       return { ok: true, message: "Goal started." };
     }
     return { ok: false, message: "Something went wrong. Try again." };
@@ -145,7 +149,8 @@ export async function refundAction(_previous: FormState, formData: FormData): Pr
     revalidatePath("/taxes");
     return { ok: true, message: "OK. It's yours to use as you like." };
   } catch (error) {
-    if (error instanceof RefundError) return { ok: false, message: error.message };
+    if (error instanceof RefundError || error instanceof GoalError)
+      return { ok: false, message: error.message };
     throw error;
   }
 }

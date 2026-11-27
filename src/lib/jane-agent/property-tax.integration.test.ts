@@ -173,6 +173,24 @@ describe.runIf(url)("property tax against a real database", { timeout: 120_000 }
     expect(next.window).toMatchObject({ status: "upcoming", opensOn: "2027-07-02" });
   });
 
+  it("shows the notice date back, so a save of another answer can keep it", async () => {
+    const userId = await person("prop-notice");
+    await savePropertyAnswers(
+      userId,
+      {
+        marketCents: 50_000_000,
+        assessedCents: 52_000_000,
+        assessedYear: 2026,
+        noticeOn: "2026-07-01",
+        age: null,
+        veteran: null,
+        disabled: null,
+      },
+      { client, now: LINKED, via: "page" },
+    );
+    expect((await loadPropertyTax(userId, { client, now: LINKED })).noticeOn).toBe("2026-07-01");
+  });
+
   it("checks what's told, and names exemptions not yet claimed", async () => {
     const userId = await person("prop-exempt");
     const none = {

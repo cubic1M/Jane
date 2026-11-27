@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { fileAction, type FileState } from "./actions";
 import { FormStatus } from "@/components/form-status";
+import { useKeepOnError } from "@/components/keep-on-error";
 
 // Start the return; review and sign it (spec step 126).
 
@@ -24,8 +25,9 @@ export function StartForm() {
 
 export function SignForm({ year }: { year: number }) {
   const [state, action, pending] = useActionState<FileState, FormData>(fileAction, null);
+  const keep = useKeepOnError(action, state);
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form {...keep} className="flex flex-col gap-3">
       <input type="hidden" name="intent" value="sign" />
       <input type="hidden" name="year" value={year} />
       <label className="flex min-h-11 items-start gap-3">

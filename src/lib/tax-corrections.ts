@@ -96,13 +96,19 @@ export async function addTaxCorrection(
       update: {},
     });
   else await db.taxCorrections.create({ data: { userId, year, kind: correction.kind, ...data } });
-  await logAudit(
-    { type: "user", id: userId },
-    "tax_correction_added",
-    { type: "user", id: userId },
-    { kind: correction.kind, year, via },
-  );
-  await track(userId, "tax_correction_added", { kind: correction.kind, via });
+  // The row is saved: a failure writing its record must not tell the person it failed (they would
+  // try again and add it twice). It is logged for the team instead.
+  try {
+    await logAudit(
+      { type: "user", id: userId },
+      "tax_correction_added",
+      { type: "user", id: userId },
+      { kind: correction.kind, year, via },
+    );
+    await track(userId, "tax_correction_added", { kind: correction.kind, via });
+  } catch (error) {
+    log.error("Recording a saved tax correction failed", { error: String(error) });
+  }
   await rescan(userId, client, now);
 }
 

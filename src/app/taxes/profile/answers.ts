@@ -15,9 +15,11 @@ export function answersFrom(formData: FormData): TaxAnswer[] {
   const answers: TaxAnswer[] = [];
   const kinds = formData.getAll("incomeKinds").map(String);
   if (kinds.length > 0 || formData.get("noIncome")) {
+    // "None of these" wins over a box left ticked (a prefilled one): it is the person's last word.
+    const none = Boolean(formData.get("noIncome"));
     answers.push({
       field: "incomeKinds",
-      value: INCOME_KIND_ORDER.filter((k) => kinds.includes(k)) as IncomeKind[],
+      value: none ? [] : (INCOME_KIND_ORDER.filter((k) => kinds.includes(k)) as IncomeKind[]),
     });
   }
   const filing = text(formData, "filingStatus");
@@ -79,9 +81,12 @@ export function residencyFrom(formData: FormData): ResidencyEntry {
   if ((date || from || to) && !(date && from && to)) {
     throw new ResidencyError("For a move, give the date and both states.");
   }
+  // "One state all year" ticked wins over a move the page prefilled: it is how a found move is
+  // turned down.
+  const oneState = Boolean(formData.get("oneState"));
   return {
-    move: date ? { date, from, to } : null,
-    oneState: !date && Boolean(formData.get("oneState")),
+    move: date && !oneState ? { date, from, to } : null,
+    oneState,
     workState: text(formData, "workState") || null,
     locality: text(formData, "locality") || null,
   };
@@ -91,10 +96,12 @@ export function residencyFrom(formData: FormData): ResidencyEntry {
 // left out), a spouse's wages, whether the person pays over half the home's costs, and a
 // student's years of college before this one.
 export const FAMILY_FORM_CHILDREN = 4;
+// Children already stored are all kept on a save: the form shows a row for each, up to this.
+export const FAMILY_MAX_CHILDREN = 20;
 
 export function familyFrom(formData: FormData): FamilyDetails {
   const children: FamilyDetails["children"] = [];
-  for (let i = 0; i < FAMILY_FORM_CHILDREN; i += 1) {
+  for (let i = 0; i < FAMILY_MAX_CHILDREN; i += 1) {
     const age = text(formData, `childAge${i}`);
     if (!age) continue;
     const months = text(formData, `childMonths${i}`);
@@ -121,7 +128,12 @@ export function familyFrom(formData: FormData): FamilyDetails {
 }
 
 // Spec step 170: points and a home sale. Empty points or sale price clears that part.
-export function homeFrom(formData: FormData, year: number): HomeAnswers {
+export function homeFrom(
+  formData: FormData,
+  year: number,
+  // The year the stored points were paid in, if any: the page shows them only for `year`.
+  storedPointsYear: number | null = null,
+): HomeAnswers {
   const cents = (name: string) => {
     const value = text(formData, name);
     if (!value) return 0;
@@ -131,15 +143,18 @@ export function homeFrom(formData: FormData, year: number): HomeAnswers {
   };
   const points = text(formData, "points");
   const sale = text(formData, "sale");
+  const keepPoints = !points && storedPointsYear !== null && storedPointsYear !== year;
   return {
-    points: points
-      ? {
-          cents: cents("points"),
-          year,
-          purchase: Boolean(formData.get("pointsPurchase")),
-          loanYears: Number(text(formData, "pointsLoanYears") || "30"),
-        }
-      : null,
+    points: keepPoints
+      ? "keep"
+      : points
+        ? {
+            cents: cents("points"),
+            year,
+            purchase: Boolean(formData.get("pointsPurchase")),
+            loanYears: Number(text(formData, "pointsLoanYears") || "30"),
+          }
+        : null,
     sale: sale
       ? {
           boughtOn: text(formData, "boughtOn"),
@@ -160,7 +175,8 @@ export function sideIncomeFrom(formData: FormData): SideIncomeAnswers {
   if (price && cents === null) throw new SideIncomeError("Give the price in dollars and cents.");
   const kind = text(formData, "sideIncomeKind");
   return {
-    rental: cents ? { priceCents: cents, placedOn: text(formData, "rentalPlacedOn") } : null,
+    rental:
+      cents !== null ? { priceCents: cents, placedOn: text(formData, "rentalPlacedOn") } : null,
     kind: kind === "business" || kind === "hobby" ? kind : null,
   };
 }

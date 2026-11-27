@@ -7,6 +7,7 @@ import { FILING_STATUSES } from "@/config/tax";
 import type { DraftFields, DraftSource } from "@/planning/draft-return";
 import { draftAction, type DraftState } from "./actions";
 import { FormStatus } from "@/components/form-status";
+import { useKeepOnError } from "@/components/keep-on-error";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -34,8 +35,9 @@ export function DraftForm({
   notes: Partial<Record<string, string>>;
 }) {
   const [state, action, pending] = useActionState<DraftState, FormData>(draftAction, null);
+  const keep = useKeepOnError(action, state);
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form {...keep} className="flex flex-col gap-3">
       <input type="hidden" name="id" value={id} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {DRAFT_FIELDS.map((f) => (

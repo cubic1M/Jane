@@ -54,7 +54,10 @@ async function Content() {
         </section>
       )}
       {v.advice && v.moves.length === 0 && (
-        <p className="text-sm">I don&apos;t see a move worth making right now.</p>
+        <>
+          <p className="text-sm">I don&apos;t see a move worth making right now.</p>
+          <DemoAdviceLabel />
+        </>
       )}
       <section aria-labelledby="table" className={CARD_ROOMY}>
         <h2 id="table" className="text-xl font-semibold">

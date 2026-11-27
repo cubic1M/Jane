@@ -16,6 +16,7 @@ vi.mock("@/lib/deadlines", async (importOriginal) => ({
 vi.mock("@/lib/tax-savings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-savings")>()),
   dismissSaving: vi.fn(),
+  completeSaving: vi.fn(),
   loadTaxSavings: vi.fn(async () => ({
     year: 2026,
     advice: true,
@@ -63,6 +64,7 @@ vi.mock("@/lib/audit-records", async (importOriginal) => ({
 }));
 
 import { AuditRecordsError, remindRetention } from "@/lib/audit-records";
+import { completeSaving } from "@/lib/tax-savings";
 import { adviceMode } from "@/lib/advice-mode";
 import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
@@ -72,6 +74,7 @@ import { clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding
 import { addDeadline } from "@/lib/deadlines";
 import { dismissSaving } from "@/lib/tax-savings";
 import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
+import { GoalError } from "@/lib/goals";
 import {
   documentAction,
   recordsAction,
@@ -169,6 +172,11 @@ describe("savingAction (spec step 122)", () => {
     ).toMatchObject({ ok: false });
   });
 
+  it("closes a suggestion once it made a reminder, so a second tap adds nothing", async () => {
+    await savingAction(null, form({ intent: "task", key: "retirement", year: "2026" }));
+    expect(completeSaving).toHaveBeenCalledWith("u1", 2026, "retirement");
+  });
+
   it("Not for me, and refuses a suggestion that isn't open", async () => {
     expect(
       await savingAction(null, form({ intent: "no", key: "retirement", year: "2026" })),
@@ -189,6 +197,14 @@ describe("savingAction (spec step 122)", () => {
 
 describe("refundAction (spec step 125)", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("says so when the goal limit is reached, instead of throwing", async () => {
+    vi.mocked(applyRefundPlan).mockRejectedValueOnce(new GoalError("You have the most goals."));
+    expect(await refundAction(null, form({ intent: "apply", transactionId: "t1" }))).toEqual({
+      ok: false,
+      message: "You have the most goals.",
+    });
+  });
 
   it("sets up a refund's plan or leaves it, for the signed-in person", async () => {
     expect(await refundAction(null, form({ intent: "apply", transactionId: "t1" }))).toEqual({

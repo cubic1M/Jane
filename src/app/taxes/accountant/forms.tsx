@@ -82,7 +82,7 @@ export function RevokeButton({ id, label }: { id: string; label: string }) {
   );
 }
 
-export function SeenButton() {
+export function SeenButton({ ids }: { ids: string[] }) {
   const [state, action, pending] = useActionState<AccountantState, FormData>(
     accountantAction,
     null,
@@ -90,6 +90,7 @@ export function SeenButton() {
   return (
     <form action={action} className="flex items-center gap-3">
       <input type="hidden" name="intent" value="seen" />
+      <input type="hidden" name="ids" value={ids.join(",")} />
       <button type="submit" disabled={pending} className={BUTTON}>
         Mark as read
       </button>
