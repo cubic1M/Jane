@@ -4,6 +4,9 @@ import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openProposals } from "@/lib/proposals";
+import { latestLife } from "@/lib/insurance/life";
+import { todayOf } from "@/lib/today";
+import { bestQuote } from "./insurance/life-words";
 import { stepOf } from "./agent-steps";
 import { parseActions, parseRefs, type MessageAction, type MessageRefs } from "./types";
 
@@ -17,7 +20,7 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 // Advice too, once a real account joins: the scan deletes the suggestion behind it, so nothing else
 // would ever close "Drop your mortgage insurance". Their links stay.
 
-type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
+type Open = { id: string; refs: MessageRefs; actions: MessageAction[]; createdAt: Date };
 
 // The autopilot question's own buttons (not step 84's "Pause autopilot", which works on
 // a level already picked).
@@ -32,9 +35,14 @@ export async function closeAnsweredElsewhere(
   const open: Open[] = (
     await db.janeMessages.findMany({
       where: { status: "open" },
-      select: { id: true, refs: true, actions: true },
+      select: { id: true, refs: true, actions: true, createdAt: true },
     })
-  ).map((m) => ({ id: m.id, refs: parseRefs(m.refs), actions: parseActions(m.actions) }));
+  ).map((m) => ({
+    id: m.id,
+    refs: parseRefs(m.refs),
+    actions: parseActions(m.actions),
+    createdAt: m.createdAt,
+  }));
   const ids = (pick: (m: Open) => string | undefined) =>
     open.flatMap((m) => {
       const id = pick(m);
@@ -46,6 +54,24 @@ export async function closeAnsweredElsewhere(
   const readingIds = ids((m) => m.refs.readingId);
   const coverRefs = ids((m) => m.refs.coverEvent);
   const negotiationIds = ids((m) => m.refs.negotiationId);
+  // A sized life card names the quote its Apply button starts (lifeQuoteId).
+  const offersLifeApply = (m: Open) =>
+    Boolean(m.refs.lifeQuoteId && m.refs.lifeApplicationId) &&
+    m.actions.some((a) => a.id === "lifecover.apply");
+  const anyLifeQuote = open.some(offersLifeApply);
+  // One Apply card per quote: of several open ones for the same application and quote (one posted
+  // under the older card key), only the newest stays.
+  const newestApply = new Map<string, Open>();
+  for (const m of open.filter(offersLifeApply)) {
+    const key = `${m.refs.lifeApplicationId}:${m.refs.lifeQuoteId}`;
+    const kept = newestApply.get(key);
+    if (
+      !kept ||
+      m.createdAt > kept.createdAt ||
+      (+m.createdAt === +kept.createdAt && m.id > kept.id)
+    )
+      newestApply.set(key, m);
+  }
   const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const riskIds = ids((m) => m.refs.riskId);
   const suggestionKeys = ids((m) => m.refs.suggestion);
@@ -63,6 +89,7 @@ export async function closeAnsweredElsewhere(
     !coverRefs.length &&
     !negotiationIds.length &&
     !anySaving &&
+    !anyLifeQuote &&
     !riskIds.length &&
     !suggestionKeys.length
   )
@@ -116,6 +143,13 @@ export async function closeAnsweredElsewhere(
         select: { id: true, kind: true },
       })
     : [];
+  // The quote the person's life application would offer today; a card that names another one is
+  // behind (the application was re-sized, or that quote ran out): the new quote has its own card.
+  const life = anyLifeQuote ? await latestLife(userId, { client }) : null;
+  const liveQuote =
+    life && life.status === "sized"
+      ? (bestQuote(life, await todayOf(userId, { client, now }))?.partnerQuoteId ?? null)
+      : null;
   const askedRisks = riskIds.length
     ? await db.insuranceRisks.findMany({
         where: { id: { in: riskIds }, status: "asked" },
@@ -166,6 +200,10 @@ export async function closeAnsweredElsewhere(
       (savingId !== undefined && !offeredIds.has(savingId)) ||
       (savingGroup !== undefined && !sameOffered) ||
       (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
+      (offersLifeApply(m) &&
+        (life?.id !== m.refs.lifeApplicationId ||
+          liveQuote !== m.refs.lifeQuoteId ||
+          newestApply.get(`${m.refs.lifeApplicationId}:${m.refs.lifeQuoteId}`)?.id !== m.id)) ||
       (suggestion !== undefined && settledSuggestions.has(suggestion))
     );
   };

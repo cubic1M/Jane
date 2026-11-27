@@ -12,7 +12,13 @@ import { checkupBody } from "../insurance/checkup-words";
 import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
-import { DEPENDANTS_QUESTION, sizedActions, sizedBody, sizedRefs } from "../insurance/life-words";
+import {
+  DEPENDANTS_QUESTION,
+  bestQuote,
+  sizedActions,
+  sizedBody,
+  sizedRefs,
+} from "../insurance/life-words";
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risk-signals";
 import { riskActions, riskQuestion } from "../insurance/risk-words";
@@ -305,13 +311,16 @@ function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
   }
   const life = insurance.life;
   if (!life || life.status !== "sized" || !insurance.advice) return [];
+  // One card per quote: its Apply button names that quote, so a new best quote is a new card
+  // (the old one is closed, src/lib/jane-agent/settled.ts), never an old card carrying a new price.
+  const quote = bestQuote(life, asOf)?.partnerQuoteId ?? "none";
   return [
     {
       kind: "decision",
       body: sizedBody(life, asOf),
       refs: sizedRefs(life, asOf),
       actions: sizedActions(life, asOf),
-      dedupeKey: `life:${life.id}:${life.amountCents}:${life.termYears}`,
+      dedupeKey: `life:${life.id}:${life.amountCents}:${life.termYears}:${quote}`,
       priority: MESSAGE_PRIORITY.life_sized,
     },
   ];
