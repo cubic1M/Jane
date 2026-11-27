@@ -20,6 +20,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import type { Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { oneLine } from "@/lib/untrusted-text";
+import { TOLD_PREFIX, takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
 import { isSensitiveFact } from "./sensitive";
 
 // What Jane knows about the person (user_facts), refined by every interaction: uploads and the
@@ -365,6 +366,19 @@ export async function forgetFact(
   const from = preferenceOf(row.sourceRef);
   const prefs = [...(from ? [from] : []), ...preferencesFor(row.key)];
   await db.transaction(async (tx) => {
+    // What they said, read before it goes, so the copy of it in another table (how they file on the
+    // tax profile) goes with it: no reader may keep the answer they told Jane to forget.
+    const said = [
+      ...(await tx.userFacts.findMany({
+        where: { key: row.key, source: { not: FORGOTTEN } },
+        select: { value: true },
+      })),
+      ...(await tx.janePreferences.findMany({ where: { OR: prefs }, select: { value: true } })),
+    ];
+    await takeBackMirrors(
+      tx,
+      said.map((s) => ({ key: row.key, value: toldValueOf(s.value) })),
+    );
     await tx.userFacts.deleteMany({ where: { key: row.key } });
     await tx.userFacts.create({
       data: {
@@ -380,6 +394,8 @@ export async function forgetFact(
     });
     await tx.janePreferences.deleteMany({ where: { OR: prefs } });
   });
+  // The chat's stored numbers were worked out with what is now forgotten.
+  await (await import("@/lib/jane-agent/primer-store")).markPrimerStale(userId, { client, now });
   await logAudit(
     { type: "user", id: userId },
     "memory_fact_deleted",
@@ -492,6 +508,19 @@ export async function forgetEverything(
 ): Promise<{ facts: number; preferences: number; messages: number; conversations: number }> {
   const db = scopedFor(userId, client);
   const counts = await db.transaction(async (tx) => {
+    // The told answers copied into other tables (how they file, children, age, own or rent) are
+    // taken back with them, or those tables would go on using what was just forgotten.
+    const told = await tx.janePreferences.findMany({
+      where: { kind: "fact", key: { startsWith: TOLD_PREFIX } },
+      select: { key: true, value: true },
+    });
+    await takeBackMirrors(
+      tx,
+      told.flatMap((p) => {
+        const key = toldKeyOf(p.key);
+        return key ? [{ key, value: toldValueOf(p.value) }] : [];
+      }),
+    );
     const facts = await tx.userFacts.deleteMany({});
     const preferences = await tx.janePreferences.deleteMany({});
     const messages = await tx.janeMessages.deleteMany({
@@ -505,6 +534,7 @@ export async function forgetEverything(
       conversations: conversations.count,
     };
   });
+  await (await import("@/lib/jane-agent/primer-store")).markPrimerStale(userId, { client });
   await logAudit(
     { type: "user", id: userId },
     "memory_deleted_all",

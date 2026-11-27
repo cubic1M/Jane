@@ -189,27 +189,5 @@ export async function mirrorFilingToProfile(
   throw new Error("The tax profile kept changing while the filing status was saved");
 }
 
-// The reverse of the mirror: the person took back what they told Jane, so the tax profile's copy
-// of that same answer goes with it. A profile answer that says something else stays.
-export async function unmirrorFilingFromProfile(
-  userId: string,
-  was: unknown,
-  { client = defaultClient }: Options = {},
-): Promise<void> {
-  if (!isFilingStatus(was)) return;
-  const db = scopedFor(userId, client);
-  for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
-    const row = await db.taxProfiles.findUnique({
-      where: { userId },
-      select: { filingStatus: true, answered: true },
-    });
-    if (!row || row.filingStatus !== was || !row.answered.includes("filingStatus")) return;
-    // Only while the row still says what was read: an answer saved a moment ago stays.
-    const cleared = await db.taxProfiles.updateMany({
-      where: { filingStatus: was, answered: { equals: row.answered } },
-      data: { filingStatus: null, answered: row.answered.filter((f) => f !== "filingStatus") },
-    });
-    if (cleared.count > 0) return;
-  }
-  throw new Error("The tax profile kept changing while the filing status was taken back");
-}
+// The reverse of the mirror, taken back with the told answer, is src/lib/told-mirrors.ts: every way a
+// person forgets it (Settings, a deleted preference, a cleared correction) goes through it.

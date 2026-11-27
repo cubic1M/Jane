@@ -93,3 +93,67 @@ test("the chat starts empty, and a fact Jane knows can be forgotten", async ({
   await expect(facts.filter({ hasText: "You rent your home" })).toHaveCount(0);
   await expect(facts.filter({ hasText: "Your main bank is Chase" })).toHaveCount(1);
 });
+
+// How they file is kept in two places (the told answer and the tax profile's copy): Forget on the
+// fact takes both back, so the tax profile no longer holds what the person told Jane to forget.
+test("forgetting how you file takes the tax profile's copy back too", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await withMemory(userId);
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO user_facts (id, user_id, key, value, label, source, confidence, first_seen, last_confirmed, source_ref)
+       VALUES ($1, $2, 'filing_status', $3, 'How you file taxes: married, filing jointly', 'answer', 100, now(), now(),
+               'preference:fact:profile:filing_status')`,
+      [
+        `uf${crypto.randomUUID().replaceAll("-", "")}`,
+        userId,
+        JSON.stringify({ value: "married_joint" }),
+      ],
+    );
+    await client.query(
+      `INSERT INTO jane_preferences (id, user_id, kind, key, value, label)
+       VALUES ($1, $2, 'fact', 'profile:filing_status', $3, 'How you file taxes: married, filing jointly')`,
+      [
+        `jp${crypto.randomUUID().replaceAll("-", "")}`,
+        userId,
+        JSON.stringify({ value: "married_joint" }),
+      ],
+    );
+    await client.query(
+      `INSERT INTO tax_profiles (id, user_id, filing_status, answered, updated_at)
+       VALUES ($1, $2, 'married_joint', ARRAY['filingStatus'], now())`,
+      [`tp${crypto.randomUUID().replaceAll("-", "")}`, userId],
+    );
+    await signInWith(context, user.sessionToken, baseURL);
+    await page.goto("/settings/memory");
+    const facts = page.getByRole("list", { name: "What Jane knows" }).getByRole("listitem");
+    const filing = facts.filter({ hasText: "How you file taxes" });
+    await expect(filing).toHaveCount(1, { timeout: 60_000 });
+    const forget = filing.getByRole("button", { name: /^Forget/ });
+    await expect(async () => {
+      if ((await forget.count()) > 0) await forget.click({ timeout: 5_000 });
+      await expect(facts.filter({ hasText: "How you file taxes" })).toHaveCount(0, {
+        timeout: 15_000,
+      });
+    }).toPass({ timeout: 60_000 });
+    const row = await client.query(
+      "SELECT filing_status, answered FROM tax_profiles WHERE user_id = $1",
+      [userId],
+    );
+    expect(row.rows[0]).toEqual({ filing_status: null, answered: [] });
+    const told = await client.query(
+      "SELECT 1 FROM jane_preferences WHERE user_id = $1 AND key = 'profile:filing_status'",
+      [userId],
+    );
+    expect(told.rowCount).toBe(0);
+  } finally {
+    await client.end();
+  }
+});

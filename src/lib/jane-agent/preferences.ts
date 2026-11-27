@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
 import { preferenceRef, recordFact, type FactDraft, type FactValue } from "@/lib/memory/facts";
 
 // What Jane remembers about the person (spec step 91), in jane_preferences. Only ever saved
@@ -124,12 +125,16 @@ export async function deletePreference(
   const db = scopedFor(userId, client);
   const row = await db.janePreferences.findFirst({
     where: { id },
-    select: { kind: true, key: true },
+    select: { kind: true, key: true, value: true },
   });
-  // What Jane knew from it goes with it, in one transaction: both happen or neither does.
+  // What Jane knew from it goes with it, in one transaction: both happen or neither does. So does
+  // the copy of a told answer in another table (how they file on the tax profile), or the
+  // forgotten answer would still be used there (src/lib/told-mirrors.ts).
   const count = await db.transaction(async (tx) => {
     if (row)
       await tx.userFacts.deleteMany({ where: { sourceRef: preferenceRef(row.kind, row.key) } });
+    const told = row?.kind === "fact" ? toldKeyOf(row.key) : null;
+    if (row && told) await takeBackMirrors(tx, [{ key: told, value: toldValueOf(row.value) }]);
     return (await tx.janePreferences.deleteMany({ where: { id } })).count;
   });
   if (count > 0) {
