@@ -1,3 +1,4 @@
+import { ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { TAXABLE_GAINS_SHARE } from "@/config/retirement-income";
@@ -58,7 +59,10 @@ const yearOf = (rows: readonly { amountCents: number }[]) =>
 
 export function readRetirementTaxes(profile: Profile, data: ProfileInput): RetirementTaxes {
   const f = profile.facts;
-  const year = Number(profile.today.slice(0, 4));
+  // The figures here are the year's own tax figures: a year Jane has no IRS figures for throws
+  // NoTaxParamsError (held back by the detector runner, W-N in the chat tool), never priced with
+  // another year's law.
+  const year = ownLawYear(Number(profile.today.slice(0, 4)));
   // The status the person reported, as every other tax figure reads it (filingStatusOf); this
   // reading knows only joint and single, so the others file as single.
   const status: Status = filingStatusOf(f) === "married_joint" ? "married_joint" : "single";

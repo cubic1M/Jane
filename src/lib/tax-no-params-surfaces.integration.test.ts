@@ -81,6 +81,14 @@ describe.runIf(url)("a year with no IRS figures, on every surface", { timeout: 1
     expect(text).not.toMatch(/\$\d/);
   });
 
+  it("the health and retirement tools, which read the year's limits and brackets, say it too", async () => {
+    for (const name of ["tax_health", "tax_retirement"]) {
+      const text = JSON.stringify(await runTaxTool(id, name, {}, { client, now: MAY1 }));
+      expect(text, name).toContain("Jane doesn't have the IRS figures for 2027 yet");
+      expect(text, name).not.toMatch(/\$\d/);
+    }
+  });
+
   it("the chat snapshot carries the state, and no tax card is posted from it", async () => {
     const snapshot = await loadTaxSnapshot(id, { client, now: MAY1 });
     expect(snapshot.taxNoParams).toEqual({ year: 2027 });

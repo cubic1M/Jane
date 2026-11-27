@@ -1,3 +1,4 @@
+import { ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import {
@@ -86,7 +87,10 @@ const statusOf = (household: unknown) =>
 
 export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTaxes {
   const f = profile.facts;
-  const year = Number(profile.today.slice(0, 4));
+  // The figures here are the year's own tax figures: a year Jane has no IRS figures for throws
+  // NoTaxParamsError (held back by the detector runner, W-N in the chat tool), never priced with
+  // another year's law.
+  const year = ownLawYear(Number(profile.today.slice(0, 4)));
   // The month the data reaches, not today's (gate C's calendar sweep, 11-16: with a bank that
   // hadn't synced, each new month counted as one more with no pay and no HSA deposits, so the
   // year's pace sagged on the 1st). Before this year's data, no month of it is complete.

@@ -138,6 +138,18 @@ export type TaxSnapshot = {
 
 // A year Jane has no IRS figures for: the snapshot carries the state (taxNoParams), not a number, and
 // no tax card is posted from it (sources/taxes.ts reads `tax` as absent).
+// A section priced for the calendar year (health limits, retirement brackets) when that year has no
+// IRS figures yet is left out of the snapshot (no figure), without taking the 2026 estimate and the
+// rest of the tax snapshot down with it in January to April.
+async function pricedOrUndefined<T>(load: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return undefined;
+    throw error;
+  }
+}
+
 export async function loadTaxSnapshot(
   userId: string,
   options: { client: PrismaClient; now: Date },
@@ -248,9 +260,13 @@ async function loadTaxSnapshotFor(
         withQuestions: false,
       }),
       // Spec step 273: the profile's rows loaded once for the four that read them.
-      health: await loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      health: await pricedOrUndefined(() =>
+        loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      ),
       disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate, input } }),
-      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      retirement: await pricedOrUndefined(() =>
+        loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      ),
       drafts: (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
       inheritance: await loadInheritance(userId, {
         client,
