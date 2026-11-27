@@ -77,7 +77,7 @@ async function settleOne(
   lineIds: string[],
   event: Parameters<typeof applyPartnerEvent>[2],
   { client, now }: { client: PrismaClient; now: Date },
-): Promise<boolean> {
+): Promise<Awaited<ReturnType<typeof applyPartnerEvent>>> {
   try {
     const moved = await applyPartnerEvent(userId, actionId, event, { client, now });
     return moved;
