@@ -606,6 +606,9 @@ export async function executeAction(
             externalRef: result.externalRef,
             cancelUntil: result.cancelUntil,
             note: result.note.slice(0, 500),
+            // When it was actually dispatched (not when it was scheduled): the daily cap and the
+            // settlement window both count from here.
+            runAt: now,
             ...(status === "succeeded" && { finishedAt: now }),
           },
         });
@@ -615,9 +618,22 @@ export async function executeAction(
       }
     }
   } catch (error) {
-    // Failed, but with the partner's own reference kept, so the team and the reconciliation can
-    // find what it did.
-    return failAction(userId, connector.id, actionId, error, result.externalRef, { client, now });
+    // The partner acted but the result could not be saved: kept as waiting to hear back, with its
+    // own reference, so its webhook or the team can settle it. Failed only if even that fails.
+    try {
+      await db.connectorActions.updateMany({
+        where: { id: actionId, status: "running" },
+        data: {
+          status: "partner_pending",
+          externalRef: result.externalRef,
+          note: "Waiting to hear back from the partner.",
+          runAt: now,
+        },
+      });
+      return "partner_pending";
+    } catch {
+      return failAction(userId, connector.id, actionId, error, result.externalRef, { client, now });
+    }
   }
   // Saved: the partner's answer is the result. A failed audit or analytics write after it is
   // reported, not turned into a failure of the action.

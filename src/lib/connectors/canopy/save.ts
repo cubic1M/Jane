@@ -53,10 +53,19 @@ export async function savePull(
   }
   // A policy an earlier pull saved for this insurer that this one no longer reports in force
   // (lapsed, cancelled, replaced) stops counting as cover. Other sources' rows are never touched.
-  const insurer = pull.insurance_provider_friendly_name;
-  if (insurer) {
+  // Matched against every name this pull can have written a carrier under: its own and each
+  // policy's (a policy may say "State Farm Fire and Casualty" under a pull for "State Farm").
+  const insurers = [
+    pull.insurance_provider_friendly_name,
+    ...pull.policies.map((p) => p.carrier_friendly_name),
+    ...policiesFromPull(pull).map((p) => p.carrier),
+  ].filter((n): n is string => typeof n === "string" && n.trim() !== "");
+  if (insurers.length > 0) {
     const gone = have.filter(
-      (h) => h.source === "canopy" && sameName(h.carrier, insurer) && !seen.has(h.id),
+      (h) =>
+        h.source === "canopy" &&
+        insurers.some((name) => sameName(h.carrier, name)) &&
+        !seen.has(h.id),
     );
     if (gone.length > 0) {
       await db.insurancePolicies.updateMany({

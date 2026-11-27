@@ -238,6 +238,23 @@ describe.runIf(url)('"Jane shows, you open and move it"', () => {
     expect(await settleManualPayments(userId, { now: handoff })).toBe(1);
   });
 
+  it("counts the window from when it was really handed off when execution ran late", async () => {
+    const { userId, accountId } = await person();
+    const planned = await plan(userId, request(accountId, await option()));
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    // The queue ran it four days late (Nov 10), well after the scheduled time.
+    const late = new Date("2026-11-10T15:00:00Z");
+    await expect(executeAction(userId, planned.id, { now: late })).resolves.toBe("handed_off");
+    // Five business days from Nov 10 reach Nov 17; from the scheduled time they ended Nov 13.
+    await line(userId, accountId, "2026-11-16", 80_000, "ALLY BANK $TRANSFER");
+    expect(await settleManualPayments(userId, { now: late })).toBe(1);
+  });
+
   // A bank whose name starts with a common word: a store or airline line of the same amount
   // isn't the deposit, and the bank's own pull still is.
   it.each([

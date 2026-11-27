@@ -163,7 +163,8 @@ export const manualOpenSavings: Connector = {
         fromAccount: from,
         fromAccountId: words(details, "fromAccountId"),
         today,
-        signUpUrl,
+        // The whole page, not the 200 characters the steps show: the handoff compares it.
+        signUpUrl: String(details.signUpUrl).trim(),
         // Kept with the draft: the handoff checks the offer is still the one that was approved.
         apyBps,
         minimumCents,

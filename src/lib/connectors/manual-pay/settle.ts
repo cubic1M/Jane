@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 import { applyPartnerEvent } from "../pipeline";
@@ -90,11 +91,17 @@ async function settleOne(
   }
 }
 
-const handoffDay = (planned: string, runAt: Date | null): string => {
-  if (!runAt) return planned;
-  const day = runAt.toISOString().slice(0, 10);
+// The person's own day of the handoff (never earlier than the planned day).
+async function handoffDay(
+  userId: string,
+  planned: string,
+  handedOff: Date | null,
+  client: PrismaClient,
+): Promise<string> {
+  if (!handedOff) return planned;
+  const day = await todayOf(userId, { client, now: handedOff });
   return day > planned ? day : planned;
-};
+}
 
 // Every handed-off manual payment or move of this person's that has now posted. Returns how many
 // settled.
@@ -158,7 +165,7 @@ export async function settleManualPayments(
           amountCents: Number(details.amountCents),
           // The window opens at the handoff, not at the plan: a deposit the new bank pulls a week
           // after it was planned still falls inside it.
-          payOn: handoffDay(String(details.today ?? ""), action.runAt),
+          payOn: await handoffDay(userId, String(details.today ?? ""), action.runAt, client),
           accountId,
         },
         lines,

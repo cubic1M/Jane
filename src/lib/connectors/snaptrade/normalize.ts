@@ -110,14 +110,21 @@ export function snaptradeRead(
       holdings.push(holding);
       continue;
     }
-    same.quantity += holding.quantity;
+    // The unit price is the units-weighted average of the lines' own prices, not the rounded
+    // values divided back (fractions of a cent in each line's value would skew it).
+    const units = same.quantity + holding.quantity;
+    same.priceCents =
+      units > 0
+        ? Math.round(
+            (same.priceCents * same.quantity + holding.priceCents * holding.quantity) / units,
+          )
+        : same.priceCents;
+    same.quantity = units;
     same.valueCents += holding.valueCents;
     same.costBasisCents =
       same.costBasisCents === null || holding.costBasisCents === null
         ? null
         : same.costBasisCents + holding.costBasisCents;
-    same.priceCents =
-      same.quantity > 0 ? Math.round(same.valueCents / same.quantity) : same.priceCents;
   }
   const net = account.net_value;
   const mask = (account.masked_account_number ?? "").replace(/\D/g, "").slice(-4);
