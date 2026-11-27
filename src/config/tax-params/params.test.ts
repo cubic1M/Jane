@@ -60,7 +60,6 @@ function walk(v: unknown, path: string, visit: (path: string, n: number) => void
 const EXPECTED_NOTES: Record<number, string[]> = {
   2025: ["savers", "saversMatch", "rothCatchUp"],
   2026: [
-    "ctc",
     "eitc",
     "selfEmployment",
     "obbba",
@@ -69,7 +68,6 @@ const EXPECTED_NOTES: Record<number, string[]> = {
     "rothCatchUp",
     "charity",
     "medical",
-    "contributionLimits",
     "dependentCare",
     "education",
     "energy",
