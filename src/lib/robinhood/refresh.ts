@@ -103,12 +103,15 @@ async function readOrders(
   now: Date,
 ): Promise<FilledOrder[] | null> {
   try {
-    const { orders, dropped } = parseOrders(
+    const { orders, dropped, pastLimit } = parseOrders(
       await reader.read("get_equity_orders", account.args()),
       accounts,
       now,
     );
     if (dropped > 0) log.warn("Robinhood orders left out", { dropped });
+    // A history cut at the cap would date a sold lot wrongly (an earlier buy past the cap): the
+    // orders count as unavailable and the earlier ones stay.
+    if (pastLimit > 0) return null;
     return orders;
   } catch (error) {
     if (error instanceof RobinhoodSignedOutError) throw error;
@@ -203,6 +206,23 @@ async function saveHoldings(db: Saving, accountId: string, read: Read, today: Da
       valueCents: read.portfolio.cashCents,
       costBasisCents: null,
     });
+  }
+  // A valid answer that leaves the cash balance out says nothing about cash: what was saved stays
+  // (only an explicit zero removes it).
+  if (read.portfolio.cashCents === null) {
+    const cash = await db.securities.findFirst({
+      where: { plaidSecurityId: CASH_REF },
+      select: { id: true },
+    });
+    if (cash) kept.push(cash.id);
+  }
+  // A confirmed zero removes the cash even from a partial list; the rest of a partial list stays.
+  if (read.portfolio.cashCents === 0) {
+    const cash = await db.securities.findFirst({
+      where: { plaidSecurityId: CASH_REF },
+      select: { id: true },
+    });
+    if (cash) await db.holdings.deleteMany({ where: { accountId, securityId: cash.id } });
   }
   if (!read.partial) {
     await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: kept } } });
@@ -336,12 +356,23 @@ async function renew(
     refreshToken: tokens.refreshToken ?? secrets.refreshToken,
   };
   const saved = sealSecrets(next);
-  await db.robinhoodConnections.updateMany({
-    where: { id: connectionId, OR: [{ syncingSince: now }, { secretsEncrypted: sealed }] },
-    data: { secretsEncrypted: saved, accessExpiresAt: tokens.expiresAt },
-  });
+  // Written again if the write fails, without asking Robinhood twice: the old refresh token is
+  // already retired, so these are the only copy of the new ones.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await db.robinhoodConnections.updateMany({
+        where: { id: connectionId, OR: [{ syncingSince: now }, { secretsEncrypted: sealed }] },
+        data: { secretsEncrypted: saved, accessExpiresAt: tokens.expiresAt },
+      });
+      break;
+    } catch (error) {
+      if (attempt >= TOKEN_SAVE_ATTEMPTS) throw error;
+    }
+  }
   return { sealed: saved, secrets: next };
 }
+
+const TOKEN_SAVE_ATTEMPTS = 3;
 
 // Refreshes one person's connection. Only ever throws for a bug: every expected failure is recorded
 // on the connection, and the person is shown it.
@@ -362,9 +393,13 @@ export async function refreshConnection(
   if (count === 0) {
     return (await db.robinhoodConnections.count()) === 0 ? "none" : "busy";
   }
-  const row = await db.robinhoodConnections.findFirstOrThrow({
+  // Read under the lease just taken: a sign-in that replaced the credentials and released the
+  // lease in between leaves nothing here, and this refresh stops before it uses the new ones.
+  const row = await db.robinhoodConnections.findFirst({
+    where: { syncingSince: now },
     select: { id: true, secretsEncrypted: true, clientId: true, accessExpiresAt: true },
   });
+  if (!row) return "busy";
   try {
     let credentials: Credentials = {
       sealed: row.secretsEncrypted,

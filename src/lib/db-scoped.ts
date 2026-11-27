@@ -171,6 +171,12 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         securities: typeof inTransaction.security;
         holdings: typeof inTransaction.holding;
         investmentTransactions: typeof inTransaction.investmentTransaction;
+        // A transfer's completion and the goal it credits (src/lib/money-movement/transfers.ts).
+        moneyTransfers: typeof inTransaction.moneyTransfer;
+        savingsGoals: typeof inTransaction.savingsGoal;
+        // A crypto refresh replaces a connection's holdings together (src/lib/crypto/crypto.ts).
+        cryptoConnections: typeof inTransaction.cryptoConnection;
+        cryptoHoldings: typeof inTransaction.cryptoHolding;
       }) => Promise<T>,
     ) =>
       asUserTransaction(inTransaction, userId, (tx) =>
@@ -189,6 +195,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
           securities: tx.security,
           holdings: tx.holding,
           investmentTransactions: tx.investmentTransaction,
+          moneyTransfers: tx.moneyTransfer,
+          savingsGoals: tx.savingsGoal,
+          cryptoConnections: tx.cryptoConnection,
+          cryptoHoldings: tx.cryptoHolding,
         }),
       )
         // What was read before it may have changed.

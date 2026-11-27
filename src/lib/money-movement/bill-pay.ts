@@ -58,6 +58,34 @@ export type BillPayView = {
 
 const billKey = (b: Pick<DueBill, "accountId" | "dueOn">) => `bill:${b.accountId}:${b.dueOn}`;
 
+// Words that name any account of a kind rather than one account.
+const GENERIC_ACCOUNT_WORDS = new Set([
+  "card",
+  "credit",
+  "account",
+  "loan",
+  "mortgage",
+  "payment",
+  "auto",
+  "student",
+  "bank",
+  "the",
+  "and",
+]);
+const wordsOf = (text: string) => text.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+// Whether a payment's words name this account among its peers: a word the peers share ("Chase" in
+// "Chase Freedom" and "Chase Sapphire") names none of them.
+const namesAccount = (
+  description: string,
+  accountName: string,
+  peerNames: readonly string[],
+): boolean => {
+  const others = new Set(peerNames.flatMap(wordsOf));
+  const named = wordsOf(accountName).filter((w) => !GENERIC_ACCOUNT_WORDS.has(w) && !others.has(w));
+  const said = new Set(wordsOf(description));
+  return named.some((w) => said.has(w));
+};
+
 async function dueBills(
   userId: string,
   input: DetectionInput,
@@ -76,6 +104,11 @@ async function dueBills(
     },
     select: { accountId: true, kind: true, minimumPaymentCents: true, nextPaymentDueDate: true },
   });
+  // Every debt of a kind, due soon or not: a payment may be for any of them.
+  const everyDebt = await db.liabilities.findMany({
+    where: { ...(await onlyCountedRows(db)), minimumPaymentCents: { gt: 0 } },
+    select: { accountId: true, kind: true },
+  });
   const checking = new Set(
     input.accounts
       .filter((a) => a.type === "depository" && a.subtype === "checking")
@@ -89,8 +122,22 @@ async function dueBills(
     if (!account || !l.nextPaymentDueDate) return [];
     const dueOn = day(l.nextPaymentDueDate);
     const category = BILL_PAYMENT_CATEGORIES[l.kind];
+    // Two debts of one kind (two cards): a payment in that category could be for either, so it
+    // counts as this debt's autopay only when its own name says which account it pays.
+    const peerNames = everyDebt
+      .filter((o) => o.kind === l.kind && o.accountId !== l.accountId)
+      .flatMap((o) => input.accounts.find((a) => a.id === o.accountId)?.name ?? []);
     const autopay = payments
       .filter((s) => category && s.pfcDetailed === category)
+      .filter(
+        (s) =>
+          peerNames.length === 0 ||
+          namesAccount(
+            `${s.merchant} ${s.charges.at(-1)?.description ?? ""}`,
+            account.name,
+            peerNames,
+          ),
+      )
       .flatMap((s) =>
         expectedDates(s, input.asOf, dueOn)
           .filter((d) => d > input.asOf && d <= dueOn)
@@ -209,7 +256,8 @@ export async function payBill(
     now = new Date(),
     partner,
     input,
-  }: Options & { input?: DetectionInput } = {},
+    maxCents,
+  }: Options & { input?: DetectionInput; maxCents?: number } = {},
 ): Promise<{ amountCents: number; runOn: string; name: string }> {
   const view = await loadBillPay(userId, { client, now, input });
   const item = view.items.find((i) => i.planKey === planKey);
@@ -223,6 +271,10 @@ export async function payBill(
   }
   if (item.status === "short" || !view.checkingAccountId) {
     throw new BillPayError("Checking can't take that payment right now without running short.");
+  }
+  // Autopilot allowed an amount: a bill that now needs more (room opened up since it asked) waits.
+  if (maxCents !== undefined && item.amountCents > maxCents) {
+    throw new BillPayError("That payment is more than was allowed a moment ago.");
   }
   try {
     const { runOn } = await scheduleTransfer(
@@ -262,8 +314,14 @@ export async function runBillPay(
   if (!movement) return 0;
   const view = await loadBillPay(userId, { client, now, input });
   let paid = 0;
-  for (const item of view.items) {
-    if (item.status !== "ask") continue;
+  for (const first of view.items) {
+    if (first.status !== "ask") continue;
+    // Earlier payments in this run changed checking's room: ask again for this bill's amount, so
+    // the cap check and the act record use what is paid, not what the first view showed.
+    const item = (await loadBillPay(userId, { client, now, input })).items.find(
+      (i) => i.planKey === first.planKey,
+    );
+    if (!item || item.status !== "ask") continue;
     const allowed = await mayAct(
       userId,
       "bills",
@@ -271,16 +329,29 @@ export async function runBillPay(
       { client, now },
     );
     if (!allowed.ok) continue;
+    let result;
     try {
-      await payBill(userId, item.planKey, "autopilot", { client, now, partner: movement, input });
+      result = await payBill(userId, item.planKey, "autopilot", {
+        client,
+        now,
+        partner: movement,
+        input,
+        maxCents: item.amountCents,
+      });
     } catch (error) {
       if (error instanceof BillPayError) continue;
       throw error;
     }
-    await recordAct(userId, "bills", item.amountCents, `Scheduled the ${item.bill.name} payment`, {
-      client,
-      now,
-    });
+    await recordAct(
+      userId,
+      "bills",
+      result.amountCents,
+      `Scheduled the ${item.bill.name} payment`,
+      {
+        client,
+        now,
+      },
+    );
     paid += 1;
   }
   return paid;

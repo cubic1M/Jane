@@ -145,6 +145,41 @@ describe("talking to the server", () => {
     }
   });
 
+  it("takes the answer from a stream the server keeps open", async () => {
+    const encoder = new TextEncoder();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        const sent = JSON.parse(init.body) as { id?: number; method: string };
+        if (sent.id === undefined) return new Response(null, { status: 202 });
+        const result =
+          sent.method === "initialize"
+            ? {}
+            : { structuredContent: { total_value: "5.00" }, content: [] };
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ jsonrpc: "2.0", id: sent.id, result })}\n\n`,
+              ),
+            );
+            // Never closed: the answer is whole, the connection stays open.
+          },
+        });
+        return new Response(stream, { headers: { "content-type": "text/event-stream" } });
+      }),
+    );
+    try {
+      const { accessToken } = fake.issueTokensForTest();
+      const answer = await openReader({ accessToken, signal: AbortSignal.timeout(2_000) }).read(
+        "get_portfolio",
+      );
+      expect(answer).toEqual({ total_value: "5.00" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("gives up on an answer past the size limit", async () => {
     fake.options.answers = { get_accounts: "x".repeat(2_100_000) };
     const error = await reader()

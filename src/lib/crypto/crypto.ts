@@ -68,31 +68,35 @@ export async function syncCrypto(
       source.balances(ref, today),
       source.trades(ref, iso(new Date(now.getTime() - CRYPTO_FEE_DAYS * DAY_MS)), today),
     ]);
-    for (const b of balances) {
-      const data = {
-        name: b.name,
-        quantity: b.quantity,
-        priceCents: b.priceCents,
-        valueCents: b.valueCents,
-        costBasisCents: b.costBasisCents,
-        asOf: now,
-      };
-      await db.cryptoHoldings.upsert({
-        where: { connectionId_asset: { connectionId: c.id, asset: b.asset } },
-        create: { userId, connectionId: c.id, asset: b.asset, ...data },
-        update: data,
+    // Replaced as one: a failure partway leaves the previous complete snapshot, never new
+    // balances for some coins beside old ones for others.
+    await db.transaction(async (tx) => {
+      for (const b of balances) {
+        const data = {
+          name: b.name,
+          quantity: b.quantity,
+          priceCents: b.priceCents,
+          valueCents: b.valueCents,
+          costBasisCents: b.costBasisCents,
+          asOf: now,
+        };
+        await tx.cryptoHoldings.upsert({
+          where: { connectionId_asset: { connectionId: c.id, asset: b.asset } },
+          create: { userId, connectionId: c.id, asset: b.asset, ...data },
+          update: data,
+        });
+      }
+      await tx.cryptoHoldings.deleteMany({
+        where: { connectionId: c.id, asset: { notIn: balances.map((b) => b.asset) } },
       });
-    }
-    await db.cryptoHoldings.deleteMany({
-      where: { connectionId: c.id, asset: { notIn: balances.map((b) => b.asset) } },
-    });
-    await db.cryptoConnections.updateMany({
-      where: { id: c.id },
-      data: {
-        lastSyncedAt: now,
-        feesCents: trades.reduce((s, t) => s + t.feeCents, 0),
-        tradedCents: trades.reduce((s, t) => s + t.amountCents, 0),
-      },
+      await tx.cryptoConnections.updateMany({
+        where: { id: c.id },
+        data: {
+          lastSyncedAt: now,
+          feesCents: trades.reduce((s, t) => s + t.feeCents, 0),
+          tradedCents: trades.reduce((s, t) => s + t.amountCents, 0),
+        },
+      });
     });
     synced += 1;
   }

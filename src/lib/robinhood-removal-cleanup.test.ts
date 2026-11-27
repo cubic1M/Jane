@@ -35,6 +35,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 import { logAudit } from "@/lib/audit";
+import { forgetSince } from "@/lib/evidence/orphans";
 import { removeConnection } from "@/lib/robinhood/connection";
 import { revokeTokens } from "@/lib/robinhood/oauth";
 
@@ -49,5 +50,18 @@ describe("removing a Robinhood connection when tidying up afterwards fails", () 
       { type: "robinhood_connection", id: "c1" },
       expect.objectContaining({ ended_at_robinhood: true }),
     );
+  });
+
+  it("forgets what was worked out since before the connection is deleted, and still ends it when the sweep fails", async () => {
+    vi.mocked(forgetSince).mockClear();
+    await expect(removeConnection("u1", "user_disconnected")).rejects.toThrow("cleanup failed");
+    expect(forgetSince).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the connection and its tokens, and ends nothing, when forgetting what it brought in fails", async () => {
+    vi.mocked(forgetSince).mockRejectedValueOnce(new Error("forget failed"));
+    vi.mocked(revokeTokens).mockClear();
+    await expect(removeConnection("u1", "user_disconnected")).rejects.toThrow("forget failed");
+    expect(revokeTokens).not.toHaveBeenCalled();
   });
 });

@@ -123,7 +123,7 @@ describe.runIf(url)("the tokens a refresh renews", () => {
     const watched = db.$extends({
       query: {
         robinhoodConnection: {
-          async findFirstOrThrow({ args, query }) {
+          async findFirst({ args, query }) {
             if (!signedInAgain) {
               signedInAgain = true;
               fake.options.expiresIn = 30;

@@ -68,6 +68,38 @@ function replyFromStream(text: string, id: number): Reply {
   throw new RobinhoodReadError("no_reply");
 }
 
+// The same, read as the bytes arrive: the reply counts the moment its line is whole, so a server
+// that keeps the stream open after answering (the spec lets it) is not waited on until timeout.
+async function replyFromBody(response: Response, id: number, limit: number): Promise<Reply> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new RobinhoodReadError("no_reply");
+  const decoder = new TextDecoder();
+  let pending = "";
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > limit) throw new RobinhoodReadError("too_large");
+      pending += decoder.decode(value, { stream: true });
+      // Only whole lines: the last piece may still be growing.
+      const cut = pending.lastIndexOf("\n");
+      if (cut === -1) continue;
+      const whole = pending.slice(0, cut);
+      pending = pending.slice(cut + 1);
+      for (const line of whole.split(/\r?\n/)) {
+        if (!line.startsWith("data:")) continue;
+        const reply = parseJson(line.slice(5).trim()) as Reply | null;
+        if (reply && reply.id === id) return reply;
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  return replyFromStream(pending + decoder.decode(), id);
+}
+
 // What a tool answered: its structured content, or the JSON in its first text block. The caller
 // (parse.ts) trusts none of it.
 function answerOf(result: unknown): unknown {
@@ -134,11 +166,14 @@ export function openReader({
     const id = nextId++;
     const response = await post({ jsonrpc: "2.0", id, method, params });
     sessionId = response.headers.get("mcp-session-id") ?? sessionId;
-    const text = await cappedText(response, ROBINHOOD_LIMITS.answerBytes);
-    if (text === null) throw new RobinhoodReadError("too_large");
-    const reply = (response.headers.get("content-type") ?? "").includes("text/event-stream")
-      ? replyFromStream(text, id)
-      : (parseJson(text) as Reply);
+    let reply: Reply;
+    if ((response.headers.get("content-type") ?? "").includes("text/event-stream")) {
+      reply = await replyFromBody(response, id, ROBINHOOD_LIMITS.answerBytes);
+    } else {
+      const text = await cappedText(response, ROBINHOOD_LIMITS.answerBytes);
+      if (text === null) throw new RobinhoodReadError("too_large");
+      reply = parseJson(text) as Reply;
+    }
     if (reply?.error) {
       const code = typeof reply.error.code === "number" ? reply.error.code : "unknown";
       throw new RobinhoodReadError(`rpc_${code}`);
