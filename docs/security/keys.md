@@ -65,14 +65,21 @@ Sign in to Jane as an admin and open **/admin/keys** (the **Keys** link in the t
 - The current key says `"k2" · current`.
 
 Press **Re-encrypt with the current key**. Each press works for up to 20 seconds, then shows
-what it did. If it says "It ran out of time: press it again", press it again. It's safe to
-press as often as you like, and safe if it's interrupted: it only changes values that need it,
-and each value is saved on its own. Every press is written to the audit log
-(`encryption_keys_rotated`, with counts only).
+what it did. If it says "It ran out of time: press it again", press it again from that page:
+the next press carries on where the last one stopped. It's safe to press as often as you like,
+and safe if it's interrupted: it only changes values that need it, and each value is saved on
+its own. Every press is written to the audit log before anything moves
+(`encryption_keys_rotation_started`) and when it ends (`encryption_keys_rotated`, with counts
+only). If the first can't be written nothing moves; if the second can't, the team is alerted.
 
 If it says some values "couldn't be moved", the page lists which key they need (marked
 as missing). Usually that's a key you've already removed from Vercel: add it back, redeploy,
 and press again.
+
+A press that carried on from an earlier one doesn't go back to what failed before it. If it
+reaches the end with values still on an older key, the page says how many: press again, and
+that press starts from the beginning. Values under a missing key, or unreadable, are listed
+under **Keys**; pressing doesn't move them.
 
 ## 4. Retire the old key
 

@@ -176,8 +176,10 @@ export type AuditEvent =
   | "referral_partner_saved"
   | "referral_conversion_recorded"
   | "job_retried"
-  // Key rotation (src/lib/key-rotation.ts): the key report opened, a rotation run (counts only).
+  // Key rotation (src/lib/key-rotation.ts): the key report opened, a run starting and how it ended
+  // (counts only).
   | "admin_viewed_keys"
+  | "encryption_keys_rotation_started"
   | "encryption_keys_rotated"
   | "action_assigned"
   | "saved_reply_saved"
