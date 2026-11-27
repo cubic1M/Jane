@@ -5,7 +5,8 @@ export function axisDollars(cents: number): string {
   const d = cents / 100;
   if (d >= 1_000_000) return `$${+(d / 1_000_000).toFixed(1)}M`;
   if (d >= 1_000) return `$${+(d / 1_000).toFixed(1)}k`;
-  return `$${Math.round(d)}`;
+  // Whole dollars from $10 up; cents below that so $0.50 and $1 don't both read "$1".
+  return d >= 10 || Number.isInteger(d) ? `$${Math.round(d)}` : `$${+d.toFixed(2)}`;
 }
 
 // A round top for the axis and its step: three steps of 1, 2, 2.5 or 5 times a power of ten.

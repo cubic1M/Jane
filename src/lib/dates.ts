@@ -35,3 +35,6 @@ export function shiftMonth(month: string, by: number): string {
 // Whole days from one "YYYY-MM-DD" day to another: negative when `to` comes first.
 export const daysBetween = (from: string, to: string): number =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
+
+// A real calendar month, "YYYY-MM" with 01 to 12 ("2025-13" is not one).
+export const isYearMonth = (value: string): boolean => /^\d{4}-(0[1-9]|1[0-2])$/.test(value);

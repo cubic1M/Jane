@@ -13,12 +13,16 @@ const when = (d: GoalDate) =>
     ? "not within ten years"
     : `${monthLabel(d.month, { long: true })}${d.lateMonths !== null && d.lateMonths > 0 ? `, ${d.lateMonths} month${d.lateMonths === 1 ? "" : "s"} late` : ", on time"}`;
 
+// The saved order names every goal, the reached ones too; an option lists only the competing ones.
 const same = (a: readonly string[] | null, b: TradeOrder) =>
-  a !== null && a.join() === b.order.join();
+  a !== null && a.filter((id) => b.order.includes(id)).join() === b.order.join();
 
 export function GoalTradeoffs({ view }: { view: TradeoffView }) {
   if (!view.competing || !view.suggested) return null;
-  const options = view.options.slice(0, 4);
+  // Four orders at most, but the person's own pick always stays in view.
+  const shown = view.options.slice(0, 4);
+  const mine = view.options.find((o) => same(view.chosen, o));
+  const options = mine && !shown.includes(mine) ? [...shown.slice(0, 3), mine] : shown;
   return (
     <section id="tradeoffs" className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">When your goals compete</h2>

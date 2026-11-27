@@ -8,6 +8,7 @@ import { loadMonthClose } from "@/lib/close";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 import type { LedgerEntry } from "@/lib/ledger";
 import { formatCents } from "@/lib/money";
+import { isYearMonth } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
 import { CHANGE_LABEL, monthStep, type CloseChange } from "@/planning/close";
@@ -17,7 +18,6 @@ import { CHANGE_LABEL, monthStep, type CloseChange } from "@/planning/close";
 // with its lines, changed, still open), each line's detail behind a click. A month with nothing
 // new leads with the checkup.
 
-const MONTH = /^\d{4}-\d{2}$/;
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 const LINK = "text-sm font-medium underline-offset-2 hover:underline";
 
@@ -79,7 +79,7 @@ async function CloseContent({ params }: { params: PageProps<"/close/[month]">["p
   await connection();
   const { month } = await params;
   const thisMonth = (await todayOf(user.id)).slice(0, 7);
-  if (!MONTH.test(month) || month > thisMonth) notFound();
+  if (!isYearMonth(month) || month > thisMonth) notFound();
   const close = await loadMonthClose(user.id, month);
   const before = monthStep(month, -1);
   const after = month < thisMonth ? monthStep(month, 1) : null;

@@ -17,6 +17,11 @@ describe("the month chart's axis", () => {
     }
   });
 
+  it("gives different labels to different ticks, even under a dollar", () => {
+    const labels = axisTicks(100).map(axisDollars);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
   it("says dollars in a few characters", () => {
     expect(axisDollars(0)).toBe("$0");
     expect(axisDollars(80_000)).toBe("$800");

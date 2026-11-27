@@ -446,8 +446,9 @@ export function SpendingExplorer({
               key: m.merchant,
               label: m.merchant,
               cents: m.cents,
-              share: rangeTotal > 0 ? m.cents / rangeTotal : undefined,
-              mark: merchantMarks[m.merchant] && (
+              // Refunds from other merchants lower the total but not this row: never above all of it.
+              share: rangeTotal > 0 ? Math.min(1, m.cents / rangeTotal) : undefined,
+              mark: Object.hasOwn(merchantMarks, m.merchant) && (
                 <RepeatMarkTag mark={merchantMarks[m.merchant]!} withAmount />
               ),
               open: () => (

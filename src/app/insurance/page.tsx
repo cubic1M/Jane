@@ -239,7 +239,9 @@ async function InsuranceContent({
     area,
   } = loaded;
   const familyError = one("family");
-  const saved = SAVED[one("saved")];
+  const savingNote = one("savingNote");
+  const savedKey = one("saved");
+  const saved = Object.hasOwn(SAVED, savedKey) ? SAVED[savedKey] : undefined;
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";
@@ -611,6 +613,11 @@ async function InsuranceContent({
         </nav>
       </div>
 
+      {savingNote && (
+        <p role="alert" className="bg-zinc-100 p-3 text-sm dark:bg-zinc-900">
+          {savingNote} Nothing changed.
+        </p>
+      )}
       {(saved || result) && (
         <p
           role="status"
