@@ -1,5 +1,6 @@
 import { loadCushionSpendCents } from "@/lib/cushion-spend";
 import { REFUND } from "@/config/tax";
+import { NoTaxParamsError } from "@/config/tax-params";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
 import { adviceMode } from "@/lib/advice-mode";
@@ -114,14 +115,23 @@ export async function loadRefunds(
   const years = [...new Set(refunds.map((r) => r.taxYear))];
   const [inputs, perYear] = await Promise.all([
     advice ? planInputs(userId, client, now) : null,
-    Promise.all(years.map((year) => loadTaxEstimate(userId, { client, now, year }))),
+    // A refund's tax year Jane has no IRS figures for (one older than 2025): no estimate, so its
+    // match stays unknown instead of rejecting the whole page.
+    Promise.all(
+      years.map((year) =>
+        loadTaxEstimate(userId, { client, now, year }).catch((error) => {
+          if (error instanceof NoTaxParamsError) return null;
+          throw error;
+        }),
+      ),
+    ),
   ]);
   const estimates = new Map(years.map((year, i) => [year, perYear[i]]));
   return {
     advice,
     refunds: refunds.map((refund) => {
-      const e = estimates.get(refund.taxYear)!;
-      const estimated = e.withholdingKnown
+      const e = estimates.get(refund.taxYear);
+      const estimated = e?.withholdingKnown
         ? refund.to === "federal"
           ? e.estimate.refundCents
           : (e.estimate.state?.refundCents ?? null)

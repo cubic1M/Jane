@@ -31,6 +31,7 @@ import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
 import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
+import { lawYearFor } from "@/config/tax-params";
 import { filingStatusOf } from "@/planning/student-tax";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
@@ -604,9 +605,11 @@ function profitOf(profile: { facts: Record<string, { value: unknown }> }): numbe
       : T.freelanceProfitShare;
   return Math.round(annual(profile.facts.monthly_income.value) * share);
 }
+// Priced with the law of the newest year Jane has figures for at or before `year` (lawYearFor): a
+// planning card holds today's law fixed rather than stop in a year whose figures are not out yet.
 function soleInput(profit: number, facts: Facts, year: number): EstimateInput {
   return {
-    year,
+    year: lawYearFor(year),
     filingStatus: statusOf(facts),
     childrenUnder17: 0,
     otherDependants: 0,
@@ -650,10 +653,13 @@ const sCorpElection: Detector = {
     const income = profile.facts.monthly_income;
     if (!selfPaid(pattern.value)) return null;
     const profit = profitOf(profile);
-    const result = structureFor(soleInput(profit, profile.facts, 2026));
+    const md = profile.today.slice(5);
+    // The year the election would count for: this one through March 15, the next after it. (Not the
+    // prior-return year defaultTaxYear gives in January to April.)
+    const electionYear = Number(profile.today.slice(0, 4)) + (md <= T.sCorpElectionBy ? 0 : 1);
+    const result = structureFor(soleInput(profit, profile.facts, electionYear));
     if (!result.sCorp.worthIt) return null;
     const business = pattern.value === "business";
-    const md = profile.today.slice(5);
     return suggestion("taxes", "s_corp_election", {
       title: "Ask a tax professional whether an S corporation would save you tax",
       headline: headlineOf("Ask about an S corporation", result.sCorp.savesCents, "saves"),

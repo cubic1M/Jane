@@ -1,0 +1,175 @@
+[
+  {
+    "id": "t4-2025-joint-family-itemizes",
+    "title": "2025 hand case: joint, wages $120,000, 2 children and 1 other dependant, itemizes",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf",
+      "where": "Instructions for Form 1040 (2025): Schedule A, Child Tax Credit; Rev. Proc. 2025-32 section 3"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 2,
+      "otherDependants": 1,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 12000000
+    },
+    "extra": {
+      "studentLoanInterestCents": 100000,
+      "mortgageInterestCents": 2000000,
+      "charityCents": 500000,
+      "medicalCents": 1500000,
+      "stateWithheldCents": 480000,
+      "otherStateLocalTaxCents": 300000,
+      "federalWithheldCents": 1000000
+    },
+    "expected": {
+      "totalIncome": 12000000,
+      "studentLoanInterest": 100000,
+      "agi": 11900000,
+      "itemizedStateLocal": 780000,
+      "itemizedMortgage": 2000000,
+      "itemizedCharity": 500000,
+      "itemizedMedical": 607500,
+      "nonItemizerCharity": 0,
+      "qbi": 0,
+      "taxable": 8012500,
+      "incomeTax": 913800,
+      "childTaxCredit": 440000,
+      "otherDependantCredit": 50000,
+      "additionalChildTaxCredit": 0,
+      "socialSecurityTaxable": 0,
+      "amt": 0,
+      "selfEmploymentTax": 0,
+      "halfSelfEmploymentTax": 0,
+      "additionalMedicare": 0,
+      "netInvestmentIncomeTax": 0,
+      "totalTax": 423800,
+      "paid": 1000000,
+      "refund": 576200,
+      "standardDeduction": 3150000
+    },
+    "note": "AGI 120,000 - 1,000 student loan interest = 119,000. Itemized: state and local 4,800 + 3,000 = 7,800 (under the 40,000 cap); mortgage 20,000; charity 5,000 (2025 has no 0.5% floor); medical 15,000 - 7.5% x 119,000 (8,925) = 6,075. Total 38,875 over the 31,500 standard. Taxable 80,125. Tax 10% x 23,850 = 2,385 + 12% x 56,275 = 6,753 = 9,138. Credits: 2 x 2,200 + 500 = 4,900. Total 4,238. Paid 10,000; refund 5,762."
+  },
+  {
+    "id": "t4-2025-single-high-earner-se",
+    "title": "2025 hand case: single, wages $190,000 over the wage base, self-employment $40,000, interest $6,000",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf",
+      "where": "Instructions for Form 1040 (2025); Schedule SE (wage base $176,100); Forms 8959 and 8960"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 19000000,
+      "selfEmploymentCents": 4000000,
+      "interestCents": 600000
+    },
+    "expected": {
+      "totalIncome": 23600000,
+      "selfEmploymentTax": 107126,
+      "halfSelfEmploymentTax": 53563,
+      "additionalMedicare": 24246,
+      "netInvestmentIncomeTax": 22800
+    },
+    "tolerance": {
+      "selfEmploymentTax": 1,
+      "halfSelfEmploymentTax": 1,
+      "additionalMedicare": 1
+    },
+    "note": "Allowed rounding of a cent: Wages already pass the 176,100 Social Security wage base, so self-employment tax is only Medicare: 92.35% x 40,000 = 36,940 x 2.9% = 1,071.26; half 535.63. Additional Medicare: (190,000 + 36,940 - 200,000) = 26,940 x 0.9% = 242.46. AGI = 236,000 - 535.63 = 235,464.37; NIIT = 3.8% x min(6,000, 35,464.37) = 228.00."
+  },
+  {
+    "id": "t4-2025-self-employed-qbi",
+    "title": "2025 hand case: single, self-employment $50,000 only: QBI deduction",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf",
+      "where": "Instructions for Form 1040 (2025), line 13; Form 8995; Schedule SE"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "selfEmploymentCents": 5000000
+    },
+    "expected": {
+      "selfEmploymentTax": 706478,
+      "halfSelfEmploymentTax": 353239,
+      "agi": 4646761,
+      "qbi": 614352,
+      "taxable": 2457409
+    },
+    "tolerance": {
+      "selfEmploymentTax": 1,
+      "halfSelfEmploymentTax": 1,
+      "agi": 1,
+      "qbi": 1,
+      "taxable": 2
+    },
+    "note": "Allowed rounding of a cent: 92.35% x 50,000 = 46,175 x 15.3% = 7,064.78; half 3,532.39; AGI 46,467.61; taxable before QBI 30,717.61; QBI = 20% x 30,717.61 (smaller than 20% x (50,000 - 3,532.39)) = 6,143.52; taxable 24,574.09."
+  },
+  {
+    "id": "t4-2025-social-security-worksheet",
+    "title": "2025 hand case: single retiree, $30,000 of benefits and $25,000 pension",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/p915.pdf",
+      "where": "Publication 915, Worksheet 1: base amounts $25,000 and $34,000 for a single filer (not indexed)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "retirementCents": 2500000,
+      "socialSecurityBenefitsCents": 3000000
+    },
+    "expected": {
+      "socialSecurityTaxable": 960000
+    },
+    "note": "Provisional income 25,000 + 15,000 = 40,000. Line 9 = 15,000; line 10 = 9,000; line 11 = 6,000; line 12 = min(15,000, 9,000) = 9,000; line 13 = 4,500; line 14 = min(15,000, 4,500) = 4,500; line 15 = 85% x 6,000 = 5,100; line 16 = 9,600; line 17 = 85% x 30,000 = 25,500; taxable = 9,600."
+  },
+  {
+    "id": "t4-2025-child-credit-refundable-part",
+    "title": "2025 hand case: single, wages $20,000, one child: the refundable part of the credit",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/i1040s8.pdf",
+      "where": "Instructions for Schedule 8812 (2025): the refundable part is the smaller of the unused credit, $1,700 and 15% of earned income over $2,500"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 1,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 2000000
+    },
+    "expected": {
+      "taxable": 425000,
+      "incomeTax": 42500,
+      "childTaxCredit": 42500,
+      "additionalChildTaxCredit": 170000
+    },
+    "note": "Taxable 20,000 - 15,750 = 4,250; tax 10% = 425. The credit 2,200 uses 425 of it; the unused 1,775 is capped at 1,700 (15% x 17,500 = 2,625 is larger)."
+  }
+]

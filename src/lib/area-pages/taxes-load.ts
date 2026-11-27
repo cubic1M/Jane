@@ -5,6 +5,7 @@ import { BEST_FIRST, SAID_YES } from "./tree";
 import { taxesTree } from "@/lib/area-pages/taxes";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
+import { federalParams } from "@/config/tax-params";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { checkFrom } from "@/lib/tax-withholding";
@@ -43,6 +44,8 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
   const today = await todayOf(userId, { now });
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(today);
+  // No IRS figures for the year: refuse before reading anything (the page says so, W-N).
+  federalParams(year);
   const [{ view, taxes }, tags, forms, estimate, advice, setAside, suggested] = await Promise.all([
     loadWorkingProfile(userId, { now }),
     loadTaxTags(userId, year),

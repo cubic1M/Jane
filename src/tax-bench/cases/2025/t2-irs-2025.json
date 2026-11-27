@@ -17,9 +17,9 @@
     "income": { "wagesCents": 5680000 },
     "expected": { "taxable": 2530000, "incomeTax": 256200 },
     "expectedFailure": {
-      "steps": ["T4", "T23"],
-      "figures": ["taxable", "incomeTax"],
-      "reason": "Wages 56,800 less the 2025 joint standard deduction (31,500, Publication 17 (2025)) are 25,300 taxable, but the estimate prices every year with 2026 law (T4) and uses the bracket formula, where the Tax Table uses the middle of each $50 band (T23): 2025 brackets at 25,325 give 2,385 + 12% x 1,475 = 2,562."
+      "steps": ["T23"],
+      "figures": ["incomeTax"],
+      "reason": "Wages 56,800 less the 2025 joint standard deduction (31,500, Publication 17 (2025)) are 25,300 taxable, which the estimate now gets right (T4 prices each year with its own law); the estimate uses the bracket formula, 2,385 + 12% x 1,450 = 2,559, where the Tax Table uses the middle of each $50 band (T23): 2025 brackets at 25,325 give 2,385 + 12% x 1,475 = 2,562."
     },
     "note": "The IRS example gives the tax from the table, 2,562; 2025 joint brackets are 10% to 23,850 and 12% above (Rev. Proc. 2024-40), so the table's middle of the band, 25,325, gives 2,385 + 177 = 2,562."
   },

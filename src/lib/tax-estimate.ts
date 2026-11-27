@@ -26,6 +26,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { cachedCopy } from "@/lib/read-cache";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { federalParams, lawYearFor } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
@@ -33,7 +34,6 @@ import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
-import { CHILD_TAX_CREDIT, EITC } from "@/config/tax-rates";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
 import {
@@ -212,7 +212,7 @@ function profileAssumptions({
   } else if (view.dependants.status !== "yours") {
     out.push(
       view.dependants.hint
-        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(CHILD_TAX_CREDIT.perChild)} off your tax.`
+        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(federalParams(lawYearFor(year)).ctc.value.perChild)} off your tax.`
         : "You haven't told me about dependants, so I've counted none.",
     );
   }
@@ -238,6 +238,12 @@ async function loadTaxEstimateFrom(
   // round 11-06, charity $160 at 3pm and $161 at 7pm).
   const today = await todayOf(userId, { client, now });
   const year = asked ?? defaultTaxYear(today);
+  // A year before the first one Jane has figures for is refused (NoTaxParamsError). A later year with
+  // no figures yet (from May 1 until the new year's parameters are published) is priced with the
+  // newest law, and the estimate says so: estimate.year is the law's year, view.year the year of the
+  // income. The Taxes page and a prior-return review refuse such a year before they get here (W-N),
+  // so no page shows it as the year's own.
+  const lawYear = lawYearFor(year);
   const db = scopedFor(userId, client);
   const incomeCategories = [
     ...Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]),
@@ -712,7 +718,7 @@ async function loadTaxEstimateFrom(
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
   const age = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
   const input: EstimateInput = {
-    year,
+    year: lawYear,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
     otherDependants: profile.otherDependants,
@@ -750,6 +756,7 @@ async function loadTaxEstimateFrom(
   // someone who told Jane they are a citizen or green card holder, and said when it would have
   // counted (src/planning/tax-engine/residency-gate.ts).
   const toldStatus = await loadToldResidency(userId, { client });
+  const eligibleAge = federalParams(input.year).eitc.value.childlessMinAge;
   const withCredit = estimateTaxes(input);
   const base = toldStatus.allowed ? withCredit : withoutEarnedIncomeCredit(withCredit);
   if (!toldStatus.allowed) {
@@ -757,14 +764,14 @@ async function loadTaxEstimateFrom(
     // an eligible age is what is held.
     const heldCents =
       age === null && input.childrenUnder17 === 0
-        ? estimateTaxes({ ...input, age: EITC.childlessMinAge }).credits.earnedIncomeCreditCents
+        ? estimateTaxes({ ...input, age: eligibleAge }).credits.earnedIncomeCreditCents
         : withCredit.credits.earnedIncomeCreditCents;
     if (heldCents > 0) assumptions.push(earnedIncomeHeldLine(toldStatus.kind, heldCents));
   }
   // The Earned Income Credit without children needs an age of 25 to 64: unknown, it's left out,
   // and said when it would have counted.
   if (toldStatus.allowed && age === null && input.childrenUnder17 === 0) {
-    const atEligibleAge = estimateTaxes({ ...input, age: EITC.childlessMinAge });
+    const atEligibleAge = estimateTaxes({ ...input, age: eligibleAge });
     if (atEligibleAge.credits.earnedIncomeCreditCents > 0) {
       assumptions.push(
         `I haven't counted the Earned Income Credit (up to ${formatCents(atEligibleAge.credits.earnedIncomeCreditCents)}): without children it's for people 25 to 64. Tell me your age and I'll check it.`,

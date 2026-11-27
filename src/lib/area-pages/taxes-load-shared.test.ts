@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // that read to the giving and plan loaders, and orders its suggestions best first with the key as
 // the tie-break.
 
-const { findMany, loadInvestmentTaxes, loadGiving, loadTaxPlan } = vi.hoisted(() => {
+const { findMany, loadInvestmentTaxes, loadGiving, loadTaxPlan, day } = vi.hoisted(() => {
   const investments = { taxableAccounts: 0, holdingsKnown: false, washSales: [], harvest: [] };
   return {
+    day: { today: "2026-11-19" },
     findMany: vi.fn(async (_args: { orderBy: unknown }) => []),
     loadInvestmentTaxes: vi.fn(async () => investments),
     loadGiving: vi.fn(async (_id: string, _o: { loaded: { investments: unknown } }) => ({
@@ -23,7 +24,7 @@ const { findMany, loadInvestmentTaxes, loadGiving, loadTaxPlan } = vi.hoisted(()
 });
 
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: () => ({ suggestions: { findMany } }) }));
-vi.mock("@/lib/today", () => ({ todayOf: async () => "2026-11-19" }));
+vi.mock("@/lib/today", () => ({ todayOf: async () => day.today }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: async () => true }));
 vi.mock("@/lib/investment-taxes", () => ({ loadInvestmentTaxes }));
 vi.mock("@/lib/giving", () => ({ loadGiving }));
@@ -79,10 +80,14 @@ vi.mock("@/lib/family-taxes", () => ({
 }));
 vi.mock("@/lib/tax-documents", () => ({ loadTaxDocuments: async () => ({ forms: [] }) }));
 
+import { NoTaxParamsError } from "@/config/tax-params";
 import { loadTaxesArea } from "./taxes-load";
 
 describe("the Taxes page's shared loads", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    day.today = "2026-11-19";
+  });
 
   it("reads the investment taxes once and shares that read", async () => {
     await loadTaxesArea("u1", { now: new Date("2026-11-19T12:00:00Z") });
@@ -90,6 +95,21 @@ describe("the Taxes page's shared loads", () => {
     const shared = loadInvestmentTaxes.mock.results[0]!.value;
     expect(loadGiving.mock.calls[0]![1].loaded.investments).toBe(shared);
     expect(loadTaxPlan.mock.calls[0]![1].loaded.investments).toBe(shared);
+  });
+
+  it("refuses a year with no IRS figures before reading anything (W-N)", async () => {
+    // From May 1, 2027 the year gathered is 2027, which has no parameters.
+    day.today = "2027-05-01";
+    await expect(
+      loadTaxesArea("u1", { now: new Date("2027-05-01T19:00:00Z") }),
+    ).rejects.toBeInstanceOf(NoTaxParamsError);
+    expect(loadInvestmentTaxes).not.toHaveBeenCalled();
+    expect(findMany).not.toHaveBeenCalled();
+    // Until the end of April it is still 2026's.
+    day.today = "2027-04-30";
+    await expect(
+      loadTaxesArea("u1", { now: new Date("2027-04-30T19:00:00Z") }),
+    ).resolves.toBeDefined();
   });
 
   it("orders suggestions by score, then key", async () => {

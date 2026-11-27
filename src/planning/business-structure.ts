@@ -1,5 +1,5 @@
 import { S_CORP, S_CORP_COSTS_CENTS } from "@/config/business-structure";
-import { PAYROLL_TAX, QBI, SELF_EMPLOYMENT_TAX } from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 
 // Business owners' tax structure (spec step 267). Pure: the qualified business income
@@ -30,16 +30,19 @@ export type Structure = {
   };
 };
 
-const ficaOn = (salary: number) =>
-  round(
-    Math.min(salary, SELF_EMPLOYMENT_TAX.wageBase) * PAYROLL_TAX.socialSecurityRate +
-      salary * PAYROLL_TAX.medicareRate,
+const ficaOn = (salary: number, year: number) => {
+  const { selfEmployment, payroll } = federalParams(year);
+  return round(
+    Math.min(salary, selfEmployment.value.wageBase) * payroll.value.socialSecurityRate +
+      salary * payroll.value.medicareRate,
   );
+};
 
 export function structureFor(input: EstimateInput): Structure {
   const profit = clamp0(input.income.selfEmploymentCents);
   const base = estimateTaxes(input);
   const status = input.filingStatus;
+  const QBI = federalParams(input.year).qbi.value;
   const limited = base.taxableCents + base.qbiCents > QBI.threshold[status];
 
   const low = Math.min(
@@ -52,7 +55,7 @@ export function structureFor(input: EstimateInput): Structure {
   );
   const salary = round((low + high) / 2);
   // The employer half of the payroll tax is a business expense: it comes out of the profit.
-  const employer = ficaOn(salary);
+  const employer = ficaOn(salary, input.year);
   const k1 = clamp0(profit - salary - employer);
   const s = estimateTaxes({
     ...input,
@@ -68,7 +71,7 @@ export function structureFor(input: EstimateInput): Structure {
   // engine only gives to self-employment income.
   const qbiS = limited ? 0 : round(Math.min(k1 * QBI.rate, clamp0(s.taxableCents) * QBI.rate));
   const incomeTax = clamp0(s.totalTaxCents - round(qbiS * s.marginalRate));
-  const payroll = employer + ficaOn(salary);
+  const payroll = employer + ficaOn(salary, input.year);
   const total = incomeTax + payroll + S_CORP_COSTS_CENTS;
   const saves = base.totalTaxCents - total;
   return {

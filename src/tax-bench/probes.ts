@@ -145,8 +145,14 @@ export function probePlan(year: number): Record<string, GroupPlan> {
 
   const a = p.amt.value;
   const tentative = (s: FilingStatus) => (x: number) =>
-    amt({ status: s, taxableCents: x, addBackCents: 0, preferenceCents: 0, regularTaxCents: 0 })
-      .tentativeCents;
+    amt({
+      status: s,
+      taxableCents: x,
+      addBackCents: 0,
+      preferenceCents: 0,
+      regularTaxCents: 0,
+      year,
+    }).tentativeCents;
   const charity = p.charity.value;
 
   return {
@@ -175,7 +181,7 @@ export function probePlan(year: number): Record<string, GroupPlan> {
                 {
                   param: `${s}[${i}].over`,
                   points: around(b.over),
-                  f: (x: number) => incomeTax(x, x, s),
+                  f: (x: number) => incomeTax(x, x, s, year),
                   kind: "slope_up" as const,
                 },
               ],
@@ -266,13 +272,13 @@ export function probePlan(year: number): Record<string, GroupPlan> {
         {
           param: "wageBase",
           points: around(Math.round(se.wageBase / se.netEarningsShare)),
-          f: (x: number) => selfEmploymentTax(x, 0),
+          f: (x: number) => selfEmploymentTax(x, 0, year),
           kind: "slope_down" as const,
         },
         {
           param: "minimumNetEarnings",
           points: around(Math.round(se.minimumNetEarnings / se.netEarningsShare)),
-          f: (x: number) => selfEmploymentTax(x, 0),
+          f: (x: number) => selfEmploymentTax(x, 0, year),
           kind: "step_up" as const,
         },
       ],
