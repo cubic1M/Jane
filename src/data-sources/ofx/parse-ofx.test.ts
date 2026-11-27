@@ -18,6 +18,36 @@ describe("readOfx", () => {
     expect(card.ok && card.balances).toEqual([{ date: "2026-10-15", balanceCents: 21045 }]);
   });
 
+  // CodeRabbit sweep (ds-02).
+  it("refuses a statement in another currency instead of reading euros as dollars", () => {
+    const eur = fixture("checking-sgml.ofx");
+    eur.text = eur.text.replace("<CURDEF>USD", "<CURDEF>EUR");
+    const result = readOfx(eur);
+    expect(!result.ok && result.error).toMatch(/EUR/);
+  });
+
+  it("returns the balance of every statement in the file, oldest first", () => {
+    const one = fixture("checking-sgml.ofx");
+    const june = one.text.replace("20261015\n</LEDGERBAL>", "20260630\n</LEDGERBAL>");
+    const may = june.replace("1234.56", "999.00").replace("20260630", "20260531");
+    // Same account, two statements; the later one comes second in the file's order here.
+    const both =
+      june.replace("</OFX>", "") +
+      may.slice(may.indexOf("<LEDGERBAL>")).replace(/<LEDGERBAL>/, "<LEDGERBAL>");
+    const result = readOfx({ name: "both.ofx", text: both });
+    expect(result.ok && result.balances.map((b) => b.date)).toEqual(["2026-05-31", "2026-06-30"]);
+  });
+
+  it("counts a bank account and a card with the same number as two accounts", () => {
+    const bank = fixture("checking-sgml.ofx").text;
+    const card = fixture("card-xml.qfx").text;
+    const joined = bank
+      .replace("<ACCTID>0000000000", "<ACCTID>0000")
+      .replace("</OFX>", `${card.slice(card.indexOf("<CCACCTFROM>"))}</OFX>`);
+    const result = readOfx({ name: "both.ofx", text: joined });
+    expect(!result.ok && result.error).toMatch(/holds 2 accounts/);
+  });
+
   it("reads an OFX 1.x (SGML) checking statement", () => {
     const result = readOfx(fixture("checking-sgml.ofx"));
     if (!result.ok) throw new Error(result.error);
@@ -102,6 +132,35 @@ describe("readOfx", () => {
   // merchant cut mid-word, and the line said twice.
   // Debugger 11-04: a credit union's one file with checking and savings read as one account: 187
   // rows in checking, savings' balance lost, and no word of it.
+  describe("account identity, currency and balances (CodeRabbit sweep)", () => {
+    const stmt = (extra: string, fitid = "1") => `<CCSTMTTRNRS><CCSTMTRS><CURDEF>USD
+<CCACCTFROM><ACCTID>4111</CCACCTFROM>
+<BANKTRANLIST><STMTTRN><TRNTYPE>POS<DTPOSTED>20261001<TRNAMT>-5.00<FITID>${fitid}<NAME>SHOP
+${extra}</STMTTRN></BANKTRANLIST></CCSTMTRS></CCSTMTTRNRS>`;
+    const card = (extra: string) =>
+      `<OFX><CREDITCARDMSGSRSV1>${stmt(extra)}</CREDITCARDMSGSRSV1></OFX>`;
+
+    it("does not take a transfer's bank id for a card's", () => {
+      // Two statements of one card; a transfer row follows the account tag in one of them.
+      const text = `<OFX>${stmt("")}${stmt("<BANKACCTTO><BANKID>999<ACCTID>5</BANKACCTTO>", "2")}</OFX>`;
+      expect(readOfx({ name: "c.ofx", text }).ok).toBe(true);
+    });
+
+    it("refuses a transaction that names its own currency", () => {
+      const eur = card("<CURRENCY><CURRATE>1.1<CURSYM>EUR</CURRENCY>");
+      const result = readOfx({ name: "c.ofx", text: eur });
+      expect(!result.ok && result.error).toMatch(/EUR/);
+      const original = card("<ORIGCURRENCY><CURRATE>1.1<CURSYM>EUR</ORIGCURRENCY>");
+      expect(readOfx({ name: "c.ofx", text: original }).ok).toBe(true);
+    });
+
+    it("keeps a closing balance with a long run of spaces before its closing tag", () => {
+      const text = `<OFX><STMTRS><CURDEF>USD<BANKACCTFROM><BANKID>1<ACCTID>2</BANKACCTFROM><BANKTRANLIST><STMTTRN><TRNTYPE>POS<DTPOSTED>20261001<TRNAMT>-5.00<FITID>1<NAME>SHOP</STMTTRN></BANKTRANLIST><LEDGERBAL><BALAMT>10.00<DTASOF>20261015${" ".repeat(900)}</LEDGERBAL></STMTRS></OFX>`;
+      const result = readOfx({ name: "b.ofx", text });
+      expect(result.ok && result.balances).toEqual([{ date: "2026-10-15", balanceCents: 1000 }]);
+    });
+  });
+
   describe("a file with more than one account", () => {
     const statement = (acct: string, from = "BANKACCTFROM", fitid = acct) => `<STMTTRNRS><STMTRS>
 <${from}><BANKID>253177049<ACCTID>${acct}<ACCTTYPE>CHECKING</${from}>

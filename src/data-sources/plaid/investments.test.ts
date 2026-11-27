@@ -41,6 +41,60 @@ describe("Plaid Investments, normalized", () => {
     ).toBeNull();
   });
 
+  // CodeRabbit sweep (ds-02): a figure Plaid leaves out is unknown, never $0.
+  it("derives a missing holding value, or leaves the holding out, never counts $0", () => {
+    const base = { account_id: "a", security_id: "s", quantity: 2, iso_currency_code: "USD" };
+    expect(
+      normalizeHolding({ ...base, institution_price: 10, institution_value: null } as never),
+    ).toMatchObject({ valueCents: 2000, priceCents: 1000 });
+    // A sub-cent price: the total comes from the dollar price, not the price rounded to cents.
+    expect(
+      normalizeHolding({
+        ...base,
+        quantity: 100000,
+        institution_price: 0.004,
+        institution_value: null,
+      } as never),
+    ).toMatchObject({ valueCents: 40000 });
+    expect(
+      normalizeHolding({ ...base, institution_price: null, institution_value: 30 } as never),
+    ).toMatchObject({ valueCents: 3000, priceCents: 1500 });
+    expect(
+      normalizeHolding({ ...base, institution_price: null, institution_value: null } as never),
+    ).toBeNull();
+  });
+
+  it("leaves out an investment transaction with no amount, and fills the text Plaid left null", () => {
+    const base = {
+      investment_transaction_id: "t",
+      account_id: "a",
+      date: "2026-10-01",
+      iso_currency_code: "USD",
+    };
+    expect(normalizeInvestmentTransaction({ ...base, amount: null } as never)).toBeNull();
+    expect(
+      normalizeInvestmentTransaction({
+        ...base,
+        amount: 5,
+        name: null,
+        quantity: null,
+        type: null,
+        subtype: null,
+      } as never),
+    ).toMatchObject({ amountCents: 500, name: "", quantity: 0, type: "", subtype: "" });
+  });
+
+  it("gives no close price in another currency", () => {
+    expect(
+      normalizeSecurity({ security_id: "x", close_price: 10, iso_currency_code: "EUR" } as Security)
+        .closePriceCents,
+    ).toBeNull();
+    expect(
+      normalizeSecurity({ security_id: "x", close_price: 10, iso_currency_code: "USD" } as Security)
+        .closePriceCents,
+    ).toBe(1000);
+  });
+
   it("names a security even when Plaid doesn't", () => {
     expect(normalizeSecurity({ security_id: "c", name: null, type: "cash" } as Security).name).toBe(
       "Cash",

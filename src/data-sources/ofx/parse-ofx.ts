@@ -17,6 +17,7 @@ export function looksLikeOfx(name: string, text: string): boolean {
 
 // Enough to reach a statement's <ACCTID> from the tag that opens its account.
 const ACCOUNT_BLOCK_CHARS = 300;
+const LEDGER_BLOCK_CHARS = 400;
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 const decode = (value: string) =>
@@ -86,9 +87,18 @@ function* transactionBlocks(text: string): Generator<{ block: string; line: numb
 // several statements is one.
 function accountsIn(text: string): number {
   const ids = new Set<string>();
-  for (const from of text.matchAll(/<(?:BANK|CC)ACCTFROM>/gi)) {
-    const id = field(text.slice(from.index, from.index + ACCOUNT_BLOCK_CHARS), "ACCTID");
-    if (id) ids.add(id);
+  for (const from of text.matchAll(/<(BANK|CC)ACCTFROM>/gi)) {
+    // Only the account's own aggregate: a transfer row after it has a BANKID of its own.
+    const window = text.slice(from.index, from.index + ACCOUNT_BLOCK_CHARS);
+    const stop = window.search(
+      /<\/(?:BANK|CC)ACCTFROM>|<(?:BANK|CC)ACCTTO>|<STMTTRN>|<LEDGERBAL>/i,
+    );
+    const block = stop === -1 ? window : window.slice(0, stop);
+    const id = field(block, "ACCTID");
+    const kind = from[1].toUpperCase();
+    // A bank account and a card can share an account number: the kind and the bank are part of it.
+    // A card has no bank id.
+    if (id) ids.add(`${kind}|${kind === "BANK" ? (field(block, "BANKID") ?? "") : ""}|${id}`);
   }
   return ids.size;
 }
@@ -99,6 +109,27 @@ export function readOfx(
 ): OfxResult {
   if (!/<OFX>/i.test(file.text)) {
     return { ok: false, file: file.name, error: "This doesn't look like an OFX or QFX file." };
+  }
+  // Money here is dollars: a statement in another currency would be read as dollars at its face.
+  for (const [, code] of file.text.matchAll(/<CURDEF>\s*([A-Za-z]{3})/gi)) {
+    if (code.toUpperCase() !== "USD") {
+      return {
+        ok: false,
+        file: file.name,
+        error: `This file is in ${code.toUpperCase()}. Jane reads US dollar statements only.`,
+      };
+    }
+  }
+  // A transaction in its own currency (<CURRENCY> with a <CURSYM>) is not converted: its amount
+  // would be read as dollars. <ORIGCURRENCY> only says what an already converted amount was.
+  for (const [, code] of file.text.matchAll(/<CURRENCY>[\s\S]{0,120}?<CURSYM>\s*([A-Za-z]{3})/gi)) {
+    if (code.toUpperCase() !== "USD") {
+      return {
+        ok: false,
+        file: file.name,
+        error: `This file has a transaction in ${code.toUpperCase()}. Jane reads US dollar statements only.`,
+      };
+    }
   }
   // Everything here goes into one account: rather than merge them, ask for them apart (debugger
   // 11-04: a credit union's checking and savings read as one, and savings' balance was lost).
@@ -227,16 +258,31 @@ export function readOfx(
 // <LEDGERBAL><BALAMT>…<DTASOF>…: the balance on that day. A card statement's is negative
 // for what's owed (OFX's sign), so it's turned round.
 function ledgerBalance(text: string): { date: string; balanceCents: number }[] {
-  // Two steps, not a lazy pattern, for the same reason as transactionBlocks.
-  const open = /<LEDGERBAL>/i.exec(text);
-  if (!open) return [];
-  const rest = text.slice(open.index + open[0].length);
-  const end = rest.search(/<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>/i);
-  const block = end === -1 ? "" : rest.slice(0, end);
-  if (!block) return [];
-  const amount = ofxAmount(field(block, "BALAMT"));
-  const date = ofxDate(field(block, "DTASOF"));
-  if (amount === null || !date) return [];
   const card = /<CCSTMTRS>/i.test(text);
-  return [{ date, balanceCents: card ? -amount || 0 : amount }];
+  const found: { date: string; balanceCents: number }[] = [];
+  // One per statement: a file of two months holds two, and the later one is the closing balance.
+  // Two steps, not a lazy pattern, for the same reason as transactionBlocks.
+  // Where each balance block can end, found once and walked forward: a file of unclosed tags stays
+  // linear, and a balance with a long run of spaces before its closing tag is still read.
+  const ends = [...text.matchAll(/<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>/gi)].map(
+    (m) => m.index,
+  );
+  const opens = [...text.matchAll(/<LEDGERBAL>/gi)];
+  let next = 0;
+  for (let i = 0; i < opens.length; i++) {
+    const from = opens[i].index + opens[i][0].length;
+    while (next < ends.length && ends[next] < from) next++;
+    if (next === ends.length) break;
+    // The next balance opening first means this one never closed: not a balance. Blocks do not
+    // overlap, so the slices add up to the file's length.
+    if (i + 1 < opens.length && opens[i + 1].index < ends[next]) continue;
+    const block = text.slice(from, ends[next]);
+    // A real balance is a few tags long: a block much longer is not one.
+    if (!block || block.replace(/\s+/g, "").length > LEDGER_BLOCK_CHARS) continue;
+    const amount = ofxAmount(field(block, "BALAMT"));
+    const date = ofxDate(field(block, "DTASOF"));
+    if (amount === null || !date) continue;
+    found.push({ date, balanceCents: card ? -amount || 0 : amount });
+  }
+  return found.sort((a, b) => a.date.localeCompare(b.date));
 }

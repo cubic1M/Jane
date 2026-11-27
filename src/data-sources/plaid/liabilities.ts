@@ -44,7 +44,7 @@ export type NormalizedLiability = {
   loanStatusEndDate: string | null;
   outstandingInterestCents: number | null;
   // Other loans only (auto, personal): what's left on the principal, what paying it off today
-  // takes, the term and how many payments are made a year.
+  // takes, the term and how many payments the loan has in all (Plaid's payment_count).
   principalBalanceCents: number | null;
   payoffAmountCents: number | null;
   loanTermMonths: number | null;
