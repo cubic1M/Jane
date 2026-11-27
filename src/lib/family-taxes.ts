@@ -1,7 +1,7 @@
 import { FAMILY_RULES } from "@/config/family-taxes";
 import { MOST_CENTS_KEPT } from "@/lib/money";
 import { TUITION_PAYEE } from "@/config/tax";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -9,11 +9,14 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadCollege } from "@/lib/investments/college";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { newChildId } from "@/lib/tax-facts/child-ids";
+import { syncRecord } from "@/lib/tax-facts/through";
 import { loadToldResidency } from "@/lib/tax-residency";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import {
   careChoice,
   parseChildren,
+  withChildIds,
   childrenChoice,
   educationChoice,
   filingChoice,
@@ -193,7 +196,11 @@ export async function loadFamilyTaxes(
 export async function saveFamilyDetails(
   userId: string,
   details: FamilyDetails,
-  { client = defaultClient, via }: { client?: PrismaClient; via: "chat" | "page" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+  }: { client?: PrismaClient; now?: Date; via: "chat" | "page" },
 ): Promise<void> {
   for (const c of details.children) {
     if (!Number.isInteger(c.ageAtYearEnd) || c.ageAtYearEnd < 0 || c.ageAtYearEnd > 30) {
@@ -223,8 +230,24 @@ export async function saveFamilyDetails(
   ) {
     throw new FamilyTaxesError("Years of college must be a whole number.");
   }
+  // A child keeps the id it has; a child the form sends with no id, or one that is not one of the
+  // person's own, gets a new one. Written once, never changed.
+  const stored = await scopedFor(userId, client).taxProfiles.findFirst({
+    select: { familyChildren: true },
+  });
+  const known = new Set(parseChildren(stored?.familyChildren).flatMap((c) => (c.id ? [c.id] : [])));
+  const used = new Set<string>();
+  const children = withChildIds(
+    details.children.map((c) => {
+      const keep = c.id && known.has(c.id) && !used.has(c.id);
+      if (keep) used.add(c.id!);
+      const { id: _sent, ...rest } = c;
+      return keep ? { ...rest, id: c.id } : rest;
+    }),
+    newChildId,
+  ).children;
   const data = {
-    familyChildren: details.children.map((c) => ({ ...c })),
+    familyChildren: children as Prisma.InputJsonValue,
     spouseWagesCents: details.spouseWagesCents,
     paysOverHalfHome: details.paysOverHalfHome,
     studentYearsBefore: details.student?.yearsOfCollegeBefore ?? null,
@@ -235,6 +258,7 @@ export async function saveFamilyDetails(
     create: { userId, ...data },
     update: data,
   });
+  await syncRecord(userId, { client, now });
   await logAudit(
     { type: "user", id: userId },
     "tax_profile_changed",

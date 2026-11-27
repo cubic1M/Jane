@@ -22,6 +22,7 @@ import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { oneLine } from "@/lib/untrusted-text";
 import { TOLD_PREFIX, takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
 import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
+import { isTaxToldFact } from "@/lib/tax-facts/told";
 import { isSensitiveFact } from "./sensitive";
 
 // What Jane knows about the person (user_facts), refined by every interaction: uploads and the
@@ -241,6 +242,15 @@ export async function recordFacts(
       outcomes.push(step.newEvidence ? "confirmed" : "unchanged");
     }
   }
+  // Something Jane remembers about taxes changed: the household's tax record copies the older
+  // stores again the next time it is read (marking is one update; the copy is not made here).
+  const changed = drafts.some(
+    (d, i) => !["unchanged", "blocked", "forgotten"].includes(outcomes[i] ?? "blocked"),
+  );
+  if (changed && drafts.some((d) => isTaxToldFact(d.key))) {
+    const { markNeedsRepair } = await import("@/lib/tax-facts/repair");
+    await markNeedsRepair(userId, { client });
+  }
   return outcomes;
 }
 
@@ -407,6 +417,10 @@ export async function forgetFact(
   );
   // What was forgotten may have decided a card: the cards are worked out again after the reply.
   await rescanAfterAnswer(userId, { client, now });
+  // What they said about taxes goes from the household's tax record too: every row, for good.
+  // Loaded late: the record reads this file (its told facts).
+  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
+  await forgetToldRecord(userId, row.key, { client, now });
   return true;
 }
 
@@ -549,5 +563,8 @@ export async function forgetEverything(
     counts,
   );
   await rescanAfterAnswer(userId, { client });
+  // Everything they told Jane about taxes goes from the household's tax record too, for good.
+  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
+  await forgetToldRecord(userId, "all", { client });
   return counts;
 }

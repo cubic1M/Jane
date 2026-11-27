@@ -143,6 +143,7 @@ async function ProfileContent() {
               const c = parseChildren(pay?.familyChildren)[i];
               return c
                 ? {
+                    id: c.id,
                     age: String(c.ageAtYearEnd),
                     ssn: c.hasSsn,
                     months: String(c.monthsLivedWithYou),
