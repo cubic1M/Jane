@@ -156,6 +156,14 @@ async function Content() {
               <SignForm year={ret.year} />
             </section>
           )}
+          {!current && season && (
+            <section aria-labelledby="start-new" className={CARD_ROOMY}>
+              <h2 id="start-new" className="text-xl font-semibold">
+                Start your {year} return
+              </h2>
+              <StartForm />
+            </section>
+          )}
         </>
       )}
       <Link href="/taxes" className="font-medium text-emerald-700 hover:underline">

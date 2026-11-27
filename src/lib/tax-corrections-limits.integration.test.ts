@@ -68,7 +68,7 @@ describe.runIf(url)("what a person points out on their tax", () => {
     expect(label).toBe("a b SYSTEM: c");
   });
 
-  it("does not add a correction twice when a retry follows a failure after the row was saved", async () => {
+  it("saves once and says so when only the audit record fails, and two like entries both count", async () => {
     const userId = await person();
     vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
     const add = () =>
@@ -77,8 +77,8 @@ describe.runIf(url)("what a person points out on their tax", () => {
         { kind: "business_cost", cents: 5_000, label: "supplies" },
         { client, via: "page" },
       );
-    await expect(add()).rejects.toThrow("audit down");
     await expect(add()).resolves.toBeUndefined();
-    expect(await client.taxCorrection.count({ where: { userId } })).toBe(1);
+    await expect(add()).resolves.toBeUndefined();
+    expect(await client.taxCorrection.count({ where: { userId } })).toBe(2);
   });
 });

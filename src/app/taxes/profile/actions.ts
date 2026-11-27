@@ -84,16 +84,13 @@ export async function saveResidencyAction(
     const entry = residencyFrom(formData);
     if (entry.move) {
       const moveYear = Number(entry.move.date.slice(0, 4));
-      // The form shows only the first of several moves: saved unchanged, the others stay.
+      // The form shows only the first of several moves: an edit to it keeps the others.
       const { told } = await loadResidency(user.id, moveYear);
-      const first = told?.[0];
-      const unchanged =
-        told !== null &&
-        told.length > 1 &&
-        first?.date === entry.move.date &&
-        first.from === entry.move.from &&
-        first.to === entry.move.to;
-      if (!unchanged) await saveMoves(user.id, moveYear, [entry.move], { now, via: "page" });
+      const later = told && told.length > 1 ? told.slice(1) : [];
+      const same = (m: { date: string; from: string; to: string }) =>
+        m.date === entry.move?.date && m.from === entry.move.from && m.to === entry.move.to;
+      if (!(later.length > 0 && same(told![0]!)))
+        await saveMoves(user.id, moveYear, [entry.move, ...later], { now, via: "page" });
     } else if (entry.oneState) {
       await saveMoves(user.id, defaultTaxYear(await todayOf(user.id, { now })), [], {
         now,

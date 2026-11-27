@@ -21,5 +21,7 @@ export function useKeepOnError(
     const formData = new FormData(event.currentTarget, submitter);
     startTransition(() => run(formData));
   };
-  return { ref, onSubmit };
+  // `method`: before the page's script has loaded a submit goes as a POST, never into the address
+  // bar where a tax figure or a signature would be seen.
+  return { ref, onSubmit, method: "post" as const };
 }
