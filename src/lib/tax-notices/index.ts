@@ -28,6 +28,7 @@ import {
   type NoticeFacts,
   type Source,
 } from "@/planning/tax-notice";
+import { US_STATES } from "@/config/referrals";
 import { readNotice } from "./read";
 import { meteredClaude } from "@/lib/claude-budget";
 import { todayOf } from "@/lib/today";
@@ -263,8 +264,12 @@ export async function dismissTaxNotice(
 // What Jane knows that bears on a notice: the forms it collected for its year, the income
 // the accounts show from each payer, and payments to the IRS and the state.
 // A line that names a state tax agency: its own name, or a state's code in front ("CA FTB", "NYS DTF").
-const STATE_AGENCY =
-  /\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT\.? OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)[A-Z]{2} (?:TAX|REV|DTF|DOR)\b/i;
+// "NY DTF", "CA TAX": a real state's two-letter code, never a word like TO ("PAYMENT TO TAX COLLECTOR").
+const STATE_CODES = US_STATES.map((st) => st.code).join("|");
+const STATE_AGENCY = new RegExp(
+  String.raw`\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT\.? OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)(?:${STATE_CODES}) (?:TAX|REV|DTF|DOR)\b`,
+  "i",
+);
 
 async function noticeFacts(
   userId: string,

@@ -105,7 +105,8 @@ export async function loadFamilyTaxes(
   let agesMissing = false;
   if (children.length === 0 && college.plans.length > 0) {
     children = college.plans.map((p) => ({
-      ageAtYearEnd: p.age,
+      // The plan's age is as of today; the estimate may be for an earlier year.
+      ageAtYearEnd: p.age - Math.max(0, now.getUTCFullYear() - year),
       hasSsn: true,
       monthsLivedWithYou: 12,
     }));
