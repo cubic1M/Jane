@@ -31,12 +31,12 @@ import { sendToJane } from "./typing";
 // A person with two months on file. Months before that aren't months of $0, a typical month isn't
 // the two spread over a year, and a year with no income isn't a year with no tax. Past every
 // other test file's clock: making a sample person clears trial people across the shared database.
-const NOW = new Date("2031-03-20T19:00:00Z");
+const NOW = new Date("2026-03-20T19:00:00Z");
 const url = process.env.TEST_DATABASE_URL;
 
 const lastTwoMonths = () => {
   const [head, ...rows] = madeUpChaseCsv("ZZSHORT", NOW).trim().split("\n");
-  const kept = rows.filter((r) => /^\w+,0[23]\/\d\d\/2031,/.test(r));
+  const kept = rows.filter((r) => /^\w+,0[23]\/\d\d\/2026,/.test(r));
   return [head, ...kept, ""].join("\n");
 };
 
@@ -69,20 +69,20 @@ describe.runIf(url)("a person with two months on file", { timeout: 180_000 }, ()
 
   it("shows only the months it has seen", async () => {
     const { months, historyStarts } = await tool("monthly_totals");
-    expect(months.map((m: { month: string }) => m.month)).toEqual(["2031-02", "2031-03"]);
-    expect(historyStarts).toMatch(/^2031-02/);
+    expect(months.map((m: { month: string }) => m.month)).toEqual(["2026-02", "2026-03"]);
+    expect(historyStarts).toMatch(/^2026-02/);
   });
 
   it("doesn't spread a typical month over the empty ones", async () => {
     const { typicalMonthSpending } = await tool("monthly_totals");
-    const { spending } = await tool("spending_by_category", { month: "2031-02" });
+    const { spending } = await tool("spending_by_category", { month: "2026-02" });
     expect(typicalMonthSpending).toBe(spending);
   });
 
   it("doesn't call a month before the file $0", async () => {
-    const before = await tool("spending_by_category", { month: "2030-10" });
+    const before = await tool("spending_by_category", { month: "2025-10" });
     expect(before.spending).toBeUndefined();
-    expect(before.note).toContain("start 2031-02");
+    expect(before.note).toContain("start 2026-02");
   });
 
   it("says the same when Claude can't answer", async () => {
@@ -96,7 +96,7 @@ describe.runIf(url)("a person with two months on file", { timeout: 180_000 }, ()
       claude: playbackClaude(q as (typeof QUESTIONS)[number], newPlayed(), "refused_always"),
       primerMs: 60_000,
     });
-    expect(reply.body).toBe("I can't see October 2030: what I have starts in February 2031.");
+    expect(reply.body).toBe("I can't see October 2025: what I have starts in February 2026.");
   });
 
   it("doesn't call no debt seen owing $0", async () => {

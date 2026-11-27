@@ -26,7 +26,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { cachedCopy } from "@/lib/read-cache";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
-import { federalParams, lawYearFor } from "@/config/tax-params";
+import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
@@ -210,7 +210,7 @@ function profileAssumptions({
   } else if (view.dependants.status !== "yours") {
     out.push(
       view.dependants.hint
-        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(federalParams(lawYearFor(year)).ctc.value.perChild)} off your tax.`
+        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(federalParams(year).ctc.value.perChild)} off your tax.`
         : "You haven't told me about dependants, so I've counted none.",
     );
   }
@@ -236,12 +236,11 @@ async function loadTaxEstimateFrom(
   // round 11-06, charity $160 at 3pm and $161 at 7pm).
   const today = await todayOf(userId, { client, now });
   const year = asked ?? defaultTaxYear(today);
-  // A year before the first one Jane has figures for is refused (NoTaxParamsError). A later year with
-  // no figures yet (from May 1 until the new year's parameters are published) is priced with the
-  // newest law, and the estimate says so: estimate.year is the law's year, view.year the year of the
-  // income. The Taxes page and a prior-return review refuse such a year before they get here (W-N),
-  // so no page shows it as the year's own.
-  const lawYear = lawYearFor(year);
+  // A year Jane has no IRS figures for (before 2025, or after the newest one until its parameters
+  // are published) throws NoTaxParamsError, the "no_params" state: it is never priced with another
+  // year's law, so no surface shows a number labelled with a year it is not the law of. Callers
+  // that sit on a page, a card or a chat answer say W-N (noParamsText) in place of a figure.
+  federalParams(year);
   const db = scopedFor(userId, client);
   const incomeCategories = [
     ...Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]),
@@ -720,7 +719,7 @@ async function loadTaxEstimateFrom(
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
   const age = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
   const input: EstimateInput = {
-    year: lawYear,
+    year,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
     otherDependants: profile.otherDependants,

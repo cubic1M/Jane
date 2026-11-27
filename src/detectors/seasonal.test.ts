@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { PERSON_IDS, type PersonId } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
-import { DETECTORS } from "./index";
+import { DETECTORS, runDetectors } from "./index";
 
 // Detector coverage: the tax detectors that fit none of the sample people on the harness's day
 // (October) because they belong to a season. On their own dates they reach the people they fit,
@@ -13,10 +13,15 @@ import { DETECTORS } from "./index";
 
 const on = (id: PersonId, today: string, change: (d: ProfileInput) => ProfileInput = (d) => d) => {
   const data = change({ ...inputFor(id), today });
-  return DETECTORS.filter((d) => d.capability === "taxes").flatMap((d) => {
-    const s = d.detect({ profile: buildProfile(data), data });
-    return s ? [s.topic as string] : [];
-  });
+  // Through the runner, as the scan does: a card priced for a year with no IRS figures yet (the
+  // retirement ones, from January 1, 2027) is held back, and the season's own cards still come.
+  return runDetectors(
+    { profile: buildProfile(data), data },
+    DETECTORS.filter((d) => d.capability === "taxes"),
+    (_detector, error) => {
+      throw error;
+    },
+  ).map((s) => s.topic as string);
 };
 const who = (topic: string, today: string) =>
   PERSON_IDS.filter((id) => on(id, today).includes(topic));

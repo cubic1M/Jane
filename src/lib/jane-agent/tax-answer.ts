@@ -53,6 +53,8 @@ import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
+import { NoTaxParamsError } from "@/config/tax-params";
+import { noParamsText } from "@/lib/tax-estimate-state";
 import { loadRefunds } from "@/lib/tax-refund";
 import { filingPartnerFor } from "@/lib/filing";
 import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
@@ -125,7 +127,21 @@ async function findMerchant(userId: string, year: number, target: string, { clie
   );
 }
 
+// A year Jane has no IRS figures for gets the W-N sentence and no figure.
 export async function answerTaxIntent(
+  userId: string,
+  intent: TaxIntent,
+  options: Options,
+): Promise<Reply> {
+  try {
+    return await answerTaxIntentFor(userId, intent, options);
+  } catch (error) {
+    if (!(error instanceof NoTaxParamsError)) throw error;
+    return { body: noParamsText(error.year), refs: {}, actions: [] };
+  }
+}
+
+async function answerTaxIntentFor(
   userId: string,
   intent: TaxIntent,
   options: Options,

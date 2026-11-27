@@ -17,6 +17,7 @@ import { loadInsurance } from "@/lib/insurance/profile";
 import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { adviceMode } from "@/lib/advice-mode";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import type { AreasInput, CashFlowInput, HeroInput } from "./view";
 
@@ -98,7 +99,13 @@ export async function loadHubAreas(
       // the linked accounts and loans seen in payments, and left out pay-later plans the loans page
       // counts: $16,140.20 here, $16,215.20 there).
       quietly("loans", () => loadDebts(userId, { client, now })),
-      quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
+      // A year without IRS figures is a state, not an error: the tile says so (W-N), no figure.
+      quietly("taxes", () =>
+        loadTaxEstimate(userId, { client, now }).catch((error) => {
+          if (error instanceof NoTaxParamsError) return { noParams: error.year } as const;
+          throw error;
+        }),
+      ),
       quietly("practice", async () => {
         const view = await loadPractice(userId, { client, now });
         return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
@@ -135,15 +142,17 @@ export async function loadHubAreas(
           })),
         }
       : null,
-    taxes: taxes
-      ? {
-          totalTaxCents: taxes.estimate.totalTaxCents,
-          paidCents: taxes.estimate.paidCents,
-          refundCents: taxes.estimate.refundCents,
-          withholdingKnown: taxes.withholdingKnown,
-          incomeCents: taxes.estimate.totalIncomeCents,
-        }
-      : null,
+    taxesNoParamsYear: taxes && "noParams" in taxes ? taxes.noParams : undefined,
+    taxes:
+      taxes && !("noParams" in taxes)
+        ? {
+            totalTaxCents: taxes.estimate.totalTaxCents,
+            paidCents: taxes.estimate.paidCents,
+            refundCents: taxes.estimate.refundCents,
+            withholdingKnown: taxes.withholdingKnown,
+            incomeCents: taxes.estimate.totalIncomeCents,
+          }
+        : null,
     investments: practice
       ? {
           totalCents: practice.totalCents,

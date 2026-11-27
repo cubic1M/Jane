@@ -1,6 +1,6 @@
 import { shownSpendingMonth } from "@/insights/spending";
 import type { SavedItem } from "@/lib/membership/service";
-import { estimateState } from "@/lib/tax-estimate-state";
+import { estimateState, noParamsText } from "@/lib/tax-estimate-state";
 import {
   AREA_HEALTH_PARTS,
   AREA_KEYS,
@@ -127,6 +127,8 @@ export type AreasInput = {
     // The year's income the estimate counted; absent in older callers.
     incomeCents?: number;
   } | null;
+  // The year Jane has no IRS figures for (tax engine W-N): the tile says so and shows no figure.
+  taxesNoParamsYear?: number;
   investments: {
     totalCents: number;
     // All the practice money put in (start and monthly adds): up or down is against this.
@@ -715,6 +717,13 @@ export function tilesView(input: AreasInput): AreaTile[] {
       // Income under the standard deduction owes nothing, or less than nothing with a refundable
       // credit: say so, not "not enough to estimate" (overnight upload QA: a student with a
       // part-time job came out at -$528).
+      if (input.taxesNoParamsYear !== undefined) {
+        return tile("taxes", input, false, {
+          value: null,
+          caption: noParamsText(input.taxesNoParamsYear),
+          chart: { kind: "none" },
+        });
+      }
       const state = t ? estimateState(t) : "unknown";
       if (state === "no_tax") {
         return tile("taxes", input, true, {

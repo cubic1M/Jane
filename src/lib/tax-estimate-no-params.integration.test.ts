@@ -41,14 +41,15 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
   });
 
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
     await client.$disconnect();
   });
 
-  it("from May 1, 2027 the usual year is 2027: priced with 2026 law and says so; a year before the first is refused", async () => {
-    const view = await loadTaxEstimate(id, { client, now: MAY1_NOON });
-    expect(view.year).toBe(2027);
-    expect(view.estimate.year).toBe(2026);
+  it("from May 1, 2027 the usual year is 2027 and has no figures: the estimate is refused, never priced with 2026 law", async () => {
+    await expect(loadTaxEstimate(id, { client, now: MAY1_NOON })).rejects.toMatchObject({
+      name: "NoTaxParamsError",
+      year: 2027,
+    });
     await expect(loadTaxEstimate(id, { client, now: CREATED, year: 2024 })).rejects.toBeInstanceOf(
       NoTaxParamsError,
     );

@@ -87,10 +87,19 @@ export function pendingGroups(): PendingGroup[] {
   ];
 }
 
-// The year whose law a PLANNING card uses for `year`: the newest year with figures at or before it,
+// The year itself when Jane has its figures, else NoTaxParamsError (the "no_params" state). For a
+// figure shown as the tax of a specific year (a card's saving, a withholding check): never another
+// year's law. The detector runner holds such a card back on this error.
+export function ownLawYear(year: number): number {
+  federalParams(year);
+  return year;
+}
+
+// The year whose law a FORWARD PROJECTION uses for `year`: the newest year with figures at or before it,
 // so "your income as it stands" is priced with today's law held fixed when the year's own figures are
-// not out yet (a card in 2027 before 2027's figures exist). It is never for an estimate shown as a
-// year's own: those call federalParams(year) and throw NoTaxParamsError. A year before the first
+// not out yet, and the figure says so where it shows ("2026 tax law held fixed"). It is never for a
+// figure shown as a specific year's own (an estimate, a refund, a saving for that year): those call
+// federalParams(year) or ownLawYear(year) and throw NoTaxParamsError. A year before the first
 // supported one has no law to hold fixed and throws.
 export function lawYearFor(year: number): number {
   const known = Object.keys(FEDERAL)

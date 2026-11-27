@@ -51,12 +51,15 @@ import type { ExpectedForm } from "@/planning/tax-documents";
 import type { TaxProfileView } from "@/planning/tax-profile";
 import type { TagCheck } from "@/planning/tax-tags";
 import { chatToday } from "@/lib/today";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { lastEstimatePosted, type EstimatePosted } from "./estimate-key";
 
 // What Jane's brain looks at for taxes (spec steps 118–127), loaded with the same code as
 // /taxes. Optional on the snapshot, so a test's snapshot can leave it out.
 
 export type TaxSnapshot = {
+  // The year the estimate refuses for want of IRS figures (W-N); `tax` is null then.
+  taxNoParams?: { year: number };
   tax?: {
     profile: TaxProfileView;
     // Spec step 119: merchants Jane is unsure about this year, what it tagged last month,
@@ -133,7 +136,33 @@ export type TaxSnapshot = {
   } | null;
 };
 
+// A year Jane has no IRS figures for: the snapshot carries the state (taxNoParams), not a number, and
+// no tax card is posted from it (sources/taxes.ts reads `tax` as absent).
+// A section priced for the calendar year (health limits, retirement brackets) when that year has no
+// IRS figures yet is left out of the snapshot (no figure), without taking the 2026 estimate and the
+// rest of the tax snapshot down with it in January to April.
+async function pricedOrUndefined<T>(load: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return undefined;
+    throw error;
+  }
+}
+
 export async function loadTaxSnapshot(
+  userId: string,
+  options: { client: PrismaClient; now: Date },
+): Promise<TaxSnapshot> {
+  try {
+    return await loadTaxSnapshotFor(userId, options);
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return { tax: null, taxNoParams: { year: error.year } };
+    throw error;
+  }
+}
+
+async function loadTaxSnapshotFor(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxSnapshot> {
@@ -231,9 +260,13 @@ export async function loadTaxSnapshot(
         withQuestions: false,
       }),
       // Spec step 273: the profile's rows loaded once for the four that read them.
-      health: await loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      health: await pricedOrUndefined(() =>
+        loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      ),
       disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate, input } }),
-      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      retirement: await pricedOrUndefined(() =>
+        loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      ),
       drafts: (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
       inheritance: await loadInheritance(userId, {
         client,

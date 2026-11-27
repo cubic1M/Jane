@@ -19,14 +19,24 @@ const pay = ["2026-07-24", "2026-08-07", "2026-08-21", "2026-09-04", "2026-09-18
 // In January the data runs into the new year, with more pay: one January paycheck of the 2026 pay is
 // below tax for 2027, so no card at all.
 const january = ["2026-11-27", "2026-12-11", "2026-12-25", "2027-01-08"];
+// `back` moves every date back that many years: January 2027 has no IRS figures yet (a card priced
+// for a year without them is held back), so the January case runs one year earlier, January 2026.
+const yearsBack = (d: string, back: number) => `${Number(d.slice(0, 4)) - back}${d.slice(4)}`;
 const data = (
   today: string,
   reading: { cents: number; asOf: string } | null = { cents: 86_007, asOf: "2026-11-20" },
+  back = 0,
 ): ProfileInput => ({
-  today,
+  today: yearsBack(today, back),
   transactions: [
     ...[...pay, "2026-10-16", "2026-10-30", "2026-11-13", ...(today > "2027" ? january : [])].map(
-      (d) => tx(d, today > "2027" ? -250_000 : -86_120, "TARGET CORP PAYROLL PPD", "INCOME_SALARY"),
+      (d) =>
+        tx(
+          yearsBack(d, back),
+          today > "2027" ? -250_000 : -86_120,
+          "TARGET CORP PAYROLL PPD",
+          "INCOME_SALARY",
+        ),
     ),
     ...[
       "2026-08-05",
@@ -34,7 +44,14 @@ const data = (
       "2026-10-05",
       "2026-11-05",
       ...(today > "2027" ? ["2026-12-05", "2027-01-05"] : []),
-    ].map((d) => tx(d, 21_740, "NELNET STUDENT LN PAYMENT", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT")),
+    ].map((d) =>
+      tx(
+        yearsBack(d, back),
+        21_740,
+        "NELNET STUDENT LN PAYMENT",
+        "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+      ),
+    ),
   ],
   accounts: [
     { id: "checking", type: "depository", subtype: "checking", balanceCents: 164_025 },
@@ -48,7 +65,7 @@ const data = (
       hasPmi: null,
       payoffDate: "2033-09-01",
       ytdInterestPaidCents: reading?.cents ?? null,
-      ytdInterestReadOn: reading?.asOf ?? null,
+      ytdInterestReadOn: reading?.asOf ? yearsBack(reading.asOf, back) : null,
     },
   ],
   told: { home_state: "CA", claimed_as_dependent: "no" },
@@ -76,13 +93,17 @@ describe("a student loan's year of interest on the calendar", () => {
     );
   });
 
+  it("holds the card back in a year with no IRS figures yet (January 2027)", () => {
+    expect(card(data("2027-01-20", { cents: 1_450, asOf: "2027-01-20" }))).toBeUndefined();
+  });
+
   it("in January, works a year out from the balance and rate, not weeks of interest", () => {
     // A fresh January reading is a few weeks of interest; December's is last year's.
     for (const reading of [
       { cents: 1_450, asOf: "2027-01-20" },
       { cents: 93_100, asOf: "2026-12-15" },
     ]) {
-      const s = card(data("2027-01-20", reading));
+      const s = card(data("2027-01-20", reading, 1));
       expect(s.why).toContain("On $16,053.74 owed at 5.50%, a year's interest is about $882.96");
       expect(s.why).not.toContain("Your lender reports");
     }

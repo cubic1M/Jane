@@ -1,6 +1,8 @@
 import type { Reply } from "../replies";
 import { answerTaxIntent } from "../tax-answer";
 import { DECISION_CONFIDENCE } from "@/config/tax-decisions";
+import { NoTaxParamsError } from "@/config/tax-params";
+import { noParamsText } from "@/lib/tax-estimate-state";
 import { decideTax } from "@/lib/tax-decisions";
 import { parseTaxIntent } from "../tax-intents";
 import { type Capability, type CapabilityContext } from "./shared";
@@ -33,7 +35,14 @@ export const taxDecide: NonNullable<Capability["decide"]> = async ({
 }) => {
   const intent = parseTaxIntent(`should i ${label}`);
   if (!intent || intent.kind !== "tax" || intent.ask !== "decide") return null;
-  const d = await decideTax(userId, intent.topic, { client, now });
+  let d: Awaited<ReturnType<typeof decideTax>>;
+  try {
+    d = await decideTax(userId, intent.topic, { client, now });
+  } catch (error) {
+    // A year with no IRS figures: the sentence, no figure.
+    if (error instanceof NoTaxParamsError) return { body: noParamsText(error.year), actions: [] };
+    throw error;
+  }
   return {
     body: d.text,
     actions: [openLink("See the numbers", d.href)],

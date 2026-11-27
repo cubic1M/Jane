@@ -9,6 +9,8 @@ import {
 } from "@/config/tax";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { NoTaxParamsError } from "@/config/tax-params";
+import { noParamsText } from "@/lib/tax-estimate-state";
 import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
@@ -70,7 +72,27 @@ const noIncomeSeen = (year: number) => ({
   note: `No income is on file for ${year}, so there's no estimate. Don't say they owe nothing or nothing is due: say you can't tell yet, and what would let you (a statement from that year, or their income).`,
 });
 
+// A year Jane has no IRS figures for: the tool says so and gives no figure (W-N), so the chat never
+// states a number priced with another year's law.
 export async function runTaxTool(
+  userId: string,
+  name: string,
+  input: unknown,
+  options: Options,
+): Promise<ToolOutput> {
+  try {
+    return await runTaxToolFor(userId, name, input, options);
+  } catch (error) {
+    if (!(error instanceof NoTaxParamsError)) throw error;
+    return toolAnswer().out({
+      year: error.year,
+      noParams: true,
+      note: `${noParamsText(error.year)} Say that, give no tax figure for that year, and don't guess one from another year.`,
+    });
+  }
+}
+
+async function runTaxToolFor(
   userId: string,
   name: string,
   input: unknown,
