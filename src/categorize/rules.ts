@@ -78,7 +78,7 @@ export function categorizeByRules({ description, amountCents, hints }: RuleInput
   // Bank of America's ACH lines put "DES:" between the company and the entry ("STRIPE
   // DES:TRANSFER", "IRS DES:USATAXPYMT"): read as one phrase, so "STRIPE TRANSFER" is the payout
   // rule, not a transfer (debugger 11-01: a freelancer's $14,086 of Stripe payouts weren't income).
-  const text = normalizeDescription(description).replace(/ DES:/g, " ");
+  const text = normalizeDescription(description).replace(/ DES:\s*/g, " ");
   const direction: Direction = amountCents >= 0 ? "out" : "in";
 
   for (const rule of COMPILED) {

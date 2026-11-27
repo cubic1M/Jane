@@ -305,6 +305,10 @@ describe("categorizeByRules", () => {
   });
 
   // CodeRabbit sweep: the bank's deposit words must not turn a payout into wages.
+  it("reads a payout with a space after DES: as one phrase", () => {
+    expect(into("STRIPE DES: TRANSFER ID:ST-XXXXX")).toBe("INCOME_CONTRACTOR");
+  });
+
   it("keeps a contractor payout income even when the bank adds DIRECT DEP", () => {
     expect(into("STRIPE PAYOUT DIRECT DEP")).toBe("INCOME_CONTRACTOR");
     expect(into("UPWORK DIRECT DEPOSIT")).toBe("INCOME_CONTRACTOR");
