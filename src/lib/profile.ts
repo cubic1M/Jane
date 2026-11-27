@@ -293,7 +293,8 @@ async function loadProfileInputFrom(
   // The settled answer comes last: it is the told fact or the profile row, whichever is newer. A
   // sample person's seeded profile row is not an answer the card has heard: the demo still asks
   // them how they file (src/config/people.ts firstQuestion), until they say.
-  if (filingSaid && (filing.read.source === "told" || !sample)) told.filing_status = filingSaid;
+  if (filingSaid && (filing.read.source === "told" || !sample || told.filing_status !== undefined))
+    told.filing_status = filingSaid;
 
   const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
   return {

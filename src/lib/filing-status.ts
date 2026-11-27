@@ -126,6 +126,10 @@ export async function saveToldFiling(
   await markPrimerStale(userId, { client, now });
 }
 
+// A write to `answered` is made against the list that was read, and tried again when another save
+// changed it in between (two saves at once must not drop each other's marker).
+const WRITE_TRIES = 4;
+
 // The told answer, written to the tax profile's row and marked answered, like the children mirror.
 export async function mirrorFilingToProfile(
   userId: string,
@@ -133,16 +137,27 @@ export async function mirrorFilingToProfile(
   { client = defaultClient }: Options = {},
 ): Promise<void> {
   const db = scopedFor(userId, client);
-  const existing = await db.taxProfiles.findUnique({
-    where: { userId },
-    select: { answered: true },
-  });
-  const answered = [...new Set([...(existing?.answered ?? []), "filingStatus"])];
-  await db.taxProfiles.upsert({
-    where: { userId },
-    create: { userId, filingStatus: status, answered },
-    update: { filingStatus: status, answered },
-  });
+  for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
+    const existing = await db.taxProfiles.findUnique({
+      where: { userId },
+      select: { answered: true },
+    });
+    if (!existing) {
+      const made = await db.taxProfiles.createMany({
+        data: [{ userId, filingStatus: status, answered: ["filingStatus"] }],
+        skipDuplicates: true,
+      });
+      if (made.count > 0) return;
+      continue;
+    }
+    const answered = [...new Set([...existing.answered, "filingStatus"])];
+    const saved = await db.taxProfiles.updateMany({
+      where: { answered: { equals: existing.answered } },
+      data: { filingStatus: status, answered },
+    });
+    if (saved.count > 0) return;
+  }
+  throw new Error("The tax profile kept changing while the filing status was saved");
 }
 
 // The reverse of the mirror: the person took back what they told Jane, so the tax profile's copy
@@ -152,16 +167,20 @@ export async function unmirrorFilingFromProfile(
   was: unknown,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  const db = scopedFor(userId, client);
   if (!isFilingStatus(was)) return;
-  const row = await db.taxProfiles.findUnique({
-    where: { userId },
-    select: { filingStatus: true, answered: true },
-  });
-  if (!row || row.filingStatus !== was || !row.answered.includes("filingStatus")) return;
-  // Only while the row still says what was read: an answer saved a moment ago stays.
-  await db.taxProfiles.updateMany({
-    where: { filingStatus: was },
-    data: { filingStatus: null, answered: row.answered.filter((f) => f !== "filingStatus") },
-  });
+  const db = scopedFor(userId, client);
+  for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
+    const row = await db.taxProfiles.findUnique({
+      where: { userId },
+      select: { filingStatus: true, answered: true },
+    });
+    if (!row || row.filingStatus !== was || !row.answered.includes("filingStatus")) return;
+    // Only while the row still says what was read: an answer saved a moment ago stays.
+    const cleared = await db.taxProfiles.updateMany({
+      where: { filingStatus: was, answered: { equals: row.answered } },
+      data: { filingStatus: null, answered: row.answered.filter((f) => f !== "filingStatus") },
+    });
+    if (cleared.count > 0) return;
+  }
+  throw new Error("The tax profile kept changing while the filing status was taken back");
 }

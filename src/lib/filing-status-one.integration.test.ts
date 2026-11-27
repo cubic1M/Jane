@@ -10,7 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import type { FilingStatus } from "@/config/tax";
 import { createCheckPerson, deleteCheckPerson } from "@/lib/jane-agent/checks/person";
 import { runTaxTool } from "@/lib/jane-agent/tax-tools-run";
-import { loadFiling } from "@/lib/filing-status";
+import { loadFiling, mirrorFilingToProfile } from "@/lib/filing-status";
 import { clearCorrection, correctFact, loadProfile } from "@/lib/profile";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxProfile, saveTaxAnswers } from "@/lib/tax-profile";
@@ -129,6 +129,20 @@ describe.runIf(url)("one filing status", { timeout: 300_000 }, () => {
     const row = await client.taxProfile.findUniqueOrThrow({ where: { userId: id } });
     expect(row.filingStatus).toBeNull();
     expect(row.answered).not.toContain("filingStatus");
+  });
+
+  it("saving the card's answer keeps the other markers on the profile row, many at once", async () => {
+    await client.taxProfile.create({
+      data: { userId: id, state: "CA", answered: ["dependants", "state"] },
+    });
+    await Promise.all(
+      (["single", "married_joint", "single", "married_joint", "single"] as const).map((s) =>
+        mirrorFilingToProfile(id, s, { client }),
+      ),
+    );
+    const row = await client.taxProfile.findUniqueOrThrow({ where: { userId: id } });
+    expect([...row.answered].sort()).toEqual(["dependants", "filingStatus", "state"]);
+    expect(row.state).toBe("CA");
   });
 
   it("taking the card's answer back leaves a different answer on the profile alone", async () => {
