@@ -72,6 +72,40 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     expect(await markCashIncome(db)).toBe(0);
   });
 
+  // CodeRabbit sweep: four credits were placed as other income; the fifth and sixth must still
+  // lift all of them to salary, as one import of the six would.
+  it("turns pay placed as other income into salary when more paychecks arrive", async () => {
+    const user = await client.user.create({
+      data: { email: `regular-payer-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    const add = (i: number) =>
+      client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: `late-${i}`,
+          date: new Date(Date.UTC(2026, 6, 3 + i * 14)),
+          amountCents: -261_025,
+          description: "NORTHWIND LABS",
+          merchantName: "Northwind Labs",
+        },
+      });
+    for (let i = 0; i < 4; i++) await add(i);
+    const db = scopedFor(user.id, client);
+    await markCashIncome(db);
+    expect(await details(user.id)).toEqual(["INCOME_OTHER"]);
+    expect(await markCashIncome(db)).toBe(0);
+    await add(4);
+    await add(5);
+    await markCashIncome(db);
+    expect(await details(user.id)).toEqual(["INCOME_SALARY"]);
+  });
+
   it("makes income of what Claude took for a purchase", async () => {
     const id = await person({
       name: "Northwind Labs",

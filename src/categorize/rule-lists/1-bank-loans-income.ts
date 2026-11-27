@@ -180,6 +180,21 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     pattern:
       /(?<![A-Z0-9])(?:SYNCHRONY|SYNCB|SYF|COMENITY|CBNA|STORECRD|STORE CARD|TARGET CARD|CREDIT SERVICES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYMENT|PAYMNT|PYMT|PMT)(?![A-Z0-9])/,
   },
+  // Rent a tenant sends says "ONLINE PAYMENT" too ("TENANT RENT ONLINE PAYMENT"): above the card's
+  // own side below, or it would read as a card payment (CodeRabbit sweep).
+  {
+    category: "INCOME_RENTAL",
+    keywords: [
+      "AIRBNB PAYMENTS",
+      "AIRBNB PAYOUT",
+      "VRBO PAYOUT",
+      "RENTAL INCOME",
+      "TENANT RENT",
+      "FROM TENANT",
+      "TENANT PAYMENT",
+    ],
+    direction: "in",
+  },
   // The card's own side, as the card companies write a payment received (CSV bench: Capital
   // One's "MOBILE PYMT", Bank of America's "BA ELECTRONIC PAYMENT", Citi's "AUTOPAY …
   // AUTO-PMT", Discover's "DIRECTPAY FULL BALANCE", Chase's "AUTOMATIC PAYMENT - THANK", cut
@@ -285,6 +300,13 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   },
   // Above the salary rule's DIRECT DEP: a driver's pay isn't a salary.
   { category: "INCOME_GIG_ECONOMY", keywords: ["LYFT DIRECT", "UBER DIRECT"], direction: "in" },
+  // Payouts for work done on one's own: income, never a refund that shrinks spending. Above the
+  // salary rule too: "STRIPE PAYOUT DIRECT DEP" is a payout, not wages (CodeRabbit sweep).
+  {
+    category: "INCOME_CONTRACTOR",
+    keywords: ["STRIPE TRANSFER", "STRIPE PAYOUT", "UPWORK", "FIVERR", "SHOPIFY PAYOUT"],
+    direction: "in",
+  },
   // A gig platform's PAYOUT, whatever deposit words the bank adds ("DOORDASH, INC. PAYOUT DIR
   // DEP"), and Cash App's "Direct deposit from DoorDash Inc" (debugger 11-06: both read as a
   // salary, so tax was assumed withheld). The company's own PAYROLL stays a salary.
@@ -429,27 +451,8 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     direction: "in",
   },
   { category: "INCOME_DIVIDENDS", keywords: ["DIVIDEND"], direction: "in" },
-  {
-    category: "INCOME_RENTAL",
-    keywords: [
-      "AIRBNB PAYMENTS",
-      "AIRBNB PAYOUT",
-      "VRBO PAYOUT",
-      "RENTAL INCOME",
-      "TENANT RENT",
-      "FROM TENANT",
-      "TENANT PAYMENT",
-    ],
-    direction: "in",
-  },
   { category: "INCOME_LONG_TERM_DISABILITY", keywords: ["DISABILITY"], direction: "in" },
   { category: "INCOME_OTHER", keywords: ["WORKERS COMP"], direction: "in" },
-  // Payouts for work done on one's own: income, never a refund that shrinks spending.
-  {
-    category: "INCOME_CONTRACTOR",
-    keywords: ["STRIPE TRANSFER", "STRIPE PAYOUT", "UPWORK", "FIVERR", "SHOPIFY PAYOUT"],
-    direction: "in",
-  },
   {
     category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
     keywords: ["IRS USATAXPYMT", "FRANCHISE TAX", "SALES TAX", "CDTFA"],

@@ -97,6 +97,13 @@ describe("regular money in from one payer", () => {
       expect(regularPayers(into, out("checking", 50_000, 6))).toHaveLength(8);
     });
 
+    // CodeRabbit sweep: one debit explains one credit, not two equal credits on the same day.
+    it("counts each outgoing transfer once", () => {
+      const twice = into.flatMap((r) => [r, { ...r, id: `${r.id}-b` }]);
+      expect(regularPayers(twice, out("checking").slice(0, 4))).toHaveLength(16);
+      expect(regularPayers(twice, out("checking"))).toEqual([]);
+    });
+
     it("is still income when only an odd one matches", () => {
       expect(regularPayers(into, out("checking").slice(0, 1))).toHaveLength(8);
     });

@@ -121,7 +121,16 @@ function seenArriving(
   rows: readonly PairableRow[],
   type: ReadonlyMap<string, string>,
 ): Set<string> {
-  const arrived = rows.filter((r) => type.get(r.accountId) === "credit" && r.amountCents < 0);
+  // A credit on a card is a payment, a transfer, or not yet sorted; one the rules sorted as
+  // something else (a merchant's refund) is not evidence that a payment arrived (CodeRabbit sweep).
+  const arrived = rows.filter(
+    (r) =>
+      type.get(r.accountId) === "credit" &&
+      r.amountCents < 0 &&
+      (r.pfcDetailed === null ||
+        r.pfcDetailed === CARD_PAYMENT ||
+        r.pfcDetailed.startsWith("TRANSFER_")),
+  );
   const used = new Set<string>();
   const seen = new Set<string>();
   for (const r of rows) {

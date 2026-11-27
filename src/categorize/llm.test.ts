@@ -48,6 +48,25 @@ describe("classifyMerchants", () => {
     expect(request.output_config.format.type).toBe("json_schema");
   });
 
+  // CodeRabbit sweep: a reply that is valid JSON of the wrong shape loses only its own batch.
+  it("keeps the other batches when one reply has the wrong shape", async () => {
+    const merchants = Array.from({ length: 80 }, (_, i) => `corner market ${i}`);
+    create
+      .mockResolvedValueOnce({ stop_reason: "end_turn", content: [{ type: "text", text: "null" }] })
+      .mockResolvedValue(
+        reply([{ merchant: "corner market 79", category: "FOOD_AND_DRINK_GROCERIES" }]),
+      );
+    const result = await classifyMerchants(merchants);
+    expect(create.mock.calls.length).toBeGreaterThan(1);
+    expect(result.get("corner market 79")).toBe("FOOD_AND_DRINK_GROCERIES");
+    create.mockReset();
+    create.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify({ results: [null, { merchant: 3 }] }) }],
+    });
+    expect(await classifyMerchants(["corner market"])).toEqual(new Map());
+  });
+
   it("does nothing without an API key", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
 

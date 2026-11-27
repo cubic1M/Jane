@@ -26,6 +26,7 @@ import {
 import { isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { dayNumber } from "@/detection/units";
+import { categorizeByRules } from "./rules";
 
 // Pay with no pay word in the line (debugger 11-02): "NORTHWIND LABS" matched no rule, and Claude
 // is only asked what a typical purchase at a merchant is, so a person's pay wasn't income on any
@@ -84,15 +85,23 @@ const notIncome = (name: string) =>
 // The same amount left a different account at about the same time. Leaving the account it came
 // into doesn't count: that's pay being spent.
 function isOwnMoney(rows: readonly PayerRow[], moneyOut: readonly MoneyOutRow[]): boolean {
-  const moved = rows.filter((r) =>
-    moneyOut.some(
-      (o) =>
+  // Each outgoing transfer accounts for one incoming row at most: three debits cannot explain six
+  // credits (CodeRabbit sweep).
+  const used = new Set<number>();
+  let moved = 0;
+  for (const r of rows) {
+    const at = moneyOut.findIndex(
+      (o, i) =>
+        !used.has(i) &&
         o.accountId !== r.accountId &&
         o.amountCents === -r.amountCents &&
         Math.abs(dayNumber(o.date) - dayNumber(r.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS,
-    ),
-  );
-  return moved.length >= rows.length * REGULAR_PAYER_OWN_MONEY_SHARE;
+    );
+    if (at < 0) continue;
+    used.add(at);
+    moved += 1;
+  }
+  return moved >= rows.length * REGULAR_PAYER_OWN_MONEY_SHARE;
 }
 
 // The ids of the rows that are regular pay.
@@ -214,6 +223,9 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
           pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
           description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
         },
+        // Money this file placed as other income at four steady credits: still evidence of a
+        // paycheck when the sixth arrives. Which of them no rule placed is sorted out below.
+        { categorySource: "rule", pfcDetailed: "INCOME_OTHER", merchantName: { not: null } },
       ],
     },
     select: {
@@ -227,6 +239,24 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     },
   });
   if (rows.length === 0) return 0;
+  // Already other income, and no keyword rule says so: this file placed it (a rule-placed row,
+  // like workers' comp, is not a paycheck). It is looked at for paychecks only, never changed to
+  // the same thing again, which would count as a change every night.
+  const inferred = new Set(
+    rows
+      .filter(
+        (r) =>
+          r.pfcDetailed === "INCOME_OTHER" &&
+          categorizeByRules({
+            description: r.description,
+            amountCents: r.amountCents,
+            hints: {},
+          }) === null,
+      )
+      .map((r) => r.id),
+  );
+  const open = rows.filter((r) => r.pfcDetailed !== "INCOME_OTHER" || inferred.has(r.id));
+  if (open.length === 0) return 0;
   const salaried = await db.transactions.findMany({
     where: { pfcDetailed: { in: ["INCOME_SALARY", "INCOME_WAGES"] }, amountCents: { lt: 0 } },
     select: { merchantName: true },
@@ -243,11 +273,11 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     });
   }
   const moneyOut = await db.transactions.findMany({
-    where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
+    where: { pending: false, amountCents: { in: [...new Set(open.map((r) => -r.amountCents))] } },
     select: { accountId: true, date: true, amountCents: true },
   });
   const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
-  const allDated = rows
+  const allDated = open
     .filter((r) => !extras.includes(r.id))
     .map((r) => ({ ...r, date: isoDay(r.date) }));
   // Not a Zelle line the rules called a transfer: it names a person, not an employer.
@@ -256,8 +286,8 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     out,
   );
   const placed = new Set([...pay.paychecks, ...pay.extras]);
-  const dated = allDated.filter((r) => !placed.has(r.id));
-  const regular = [...regularPayers(dated, out), ...pay.extras];
+  const dated = allDated.filter((r) => !placed.has(r.id) && !inferred.has(r.id));
+  const regular = [...regularPayers(dated, out), ...pay.extras.filter((id) => !inferred.has(id))];
   const paying = new Set(regular);
   // Not a Zelle line the rules called a transfer: it names a person, not a client.
   const clients = clientDeposits(

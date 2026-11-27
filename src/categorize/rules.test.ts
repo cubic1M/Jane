@@ -304,6 +304,18 @@ describe("categorizeByRules", () => {
     expect(out("STRIPE TRANSFER ST-K3J9Q2")).not.toBe("INCOME_CONTRACTOR");
   });
 
+  // CodeRabbit sweep: the bank's deposit words must not turn a payout into wages.
+  it("keeps a contractor payout income even when the bank adds DIRECT DEP", () => {
+    expect(into("STRIPE PAYOUT DIRECT DEP")).toBe("INCOME_CONTRACTOR");
+    expect(into("UPWORK DIRECT DEPOSIT")).toBe("INCOME_CONTRACTOR");
+    expect(into("ACME DIRECT DEP")).toBe("INCOME_SALARY");
+  });
+
+  it("reads rent a tenant sends as rental income, not a card payment", () => {
+    expect(into("TENANT RENT ONLINE PAYMENT")).toBe("INCOME_RENTAL");
+    expect(into("ONLINE PAYMENT THANK YOU")).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
   it("uses a card's own categories, both ways, so a return nets against its purchase", () => {
     const shop = { bankCategory: "Shopping" };
     expect(out("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");

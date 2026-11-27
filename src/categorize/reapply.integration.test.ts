@@ -81,6 +81,61 @@ describe.runIf(url)("re-applying the keyword rules to saved rows", () => {
     expect(await reapplyRules(user.id, { client })).toBe(0);
   });
 
+  // CodeRabbit sweep: the pass reads its rows, then writes them in a later statement. A person's
+  // edit that lands in between must keep their category.
+  it("keeps a category the person sets between the read and the write", async () => {
+    const user = await client.user.create({
+      data: { email: `reapply-${crypto.randomUUID()}@example.com` },
+    });
+    users.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    const row = await client.transaction.create({
+      data: {
+        userId: user.id,
+        accountId: account.id,
+        source: "csv",
+        dedupeKey: "race",
+        date: new Date("2026-10-01"),
+        amountCents: 185_000,
+        description: "ZELLE TO OAK RIDGE APTS RENT",
+        pfcPrimary: "TRANSFER_OUT",
+        pfcDetailed: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        categorySource: "rule",
+      },
+    });
+    let edited = false;
+    // The person's edit commits right after the pass's read.
+    const racing = new Proxy(client, {
+      get(target, prop) {
+        if (prop === "$extends") return target.$extends.bind(target);
+        if (prop === "$transaction") {
+          return async (...args: unknown[]) => {
+            const result = await (target.$transaction as (...a: unknown[]) => Promise<unknown>)(
+              ...args,
+            );
+            if (!edited && JSON.stringify(result).includes("OAK RIDGE")) {
+              edited = true;
+              await client.transaction.update({
+                where: { id: row.id },
+                data: { pfcDetailed: "GENERAL_MERCHANDISE_OTHER", categorySource: "user" },
+              });
+            }
+            return result;
+          };
+        }
+        const value = Reflect.get(target, prop) as unknown;
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    expect(await reapplyRules(user.id, { client: racing })).toBe(0);
+    expect(edited).toBe(true);
+    const after = await client.transaction.findUniqueOrThrow({ where: { id: row.id } });
+    expect(after.pfcDetailed).toBe("GENERAL_MERCHANDISE_OTHER");
+    expect(after.categorySource).toBe("user");
+  });
+
   // Founder 10-30: a prop firm's payout the bank or Claude called a transfer is income; the
   // person's own label stays. Made-up rows.
   it("moves a payout others filed as a transfer to income, never the person's own", async () => {

@@ -67,11 +67,22 @@ async function classifyBatch(
   const text = response.content.find((block) => block.type === "text");
   if (!text || text.type !== "text") return results;
 
-  const parsed = JSON.parse(text.text) as { results?: { merchant: string; category: string }[] };
+  const parsed = JSON.parse(text.text) as unknown;
+  const answers = (parsed as { results?: unknown } | null)?.results;
+  // Not the shape asked for (null, no list): nothing is taken from this batch, and the other
+  // batches' answers stay (CodeRabbit sweep).
+  if (!Array.isArray(answers)) return results;
   const asked = new Set(merchants);
-  for (const { merchant, category } of parsed.results ?? []) {
+  for (const answer of answers as ({ merchant?: unknown; category?: unknown } | null)[]) {
+    const merchant = answer?.merchant;
+    const category = answer?.category;
     // Only accept answers for merchants we asked about, in categories that exist.
-    if (asked.has(merchant) && (ALL_DETAILED as string[]).includes(category)) {
+    if (
+      typeof merchant === "string" &&
+      typeof category === "string" &&
+      asked.has(merchant) &&
+      (ALL_DETAILED as string[]).includes(category)
+    ) {
       results.set(merchant, category as PfcDetailed);
     }
   }

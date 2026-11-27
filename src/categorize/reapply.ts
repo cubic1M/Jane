@@ -1,9 +1,19 @@
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { categorizeByRules, payFiledAsBought, payoutByRules } from "./rules";
 
 const CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
+
+// Which saved rows this pass may change. The write asks the same question again, so a person's
+// edit that lands between the read and the write keeps their category.
+const ELIGIBLE = {
+  OR: [
+    { categorySource: "rule" },
+    { categorySource: null },
+    { categorySource: { in: ["plaid", "llm"] }, amountCents: { lt: 0 } },
+  ],
+} satisfies Prisma.TransactionWhereInput;
 
 // The keyword rules get better (overnight upload QA: rent paid by Zelle was a transfer, a
 // savings transfer was spending). New uploads get them at once; this brings the rows already
@@ -17,13 +27,7 @@ export async function reapplyRules(
 ): Promise<number> {
   const db = scopedFor(userId, client);
   const rows = await db.transactions.findMany({
-    where: {
-      OR: [
-        { categorySource: "rule" },
-        { categorySource: null },
-        { categorySource: { in: ["plaid", "llm"] }, amountCents: { lt: 0 } },
-      ],
-    },
+    where: ELIGIBLE,
     select: {
       id: true,
       description: true,
@@ -55,7 +59,7 @@ export async function reapplyRules(
   let changed = 0;
   for (const [detailed, { primary, ids }] of moves) {
     const { count } = await db.transactions.updateMany({
-      where: { id: { in: ids } },
+      where: { AND: [{ id: { in: ids } }, ELIGIBLE] },
       data: { pfcPrimary: primary, pfcDetailed: detailed, categorySource: "rule" },
     });
     changed += count;
