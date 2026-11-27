@@ -6,13 +6,14 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { addDeadline } from "@/lib/deadlines";
+import { checkedData } from "@/lib/deadlines";
 import { loadGiving, type GivingView } from "@/lib/giving";
 import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags, type TaxTagsView } from "@/lib/tax-organizer";
 import { todayOf } from "@/lib/today";
+import { trackQuietly } from "@/lib/track-quietly";
 import {
   buildAuditPack,
   matchReceipts,
@@ -279,24 +280,33 @@ export async function remindRetention(
   // The day the reminder was promised, or the person's own today once that has passed.
   const today = await todayOf(userId, { client, now });
   const dueOn = r.remindOn > today ? r.remindOn : today;
-  await addDeadline(
-    userId,
+  const deadline = checkedData(
     {
       title: `Records for your ${year} taxes can go after ${r.keepUntil}`,
       dueOn,
       kind: "other",
       note: `${r.rule} Check nothing's needed for a later year before you throw anything away.`,
     },
-    { client, now },
+    today,
   );
   const db = scopedFor(userId, client);
-  const existing = await db.taxProfiles.findFirst({ select: { retentionReminded: true } });
-  const retentionReminded = [...new Set([...(existing?.retentionReminded ?? []), String(year)])];
-  await db.taxProfiles.upsert({
-    where: { userId },
-    create: { userId, retentionReminded },
-    update: { retentionReminded },
+  // Their tax profile row, made if it isn't there (one that is, is left alone).
+  await db.taxProfiles.createMany({ data: [{ userId }], skipDuplicates: true });
+  const added = await db.transaction(async (tx) => {
+    // Writing that row holds it: another request for this person waits here until the reminder is
+    // saved, then finds it.
+    await tx.taxProfiles.updateMany({ data: { updatedAt: now } });
+    const open = await tx.deadlines.findFirst({
+      where: { title: deadline.title, doneAt: null },
+      select: { id: true },
+    });
+    if (!open) await tx.deadlines.create({ data: { userId, ...deadline } });
+    const profile = await tx.taxProfiles.findFirst({ select: { retentionReminded: true } });
+    const retentionReminded = [...new Set([...(profile?.retentionReminded ?? []), String(year)])];
+    await tx.taxProfiles.updateMany({ data: { retentionReminded } });
+    return !open;
   });
+  if (added) await trackQuietly(userId, "deadline_added", { kind: deadline.kind });
   await track(userId, "records_retention_reminded", { via });
   return r;
 }

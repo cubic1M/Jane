@@ -331,7 +331,8 @@ export type DeadlineForm = { title: string; dueOn: string; kind: string; note: s
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // `today` is the person's own day: at 7pm in Los Angeles, UTC's date would refuse their today.
-function checkedData(form: DeadlineForm, today: string) {
+// What a deadline is saved as, or why it can't be.
+export function checkedData(form: DeadlineForm, today: string) {
   const title = form.title.trim().slice(0, DEADLINE_TITLE_MAX);
   if (!title) throw new DeadlineError("Say what the deadline is for.");
   const latest = `${Number(today.slice(0, 4)) + DEADLINE_MAX_YEARS_AHEAD}${today.slice(4)}`;
