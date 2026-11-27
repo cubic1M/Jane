@@ -72,9 +72,9 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     expect(await markCashIncome(db)).toBe(0);
   });
 
-  // CodeRabbit sweep: four credits were placed as other income; the fifth and sixth must still
-  // lift all of them to salary, as one import of the six would.
-  it("turns pay placed as other income into salary when more paychecks arrive", async () => {
+  // CodeRabbit sweep: a row some rule or bank hint placed as other income (a benefit fund) is not
+  // a paycheck, however steadily it arrives; the stored row cannot say which rows this pass placed.
+  it("leaves money placed as other income alone", async () => {
     const user = await client.user.create({
       data: { email: `regular-payer-${crypto.randomUUID()}@example.com` },
     });
@@ -82,28 +82,25 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     const account = await client.account.create({
       data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
     });
-    const add = (i: number) =>
-      client.transaction.create({
+    for (let i = 0; i < 6; i++) {
+      await client.transaction.create({
         data: {
           userId: user.id,
           accountId: account.id,
           source: "csv",
-          dedupeKey: `late-${i}`,
+          dedupeKey: `benefit-${i}`,
           date: new Date(Date.UTC(2026, 6, 3 + i * 14)),
-          amountCents: -261_025,
-          description: "NORTHWIND LABS",
-          merchantName: "Northwind Labs",
+          amountCents: -150_000,
+          description: "ACH CREDIT 74192",
+          merchantName: "State Benefit Fund",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+          categorySource: "rule",
         },
       });
-    for (let i = 0; i < 4; i++) await add(i);
-    const db = scopedFor(user.id, client);
-    await markCashIncome(db);
+    }
+    expect(await markCashIncome(scopedFor(user.id, client))).toBe(0);
     expect(await details(user.id)).toEqual(["INCOME_OTHER"]);
-    expect(await markCashIncome(db)).toBe(0);
-    await add(4);
-    await add(5);
-    await markCashIncome(db);
-    expect(await details(user.id)).toEqual(["INCOME_SALARY"]);
   });
 
   it("makes income of what Claude took for a purchase", async () => {

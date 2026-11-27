@@ -304,10 +304,10 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   // salary rule too: "STRIPE PAYOUT DIRECT DEP" is a payout, not wages (CodeRabbit sweep).
   {
     category: "INCOME_CONTRACTOR",
-    // Not when the line says payroll, salary or wages: an employer that happens to be one of these
+    // Not when the line says payroll, salary or wages (the words the salary rule reads): an employer that happens to be one of these
     // platforms pays a salary.
     pattern:
-      /^(?!.*(?<![A-Z0-9])(?:PAYROLL|SALARY|WAGES?)(?![A-Z0-9])).*(?<![A-Z0-9])(?:STRIPE TRANSFER|STRIPE PAYOUT|UPWORK|FIVERR|SHOPIFY PAYOUT)(?![A-Z0-9])/,
+      /^(?!.*(?<![A-Z0-9])(?:PAYROLL|SALARY|WAGES)(?![A-Z0-9])).*(?<![A-Z0-9])(?:STRIPE TRANSFER|STRIPE PAYOUT|UPWORK|FIVERR|SHOPIFY PAYOUT)(?![A-Z0-9])/,
     direction: "in",
   },
   // A gig platform's PAYOUT, whatever deposit words the bank adds ("DOORDASH, INC. PAYOUT DIR

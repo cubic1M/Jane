@@ -315,6 +315,9 @@ describe("categorizeByRules", () => {
     expect(into("ACME DIRECT DEP")).toBe("INCOME_SALARY");
     expect(into("UPWORK PAYROLL DIRECT DEP")).toBe("INCOME_SALARY");
     expect(into("FIVERR SALARY DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("UPWORK WAGES DIRECT DEP")).toBe("INCOME_SALARY");
+    // A bare singular is no salary word: the contractor rule keeps it.
+    expect(into("UPWORK WAGE")).toBe("INCOME_CONTRACTOR");
   });
 
   it("reads rent a tenant sends as rental income, not a card payment", () => {

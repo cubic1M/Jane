@@ -27,7 +27,6 @@ import { isoDay } from "@/lib/dates";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { dayNumber } from "@/detection/units";
-import { categorizeByRules } from "./rules";
 
 // Pay with no pay word in the line (debugger 11-02): "NORTHWIND LABS" matched no rule, and Claude
 // is only asked what a typical purchase at a merchant is, so a person's pay wasn't income on any
@@ -234,9 +233,6 @@ const OPEN_ROWS = {
       pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
       description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
     },
-    // Money this file placed as other income at four steady credits: still evidence of a
-    // paycheck when the sixth arrives. Which of them no rule placed is sorted out below.
-    { categorySource: "rule", pfcDetailed: "INCOME_OTHER", merchantName: { not: null } },
   ],
 } satisfies Prisma.TransactionWhereInput;
 
@@ -257,24 +253,6 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     },
   });
   if (rows.length === 0) return 0;
-  // Already other income, and no keyword rule says so: this file placed it (a rule-placed row,
-  // like workers' comp, is not a paycheck). It is looked at for paychecks only, never changed to
-  // the same thing again, which would count as a change every night.
-  const inferred = new Set(
-    rows
-      .filter(
-        (r) =>
-          r.pfcDetailed === "INCOME_OTHER" &&
-          categorizeByRules({
-            description: r.description,
-            amountCents: r.amountCents,
-            hints: {},
-          }) === null,
-      )
-      .map((r) => r.id),
-  );
-  const open = rows.filter((r) => r.pfcDetailed !== "INCOME_OTHER" || inferred.has(r.id));
-  if (open.length === 0) return 0;
   const salaried = await db.transactions.findMany({
     where: { pfcDetailed: { in: ["INCOME_SALARY", "INCOME_WAGES"] }, amountCents: { lt: 0 } },
     select: { merchantName: true },
@@ -284,18 +262,20 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     rows.filter((r) => r.pfcDetailed === null),
     salaried.flatMap((s) => (s.merchantName ? [s.merchantName] : [])),
   );
+  let extrasChanged = 0;
   if (extras.length > 0) {
-    await db.transactions.updateMany({
+    const done = await db.transactions.updateMany({
       where: { AND: [{ id: { in: extras } }, OPEN_ROWS] },
       data: { ...INCOME, categorySource: "rule" },
     });
+    extrasChanged = done.count;
   }
   const moneyOut = await db.transactions.findMany({
-    where: { pending: false, amountCents: { in: [...new Set(open.map((r) => -r.amountCents))] } },
+    where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
     select: { accountId: true, date: true, amountCents: true },
   });
   const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
-  const allDated = open
+  const allDated = rows
     .filter((r) => !extras.includes(r.id))
     .map((r) => ({ ...r, date: isoDay(r.date) }));
   // Not a Zelle line the rules called a transfer: it names a person, not an employer.
@@ -304,15 +284,15 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     out,
   );
   const placed = new Set([...pay.paychecks, ...pay.extras]);
-  const dated = allDated.filter((r) => !placed.has(r.id) && !inferred.has(r.id));
-  const regular = [...regularPayers(dated, out), ...pay.extras.filter((id) => !inferred.has(id))];
+  const dated = allDated.filter((r) => !placed.has(r.id));
+  const regular = [...regularPayers(dated, out), ...pay.extras];
   const paying = new Set(regular);
   // Not a Zelle line the rules called a transfer: it names a person, not a client.
   const clients = clientDeposits(
     dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
     out,
   ).filter((id) => !paying.has(id));
-  if (pay.paychecks.length + regular.length + clients.length === 0) return extras.length;
+  if (pay.paychecks.length + regular.length + clients.length === 0) return extrasChanged;
   const [salary, other, contractor] = await Promise.all([
     db.transactions.updateMany({
       where: { AND: [{ id: { in: pay.paychecks } }, OPEN_ROWS] },
@@ -328,5 +308,5 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
       data: { ...CLIENT_INCOME, categorySource: "rule" },
     }),
   ]);
-  return extras.length + salary.count + other.count + contractor.count;
+  return extrasChanged + salary.count + other.count + contractor.count;
 }
