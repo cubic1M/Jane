@@ -12,6 +12,7 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { debtPlanStopped, startDebtPlan, stopDebtPlan } from "@/lib/debt-plan";
 import { loadDebtAutopilot, runDebtAutopilot } from "./debt-autopilot";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
@@ -105,6 +106,26 @@ describe.runIf(url)("debt on autopilot against a real database", () => {
     expect(started).toMatchObject({ kind: "done" });
     // Once: with a plan there's nothing to start.
     expect((await runDebtAutopilot(userId, opts())).planStarted).toBe(false);
+  });
+
+  it("a plan the person stopped stays stopped until they start one again", async () => {
+    await stopDebtPlan(userId, { client });
+    expect(await client.debtPlan.count({ where: { userId } })).toBe(0);
+    for (const level of ["safe", "all"] as const) {
+      await client.user.update({ where: { id: userId }, data: { autopilot: level } });
+      expect((await runDebtAutopilot(userId, opts())).planStarted, level).toBe(false);
+      expect(await client.debtPlan.count({ where: { userId } }), level).toBe(0);
+    }
+    // The person starts one: autopilot is back to its usual self (no longer held off).
+    await startDebtPlan(userId, { strategy: "avalanche", extraCents: 0 }, opts());
+    expect(await client.debtPlan.count({ where: { userId } })).toBe(1);
+    expect(await debtPlanStopped(userId, client)).toBe(false);
+    await client.debtPlan.deleteMany({ where: { userId } });
+    expect((await runDebtAutopilot(userId, opts())).planStarted).toBe(true);
+    // A stop is held again the same way.
+    await stopDebtPlan(userId, { client });
+    expect((await runDebtAutopilot(userId, opts())).planStarted).toBe(false);
+    await startDebtPlan(userId, { strategy: "snowball", extraCents: 0 }, opts());
   });
 
   it("answers what Jane does and what's due, by rules and for Claude", async () => {

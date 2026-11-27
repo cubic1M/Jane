@@ -171,11 +171,16 @@ export async function startDebtPlan(
     actualCents: null,
     debtIds: summary.cards.map((c) => c.id),
   };
-  const row = await scopedFor(userId, client).debtPlans.upsert({
-    where: { userId },
-    create: { userId, ...data, startedOn: data.checkedOn },
-    update: { ...data, startedOn: data.checkedOn },
-    select: PLAN_SELECT,
+  // Starting a plan, by the person or by autopilot, lifts an earlier "stop the plan": both writes
+  // or neither, so a rejected plan save keeps the stop.
+  const row = await scopedFor(userId, client).transaction(async (tx) => {
+    await tx.janePreferences.deleteMany({ where: { kind: "never", key: STOPPED_KEY } });
+    return tx.debtPlans.upsert({
+      where: { userId },
+      create: { userId, ...data, startedOn: data.checkedOn },
+      update: { ...data, startedOn: data.checkedOn },
+      select: PLAN_SELECT,
+    });
   });
   // The plan is saved and active: a failed analytics write doesn't fail its start.
   await trackQuietly(userId, "debt_plan_started", {
@@ -185,8 +190,31 @@ export async function startDebtPlan(
   return toStored(row);
 }
 
+// "Stop the plan" is the person's word: kept as a "never" preference (the same store as "Not
+// this month" for the steady paycheck, so no new column) that debt autopilot reads, and that
+// starting a plan again clears. It also shows in Settings, where the person can delete it.
+const STOPPED_KEY = "debt_plan_stopped";
+
+export async function debtPlanStopped(userId: string, client: PrismaClient): Promise<boolean> {
+  return (
+    (await scopedFor(userId, client).janePreferences.count({
+      where: { kind: "never", key: STOPPED_KEY },
+    })) > 0
+  );
+}
+
 export async function stopDebtPlan(userId: string, { client = defaultClient }: Options = {}) {
-  await scopedFor(userId, client).debtPlans.deleteMany({});
+  const db = scopedFor(userId, client);
+  const data = {
+    value: { stopped: true },
+    label: "Jane doesn't start a debt payoff plan on its own again",
+  };
+  await db.janePreferences.upsert({
+    where: { userId_kind_key: { userId, kind: "never", key: STOPPED_KEY } },
+    create: { userId, kind: "never", key: STOPPED_KEY, ...data },
+    update: data,
+  });
+  await db.debtPlans.deleteMany({});
   await trackQuietly(userId, "debt_plan_stopped");
 }
 

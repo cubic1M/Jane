@@ -4,7 +4,7 @@ import { upsertOnce } from "@/lib/unique-race";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadPayoff, startDebtPlan } from "@/lib/debt-plan";
+import { debtPlanStopped, loadPayoff, startDebtPlan } from "@/lib/debt-plan";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
 import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
@@ -43,7 +43,8 @@ export async function runDebtAutopilot(
   // The payoff plan, started by Jane when the debt sector does the safe stuff.
   let planStarted = false;
   const plan = await db.debtPlans.findFirst({ select: { id: true } });
-  if (!plan) {
+  // A plan the person stopped stays stopped until they start one again.
+  if (!plan && !(await debtPlanStopped(userId, client))) {
     const allowed = await mayAct(userId, "debt", { needs: "safe", cents: 0 }, { client, now });
     const payoff = allowed.ok ? await loadPayoff(userId, { client, now }) : null;
     if (payoff && payoff.summary.cards.length > 0) {

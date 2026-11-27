@@ -181,6 +181,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         // A crypto refresh replaces a connection's holdings together (src/lib/crypto/crypto.ts).
         cryptoConnections: typeof inTransaction.cryptoConnection;
         cryptoHoldings: typeof inTransaction.cryptoHolding;
+        // Starting a debt plan lifts an earlier stop with it (src/lib/debt-plan.ts).
+        debtPlans: typeof inTransaction.debtPlan;
       }) => Promise<T>,
     ) =>
       asUserTransaction(inTransaction, userId, (tx) =>
@@ -205,6 +207,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
           savingsGoals: tx.savingsGoal,
           cryptoConnections: tx.cryptoConnection,
           cryptoHoldings: tx.cryptoHolding,
+          debtPlans: tx.debtPlan,
         }),
       )
         // What was read before it may have changed.
