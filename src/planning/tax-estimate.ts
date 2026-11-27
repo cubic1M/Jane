@@ -463,7 +463,10 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
           addBackCents: itemizes ? itemized.stateLocalTaxCents : standard,
           preferenceCents: input.amtPreferenceCents!,
           regularTaxCents: ordinaryTax,
-          preferentialCents: Math.min(preferential, taxable),
+          // Form 6251 line 13 carries the gains and qualified dividends whole (not capped at regular
+          // taxable income, which may be zero below the standard deduction); amt() caps them at its
+          // own base. The regular ordinary income under them (line 20) stays the clamped figure.
+          preferentialCents: preferential,
           regularOrdinaryCents: taxable - Math.min(preferential, taxable),
           year: input.year,
         })

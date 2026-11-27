@@ -1,5 +1,6 @@
 import { CA_RENTERS_CREDIT, AOTC_FORM, SOURCES, TUITION_TIMING_FROM } from "@/config/student-taxes";
-import { EDUCATION_CREDITS, EITC, STUDENT_LOAN_INTEREST } from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
+import { EDUCATION_CREDITS, STUDENT_LOAN_INTEREST } from "@/config/tax-rates";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -298,19 +299,20 @@ const earnedIncomeCreditCard: Detector = {
         12) /
         yearCoverageMonths(data, rateMonthsOf(profile)),
     );
+    const eitc = federalParams(lawYearOf(data.today)).eitc.value;
     const credit = earnedIncomeCredit({
       status,
       children: 0,
       earnedCents: year.earnedCents,
       agiCents: year.agiCents + interest,
       investmentIncomeCents: interest,
-      age: EITC.childlessMinAge,
+      age: eitc.childlessMinAge,
       year: lawYearOf(data.today),
     });
     if (credit <= 0) return null;
     const limit =
-      status === "married_joint" ? EITC.phaseOutFrom.married_joint[0] : EITC.phaseOutFrom.single[0];
-    const end = limit + Math.round(EITC.maxCredit[0] / EITC.phaseOutRate[0]);
+      status === "married_joint" ? eitc.phaseOutFrom.married_joint[0] : eitc.phaseOutFrom.single[0];
+    const end = limit + Math.round(eitc.maxCredit[0] / eitc.phaseOutRate[0]);
     return suggestion("taxes", "earned_income_credit", {
       title: `The earned income credit may come to about ${formatCents(credit)} for ${data.today.slice(0, 4)}`,
       headline: headlineOf("Check the earned income credit", credit, "earns", true),
@@ -328,7 +330,7 @@ const earnedIncomeCreditCard: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `Pay and gig earnings of about ${formatCents(year.earnedCents)} a year at your deposits' pace${year.stipendCents > 0 ? `, with ${formatCents(year.stipendCents)} of fellowship in income (it isn't earned income for this credit, IRS Pub. 596)` : ""}, put the earned income credit for someone without children at about ${formatCents(credit)}: up to ${formatWholeDollars(EITC.maxCredit[0])}, shrinking to nothing at ${formatWholeDollars(end)} of income. It's paid even with no tax owed. It's for ages 25 to 64 at the year's end, a US citizen or resident all year with a valid Social Security number, not someone else's dependent, with no more than ${formatWholeDollars(EITC.investmentIncomeLimit)} of interest and other unearned income (IRS).`,
+      why: `Pay and gig earnings of about ${formatCents(year.earnedCents)} a year at your deposits' pace${year.stipendCents > 0 ? `, with ${formatCents(year.stipendCents)} of fellowship in income (it isn't earned income for this credit, IRS Pub. 596)` : ""}, put the earned income credit for someone without children at about ${formatCents(credit)}: up to ${formatWholeDollars(eitc.maxCredit[0])}, shrinking to nothing at ${formatWholeDollars(end)} of income. It's paid even with no tax owed. It's for ages 25 to 64 at the year's end, a US citizen or resident all year with a valid Social Security number, not someone else's dependent, with no more than ${formatWholeDollars(eitc.investmentIncomeLimit)} of interest and other unearned income (IRS).`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS: who qualifies for the EITC", href: SOURCES.eitcWho.url }],
     });

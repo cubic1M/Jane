@@ -150,3 +150,24 @@ describe("the marginal rate at an exact bracket start is the new bracket's", () 
     expect(at($(28_500) - 1).marginalRate).toBe(0.1);
   });
 });
+
+describe("gains below the standard deduction still reach the AMT's Part III (CodeRabbit on #2366)", () => {
+  // HE-T4d (2026, single): long-term gains $10,000, no wages, ISO preference $300,000. Regular
+  // taxable income is 10,000 - 16,100 = -6,100, held at $0 for the regular tax, but the AMT starts
+  // from the unclamped figure (line 1b): -6,100 + 16,100 + 300,000 = $310,000; less the $90,100
+  // exemption (under the $500,000 phase-out start) is $219,900. Part III: the $10,000 of gains
+  // (line 13, not capped at the regular taxable income of $0) sit at 0% since regular ordinary
+  // income is $0; the other $209,900 is taxed at 26% (under the $244,500 edge) = $54,574.00.
+  // Regular tax is $0, so the AMT is $54,574.00. Capping the gains at $0 would have taxed all
+  // $219,900 at 26%: $57,174.00.
+  it("is $54,574.00, not $57,174.00", () => {
+    const e = estimateTaxes(
+      person({
+        income: { ...NO_INCOME, longTermGainsCents: $(10_000) },
+        amtPreferenceCents: $(300_000),
+      }),
+    );
+    expect(e.taxableCents).toBe(0);
+    expect(e.amtCents).toBe($(54_574));
+  });
+});

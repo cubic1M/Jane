@@ -263,7 +263,7 @@ const extensionNotToPay: Detector = {
         dependentOf(facts) === "yes",
         received,
         lawYearFor(year),
-      ) + selfEmploymentTax(sumCents(contract), 0);
+      ) + selfEmploymentTax(sumCents(contract), 0, lawYearFor(year));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const days = daysBetween(today, due);
     const extended = observedFilingDay(`${due.slice(0, 4)}-${FILING.extendedTo.slice(5)}`);
