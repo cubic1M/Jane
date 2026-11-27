@@ -1,3 +1,4 @@
+import type { FilingStatus } from "@/config/tax";
 import { ownLawYear } from "@/config/tax-params";
 import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -38,7 +39,7 @@ const T = DETECTOR_RATES.tax;
 
 export type HealthTaxes = {
   year: number;
-  status: "single" | "married_joint";
+  status: FilingStatus;
   householdSize: number;
   // Income for the year from deposits (profit for the self-employed, gross for take-home pay),
   // projected month by month.
@@ -84,10 +85,10 @@ export type HealthTaxes = {
 };
 
 // How they file, as every other tax figure reads it (filingStatusOf: what they said, else married
-// filing jointly on a sign of a partner, else single). This reading knows only joint and single, so
-// the others file as single. The household fact says how many people (below), not how they file.
-const statusOf = (f: Profile["facts"]): "single" | "married_joint" =>
-  filingStatusOf(f) === "married_joint" ? "married_joint" : "single";
+// filing jointly on a sign of a partner, else single), kept as told: head of household and married
+// filing separately use their own deduction and brackets. The household fact says how many people
+// (below), not how they file.
+const statusOf = (f: Profile["facts"]): FilingStatus => filingStatusOf(f);
 
 export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTaxes {
   const f = profile.facts;

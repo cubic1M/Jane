@@ -1268,6 +1268,7 @@ const PRICED_BY_STATUS: ReadonlySet<string> = new Set([
   "medical_deduction",
   "irmaa_watch",
   "social_security_tax",
+  "ptc_repayment",
 ]);
 const withFilingNote = (d: Detector): Detector =>
   PRICED_BY_STATUS.has(d.topic)
