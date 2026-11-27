@@ -140,24 +140,19 @@ export async function removeConnection(
   } catch {
     // A value that can't be opened can't be sent: it's still deleted below.
   }
+  // What was worked out since the connection arrived goes first, while its start date is still
+  // here: if this fails the connection is still there (tokens kept) and the person can disconnect
+  // again.
+  forgetPrimer(userId);
+  await forgetSince(db, row.createdAt, "bank");
   await db.robinhoodConnections.deleteMany({ where: { id: row.id } });
   try {
-    forgetPrimer(userId);
-    // Each step on its own: one failing does not stop the other, and the failure still surfaces.
-    let failure: unknown = null;
-    try {
-      await removeOrphans(userId, { client });
-    } catch (error) {
-      failure = error;
-    }
-    try {
-      await forgetSince(db, row.createdAt, "bank");
-    } catch (error) {
-      failure ??= error;
-    }
-    if (failure) throw failure;
+    await removeOrphans(userId, { client });
+    // Again now the accounts are gone: it also sweeps what only stood on them.
+    await forgetSince(db, row.createdAt, "bank");
   } finally {
-    // The stored tokens are gone, so this is the one chance to end them there, whatever failed above.
+    // The stored tokens are gone, so this is the one chance to end them there, whatever failed
+    // above.
     const revoked = robinhoodOffered() && (await revokeTokens(row.clientId, tokens));
     await logAudit(
       actor,

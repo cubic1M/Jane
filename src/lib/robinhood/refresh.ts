@@ -216,6 +216,14 @@ async function saveHoldings(db: Saving, accountId: string, read: Read, today: Da
     });
     if (cash) kept.push(cash.id);
   }
+  // A confirmed zero removes the cash even from a partial list; the rest of a partial list stays.
+  if (read.portfolio.cashCents === 0) {
+    const cash = await db.securities.findFirst({
+      where: { plaidSecurityId: CASH_REF },
+      select: { id: true },
+    });
+    if (cash) await db.holdings.deleteMany({ where: { accountId, securityId: cash.id } });
+  }
   if (!read.partial) {
     await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: kept } } });
   }

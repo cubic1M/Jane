@@ -73,8 +73,15 @@ const GENERIC_ACCOUNT_WORDS = new Set([
   "and",
 ]);
 const wordsOf = (text: string) => text.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
-const namesAccount = (description: string, accountName: string): boolean => {
-  const named = wordsOf(accountName).filter((w) => !GENERIC_ACCOUNT_WORDS.has(w));
+// Whether a payment's words name this account among its peers: a word the peers share ("Chase" in
+// "Chase Freedom" and "Chase Sapphire") names none of them.
+const namesAccount = (
+  description: string,
+  accountName: string,
+  peerNames: readonly string[],
+): boolean => {
+  const others = new Set(peerNames.flatMap(wordsOf));
+  const named = wordsOf(accountName).filter((w) => !GENERIC_ACCOUNT_WORDS.has(w) && !others.has(w));
   const said = new Set(wordsOf(description));
   return named.some((w) => said.has(w));
 };
@@ -97,6 +104,11 @@ async function dueBills(
     },
     select: { accountId: true, kind: true, minimumPaymentCents: true, nextPaymentDueDate: true },
   });
+  // Every debt of a kind, due soon or not: a payment may be for any of them.
+  const everyDebt = await db.liabilities.findMany({
+    where: { ...(await onlyCountedRows(db)), minimumPaymentCents: { gt: 0 } },
+    select: { accountId: true, kind: true },
+  });
   const checking = new Set(
     input.accounts
       .filter((a) => a.type === "depository" && a.subtype === "checking")
@@ -112,13 +124,19 @@ async function dueBills(
     const category = BILL_PAYMENT_CATEGORIES[l.kind];
     // Two debts of one kind (two cards): a payment in that category could be for either, so it
     // counts as this debt's autopay only when its own name says which account it pays.
-    const peers = liabilities.filter((o) => o.kind === l.kind).length;
+    const peerNames = everyDebt
+      .filter((o) => o.kind === l.kind && o.accountId !== l.accountId)
+      .flatMap((o) => input.accounts.find((a) => a.id === o.accountId)?.name ?? []);
     const autopay = payments
       .filter((s) => category && s.pfcDetailed === category)
       .filter(
         (s) =>
-          peers < 2 ||
-          namesAccount(`${s.merchant} ${s.charges.at(-1)?.description ?? ""}`, account.name),
+          peerNames.length === 0 ||
+          namesAccount(
+            `${s.merchant} ${s.charges.at(-1)?.description ?? ""}`,
+            account.name,
+            peerNames,
+          ),
       )
       .flatMap((s) =>
         expectedDates(s, input.asOf, dueOn)
@@ -238,7 +256,8 @@ export async function payBill(
     now = new Date(),
     partner,
     input,
-  }: Options & { input?: DetectionInput } = {},
+    maxCents,
+  }: Options & { input?: DetectionInput; maxCents?: number } = {},
 ): Promise<{ amountCents: number; runOn: string; name: string }> {
   const view = await loadBillPay(userId, { client, now, input });
   const item = view.items.find((i) => i.planKey === planKey);
@@ -252,6 +271,10 @@ export async function payBill(
   }
   if (item.status === "short" || !view.checkingAccountId) {
     throw new BillPayError("Checking can't take that payment right now without running short.");
+  }
+  // Autopilot allowed an amount: a bill that now needs more (room opened up since it asked) waits.
+  if (maxCents !== undefined && item.amountCents > maxCents) {
+    throw new BillPayError("That payment is more than was allowed a moment ago.");
   }
   try {
     const { runOn } = await scheduleTransfer(
@@ -313,6 +336,7 @@ export async function runBillPay(
         now,
         partner: movement,
         input,
+        maxCents: item.amountCents,
       });
     } catch (error) {
       if (error instanceof BillPayError) continue;

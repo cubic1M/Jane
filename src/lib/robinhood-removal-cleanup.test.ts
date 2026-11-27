@@ -52,9 +52,16 @@ describe("removing a Robinhood connection when tidying up afterwards fails", () 
     );
   });
 
-  it("still forgets what was worked out since, when sweeping the orphans fails", async () => {
+  it("forgets what was worked out since before the connection is deleted, and still ends it when the sweep fails", async () => {
     vi.mocked(forgetSince).mockClear();
     await expect(removeConnection("u1", "user_disconnected")).rejects.toThrow("cleanup failed");
     expect(forgetSince).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the connection and its tokens, and ends nothing, when forgetting what it brought in fails", async () => {
+    vi.mocked(forgetSince).mockRejectedValueOnce(new Error("forget failed"));
+    vi.mocked(revokeTokens).mockClear();
+    await expect(removeConnection("u1", "user_disconnected")).rejects.toThrow("forget failed");
+    expect(revokeTokens).not.toHaveBeenCalled();
   });
 });

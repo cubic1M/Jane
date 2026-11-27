@@ -66,7 +66,7 @@ async function savedTransfer(
       purpose: move.purpose,
       toAccountId: move.toAccountId ?? null,
       goalId: move.goalId ?? null,
-      status: { in: ["pending", "awaiting_partner", "completed"] },
+      status: { in: ["pending", "awaiting_partner", "releasing", "completed"] },
     },
     select: { id: true },
   });
@@ -136,7 +136,16 @@ export async function runPaycheckPlan(
   // A plan another run is still working on is left to it; one claimed and never finished is
   // picked up again, and the moves it already saved are reused below.
   if (existing && existing.status !== "claimed") return viewOf(existing);
-  if (existing && now.getTime() - existing.createdAt.getTime() < PAYCHECK_CLAIM_MS) return null;
+  if (existing) {
+    // An unfinished claim is taken over only when it has gone quiet, and by one run: the takeover
+    // renews the claim's time, so a second run that read the same row finds it fresh and stops.
+    if (now.getTime() - existing.createdAt.getTime() < PAYCHECK_CLAIM_MS) return null;
+    const took = await db.paycheckPlans.updateMany({
+      where: { id: existing.id, status: "claimed", createdAt: existing.createdAt },
+      data: { createdAt: now },
+    });
+    if (took.count === 0) return null;
+  }
 
   const checking = loaded.accounts.find((a) => a.type === "depository" && a.subtype === "checking");
   const home = await homeSummary(userId, { client, now });
@@ -351,18 +360,19 @@ export async function movePaycheckPlan(
         skipped.push(left);
       }
     }
+    await db.paycheckPlans.updateMany({
+      where: { id: planId },
+      data: { moves: done as unknown as Prisma.InputJsonArray, status: "moved" },
+    });
   } catch (error) {
-    // Open the plan again for a retry; a move already saved is found and reused then.
+    // Open the plan again for a retry (also when only the final write failed); a move already
+    // saved is found and reused then.
     await db.paycheckPlans.updateMany({
       where: { id: planId, status: "moving" },
       data: { status: row.status },
     });
     throw error;
   }
-  await db.paycheckPlans.updateMany({
-    where: { id: planId },
-    data: { moves: done as unknown as Prisma.InputJsonArray, status: "moved" },
-  });
   return { moves: done, scheduled, skipped };
 }
 
@@ -390,7 +400,7 @@ export async function undoPaycheckPlan(
   if (!row) throw new PaycheckError("That paycheck's plan isn't there anymore.");
   const pending = await db.moneyTransfers.findMany({
     // Both: a transfer waiting on the partner is cancelled the same way (cancelTransfer).
-    where: { planKey: row.key, status: { in: ["pending", "awaiting_partner"] } },
+    where: { planKey: row.key, status: { in: ["pending", "awaiting_partner", "releasing"] } },
     select: { id: true },
   });
   let cancelled = 0;
@@ -404,7 +414,7 @@ export async function undoPaycheckPlan(
     } catch (error) {
       if (!(error instanceof TransferError)) throw error;
       const still = await db.moneyTransfers.count({
-        where: { id: t.id, status: { in: ["pending", "awaiting_partner"] } },
+        where: { id: t.id, status: { in: ["pending", "awaiting_partner", "releasing"] } },
       });
       if (still > 0) remaining += 1;
     }

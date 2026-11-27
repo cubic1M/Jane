@@ -212,11 +212,15 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     };
     await client.moneyTransfer.update({ where: { id: transferId }, data: { partnerRef: "q-1" } });
     const settling = settleTransfers(userId, { client, now: NEXT_DAY, partner });
-    await started;
-    await expect(
-      cancelTransfer(userId, transferId, { client, now: NEXT_DAY, partner }),
-    ).rejects.toBeInstanceOf(TransferError);
-    open();
+    // The gate opens whatever happens, so a failed assertion never leaves settlement hanging.
+    try {
+      await Promise.race([started, settling]);
+      await expect(
+        cancelTransfer(userId, transferId, { client, now: NEXT_DAY, partner }),
+      ).rejects.toBeInstanceOf(TransferError);
+    } finally {
+      open();
+    }
     expect(await settling).toBeGreaterThanOrEqual(1);
     const row = await client.moneyTransfer.findUniqueOrThrow({ where: { id: transferId } });
     expect(row).toMatchObject({ status: "completed", partnerRef: "real-1" });

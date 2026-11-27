@@ -289,6 +289,36 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
     expect(status("Other Visa")).not.toBe("autopay");
   });
 
+  it("a word two cards share names neither, and a card due later still counts as a possible payee", async () => {
+    const userId = await demoPerson("bills-shared-word");
+    const first = await client.account.findFirstOrThrow({
+      where: { userId, name: "Demo Credit Card" },
+    });
+    // Same issuer word, due well after the horizon: "Demo" no longer says which card is paid.
+    const later = await client.account.create({
+      data: {
+        userId,
+        source: first.source,
+        itemId: first.itemId,
+        name: "Demo Sapphire",
+        type: "credit",
+        subtype: "credit card",
+        currentBalanceCents: 90_000,
+      },
+    });
+    await client.liability.create({
+      data: {
+        userId,
+        accountId: later.id,
+        kind: "credit",
+        minimumPaymentCents: 2_500,
+        nextPaymentDueDate: new Date("2027-03-01T00:00:00Z"),
+      },
+    });
+    const view = await loadBillPay(userId, { client, now: LINKED });
+    expect(view.items.find((i) => i.bill.name === "Demo Credit Card")!.status).not.toBe("autopay");
+  });
+
   it("never pays bills for real accounts", async () => {
     const real = await client.user.create({
       data: { email: `bills-real-${crypto.randomUUID()}@example.com` },
