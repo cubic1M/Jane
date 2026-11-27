@@ -408,7 +408,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     // Both answers: a subscription named, and what is due (or that nothing is).
     expect: {
-      mentions: /(?=[\s\S]*netflix)(?=[\s\S]*\b(?:due|nothing)\b)/i,
+      mentions:
+        /(?=[\s\S]*netflix)(?=[\s\S]*(?:\bnothing\b[^.\n]*\bdue\b|\bdue\b(?!\s*(?:monthly|yearly|weekly|annual))))/i,
       list: true,
       maxChars: 1_400,
     },

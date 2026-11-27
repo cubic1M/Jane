@@ -150,6 +150,11 @@ describe("the bank's patterns (CodeRabbit sweep)", () => {
     expect(two2.test("You pay for Netflix.")).toBe(false);
     expect(two2.test("Nothing is due this week.")).toBe(false);
     expect(two2.test("You pay for Netflix, and Hulu is due Friday.")).toBe(true);
+    // A billing cadence is not an answer about this week.
+    expect(two2.test("Subscriptions:\n- Netflix — due monthly.\n- Hulu — due monthly.")).toBe(
+      false,
+    );
+    expect(two2.test("Netflix is on your list. Nothing is due this week.")).toBe(true);
   });
 
   it("the August follow-up must say August, and a mixed ask must offer its confirmation", () => {
