@@ -15,6 +15,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
+import { loadFiling, saveToldFiling } from "@/lib/filing-status";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { readPeople } from "@/lib/insurance/family-rules";
@@ -83,6 +84,21 @@ async function loadTaxFactsFrom(
     // The household listed for insurance: the children in it are the dependants Jane offers.
     db.insuranceProfiles.findFirst({ select: { people: true } }),
   ]);
+  // How they file, as every reader reads it (src/lib/filing-status.ts): what they told Jane on a
+  // question card or here, the newer of the two when the stores differ.
+  const filing = (await loadFiling(userId, { client })).read;
+  const settled: StoredTaxProfile | null =
+    filing.source === "told" || filing.source === "profile"
+      ? {
+          childrenUnder17: null,
+          otherDependants: null,
+          state: null,
+          incomeKinds: [],
+          ...stored,
+          filingStatus: filing.status,
+          answered: [...new Set([...(stored?.answered ?? []), "filingStatus"])],
+        }
+      : stored;
   return {
     found: findTaxFacts({
       transactions: transactions.map((t) => ({ ...t, date: iso(t.date) })),
@@ -91,7 +107,7 @@ async function loadTaxFactsFrom(
       newBaby: newBaby > 0,
       household: readPeople(insurance?.people),
     }),
-    stored,
+    stored: settled,
   };
 }
 
@@ -165,7 +181,11 @@ function dataOf(answer: TaxAnswer) {
 export async function saveTaxAnswers(
   userId: string,
   answers: TaxAnswer[],
-  { client = defaultClient, via }: { client?: PrismaClient; via: "chat" | "page" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+  }: { client?: PrismaClient; now?: Date; via: "chat" | "page" },
 ): Promise<void> {
   const checked = answers.map(check);
   if (checked.length === 0) return;
@@ -179,6 +199,12 @@ export async function saveTaxAnswers(
     create: { userId, ...data, answered },
     update: { ...data, answered },
   });
+  // The same answer as a told fact, so a question card, a detector and the memory read it too
+  // (src/lib/filing-status.ts).
+  for (const answer of checked) {
+    if (answer.field === "filingStatus")
+      await saveToldFiling(userId, answer.value, { client, now });
+  }
   await logAudit(
     { type: "user", id: userId },
     "tax_profile_changed",

@@ -65,9 +65,10 @@ import {
 import { dayLabel } from "@/lib/day-label";
 import { formPayer } from "@/planning/tax-documents";
 import {
-  guessFilingStatus,
+  filingStatusFor,
   payingTogether,
   stateName,
+  type FilingRead,
   type ProfileField,
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
@@ -170,7 +171,7 @@ function profileAssumptions({
 }: {
   profile: Awaited<ReturnType<typeof loadWorkingProfile>>["profile"];
   view: Awaited<ReturnType<typeof loadWorkingProfile>>["view"];
-  guessed: ReturnType<typeof guessFilingStatus> | null;
+  guessed: FilingRead["guess"];
   state: string | null;
   residency: ResidencyView;
   elapsed: number;
@@ -699,13 +700,17 @@ async function loadTaxEstimateFrom(
   };
 
   // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
-  const guessed = profile.filingStatus
-    ? null
-    : guessFilingStatus({
-        jointAccounts,
-        payrollNames: payingTogether(paychecks),
-      });
-  const filingStatus: FilingStatus = profile.filingStatus ?? guessed?.status ?? "single";
+  // What they said arrives settled in the profile (told fact against profile row, the newer wins);
+  // without it, filingStatusFor reads the same signs as before (src/lib/filing-status.ts).
+  const filingRead = filingStatusFor(
+    {},
+    profile.filingStatus
+      ? { filingStatus: profile.filingStatus, answered: ["filingStatus"], at: null }
+      : null,
+    { jointAccounts, payrollNames: payingTogether(paychecks) },
+  );
+  const guessed = filingRead.guess;
+  const filingStatus: FilingStatus = filingRead.status;
   const state = profile.state ?? view.state.value;
   assumptions.push(
     ...profileAssumptions({ profile, view, guessed, state, residency, elapsed, firstSeen, year }),

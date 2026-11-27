@@ -6,6 +6,7 @@ import {
   FILING_STATUSES,
   INCOME_KIND_ORDER,
   INCOME_KINDS,
+  isFilingStatus,
   TAX_PROFILE_MIN_PAYCHECKS,
   TAX_PROFILE_PAYERS_SHOWN,
   TAXABLE_INVESTMENT_SUBTYPES,
@@ -361,4 +362,94 @@ export function guessFilingStatus(input: {
   ].filter((s): s is string => s !== null);
   if (signs.length === 0) return null;
   return { status: "married_joint", why: signs.join(" and ") };
+}
+
+// One filing status (tax program T8). The question card's answer (a told fact) and the tax
+// profile's own row used to be read by different code, so a card, the Taxes page, the estimate and
+// the chat could each say something else. Every reader goes through here:
+//   1. what the person told Jane. When the two stores hold different answers, the newer one is
+//      the person's last word; with no time on one of them, or the same instant, the told fact wins;
+//   2. else the sign of a couple that the estimate has always used (guessFilingStatus);
+//   3. else the household Jane reads from the payroll names (a couple or a family);
+//   4. else single.
+// Times are instants, never days: an answer at 3pm and one at 7pm Pacific are on either side of UTC
+// midnight and still in order.
+
+export type FilingSource = "told" | "profile" | "guess" | "household" | "default";
+
+export type FilingRead = {
+  status: FilingStatus;
+  source: FilingSource;
+  // The sign of a couple, when that is what the status rests on (the estimate says it).
+  guess: ReturnType<typeof guessFilingStatus>;
+  // When two answers disagreed: the one that lost.
+  replaced: FilingStatus | null;
+};
+
+// The tax_profiles row, as far as filing status goes. `at`: when the person answered it.
+export type StoredFiling = {
+  filingStatus: string | null;
+  answered: readonly string[];
+  at: Date | null;
+};
+
+export type FilingSignals = {
+  jointAccounts?: number;
+  payrollNames?: readonly string[];
+  household?: unknown;
+  earners?: unknown;
+};
+
+type ToldFiling = Record<string, { value: unknown; at?: Date | null } | undefined>;
+
+export function filingStatusFor(
+  facts: ToldFiling,
+  taxProfile: StoredFiling | null,
+  signals: FilingSignals = {},
+): FilingRead {
+  const told = facts.filing_status;
+  const toldStatus = isFilingStatus(told?.value) ? told.value : null;
+  const stored =
+    taxProfile?.answered.includes("filingStatus") && isFilingStatus(taxProfile.filingStatus)
+      ? taxProfile.filingStatus
+      : null;
+  if (toldStatus || stored) {
+    // The profile row wins over a told fact only when both times are known and it is later.
+    const profileNewer =
+      toldStatus !== null &&
+      stored !== null &&
+      stored !== toldStatus &&
+      taxProfile?.at != null &&
+      told?.at != null &&
+      taxProfile.at.getTime() > told.at.getTime();
+    const useProfile = stored !== null && (toldStatus === null || profileNewer);
+    const status = (useProfile ? stored : toldStatus)!;
+    const lost = useProfile ? toldStatus : stored;
+    return {
+      status,
+      source: useProfile ? "profile" : "told",
+      guess: null,
+      replaced: lost !== null && lost !== status ? lost : null,
+    };
+  }
+  const guess = guessFilingStatus({
+    jointAccounts: signals.jointAccounts ?? 0,
+    payrollNames: signals.payrollNames ?? [],
+  });
+  if (guess) return { status: guess.status, source: "guess", guess, replaced: null };
+  // Before they say how they file: a couple, or a family with two earners, files jointly; one
+  // earner with children is a head of household (debugger 11-06: a single parent was measured
+  // against the joint limit and told "$2,000 each").
+  const { household, earners } = signals;
+  if (household === "couple") {
+    return { status: "married_joint", source: "household", guess: null, replaced: null };
+  }
+  if (household === "family") {
+    // Told how many earn, one earner with children is a head of household (the Saver's Credit card).
+    // Not told, a family files jointly (the student cards, pinned by taxes-reported-filing-status).
+    const status =
+      typeof earners === "number" && earners < 2 ? "head_of_household" : "married_joint";
+    return { status, source: "household", guess: null, replaced: null };
+  }
+  return { status: "single", source: "default", guess: null, replaced: null };
 }

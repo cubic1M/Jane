@@ -9,6 +9,13 @@ import { dataReach } from "@/lib/data-reach";
 import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadCounting, onlyCountedRows, reconcileLiabilities } from "@/lib/account-copies";
+import { isFilingStatus } from "@/config/tax";
+import {
+  loadFiling,
+  mirrorFilingToProfile,
+  saveToldFiling,
+  unmirrorFilingFromProfile,
+} from "@/lib/filing-status";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
@@ -113,6 +120,7 @@ async function loadProfileInputFrom(
     fsa,
     known,
     found,
+    filing,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: new Date(`${today}T00:00:00Z`) } },
@@ -218,7 +226,14 @@ async function loadProfileInputFrom(
       where: { status: { in: ["new", "shown"] } },
       select: { type: true, annualSavingsCents: true, confidence: true, evidence: true },
     }),
+    // How they file, from the two places they may have said it (src/lib/filing-status.ts).
+    loadFiling(userId, { client }),
   ]);
+  // What they said, settled by the rule (the newer answer when the two stores differ): the one
+  // status every detector, the estimate, the Taxes page and the chat read.
+  const filingSaid =
+    filing.read.source === "told" || filing.read.source === "profile" ? filing.read.status : null;
+  const filingStatus = filingSaid ?? tax?.filingStatus ?? null;
   // Books QA: an account linked twice (through two logins) counts once.
   const copies = counting.copies;
   // What the lender reported on either link of a loan linked twice (rate, interest paid).
@@ -242,8 +257,7 @@ async function loadProfileInputFrom(
     const kids = (tax.childrenUnder17 ?? 0) + (tax.otherDependants ?? 0);
     told.has_children = kids > 0;
   }
-  if (tax?.filingStatus?.startsWith("married") && told.has_children !== true)
-    told.household = "couple";
+  if (filingStatus?.startsWith("married") && told.has_children !== true) told.household = "couple";
   if (insurance?.housing === "own" || insurance?.housing === "rent")
     told.housing = insurance.housing;
   if (investor?.age != null) {
@@ -269,6 +283,9 @@ async function loadProfileInputFrom(
       told[key as FactKey] = value as string | number | boolean;
     }
   }
+
+  // The settled answer comes last: it is the told fact or the profile row, whichever is newer.
+  if (filingSaid) told.filing_status = filingSaid;
 
   // Everything a sample person has is the demo bank's: a made-up US citizen, so the credits that
   // are for residents only (src/planning/tax-engine/residency-gate.ts) show on their pages. Not
@@ -327,9 +344,9 @@ async function loadProfileInputFrom(
     state: tax?.state ?? null,
     // The person, a spouse on a joint return, and dependants, once they've answered both.
     householdSize:
-      tax?.answered.includes("dependants") && tax.filingStatus
+      tax?.answered.includes("dependants") && filingStatus
         ? 1 +
-          (tax.filingStatus === "married_joint" ? 1 : 0) +
+          (filingStatus === "married_joint" ? 1 : 0) +
           (tax.childrenUnder17 ?? 0) +
           (tax.otherDependants ?? 0)
         : null,
@@ -554,6 +571,13 @@ export async function correctFact(
 ): Promise<void> {
   const value = parseAnswer(key, raw);
   const spec = factSpec(key)!;
+  // How they file: saved with the time it was said and mirrored into the tax profile (below), so
+  // the card, the Taxes page, the estimate and the chat read one answer (src/lib/filing-status.ts).
+  if (key === "filing_status" && typeof value === "string" && isFilingStatus(value)) {
+    await saveToldFiling(userId, value, { client, now });
+    await mirrorFilingToProfile(userId, value, { client });
+    return;
+  }
   await savePreference(
     userId,
     {
@@ -602,9 +626,16 @@ export async function clearCorrection(
 ): Promise<boolean> {
   const row = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
-    select: { id: true },
+    select: { id: true, value: true },
   });
   const gone = row ? await deletePreference(userId, row.id, { client }) : false;
+  // Taking back how they file takes back the tax profile's copy of it too, so Jane goes back to
+  // what it sees and not to the answer they just took back (src/lib/filing-status.ts).
+  if (gone && key === "filing_status") {
+    await unmirrorFilingFromProfile(userId, (row?.value as { value?: unknown } | null)?.value, {
+      client,
+    });
+  }
   if (gone) await markPrimerStale(userId, { client });
   return gone;
 }
