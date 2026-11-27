@@ -12,12 +12,27 @@ import { LoadingBar } from "@/components/loading-bar";
 // move everything to the current key, and when an old key can be removed. Names and counts
 // only; no key or value is ever shown.
 
-type Search = { rotated?: string; failed?: string; done?: string; error?: string };
+type Search = {
+  rotated?: string;
+  failed?: string;
+  done?: string;
+  error?: string;
+  // Where a run that ran out of time got to.
+  at?: string;
+};
 
 const keyName = (id: string) =>
   id === LEGACY_KEY_ID ? "TOKEN_ENCRYPTION_KEY (the original key)" : `"${id}"`;
 
 function LastRun({ search }: { search: Search }) {
+  if (search.error === "record") {
+    return (
+      <p className="rounded-xl border-2 border-zinc-900 p-3 text-sm font-semibold dark:border-zinc-100">
+        Nothing was changed: the run couldn&apos;t be written to the audit log. Press the button
+        again.
+      </p>
+    );
+  }
   if (search.error) {
     return (
       <p className="rounded-xl border-2 border-zinc-900 p-3 text-sm font-semibold dark:border-zinc-100">
@@ -119,6 +134,7 @@ async function Keys({ search }: { search: Promise<Search> }) {
         </p>
         <LastRun search={params} />
         <form action={rotateNow}>
+          {params.at && <input type="hidden" name="at" value={params.at} />}
           <SubmitButton className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
             Re-encrypt with the current key
           </SubmitButton>
