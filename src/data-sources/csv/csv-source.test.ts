@@ -82,6 +82,28 @@ describe("Chase credit card export", () => {
   });
 });
 
+// Pre-deploy walk of 11-27: a euro amount in a Chase file was skipped as 'Unreadable amount
+// "EUR 35.00"'; the reason now says what it is, as for a mapped file with a currency column.
+describe("a Chase file with a euro amount", () => {
+  it("skips the row as not US dollars", () => {
+    const text = [
+      "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",
+      "DEBIT,10/23/2026,SAFEWAY #1234 OAKLAND CA,-83.02,DEBIT_CARD,7416.54,",
+      "DEBIT,10/22/2026,CAFE PARIS,EUR 35.00,DEBIT_CARD,7499.56,",
+      "DEBIT,10/21/2026,BOULANGERIE,12.50EUR,DEBIT_CARD,7534.56,",
+      "DEBIT,10/20/2026,PUB,GBP9.00,DEBIT_CARD,7547.06,",
+    ].join("\n");
+    const result = readCsvFile({ name: "Chase1234_Activity.csv", text });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.transactions).toHaveLength(1);
+    expect(result.skipped).toEqual([
+      { file: "Chase1234_Activity.csv", line: 3, reason: "In EUR, not US dollars" },
+      { file: "Chase1234_Activity.csv", line: 4, reason: "In EUR, not US dollars" },
+      { file: "Chase1234_Activity.csv", line: 5, reason: "In GBP, not US dollars" },
+    ]);
+  });
+});
+
 // Night QA 10-30: a Chase download opened in Excel and saved again: two-digit years, dollar signs,
 // thousands commas and negatives in brackets. Every row "Unreadable date", nothing imported.
 describe("a statement saved again by Excel", () => {

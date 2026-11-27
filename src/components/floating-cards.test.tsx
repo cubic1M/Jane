@@ -155,3 +155,30 @@ describe("a card that folds on a phone", () => {
     expect(render(false)).not.toContain("max-sm:hidden");
   });
 });
+
+// Pre-deploy walk of 11-27: a refused "Bring it back" said nothing.
+describe("a card put away", () => {
+  const render = (putAwayNote?: string) =>
+    renderToStaticMarkup(
+      <FloatingCards
+        cards={[]}
+        label="Suggestions for you"
+        onAnswer={vi.fn()}
+        putAway="m1"
+        putAwayNote={putAwayNote}
+        onBringBack={vi.fn()}
+      />,
+    );
+
+  it("has a line with a way to bring it back", () => {
+    const html = render();
+    expect(html).toContain("Put away.");
+    expect(html).toContain("Bring it back");
+  });
+
+  it("says the server's reason when it would not come back, with no button to try again", () => {
+    const html = render("That one is too old to bring back.");
+    expect(html).toContain("That one is too old to bring back.");
+    expect(html).not.toContain("Bring it back");
+  });
+});

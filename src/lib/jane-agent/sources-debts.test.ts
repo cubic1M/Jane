@@ -238,6 +238,70 @@ describe("Jane's payoff plan messages", () => {
     expect(on.body).toContain("Not in this plan: Demo Home Loan.");
   });
 
+  // Pre-deploy walk of 11-27 (#2310): "$1,850.40 left, done with these by December 2031. Not in
+  // this plan: Walk New Card" said "left" of the planned card and "done by" of both cards laid
+  // out again. The planned card alone at its $45 a month ends 95 months out; both, 57.
+  it("says left and done-by of the same debts, and the plan over all of them as its own sentence", () => {
+    const card = (id: string, name: string, balance: number, minimum: number) => ({
+      ...CARD_WITH_TERMS,
+      id,
+      name,
+      currentBalanceCents: balance,
+      liability: {
+        ...CARD_WITH_TERMS.liability!,
+        aprBps: id === "own" ? 2500 : 2299,
+        minimumPaymentCents: minimum,
+      },
+    });
+    const both = debtBook(
+      {
+        accounts: [
+          card("own", "Walk Card", 185_040, 4_500),
+          card("new", "Walk New Card", 30_000, 2_000),
+        ],
+        plans: [],
+        typed: [],
+      },
+      "2026-10-19",
+    );
+    const added = both.debts.find((d) => d.name === "Walk New Card")!;
+    const summary = payoffSummary(both.debts, { extraCents: 0, advice: false });
+    const stored: StoredPlan = {
+      ...STORED,
+      status: "on_track",
+      expectedCents: 185_040,
+      actualCents: 185_040,
+      // What check refreshDebtPlan stored: the plan laid out again over both cards.
+      debtFreeMonth: "2031-07",
+      previousDebtFreeMonth: "2034-09",
+      checkExcludedIds: [added.key],
+    };
+    const [on] = fromPayoff({ ...payoff({ book: both, summary, advice: false }), stored });
+    expect(on.body).toBe(
+      "I checked your payoff plan: you're on track, with $1,850.40 left, done with these by September 2034. Not in this plan: Walk New Card. With Walk New Card added, the new plan ends July 2031. I've updated it from your new balances.",
+    );
+    const [off] = fromPayoff({
+      ...payoff({ book: both, summary, advice: false }),
+      stored: { ...stored, status: "off_track", actualCents: 200_000 },
+    });
+    expect(off.body).toContain("you'd be done with these by September 2034.");
+    expect(off.body).toContain("With Walk New Card added, the new plan ends July 2031.");
+    // The person's own day, across a month end and the year end: 95 months from the month they
+    // are in, whatever the day of it.
+    for (const [asOf, own] of [
+      ["2026-10-31", "September 2034"],
+      ["2026-12-31", "November 2034"],
+      ["2027-01-01", "December 2034"],
+    ] as const) {
+      const [late] = gather(
+        snapshot({ asOf, payoff: { ...payoff({ book: both, summary, advice: false }), stored } }),
+        MORNING,
+        SYNC,
+      ).filter((m) => m.source === "payoff");
+      expect(late.body).toContain(`done with these by ${own}.`);
+    }
+  });
+
   it("says when it's on track, and nothing before the first check or without debts", () => {
     const [message] = fromPayoff(payoff({ stored: { ...STORED, status: "on_track" } }));
     expect(message).toMatchObject({ kind: "done", priority: MESSAGE_PRIORITY.payoff_on_track });

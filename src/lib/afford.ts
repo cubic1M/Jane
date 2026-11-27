@@ -7,6 +7,7 @@ import { listGoals } from "@/lib/goals";
 import { healthInput } from "@/lib/health-score";
 import { homeSummary } from "@/lib/home";
 import { affordWindow, type AffordNumbers } from "@/planning/afford";
+import { parseAffordQuery } from "@/planning/afford-query";
 import { todayOf } from "@/lib/today";
 
 // The person's numbers for "Can I afford this?" (spec step 69). Safe to spend comes from
@@ -60,4 +61,17 @@ export async function loadAffordNumbers(
       savedCents: g.progress.savedCents,
     })),
   };
+}
+
+// What /afford's page needs about the day: the person's own "today" (their timezone, as the
+// chat's check and loadAffordNumbers use), the months and last day it allows, and the address's
+// form read against that day. UTC's day is already tomorrow after 4pm in Los Angeles, so a
+// purchase "today" from the chat was refused as a date in the past.
+export async function affordPage(
+  userId: string,
+  params: Parameters<typeof parseAffordQuery>[0],
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+) {
+  const asOf = await todayOf(userId, { client, now });
+  return { asOf, ...affordWindow(asOf), query: parseAffordQuery(params, asOf) };
 }

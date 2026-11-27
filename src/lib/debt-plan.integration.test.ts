@@ -257,6 +257,9 @@ describe.runIf(url)("payoff plans against a real database", () => {
     expect(message.body).toContain("$1,200.00 left");
     expect(message.body).not.toContain("$3,200.00");
     expect(message.body).toContain("Not in this plan: Travel Card.");
+    // The plan laid out again over both is its own sentence, with its own month.
+    expect(message.body).toMatch(/done with these by \w+ \d{4}\. Not in this plan/);
+    expect(message.body).toMatch(/With Travel Card added, the new plan ends \w+ \d{4}\./);
     // The plan now covers both, laid out from today.
     expect(
       ((await client.debtPlan.findUniqueOrThrow({ where: { userId: id } })).debtIds as string[])

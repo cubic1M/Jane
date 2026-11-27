@@ -1,7 +1,13 @@
 import { categorizeByRules } from "@/categorize/rules";
 import type { PfcPrimary } from "@/categorize/taxonomy";
 import { detectDateOrder, looksLikeDate, parseDate, type DateOrder } from "./dates";
-import { debitCreditCents, HEADER_SEARCH_ROWS, normalizeHeader, type Layout } from "./formats";
+import {
+  debitCreditCents,
+  foreignCurrencyIn,
+  HEADER_SEARCH_ROWS,
+  normalizeHeader,
+  type Layout,
+} from "./formats";
 import type { CsvRecord } from "./parse-csv";
 import { parseMoneyToCents } from "@/lib/money";
 
@@ -131,17 +137,7 @@ function descriptionColumn(headers: string[], rows: string[][], varies: (i: numb
   return memo !== null && different(memo) >= MEMO_NAMES_MORE * different(best) ? memo : best;
 }
 
-// A currency code written in an amount's own cell ("12.50 EUR"): not US dollars, whatever the
-// file's other columns say. parseAmount strips it, so it is looked for first.
-const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b|([€£¥])/i;
-const SYMBOL_CODE: Record<string, string> = { "€": "EUR", "£": "GBP", "¥": "JPY" };
-export function foreignCurrencyIn(...texts: string[]): string | null {
-  for (const text of texts) {
-    const found = FOREIGN_CODE.exec(text);
-    if (found) return found[1] ? found[1].toUpperCase() : SYMBOL_CODE[found[2]];
-  }
-  return null;
-}
+export { foreignCurrencyIn };
 
 // An amount as banks outside the US write it too: "€12,50", "1.234,56", "12.50 USD".
 export function parseAmount(text: string): number | null {

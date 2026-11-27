@@ -70,6 +70,21 @@ describe("Pinwheel's pay stubs as Jane's", () => {
       pay_period_end: "2026-11-07",
     });
   });
+
+  // 11-27: the stub's period started on the 1st, which reads as half a month, so the sample's pay was
+  // "twice a month" that day and "every two weeks" on others, and the sandbox test went red.
+  it("reads every two weeks whatever the person's day, across month and year ends", () => {
+    for (
+      let at = Date.parse("2026-11-01T00:00:00Z");
+      at < Date.parse("2027-12-31T00:00:00Z");
+      at += 86_400_000
+    ) {
+      const today = new Date(at).toISOString().slice(0, 10);
+      expect(payFrequency(samplePaystubs(today)), today).toBe("biweekly");
+    }
+    // The day the date moved on, and the day the shift is one more day back.
+    expect(samplePaystubs("2026-11-27")[0]!.pay_period_start).toBe("2026-10-31");
+  });
 });
 
 describe("Pinwheel's API, as its overview describes it", () => {

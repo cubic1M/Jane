@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openProposals } from "@/lib/proposals";
 import { latestLife } from "@/lib/insurance/life";
+import { termsOfRow } from "@/lib/insurance/savings";
 import { todayOf } from "@/lib/today";
 import { bestQuote } from "./insurance/life-words";
 import { stepOf } from "./agent-steps";
@@ -140,7 +141,14 @@ export async function closeAnsweredElsewhere(
   const offers = anySaving
     ? await db.insuranceSavings.findMany({
         where: { status: "offered" },
-        select: { id: true, kind: true },
+        select: {
+          id: true,
+          kind: true,
+          yearlySavingCents: true,
+          currentYearlyCents: true,
+          newYearlyCents: true,
+          detail: true,
+        },
       })
     : [];
   // The quote the person's life application would offer today; a card that names another one is
@@ -161,6 +169,10 @@ export async function closeAnsweredElsewhere(
   // posted straight from the scan) doesn't settle its message this way.
   const settledSuggestions = await settledSuggestionKeys(db, suggestionKeys);
   const offeredIds = new Set(offers.map((o) => o.id));
+  // What each offer says now: a card that showed other figures can only be refused, so it closes
+  // and the offer's own card (with the current figures) takes its place (like a life card for an
+  // old quote).
+  const offeredTerms = new Map(offers.map((o) => [o.id, termsOfRow(o)]));
   const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
   const stepNow = new Map(actions.map((a) => [a.id, stepOf(a)]));
@@ -186,6 +198,7 @@ export async function closeAnsweredElsewhere(
       riskId,
       suggestion,
       advice,
+      savingTerms,
     } = m.refs;
     return (
       (advice === true && !adviceAllowed) ||
@@ -198,6 +211,10 @@ export async function closeAnsweredElsewhere(
       (coverEvent !== undefined && !preparedCovers.has(coverEvent)) ||
       (negotiationId !== undefined && !stillAsked.has(negotiationId)) ||
       (savingId !== undefined && !offeredIds.has(savingId)) ||
+      (savingId !== undefined &&
+        savingTerms?.[savingId] !== undefined &&
+        offeredTerms.has(savingId) &&
+        offeredTerms.get(savingId) !== savingTerms[savingId]) ||
       (savingGroup !== undefined && !sameOffered) ||
       (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
       (offersLifeApply(m) &&

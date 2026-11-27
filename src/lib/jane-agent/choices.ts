@@ -9,6 +9,8 @@ const CHOICE_ACTIONS: readonly string[] = ["autopilot.safe", "autopilot.all", "a
 
 export const REVERT_ACTION = "choice.revert";
 export const DONE_ACTION = "choice.done";
+// The server's refusal of a tap on a message that is no longer open (answered in another tab).
+export const ALREADY_ANSWERED = "This one's already been answered.";
 
 export const isChoice = (id: string) => CHOICE_ACTIONS.includes(id);
 

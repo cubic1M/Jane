@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { after, connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
-import { isoDate } from "@/detection/units";
-import { loadAffordNumbers } from "@/lib/afford";
+import { affordPage, loadAffordNumbers } from "@/lib/afford";
 import { track } from "@/lib/analytics";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { affordCheck, affordWindow, type AffordResult, type MonthEnd } from "@/planning/afford";
+import { affordCheck, type AffordResult, type MonthEnd } from "@/planning/afford";
 import {
   AFFORD_COPY,
   monthlyNeededLine,
@@ -14,7 +13,7 @@ import {
   safeLine,
   shortLine,
 } from "@/planning/afford-copy";
-import { AFFORD_KINDS, parseAffordQuery } from "@/planning/afford-query";
+import { AFFORD_KINDS } from "@/planning/afford-query";
 import { PageShell } from "@/components/page-shell";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 
@@ -156,9 +155,8 @@ async function AffordContent({
   const user = await requireUser();
   await connection();
   const now = new Date();
-  const asOf = isoDate(now);
-  const { months, until } = affordWindow(asOf);
-  const query = parseAffordQuery(await searchParams, asOf);
+  // The person's own day, as the chat's check uses (not UTC's, which is tomorrow after 4pm Pacific).
+  const { asOf, months, until, query } = await affordPage(user.id, await searchParams, { now });
   const result = query.change
     ? affordCheck(await loadAffordNumbers(user.id, { now }), query.change)
     : null;

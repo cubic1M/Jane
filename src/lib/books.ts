@@ -243,7 +243,10 @@ export async function runBooksCheck(
   // A copy left out of the figures is in none of them, so nothing about it is checked or said to
   // be in doubt: not its balances, its file's end, or its transfers.
   const copies = await accountCopies(db);
-  for (const account of accounts.filter((a) => !copies.has(a.id))) {
+  // An uploaded account with no balance (its only statement was taken back) has nothing to check.
+  const checkable = (a: (typeof accounts)[number]) =>
+    !copies.has(a.id) && !(a.source === "csv" && a.currentBalanceCents === null);
+  for (const account of accounts.filter(checkable)) {
     const mine = snaps
       .filter((s) => s.accountId === account.id)
       .map((s) => ({ date: iso(s.date), balanceCents: s.balanceCents }));

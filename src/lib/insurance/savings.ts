@@ -139,6 +139,23 @@ export function termsOf(s: SavingCandidate): string {
   ].join("|");
 }
 
+// The same token for a stored offer, to tell a card that showed older figures from the offer now.
+export const termsOfRow = (row: {
+  kind: string;
+  yearlySavingCents: number;
+  currentYearlyCents: number;
+  newYearlyCents: number;
+  detail: unknown;
+}): string =>
+  termsOf({
+    policyId: "",
+    kind: row.kind as SavingKind,
+    yearlySavingCents: row.yearlySavingCents,
+    currentYearlyCents: row.currentYearlyCents,
+    newYearlyCents: row.newYearlyCents,
+    detail: (row.detail ?? {}) as SavingCandidate["detail"],
+  });
+
 // Applies one saving with the carrier, on the person's tap: the policy's price (and, for
 // pay in full, how often it is paid; for a higher deductible, the deductible; for a bundle,
 // the carrier) changes to what the carrier confirmed.

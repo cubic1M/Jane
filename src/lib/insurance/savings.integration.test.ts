@@ -236,6 +236,48 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
     expect(await deductible()).not.toBe(100_000);
   });
 
+  // Pre-deploy walk of 11-27: a refused "Raise it" card kept its old figures and was refused every
+  // time, after Insurance refreshed them and the next day too, with no control to open it again.
+  it("replaces a Raise it card whose figures moved with a card for the current ones", async () => {
+    const me = await person();
+    await refreshSavings(me.userId, o());
+    await runJaneAgent(me.userId, { client, now: NOW, trigger: "open" });
+    const cards = async () =>
+      (await client.janeMessage.findMany({ where: { userId: me.userId } })).filter(
+        (m) => parseRefs(m.refs).savingId,
+      );
+    const [old] = await cards();
+    const oldRefs = parseRefs(old.refs);
+    await client.insurancePolicy.update({
+      where: { id: me.policyId },
+      data: { premiumCents: 19_000 },
+    });
+    // Nothing moved on the offer yet: the card stays.
+    expect(await closeAnsweredElsewhere(me.userId, o())).toBe(0);
+    await refreshSavings(me.userId, o());
+    await closeAnsweredElsewhere(me.userId, o());
+    expect((await client.janeMessage.findUniqueOrThrow({ where: { id: old.id } })).status).toBe(
+      "answered",
+    );
+    await runJaneAgent(me.userId, {
+      client,
+      now: new Date(NOW.getTime() + 86_400_000),
+      trigger: "open",
+    });
+    const open = (await cards()).filter((m) => m.status === "open");
+    expect(open).toHaveLength(1);
+    const fresh = parseRefs(open[0].refs);
+    expect(fresh.savingId).toBe(oldRefs.savingId);
+    expect(fresh.savingTerms).not.toEqual(oldRefs.savingTerms);
+    // Its tap applies: the card shows what the offer says now.
+    const shown = savingToken(fresh.savingId!, fresh.savingTerms![fresh.savingId!]!);
+    const { message } = await takeChatAction(me.userId, open[0].id, "saving.apply", {
+      ...o(),
+      shown,
+    });
+    expect(message.status).toBe("answered");
+  });
+
   it("Do all of these applies the offers the card listed, and Not now dismisses only those", async () => {
     const me = await person();
     await refreshSavings(me.userId, o());
