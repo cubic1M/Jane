@@ -1,5 +1,6 @@
 import type { sendEmail } from "@/lib/email";
 import { log } from "@/lib/log";
+import { isTrialEmail } from "@/lib/trial-ids";
 
 type Mail = Parameters<typeof sendEmail>[0];
 
@@ -12,8 +13,11 @@ export async function sendToAny(
   message: Omit<Mail, "to"> | ((address: string) => Omit<Mail, "to">),
   send: typeof sendEmail,
 ): Promise<number> {
+  // A sample person's address is never mailed (sendEmail skips it and says nothing): it neither
+  // counts as a delivery nor keeps a claim.
+  const real = to.filter((address) => !isTrialEmail(address));
   const results = await Promise.allSettled(
-    to.map((address) =>
+    real.map((address) =>
       send({ ...(typeof message === "function" ? message(address) : message), to: address }),
     ),
   );

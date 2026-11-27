@@ -180,7 +180,9 @@ export async function sendOpsDigest({
       to,
       {
         subject: `Jane, last 24 hours: ${lines[0]}${counts.length > 1 ? ` and ${counts.length - 1} more` : ""}`,
-        text: ["In the last 24 hours:", ...lines.map((l) => `- ${l}`), `Details: ${link}`].join("\n"),
+        text: ["In the last 24 hours:", ...lines.map((l) => `- ${l}`), `Details: ${link}`].join(
+          "\n",
+        ),
         html: `<p>In the last 24 hours:</p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p>Details: <a href="${escapeHtml(link)}">/admin/health</a></p>`,
       },
       send,

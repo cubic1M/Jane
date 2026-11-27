@@ -184,12 +184,17 @@ describe.runIf(url)("reverse matching", () => {
       { type: "idle_cash", evidence: { excessCents: 2_000_000, assumedCurrentRateBps: 50 } },
     ]);
     await offer(BANK, { valueBps: 610 }, { status: "live" });
-    const scan = vi.fn(async () => {});
+    const scan = vi.fn(async (_userId: string) => {});
 
     // Someone else's run holds this person: not scanned, not marked matched.
-    const held = await withPersonLock("offer-rescan", idle, async () => {
-      return matchOffers({ client, now: NOW, scan });
-    }, { client });
+    const held = await withPersonLock(
+      "offer-rescan",
+      idle,
+      async () => {
+        return matchOffers({ client, now: NOW, scan });
+      },
+      { client },
+    );
     expect(held.ran && held.value.matched).toBe(0);
     expect(scan.mock.calls.map(([id]) => id as string)).not.toContain(idle);
 

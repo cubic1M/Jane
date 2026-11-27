@@ -207,7 +207,10 @@ export async function recordArrivals(
       });
     },
     { client, wait: true },
-  )) as { ran: true; value: { id: string; findingId: string; notice: Notice; latencyMs: number }[] };
+  )) as {
+    ran: true;
+    value: { id: string; findingId: string; notice: Notice; latencyMs: number }[];
+  };
   for (const row of inserted) {
     log.info("live_finding", { trigger, latencyMs: row.latencyMs, notice: row.notice });
   }

@@ -180,9 +180,14 @@ export async function matchOffers({
     try {
       // One runner a person: two overlapping runs (a slow one, a manual one) never scan the same
       // person at once, and the one that finds it taken leaves the person for the next run.
-      const locked = await withPersonLock("offer-rescan", userId, () => scan(userId, { client, now }), {
-        client,
-      });
+      const locked = await withPersonLock(
+        "offer-rescan",
+        userId,
+        () => scan(userId, { client, now }),
+        {
+          client,
+        },
+      );
       if (!locked.ran) {
         busy += 1;
         continue;

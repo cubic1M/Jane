@@ -78,14 +78,21 @@ describe.runIf(url)("switches in the store", () => {
     await set("site", true, "high_bar");
     vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
     try {
-      // A client whose read never comes back.
-      const stalled = { opsSwitch: { findMany: () => new Promise(() => {}) } } as never;
+      // A client whose read comes back only later (here: after the newer read), saying no switch is on.
+      let answerLate: (rows: unknown[]) => void = () => {};
+      const stalled = {
+        opsSwitch: { findMany: () => new Promise((resolve) => (answerLate = resolve)) },
+      } as never;
       const first = freshSwitches({ client: stalled });
       await vi.advanceTimersByTimeAsync(OPS_SWITCH_READ_DEADLINE_MS + 100);
       await first;
       // Past the retry time, the real client reads and the stop is in force.
       await vi.advanceTimersByTimeAsync(OPS_SWITCH_CACHE_MS);
       await freshSwitches({ client });
+      expect(siteStoppedFor("/home")).toBe(true);
+      // The abandoned read answers at last: it must not lift what the newer read published.
+      answerLate([]);
+      await vi.advanceTimersByTimeAsync(10);
     } finally {
       vi.useRealTimers();
     }
