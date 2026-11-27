@@ -74,6 +74,7 @@ import {
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { loadToldPartner } from "@/lib/filing-status";
 import { yearInterest } from "@/planning/lender-interest";
 import { monthsCovered, reachOf } from "@/profile/build";
 import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
@@ -164,6 +165,7 @@ function profileAssumptions({
   profile,
   view,
   guessed,
+  filingAssumption,
   state,
   residency,
   elapsed,
@@ -173,6 +175,7 @@ function profileAssumptions({
   profile: Awaited<ReturnType<typeof loadWorkingProfile>>["profile"];
   view: Awaited<ReturnType<typeof loadWorkingProfile>>["view"];
   guessed: FilingRead["guess"];
+  filingAssumption: FilingRead["assumption"];
   state: string | null;
   residency: ResidencyView;
   elapsed: number;
@@ -184,7 +187,7 @@ function profileAssumptions({
     out.push(
       guessed
         ? `You haven't told me how you file. I see ${guessed.why}, so I've estimated as married filing jointly; tell me if that's wrong.`
-        : "You haven't told me how you file, so I've estimated as single.",
+        : (filingAssumption ?? "You haven't told me how you file, so I've estimated as single."),
     );
   }
   if (state && view.state.status !== "yours") {
@@ -708,21 +711,37 @@ async function loadTaxEstimateFrom(
       : 0;
   };
 
-  // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
-  // What they said arrives settled in the profile (told fact against profile row, the newer wins);
-  // without it, filingStatusFor reads the same signs as before (src/lib/filing-status.ts).
+  // Taxes QA: a couple's signs (a joint account, two employers, or their word that they have a
+  // partner) mean married filing jointly; otherwise single, and head of household is never guessed
+  // (T8b, filingStatusFor). What they said arrives settled in the profile (told fact against profile
+  // row, the newer wins); the cards read the same guess from the profile's facts.
   const filingRead = filingStatusFor(
     {},
     profile.filingStatus
       ? { filingStatus: profile.filingStatus, answered: ["filingStatus"], at: null }
       : null,
-    { jointAccounts, payrollNames: payingTogether(paychecks) },
+    {
+      jointAccounts,
+      payrollNames: payingTogether(paychecks),
+      partner: await loadToldPartner(userId, { client }),
+      children: profile.childrenUnder17 + profile.otherDependants > 0,
+    },
   );
   const guessed = filingRead.guess;
   const filingStatus: FilingStatus = filingRead.status;
   const state = profile.state ?? view.state.value;
   assumptions.push(
-    ...profileAssumptions({ profile, view, guessed, state, residency, elapsed, firstSeen, year }),
+    ...profileAssumptions({
+      profile,
+      view,
+      guessed,
+      filingAssumption: filingRead.assumption,
+      state,
+      residency,
+      elapsed,
+      firstSeen,
+      year,
+    }),
   );
 
   // The age they told Jane (on the investor profile), at the year's end.

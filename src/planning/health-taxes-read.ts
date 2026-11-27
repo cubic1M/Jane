@@ -28,6 +28,7 @@ import {
   type PtcCheck,
 } from "./health-taxes";
 import { marginalRateOf } from "./tax-estimate";
+import { filingStatusOf } from "./student-tax";
 
 // The tax side of health insurance (spec step 269), read from a person's profile and the rows
 // behind it. Pure. The detectors (src/detectors/taxes.ts), the chat and /taxes/health all use
@@ -82,8 +83,11 @@ export type HealthTaxes = {
   };
 };
 
-const statusOf = (household: unknown) =>
-  household === "couple" || household === "family" ? "married_joint" : "single";
+// How they file, as every other tax figure reads it (filingStatusOf: what they said, else married
+// filing jointly on a sign of a partner, else single). This reading knows only joint and single, so
+// the others file as single. The household fact says how many people (below), not how they file.
+const statusOf = (f: Profile["facts"]): "single" | "married_joint" =>
+  filingStatusOf(f) === "married_joint" ? "married_joint" : "single";
 
 export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTaxes {
   const f = profile.facts;
@@ -108,7 +112,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
           ? 1
           : T.netToGross;
   const pace = incomePace(incomeByMonth(data.transactions, year, share), month);
-  const status = statusOf(f.household.value);
+  const status = statusOf(f);
   const adults = status === "married_joint" ? 2 : 1;
   const children = f.household.value === "family" ? T.familyChildren : 0;
   const size = adults + children;

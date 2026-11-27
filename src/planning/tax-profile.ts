@@ -347,44 +347,64 @@ export function payingTogether(
     .map((t) => t.description);
 }
 
-// Taxes QA (2026-10-22): before the person says how they file, a couple's taxes were estimated
-// as single, which overstated them and drove a W-4 change to withhold more. A joint account or
-// two employers' paychecks (the same signal the profile uses for a couple, step 253) mean they
-// are estimated as married filing jointly, said as an assumption. Null: no such sign.
+// The signs of a couple in the accounts (taxes QA 2026-10-22; debugger 11-03, 11-05): a joint account,
+// or two employers' paychecks over the same time. Empty: no such sign. The one place that reads them:
+// the estimate calls it with the accounts and paychecks it loaded, the profile builder (for the
+// cards) with the same two.
+export function coupleSigns(input: {
+  jointAccounts: number;
+  payrollNames: readonly string[];
+}): string[] {
+  const employers = new Set(input.payrollNames.map(employerOfPayroll));
+  return [
+    input.jointAccounts > 0 ? "a joint account" : null,
+    employers.size >= 2 ? "two employers' paychecks" : null,
+  ].filter((s): s is string => s !== null);
+}
+
+// The estimate's sign of a couple as one answer (married filing jointly and why), null when there
+// is none: coupleSigns, said as the Taxes page words it.
 export function guessFilingStatus(input: {
   jointAccounts: number;
   payrollNames: readonly string[];
 }): { status: "married_joint"; why: string } | null {
-  const employers = new Set(input.payrollNames.map(employerOfPayroll));
-  const signs = [
-    input.jointAccounts > 0 ? "a joint account" : null,
-    employers.size >= 2 ? "two employers' paychecks" : null,
-  ].filter((s): s is string => s !== null);
-  if (signs.length === 0) return null;
-  return { status: "married_joint", why: signs.join(" and ") };
+  const signs = coupleSigns(input);
+  return signs.length === 0 ? null : { status: "married_joint", why: signs.join(" and ") };
 }
 
-// One filing status (tax program T8). The question card's answer (a told fact) and the tax
+// One filing status (tax program T8, T8b). The question card's answer (a told fact) and the tax
 // profile's own row used to be read by different code, so a card, the Taxes page, the estimate and
 // the chat could each say something else. Every reader goes through here:
 //   1. what the person told Jane. When the two stores hold different answers, the newer one is
 //      the person's last word; with no time on one of them, or the same instant, the told fact wins;
-//   2. else the sign of a couple that the estimate has always used (guessFilingStatus);
-//   3. else the household Jane reads from the payroll names (a couple or a family);
-//   4. else single.
+//   2. else, for a person who has said nothing, ONE guess (T8b): married filing jointly only on
+//      evidence of a partner (a joint account, two employers paying together, or the person's own
+//      word that they have a partner); otherwise single.
+// Head of household is never guessed. It turns on facts Jane cannot see: unmarried (or considered
+// unmarried) on the last day of the year, paid more than half the cost of keeping up the home, and
+// a qualifying person who lived there more than half the year (IRS Pub. 501 (2025), "Head of
+// Household", read 2026-11-27). A person it could fit (children counted, no sign of a partner) is
+// priced as single, and the read says so (`assumption`) so the figure and the card can carry it.
 // Times are instants, never days: an answer at 3pm and one at 7pm Pacific are on either side of UTC
 // midnight and still in order.
 
-export type FilingSource = "told" | "profile" | "guess" | "household" | "default";
+export type FilingSource = "told" | "profile" | "guess" | "default";
 
 export type FilingRead = {
   status: FilingStatus;
   source: FilingSource;
   // The sign of a couple, when that is what the status rests on (the estimate says it).
-  guess: ReturnType<typeof guessFilingStatus>;
+  guess: { status: "married_joint"; why: string } | null;
   // When two answers disagreed: the one that lost.
   replaced: FilingStatus | null;
+  // What Jane assumed, in fact wording, when the person has not said how they file and head of
+  // household could fit (children counted, no sign of a partner). Null otherwise.
+  assumption: string | null;
 };
+
+// Said wherever the single guess stands beside children (the estimate, the cards, the chat).
+export const FILING_SINGLE_ASSUMPTION =
+  "I've counted you as filing single; if you're unmarried and support a child, head of household may apply and the figure would change. Tell me how you file.";
 
 // The tax_profiles row, as far as filing status goes. `at`: when the person answered it.
 export type StoredFiling = {
@@ -394,10 +414,16 @@ export type StoredFiling = {
 };
 
 export type FilingSignals = {
+  // The estimate's raw signs: joint accounts counted, and the payroll lines paying together.
   jointAccounts?: number;
   payrollNames?: readonly string[];
-  household?: unknown;
-  earners?: unknown;
+  // Signs already worked out from the same two (a card reads them from the profile's partner fact).
+  signs?: readonly string[];
+  // The person's own word about a partner: true (has one), false (does not), null or absent (not said).
+  // False takes the signs from the accounts back; true is itself the evidence.
+  partner?: boolean | null;
+  // Children are counted for the person (told, or seen): the only thing head of household could fit.
+  children?: boolean;
 };
 
 type ToldFiling = Record<string, { value: unknown; at?: Date | null } | undefined>;
@@ -430,26 +456,30 @@ export function filingStatusFor(
       source: useProfile ? "profile" : "told",
       guess: null,
       replaced: lost !== null && lost !== status ? lost : null,
+      assumption: null,
     };
   }
-  const guess = guessFilingStatus({
-    jointAccounts: signals.jointAccounts ?? 0,
-    payrollNames: signals.payrollNames ?? [],
-  });
-  if (guess) return { status: guess.status, source: "guess", guess, replaced: null };
-  // Before they say how they file: a couple, or a family with two earners, files jointly; one
-  // earner with children is a head of household (debugger 11-06: a single parent was measured
-  // against the joint limit and told "$2,000 each").
-  const { household, earners } = signals;
-  if (household === "couple") {
-    return { status: "married_joint", source: "household", guess: null, replaced: null };
+  const partner = signals.partner ?? null;
+  const signs =
+    partner === false
+      ? []
+      : [
+          ...(partner === true ? ["what you told me about your partner"] : []),
+          ...(signals.signs ?? []),
+          ...coupleSigns({
+            jointAccounts: signals.jointAccounts ?? 0,
+            payrollNames: signals.payrollNames ?? [],
+          }),
+        ];
+  if (signs.length > 0) {
+    const guess = { status: "married_joint" as const, why: [...new Set(signs)].join(" and ") };
+    return { status: guess.status, source: "guess", guess, replaced: null, assumption: null };
   }
-  if (household === "family") {
-    // Told how many earn, one earner with children is a head of household (the Saver's Credit card).
-    // Not told, a family files jointly (the student cards, pinned by taxes-reported-filing-status).
-    const status =
-      typeof earners === "number" && earners < 2 ? "head_of_household" : "married_joint";
-    return { status, source: "household", guess: null, replaced: null };
-  }
-  return { status: "single", source: "default", guess: null, replaced: null };
+  return {
+    status: "single",
+    source: "default",
+    guess: null,
+    replaced: null,
+    assumption: signals.children === true ? FILING_SINGLE_ASSUMPTION : null,
+  };
 }

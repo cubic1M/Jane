@@ -19,6 +19,7 @@ import { studentMoney, sumCents } from "@/planning/student-money";
 import {
   dependentOf,
   federalTaxOf,
+  filingNoteOf,
   filingStatusOf,
   lawYearOf,
   onStudentVisa,
@@ -133,7 +134,7 @@ const partYearWithholding: Detector = {
         },
       ]),
       urgency: "soon",
-      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year and your W-4 is the default one (I see your take-home deposits, not what was withheld; a pay stub shows the federal tax taken). It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}`,
+      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year and your W-4 is the default one (I see your take-home deposits, not what was withheld; a pay stub shows the federal tax taken). It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 15-T", href: SOURCES.pub15t.url }],
     });
@@ -215,7 +216,7 @@ const twoJobs: Detector = {
         },
       ]),
       urgency: "later",
-      why: `Paychecks come from ${nice(employerName(a.pay[0].description))} and ${nice(employerName(b.pay[0].description))} (two jobs, or two earners on one joint return): about ${formatCents(a.year)} and ${formatCents(b.year)} a year before anything is taken out. Each employer's withholding counts the whole standard amount everyone gets, so together, if neither W-4 allows for the other, they withhold about ${formatCents(withheld)} a year against ${formatCents(tax)} of tax on ${formatCents(year)}: about ${formatCents(short)} short at filing. ${W4.form}'s Step 2 is for two jobs at once, or a joint return where both work: with only two jobs, its box checked on both W-4s splits that amount between them (IRS). ${penaltyRule(facts.owed_tax_last_year.value, false, short)}`,
+      why: `Paychecks come from ${nice(employerName(a.pay[0].description))} and ${nice(employerName(b.pay[0].description))} (two jobs, or two earners on one joint return): about ${formatCents(a.year)} and ${formatCents(b.year)} a year before anything is taken out. Each employer's withholding counts the whole standard amount everyone gets, so together, if neither W-4 allows for the other, they withhold about ${formatCents(withheld)} a year against ${formatCents(tax)} of tax on ${formatCents(year)}: about ${formatCents(short)} short at filing. ${W4.form}'s Step 2 is for two jobs at once, or a joint return where both work: with only two jobs, its box checked on both W-4s splits that amount between them (IRS). ${penaltyRule(facts.owed_tax_last_year.value, false, short)}${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
     });
   },
@@ -279,7 +280,7 @@ const extensionNotToPay: Detector = {
         { percent: 60, reason: "the tax is figured on these deposits alone, before credits" },
       ]),
       urgency: days <= 14 ? "now" : "soon",
-      why: `You received ${formatCents(received)} in ${year} that nothing was withheld from (gig or contract pay, or school money that isn't pay). The ${year} return is due ${long(due)}, ${days} day${days === 1 ? "" : "s"} from now. ${FILING.federalExtensionForm} gives until ${long(extended)} to file, and California gives the same six months without a form. Neither is more time to pay (the IRS's and FTB's extension pages): the April date stays, and FTB charges penalties and interest after it. On these deposits alone the federal income and self-employment tax is about ${formatCents(tax)}.`,
+      why: `You received ${formatCents(received)} in ${year} that nothing was withheld from (gig or contract pay, or school money that isn't pay). The ${year} return is due ${long(due)}, ${days} day${days === 1 ? "" : "s"} from now. ${FILING.federalExtensionForm} gives until ${long(extended)} to file, and California gives the same six months without a form. Neither is more time to pay (the IRS's and FTB's extension pages): the April date stays, and FTB charges penalties and interest after it. On these deposits alone the federal income and self-employment tax is about ${formatCents(tax)}.${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
     });
   },

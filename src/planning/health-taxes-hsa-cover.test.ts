@@ -8,18 +8,20 @@ import { readHealthTaxes } from "./health-taxes-read";
 // known. The cover type isn't an input, so the family limit stays the assumption but the card
 // says so and names the self-only limit.
 describe("HSA limit when the cover type is not told", () => {
-  const read = (household: string) => {
+  // T8b: how they file is what they said, else a sign of a partner, else single (filingStatusOf); the
+  // household fact says how many people, not how they file.
+  const read = (filing: "single" | "married_joint") => {
     const d = inputFor("equity");
     const profile = buildProfile(d);
     const facts = {
       ...profile.facts,
-      household: { ...profile.facts.household, value: household },
+      filing_status: { ...profile.facts.filing_status, value: filing, source: "told" as const },
     };
     return readHealthTaxes({ ...profile, facts }, d).hsa;
   };
 
   it("marks a married filer's family limit as assumed and carries the self-only limit", () => {
-    const v = read("couple");
+    const v = read("married_joint");
     expect(v.family).toBe(true);
     expect(v.coverageAssumed).toBe(true);
     expect(v.selfLimitCents).toBeLessThan(v.limitCents);

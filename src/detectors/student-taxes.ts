@@ -14,6 +14,7 @@ import {
   dependentOf,
   federalTaxOf,
   lawYearOf,
+  filingNoteOf,
   filingStatusOf,
   nextEstimatedDate,
   onStudentVisa,
@@ -145,7 +146,7 @@ const stipendTax: Detector = {
         facts.owed_tax_last_year.value === "no" || !scheduled
           ? "later"
           : urgencyForEstimated(profile.today),
-      why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${rule} This is arithmetic on your deposits, not tax advice.`,
+      why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${rule} This is arithmetic on your deposits, not tax advice.${filingNoteOf(facts)}`,
       action: { label: "See your tax estimate", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });

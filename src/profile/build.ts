@@ -31,6 +31,7 @@ import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
+import { coupleSigns, payingTogether } from "@/planning/tax-profile";
 import { addDays } from "@/lib/dates";
 import { employerName } from "./employer-name";
 import { stateOfPayments } from "./home-state";
@@ -640,11 +641,14 @@ function incomeFacts(b: Builder) {
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
   const paySchedules = bySchedule && income.length > 0 ? onSchedule.schedules : [];
-  return { income, earners, pattern, monthlyIncome, paySchedules };
+  return { income, salary, earners, pattern, monthlyIncome, paySchedules };
 }
 
 // Household and home.
-function householdFacts(b: Builder, { income, earners }: { income: ProfileTx[]; earners: number }) {
+function householdFacts(
+  b: Builder,
+  { income, salary, earners }: { income: ProfileTx[]; salary: ProfileTx[]; earners: number },
+) {
   const { txs, facts, count, set, unknown } = b;
   const { accounts, liabilities } = b.input;
   const kids = kidsReading(txs);
@@ -658,6 +662,16 @@ function householdFacts(b: Builder, { income, earners }: { income: ProfileTx[]; 
     hasChildren ? kids.what : "payroll names",
     hasChildren ? kids.matches : earners,
   );
+
+  // A partner: the signs the tax estimate takes as a couple (a joint account, two employers paying
+  // together), read by the same function (coupleSigns), so a card and the estimate file the person
+  // alike. What the person says about a partner wins (set() takes a told answer).
+  const signs = coupleSigns({
+    jointAccounts: accounts.filter((a) => /joint/i.test(a.name ?? "")).length,
+    payrollNames: payingTogether(salary),
+  });
+  if (signs.length > 0) set("has_partner", true, "seen", signs.join(" and "), signs.length);
+  else unknown("has_partner");
 
   const mortgageAccounts = accounts.filter((a) => a.subtype === "mortgage");
   const mortgageLiab = liabilities.find((l) => l.kind === "mortgage");
@@ -1080,12 +1094,19 @@ export function buildProfile(input: ProfileInput): Profile {
   };
 
   const b: Builder = { input, txs, months, facts, count, set, unknown };
-  const { income, earners, pattern, monthlyIncome: detectedIncome, paySchedules } = incomeFacts(b);
+  const {
+    income,
+    salary,
+    earners,
+    pattern,
+    monthlyIncome: detectedIncome,
+    paySchedules,
+  } = incomeFacts(b);
   // The income the person sees (what they told, which wins) is the one debt and life stage are
   // judged on, not the detected one beside it.
   const shown = facts.monthly_income.value;
   const monthlyIncome = typeof shown === "number" ? shown : detectedIncome;
-  const { hasChildren, mortgageLiab } = householdFacts(b, { income, earners });
+  const { hasChildren, mortgageLiab } = householdFacts(b, { income, salary, earners });
   lifeFacts(b);
   debtFacts(b, { monthlyIncome });
   accountFacts(b);

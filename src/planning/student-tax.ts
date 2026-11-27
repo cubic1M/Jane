@@ -10,29 +10,45 @@ import { monthsBetweenLines } from "@/detection/units";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf, standardDeductionFor } from "./tax-estimate";
-import { filingStatusFor } from "./tax-profile";
+import { filingStatusFor, type FilingRead } from "./tax-profile";
 
 // The arithmetic the student tax cards share (suggest-taxes, 11-18), from the published rules in
 // src/config/student-taxes.ts and ./tax-rates.ts. Pure.
 
-type Facts = Record<string, { value: unknown }>;
+type Facts = Record<string, { value: unknown; source?: string }>;
 
 // How they file, as every reader reads it (filingStatusFor): what they said (the loader has
-// already settled the question card against the tax profile), else the household's signs.
-export function filingStatusOf(facts: Facts): FilingStatus {
-  return filingStatusFor(facts, null, { household: facts.household?.value }).status;
+// already settled the question card against the tax profile); else the one guess (T8b): married
+// filing jointly on a sign of a partner, otherwise single, never head of household. The profile's
+// facts say the person's partner (has_partner: told, or seen from a joint account or two employers
+// paying together; a told household of a couple or of one person says it too) and children.
+export function filingReadOf(facts: Facts): FilingRead {
+  const partner = facts.has_partner;
+  const household = facts.household;
+  const told = (f: { value: unknown; source?: string } | undefined) => f?.source === "told";
+  const toldPartner =
+    told(partner) && typeof partner?.value === "boolean"
+      ? partner.value
+      : told(household) && household?.value === "couple"
+        ? true
+        : told(household) && household?.value === "single"
+          ? false
+          : null;
+  return filingStatusFor(facts, null, {
+    partner: toldPartner,
+    signs: partner?.value === true && !told(partner) ? ["signs of a partner in your accounts"] : [],
+    children: facts.has_children?.value === true,
+  });
 }
 
-// The same, for a card that knows how many people in the household earn: one earner with
-// children is a head of household (the Saver's Credit; debugger 11-06).
-export function filingStatusWithEarners(facts: Facts): FilingStatus {
-  // An earner count that is not known reads as one earner, as the Saver's Credit has always read it.
-  const earners = facts.earners?.value;
-  return filingStatusFor(facts, null, {
-    household: facts.household?.value,
-    earners: typeof earners === "number" ? earners : 1,
-  }).status;
-}
+export const filingStatusOf = (facts: Facts): FilingStatus => filingReadOf(facts).status;
+
+// The sentence a card carries when it priced the person as single beside children: head of household
+// may apply and would change the figure. Empty when there is nothing to assume.
+export const filingNoteOf = (facts: Facts): string => {
+  const note = filingReadOf(facts).assumption;
+  return note ? ` ${note}` : "";
+};
 
 // What they said about being someone's dependent: "yes", "no", or null for not said or not sure.
 export function dependentOf(facts: Facts): "yes" | "no" | null {
