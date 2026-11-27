@@ -70,6 +70,9 @@ export type Child = {
   ageUnknown?: true;
   hasSsn: boolean;
   monthsLivedWithYou: number;
+  // Who this child is on the household record (src/lib/tax-facts/): written once, never changed,
+  // so removing another child never hands this one's facts to someone else.
+  id?: string;
 };
 
 export function childCreditRules(c: Child): string[] {
@@ -96,16 +99,43 @@ export const CARE_AGES_UNKNOWN =
   "May be open to you: care counts for a child under 13, and I don't have your children's ages yet. Add them under family details.";
 
 // What is recorded on the family form, ignoring anything malformed.
+const isChild = (c: unknown): c is Child =>
+  typeof c === "object" &&
+  c !== null &&
+  Number.isInteger((c as Child).ageAtYearEnd) &&
+  typeof (c as Child).hasSsn === "boolean" &&
+  Number.isInteger((c as Child).monthsLivedWithYou);
+
 export function parseChildren(value: unknown): Child[] {
   if (!Array.isArray(value)) return [];
-  return value.filter(
-    (c): c is Child =>
-      typeof c === "object" &&
-      c !== null &&
-      Number.isInteger((c as Child).ageAtYearEnd) &&
-      typeof (c as Child).hasSsn === "boolean" &&
-      Number.isInteger((c as Child).monthsLivedWithYou),
-  );
+  return value.filter(isChild);
+}
+
+// A child's id on the household record: "c_" and twelve hex digits.
+export const CHILD_ID = /^c_[0-9a-f]{12}$/;
+
+// The stored children with an id on every child that has none (and a new one for an id used twice),
+// every other byte as it was. `changed` says whether anything was added. Pure: the ids come in.
+export function withChildIds(
+  value: unknown,
+  newId: () => string,
+): { children: unknown[]; changed: boolean } {
+  if (!Array.isArray(value)) return { children: [], changed: false };
+  const seen = new Set<string>();
+  let changed = false;
+  const children = value.map((c) => {
+    if (!isChild(c)) return c;
+    if (typeof c.id === "string" && CHILD_ID.test(c.id) && !seen.has(c.id)) {
+      seen.add(c.id);
+      return c;
+    }
+    let id = newId();
+    while (seen.has(id)) id = newId();
+    seen.add(id);
+    changed = true;
+    return { ...c, id };
+  });
+  return { children, changed };
 }
 
 export function careRules(input: {

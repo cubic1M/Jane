@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { TaxFactKey } from "@/config/tax-facts";
-import { foundRows, legacyRows, type LegacySources } from "./legacy";
+import { withChildIds } from "@/planning/family-taxes";
+import {
+  foundRows,
+  householdRows,
+  isProfileMember,
+  legacyRows,
+  type LegacySources,
+} from "./legacy";
 
 const base: LegacySources = {
   taxYear: 2026,
@@ -103,7 +110,9 @@ describe("copying the older stores into the household record", () => {
       state: null,
       childrenUnder17: 1,
       otherDependants: 0,
-      familyChildren: [{ ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 }],
+      familyChildren: [
+        { id: "c_0123456789ab", ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 },
+      ],
       spouseWagesCents: 4_000_000,
       studentYearsBefore: 1,
       studentHalfTime: true,
@@ -111,7 +120,7 @@ describe("copying the older stores into the household record", () => {
     const years = [2025, 2026, 2027].map((taxYear) => legacyRows({ ...base, taxYear, profile }));
     // The family form describes the year being worked on (2026): a child of 9 there is born in 2017.
     for (const rows of years) {
-      expect(valueOf(rows, "member.birth_date", "child:legacy-1")[0]).toMatchObject({
+      expect(valueOf(rows, "member.birth_date", "child:c_0123456789ab")[0]).toMatchObject({
         value: "2017",
       });
     }
@@ -139,29 +148,31 @@ describe("copying the older stores into the household record", () => {
         state: null,
         childrenUnder17: 2,
         otherDependants: 1,
-        familyChildren: [{ ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 }],
+        familyChildren: [
+          { id: "c_0123456789ab", ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 },
+        ],
         spouseWagesCents: null,
         studentYearsBefore: null,
         studentHalfTime: null,
       },
     });
     expect(rows.members).toEqual([
-      { memberKey: "child:legacy-1", label: "Child 1", relationship: "child" },
-      { memberKey: "child:legacy-2", label: "Child 2", relationship: "child" },
-      { memberKey: "relative:legacy-1", label: "Dependant 1", relationship: "other_relative" },
+      { memberKey: "child:c_0123456789ab", label: "Child 1", relationship: "child" },
+      { memberKey: "child:count-2", label: "Child 2", relationship: "child" },
+      { memberKey: "relative:count-1", label: "Dependant 1", relationship: "other_relative" },
     ]);
-    expect(valueOf(rows, "member.birth_date", "child:legacy-1")[0]).toMatchObject({
+    expect(valueOf(rows, "member.birth_date", "child:c_0123456789ab")[0]).toMatchObject({
       value: "2017",
       status: "inferred",
     });
-    expect(valueOf(rows, "member.months_lived_with_you", "child:legacy-1")[0]).toMatchObject({
+    expect(valueOf(rows, "member.months_lived_with_you", "child:c_0123456789ab")[0]).toMatchObject({
       value: 12,
     });
-    expect(valueOf(rows, "member.ssn_valid_for_work", "child:legacy-1")[0]).toMatchObject({
+    expect(valueOf(rows, "member.ssn_valid_for_work", "child:c_0123456789ab")[0]).toMatchObject({
       value: "yes",
     });
     // The second child has no details: nothing is made up for them.
-    expect(valueOf(rows, "member.birth_date", "child:legacy-2")).toEqual([]);
+    expect(valueOf(rows, "member.birth_date", "child:count-2")).toEqual([]);
     expect(valueOf(rows, "household.dependants_stated")[0]).toMatchObject({ value: true });
   });
 
@@ -174,7 +185,13 @@ describe("copying the older stores into the household record", () => {
         childrenUnder17: 0,
         otherDependants: 0,
         familyChildren: [
-          { ageAtYearEnd: 5, ageUnknown: true, hasSsn: false, monthsLivedWithYou: 7 },
+          {
+            id: "c_0123456789ab",
+            ageAtYearEnd: 5,
+            ageUnknown: true,
+            hasSsn: false,
+            monthsLivedWithYou: 7,
+          },
         ],
         spouseWagesCents: null,
         studentYearsBefore: null,
@@ -182,8 +199,8 @@ describe("copying the older stores into the household record", () => {
       },
     });
     expect(rows.members).toHaveLength(1);
-    expect(valueOf(rows, "member.birth_date", "child:legacy-1")).toEqual([]);
-    expect(valueOf(rows, "member.ssn_valid_for_work", "child:legacy-1")[0]).toMatchObject({
+    expect(valueOf(rows, "member.birth_date", "child:c_0123456789ab")).toEqual([]);
+    expect(valueOf(rows, "member.ssn_valid_for_work", "child:c_0123456789ab")[0]).toMatchObject({
       value: "no",
     });
   });
@@ -196,7 +213,9 @@ describe("copying the older stores into the household record", () => {
         state: null,
         childrenUnder17: 4,
         otherDependants: 2,
-        familyChildren: [{ ageAtYearEnd: 3, hasSsn: true, monthsLivedWithYou: 12 }],
+        familyChildren: [
+          { id: "c_0123456789ab", ageAtYearEnd: 3, hasSsn: true, monthsLivedWithYou: 12 },
+        ],
         spouseWagesCents: null,
         studentYearsBefore: null,
         studentHalfTime: null,
@@ -204,7 +223,7 @@ describe("copying the older stores into the household record", () => {
     });
     // The counts in the row are not the person's answer; the child they described is.
     expect(rows.members).toEqual([
-      { memberKey: "child:legacy-1", label: "Child 1", relationship: "child" },
+      { memberKey: "child:c_0123456789ab", label: "Child 1", relationship: "child" },
     ]);
   });
 
@@ -252,5 +271,84 @@ describe("what Jane found in the accounts", () => {
       expect.objectContaining({ key: "home.state", value: "WA", status: "inferred" }),
     ]);
     expect(rows.members.map((m) => m.relationship)).toEqual(["child", "other_relative"]);
+  });
+});
+
+describe("who a member of the household is", () => {
+  const kid = (id: string | undefined, age: number) => ({
+    ...(id ? { id } : {}),
+    ageAtYearEnd: age,
+    hasSsn: true,
+    monthsLivedWithYou: 12,
+  });
+  const keysOf = (familyChildren: unknown, childrenUnder17 = 0) =>
+    householdRows(
+      { childrenUnder17, otherDependants: 0, familyChildren },
+      2026,
+      "2026-11-27",
+    ).members.map((m) => m.memberKey);
+
+  it("keys a child by their id, so removing the first never gives its facts to the next", () => {
+    const a = kid("c_aaaaaaaaaaaa", 9);
+    const b = kid("c_bbbbbbbbbbbb", 4);
+    expect(keysOf([a, b])).toEqual(["child:c_aaaaaaaaaaaa", "child:c_bbbbbbbbbbbb"]);
+    expect(keysOf([b])).toEqual(["child:c_bbbbbbbbbbbb"]);
+    const withFacts = householdRows(
+      { childrenUnder17: 1, otherDependants: 0, familyChildren: [b] },
+      2026,
+      "2026-11-27",
+    );
+    expect(
+      withFacts.facts.filter((f) => f.key === "member.birth_date").map((f) => [f.member, f.value]),
+    ).toEqual([["child:c_bbbbbbbbbbbb", "2022"]]);
+  });
+
+  it("puts a child counted but not described after the described ones, and one with no id yet by place", () => {
+    expect(keysOf([kid("c_aaaaaaaaaaaa", 9)], 3)).toEqual([
+      "child:c_aaaaaaaaaaaa",
+      "child:count-2",
+      "child:count-3",
+    ]);
+    expect(keysOf([kid(undefined, 9)])).toEqual(["child:pos-1"]);
+  });
+
+  it("knows which keys the profile made, and no other", () => {
+    for (const key of ["child:c_0123456789ab", "child:count-2", "child:pos-1", "relative:count-1"])
+      expect(isProfileMember(key)).toBe(true);
+    for (const key of ["child:found-1", "relative:added-1", "spouse", "child:legacy-1"])
+      expect(isProfileMember(key)).toBe(false);
+  });
+});
+
+describe("an id on each child of the family form", () => {
+  let n = 0;
+  const make = () => `c_${String(++n).padStart(12, "0")}`;
+  const child = { ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 };
+
+  it("adds an id to a child that has none and leaves every other byte as it was", () => {
+    const stored = [{ ...child, extra: 1 }, "not a child", { ...child, id: "c_aaaaaaaaaaaa" }];
+    const out = withChildIds(stored, make);
+    expect(out.changed).toBe(true);
+    expect(out.children).toEqual([
+      { ...child, extra: 1, id: "c_000000000001" },
+      "not a child",
+      { ...child, id: "c_aaaaaaaaaaaa" },
+    ]);
+  });
+
+  it("changes nothing when every child has its id, and gives a repeated id a new one", () => {
+    const same = [{ ...child, id: "c_aaaaaaaaaaaa" }];
+    expect(withChildIds(same, make)).toEqual({ children: same, changed: false });
+    const twice = withChildIds([same[0], { ...child, id: "c_aaaaaaaaaaaa" }], make);
+    expect(twice.changed).toBe(true);
+    expect((twice.children as { id: string }[]).map((c) => c.id)).toEqual([
+      "c_aaaaaaaaaaaa",
+      expect.stringMatching(/^c_0+\d$/),
+    ]);
+  });
+
+  it("reads anything that is not a list as no children", () => {
+    expect(withChildIds(null, make)).toEqual({ children: [], changed: false });
+    expect(withChildIds({ id: "c_x" }, make).children).toEqual([]);
   });
 });

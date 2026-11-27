@@ -108,11 +108,17 @@ describe.runIf(url)("the household fact record against a real database", () => {
     expect(v("spouse.earned_income").value).toBe(6_000_000);
     expect(v("person.birth_date")).toMatchObject({ status: "inferred" });
     expect(v("household.dependants_stated").value).toBe(true);
-    expect(v("member.birth_date", "child:legacy-1").value).toBe("2018");
+    const kid = (
+      (await client.taxProfile.findFirstOrThrow({ where: { userId: id } })).familyChildren as {
+        id: string;
+      }[]
+    )[0].id;
+    expect(kid).toMatch(/^c_[0-9a-f]{12}$/);
+    expect(v("member.birth_date", `child:${kid}`).value).toBe("2018");
     expect(first.members.map((m) => m.key)).toEqual([
-      "child:legacy-1",
-      "child:legacy-2",
-      "relative:legacy-1",
+      `child:${kid}`,
+      "child:count-2",
+      "relative:count-1",
     ]);
 
     const stored = await rowsOf(id);
@@ -345,13 +351,16 @@ describe.runIf(url)("the household fact record against a real database", () => {
       },
     });
     await told(id, "has_children", true);
-    vi.mocked(personTransaction).mockRejectedValueOnce(new Error("the database blinked"));
+    // Both tries of the copy fail (the read tries twice).
+    vi.mocked(personTransaction)
+      .mockRejectedValueOnce(new Error("the database blinked"))
+      .mockRejectedValueOnce(new Error("the database blinked"));
     const h = await loadTaxHousehold(id, YEAR, { client, now: NOW });
-    expect(h.members.map((m) => m.key).sort()).toEqual(["child:legacy-1", "relative:added-1"]);
+    expect(h.members.map((m) => m.key).sort()).toEqual(["child:count-1", "relative:added-1"]);
     // Nothing was stored, so the next read tries again and stores it.
     expect(await rowsOf(id)).toEqual([]);
     const again = await loadTaxHousehold(id, YEAR, { client, now: NOW });
-    expect(again.members.map((m) => m.key).sort()).toEqual(["child:legacy-1", "relative:added-1"]);
+    expect(again.members.map((m) => m.key).sort()).toEqual(["child:count-1", "relative:added-1"]);
     expect((await rowsOf(id)).length).toBeGreaterThan(0);
   });
 

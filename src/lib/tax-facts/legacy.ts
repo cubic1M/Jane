@@ -102,6 +102,34 @@ export function factsFromTold(name: string, a: ToldAnswer, taxYear: number): Tax
   }
 }
 
+// Who a member of the household is. A child the family form has an id for is `child:<id>`, an id
+// written once and never changed, so removing one child never hands its facts to the next. A child
+// the person only counted ("2 children under 17") has no details to keep apart, so is `child:count-N`
+// and the others `relative:count-N`. `child:pos-N` is a child whose id has not been written yet,
+// worked out in memory only. Never stored: `child:found-N`, what Jane saw in the accounts.
+export const isProfileMember = (key: string) =>
+  /^(child:(c_[0-9a-f]{12}|count-\d+|pos-\d+)|relative:count-\d+)$/.test(key);
+
+// The facts the older stores own until the record takes over: read-repair keeps these (and the
+// details of the profile's own members) in step with them, and drops a row the stores no longer say.
+export const OLD_STORE_KEYS: readonly TaxFactKey[] = [
+  "filing.status",
+  "filing.claimed_as_dependent",
+  "residency.status",
+  "person.half_time",
+  "person.degree_program",
+  "person.birth_date",
+  "home.state",
+  "spouse.earned_income",
+  "person.postsecondary_years_before",
+  "household.dependants_stated",
+];
+export const OLD_STORE_MEMBER_KEYS: readonly TaxFactKey[] = [
+  "member.birth_date",
+  "member.months_lived_with_you",
+  "member.ssn_valid_for_work",
+];
+
 // The household as the tax profile holds it: counts of children and other dependants, and the
 // family details (age, months at home, Social Security number or not) for each child. Members keep
 // the same keys every time, so copying twice, or writing the profile again, changes nothing.
@@ -119,9 +147,13 @@ export function householdRows(
   const children = parseChildren(profile.familyChildren);
   const kids = Math.max(profile.childrenUnder17, children.length);
   for (let i = 0; i < kids; i += 1) {
-    const memberKey = `child:legacy-${i + 1}`;
-    members.push({ memberKey, label: `Child ${i + 1}`, relationship: "child" });
     const child = children[i];
+    const memberKey = !child
+      ? `child:count-${i + 1}`
+      : child.id
+        ? `child:${child.id}`
+        : `child:pos-${i + 1}`;
+    members.push({ memberKey, label: `Child ${i + 1}`, relationship: "child" });
     if (!child) continue;
     const m = {
       taxYear,
@@ -144,7 +176,7 @@ export function householdRows(
   }
   for (let i = 0; i < profile.otherDependants; i += 1)
     members.push({
-      memberKey: `relative:legacy-${i + 1}`,
+      memberKey: `relative:count-${i + 1}`,
       label: `Dependant ${i + 1}`,
       relationship: "other_relative",
     });
@@ -231,7 +263,7 @@ export function legacyRows(s: LegacySources): LegacyRows {
       sourceRef: "question:has_children",
     });
     if (t.children.value === true)
-      members.push({ memberKey: "child:legacy-1", label: "Child 1", relationship: "child" });
+      members.push({ memberKey: "child:count-1", label: "Child 1", relationship: "child" });
   }
   return { facts, members };
 }

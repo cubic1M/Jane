@@ -12,12 +12,14 @@ import {
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { personTransaction, scopedFor } from "@/lib/db-scoped";
+import { personTransaction, scopedFor, type PersonTx } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
 
 // Writing a tax fact (tax roadmap 1.3, step T9). A fact is never changed in place: a new value from
 // the same origin supersedes that origin's current row (superseded_at set) and adds a new one, so
-// what the person said before stays in the table. The partial unique index
+// what the person said before stays in the table, unless they take it back (forgetTaxFacts removes
+// it for good). An answer older than the current row's moment changes nothing, so two saves that
+// land in the wrong order leave the newer one. The partial unique index
 // tax_facts_current_key lets only one row per fact, year, member and origin be current.
 
 export type TaxFactValue = string | number | boolean;
@@ -38,7 +40,8 @@ export type TaxFactInput = {
   asOf?: string;
 };
 
-export type RecordOutcome = "recorded" | "unchanged";
+// "stale": a newer answer for the same fact was recorded first, so this older one changed nothing.
+export type RecordOutcome = "recorded" | "unchanged" | "stale";
 
 export class TaxFactError extends Error {}
 
@@ -102,6 +105,51 @@ export function storedFactData(
 const isUniqueClash = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
+// Thrown inside a write when the row it meant to supersede changed under it: look again.
+class Moved extends Error {}
+
+type Tx = PersonTx;
+
+const sameAnswer = (
+  current: { value: unknown; status: string },
+  data: { value?: unknown; status?: string },
+) => JSON.stringify(current.value) === JSON.stringify(data.value) && current.status === data.status;
+
+// One row into a transaction. The same answer is left as it is. A different one from the same origin
+// supersedes that origin's current row (kept as history). An answer older than the current row's own
+// moment writes nothing: an older save that arrives last must not undo a newer one. `at` is the
+// moment the answer was given. The partial unique index tax_facts_current_key settles two writers
+// that get here at once: the loser's insert fails and the caller looks again.
+export async function writeFactRow(
+  tx: Tx,
+  userId: string,
+  data: Prisma.TaxFactUncheckedCreateInput,
+  at: Date,
+): Promise<RecordOutcome> {
+  const current = await tx.taxFact.findFirst({
+    where: {
+      userId,
+      taxYear: data.taxYear,
+      memberKey: data.memberKey,
+      key: data.key,
+      origin: data.origin,
+      supersededAt: null,
+    },
+    select: { id: true, value: true, status: true, recordedAt: true },
+  });
+  if (current && sameAnswer(current, data)) return "unchanged";
+  if (current) {
+    if (current.recordedAt.getTime() > at.getTime()) return "stale";
+    const { count } = await tx.taxFact.updateMany({
+      where: { id: current.id, userId, supersededAt: null, recordedAt: { lte: at } },
+      data: { supersededAt: at },
+    });
+    if (count === 0) throw new Moved();
+  }
+  await tx.taxFact.create({ data: { ...data, recordedAt: at } });
+  return "recorded";
+}
+
 // Records one fact. The same value from the same origin is left as it is (its day and sureness
 // stay), so asking twice changes nothing. A sensitive fact is written to the audit log by its key
 // and origin, never its value.
@@ -125,11 +173,7 @@ export async function recordTaxFact(
       },
       select: { value: true, status: true },
     });
-    if (
-      !current ||
-      JSON.stringify(current.value) !== JSON.stringify(data.value) ||
-      current.status !== data.status
-    ) {
+    if (!current || !sameAnswer(current, data)) {
       await logAudit(
         { type: "user", id: userId },
         "tax_fact_recorded",
@@ -139,46 +183,49 @@ export async function recordTaxFact(
       );
     }
   }
-  let outcome: RecordOutcome = "unchanged";
   for (let attempt = 1; ; attempt += 1) {
     try {
-      outcome = await personTransaction(
-        userId,
-        async (tx) => {
-          const current = await tx.taxFact.findFirst({
-            where: {
-              userId,
-              taxYear: data.taxYear,
-              memberKey: data.memberKey,
-              key: data.key,
-              origin: data.origin,
-              supersededAt: null,
-            },
-            select: { id: true, value: true, status: true },
-          });
-          if (
-            current &&
-            JSON.stringify(current.value) === JSON.stringify(data.value) &&
-            current.status === data.status
-          ) {
-            return "unchanged" as const;
-          }
-          if (current) {
-            await tx.taxFact.updateMany({
-              where: { id: current.id, userId, supersededAt: null },
-              data: { supersededAt: now },
-            });
-          }
-          await tx.taxFact.create({ data });
-          return "recorded" as const;
-        },
-        client,
-      );
-      break;
+      return await personTransaction(userId, (tx) => writeFactRow(tx, userId, data, now), client);
     } catch (error) {
       // Another write for the same fact got in between: look again.
-      if (!isUniqueClash(error) || attempt >= WRITE_TRIES) throw error;
+      if (!(isUniqueClash(error) || error instanceof Moved) || attempt >= WRITE_TRIES) throw error;
     }
   }
-  return outcome;
+}
+
+// The origins that are the person's own word: an answer they gave, and the copy made of what an
+// older store held (which may disagree with it). What a document or a connector said is read again
+// from its source, so a forget leaves it alone.
+export const OWN_WORD_ORIGINS: readonly FactOrigin[] = ["answer", "legacy"];
+
+export type ForgetScope = {
+  // Each of these facts, in every tax year.
+  keys: readonly TaxFactKey[];
+  // "self" unless given; "all" for every member of the household.
+  member?: string;
+};
+
+// The person took an answer back, or erased it: every row of those facts that came from their own
+// word goes for good, the current ones and the superseded ones, in every year, so nothing of what
+// they said is kept as history. The fact then reads as what the other sources say, or unknown.
+// Returns how many rows went.
+export async function forgetTaxFacts(
+  userId: string,
+  { keys, member = "self" }: ForgetScope,
+  { client = defaultClient }: Options = {},
+): Promise<number> {
+  const { count } = await personTransaction(
+    userId,
+    (tx) =>
+      tx.taxFact.deleteMany({
+        where: {
+          userId,
+          key: { in: [...keys] },
+          origin: { in: [...OWN_WORD_ORIGINS] },
+          ...(member === "all" ? {} : { memberKey: member }),
+        },
+      }),
+    client,
+  );
+  return count;
 }

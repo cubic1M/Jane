@@ -10,6 +10,8 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 import { PRODUCTION_NOW, productionBank } from "@/data-sources/plaid/__fixtures__/production";
 import { encrypt } from "@/lib/crypto";
 import { syncItem } from "@/lib/plaid/sync";
+import { loadTaxHousehold } from "@/lib/tax-facts/load";
+import { markNeedsRepair } from "@/lib/tax-facts/repair";
 import { ACCURACY_JOB, runAccuracyChecks, type AccuracySummary } from "./accuracy";
 import { sendAccuracyEmail } from "./accuracy-email";
 
@@ -257,6 +259,10 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
       no_stale_pending: 1,
       no_future_transactions: 1,
       areas_add_up_to_home: 0,
+      tax_facts_filing_status: 0,
+      tax_facts_residency: 0,
+      tax_facts_dependants: 0,
+      tax_facts_state: 0,
     });
   });
 
@@ -364,5 +370,40 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
       expect(await attempt("2026-12-08", red as never)).toBe(true);
       expect(await attempt("2026-12-06", red as never)).toBe(true);
     });
+  });
+
+  it("counts a household record that no longer says what the older stores say, by fact and number", async () => {
+    const tally = (summary: AccuracySummary, name: string) =>
+      summary.checks.find((c) => c.name === name)!;
+    const told = (value: string) =>
+      client.janePreference.upsert({
+        where: { userId_kind_key: { userId: real, kind: "fact", key: "profile:tax_residency" } },
+        create: {
+          userId: real,
+          kind: "fact",
+          key: "profile:tax_residency",
+          value: { value },
+          label: "r",
+        },
+        update: { value: { value } },
+      });
+    // Before the record is copied for them there is nothing to compare.
+    expect(tally(await run(), "tax_facts_residency")).toMatchObject({ passed: 0, failed: 0 });
+    await told("student_visa");
+    await loadTaxHousehold(real, 2026, { client, now: NOW });
+    const same = await run();
+    expect(tally(same, "tax_facts_residency")).toMatchObject({ passed: 1, failed: 0 });
+    // The older store changes and the record does not follow: one person, one fact.
+    await told("citizen");
+    const off = await run();
+    expect(tally(off, "tax_facts_residency")).toMatchObject({ passed: 0, failed: 1 });
+    expect(tally(off, "tax_facts_filing_status").failed).toBe(0);
+    expect(off.failing).toContain("tax_facts_residency");
+    // The summary carries the counts and names only.
+    expect(JSON.stringify(off)).not.toContain("student_visa");
+    // The record is copied again: it agrees.
+    await markNeedsRepair(real, { client });
+    await loadTaxHousehold(real, 2026, { client, now: NOW });
+    expect(tally(await run(), "tax_facts_residency")).toMatchObject({ passed: 1, failed: 0 });
   });
 });
