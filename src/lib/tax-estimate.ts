@@ -29,7 +29,7 @@ import { loadWorkingProfile } from "@/lib/tax-profile";
 import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
-import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { homeOfficeDeduction, mileageFigure } from "@/planning/self-employed";
 import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
@@ -527,8 +527,12 @@ async function loadTaxEstimateFrom(
   // Spec step 123: freelance income less business expenses (tagged, and miles driven), and
   // the home office for the year; estimated payments made from accounts Jane can't see.
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
+  // The year's own mileage rate; when it is not published yet (2027 until the IRS notice) the miles
+  // are left out of the estimate and say so, and the rest of the estimate is priced as usual.
+  const mileage = mileageFigure(miles, year);
+  if (mileage.awaited) assumptions.push(mileage.awaited);
   const businessSoFar =
-    tags.totals.business.totalCents + mileageDeduction(miles) + fixes.businessCostCents;
+    tags.totals.business.totalCents + mileage.deductionCents + fixes.businessCostCents;
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
   // A shop's card sales (taxes QA): profit is sales less the business expenses tagged; with
   // none tagged, the share of sales the detectors assume, said as an assumption.

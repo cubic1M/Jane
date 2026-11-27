@@ -40,7 +40,8 @@ export const taxDecide: NonNullable<Capability["decide"]> = async ({
     d = await decideTax(userId, intent.topic, { client, now });
   } catch (error) {
     // A year with no IRS figures: the sentence, no figure.
-    if (error instanceof NoTaxParamsError) return { body: noParamsText(error.year), actions: [] };
+    if (error instanceof NoTaxParamsError)
+      return { body: noParamsText(error.year, error.group), actions: [] };
     throw error;
   }
   return {

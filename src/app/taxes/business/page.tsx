@@ -87,7 +87,9 @@ async function Content() {
             ? `Home office: ${v.homeOffice.sqft} sq ft, a ${formatCents(v.homeOffice.deductionCents)} deduction.`
             : "No home office on file."}{" "}
           {v.mileage.miles > 0
-            ? `Business miles: ${v.mileage.miles}, a ${formatCents(v.mileage.deductionCents)} deduction.`
+            ? v.mileage.awaited
+              ? `Business miles: ${v.mileage.miles}. ${v.mileage.awaited}`
+              : `Business miles: ${v.mileage.miles}, a ${formatCents(v.mileage.deductionCents)} deduction.`
             : "No business miles logged."}{" "}
           <Link href="/taxes/profile" className={LINK}>
             Add them

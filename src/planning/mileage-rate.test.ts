@@ -21,14 +21,15 @@ describe("business mileage rate by the trip's own date", () => {
 
   it("HE-T4a: 1,000 miles on 2026-07-15 are $760.00; the same miles on 2026-05-15 are $725.00", () => {
     // 1,000 x 76 cents = 76,000 cents; 1,000 x 72.5 cents = 72,500 cents.
-    expect(mileageDeduction(1_000, "2026-07-15")).toBe(76_000);
-    expect(mileageDeduction(1_000, "2026-05-15")).toBe(72_500);
+    expect(mileageDeduction(1_000, 2026, "2026-07-15")).toBe(76_000);
+    expect(mileageDeduction(1_000, 2026, "2026-05-15")).toBe(72_500);
   });
 
   it("miles with no date use the first period's rate and the note says so", () => {
     expect(MILEAGE_RATE_CENTS).toBe(72.5);
-    expect(mileageDeduction(1_000)).toBe(72_500);
-    expect(mileageDeduction(null)).toBe(0);
+    expect(mileageDeduction(1_000, 2026)).toBe(72_500);
+    expect(mileageDeduction(1_000, 2025)).toBe(70_000);
+    expect(mileageDeduction(null, 2026)).toBe(0);
     expect(MILEAGE_RATE_NOTE).toBe(
       "Miles with no date are counted at 72.5 cents, the IRS rate for January 1 to June 30. " +
         "The IRS rate is 76 cents for July 1 to December 31, so miles driven then are worth a little more than this shows.",

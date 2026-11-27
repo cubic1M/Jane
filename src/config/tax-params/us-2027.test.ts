@@ -50,14 +50,17 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
     expect(Object.keys(p).sort()).toEqual(Object.keys(federalParams(2026)).sort());
   });
 
-  it("has exactly one group not final: the mileage rate, zero and unconfirmed, never copied from 2026", () => {
+  it("has exactly one group not final: the mileage rate, awaited, never copied from 2026", () => {
     expect(
       pendingGroups()
         .filter((g) => g.year === 2027)
         .map((g) => g.key),
     ).toEqual(["mileage"]);
-    expect(p.mileage.status).toBe("unconfirmed");
-    expect(p.mileage.value).toEqual({ businessCentsPerMile: 0, businessByPeriod: [] });
+    expect(p.mileage.status).toBe("awaited");
+    // It holds no value at all: any read throws, naming the year and the group (awaited.ts).
+    expect(() => p.mileage.value).toThrow(
+      expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group: "mileage" }),
+    );
     expect(p.mileage.verify).toMatch(/AWAITED/);
     for (const [key, group] of Object.entries(p)) {
       if (key === "year" || key === "mileage") continue;

@@ -1,3 +1,4 @@
+import { awaited } from "./awaited";
 import type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 
 // United States federal figures for tax year 2027 (Tax T32), in the same shape as us-2026.ts.
@@ -539,20 +540,18 @@ export const US_2027: FederalParams = {
         "section 3.11 (read 2026-11-27): exemption $144,700 joint, $93,000 unmarried, $72,350 separate; the 28 percent rate applies above $252,500 ($126,250 separate); phase-out starts at $1,031,900 joint, $515,950 unmarried and separate and is complete at $1,321,300 joint, $701,950 unmarried, $660,650 separate. Rate 50 percent: 26 USC 55(d)(4)(A)(ii)(IV) for taxable years after 2025. The 26 and 28 percent rates are 26 USC 55(b)(1)(A).",
     },
   ),
-  // NOT PUBLISHED. The 2027 business rate is announced by the IRS in a notice, usually in December.
-  // The standard mileage rates page showed 72.5 and 76 cents for 2026 and nothing for 2027 on
-  // 2026-11-27. The value is zero and the list empty so that nothing can use it as a rate.
-  mileage: cited(
-    { businessCentsPerMile: 0, businessByPeriod: [] },
-    {
-      source: MILEAGE_PAGE,
-      where:
-        "IRS standard mileage rates page, read 2026-11-27: the newest rate is 76 cents for July 1 to December 31, 2026; no 2027 rate is published",
-      status: "unconfirmed",
-      verify:
-        "AWAITED: the IRS notice with the 2027 standard mileage rates (usually December 2026). Do not copy 2026's 72.5 and 76 cents. When it is out, fill the rate (by period if it changes mid-year), set status verified and complete the file.",
-    },
-  ),
+  // AWAITED, not published. The 2027 business rate is announced by the IRS in a notice, usually in
+  // December. The standard mileage rates page showed 72.5 and 76 cents for 2026 and nothing for 2027
+  // on 2026-11-27. The group holds no value: reading it throws NoTaxParamsError(2027, "mileage")
+  // (awaited.ts), so nothing can use 2026's rate, a zero or a guess for a 2027 mile.
+  mileage: awaited<FederalParams["mileage"]["value"]>(2027, "mileage", {
+    source: MILEAGE_PAGE,
+    where:
+      "IRS standard mileage rates page, read 2026-11-27: the newest rate is 76 cents for July 1 to December 31, 2026; no 2027 rate is published",
+    checkedOn: READ,
+    verify:
+      "AWAITED: the IRS notice with the 2027 standard mileage rates (usually December 2026). Do not copy 2026's 72.5 and 76 cents. When it is out, fill the rate (by period if it changes mid-year) with cited(...) and status verified, and delete this note.",
+  }),
   homeOffice: cited(
     { perSquareFoot: $(5), maxSquareFeet: 300 },
     {

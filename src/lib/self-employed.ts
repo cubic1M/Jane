@@ -19,7 +19,7 @@ import {
 } from "@/lib/tax-estimate";
 import {
   homeOfficeDeduction,
-  mileageDeduction,
+  mileageFigure,
   quarterlyPlan,
   setAsideRate,
   type QuarterlyPlan,
@@ -50,7 +50,9 @@ export type SelfEmployedView = {
   freelanceInCents: number;
   businessCents: number;
   homeOffice: { sqft: number | null; deductionCents: number };
-  mileage: { miles: number; deductionCents: number };
+  // `awaited` is the W-N sentence when the year's IRS rate is not published (the figure is then 0 and
+  // must not be shown as a deduction).
+  mileage: { miles: number; deductionCents: number; awaited: string | null };
   // Share of each payment to set aside (0–0.5).
   setAsideRate: number;
   federal: QuarterlyPlan;
@@ -181,7 +183,7 @@ export async function loadSelfEmployed(
       sqft: profile?.homeOfficeSqFt ?? null,
       deductionCents: homeOfficeDeduction(profile?.homeOfficeSqFt ?? null),
     },
-    mileage: { miles, deductionCents: mileageDeduction(miles) },
+    mileage: { miles, ...mileageFigure(miles, year) },
     setAsideRate: rate,
     federal,
     state,

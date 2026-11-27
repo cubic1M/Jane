@@ -1,9 +1,11 @@
 import { MAX_HOME_OFFICE_SQFT, QUARTERLY } from "@/config/tax";
+import { NoTaxParamsError } from "@/config/tax-params";
 import {
   HOME_OFFICE_SIMPLIFIED,
-  MILEAGE_RATE_CENTS,
   businessMileageCentsOn,
+  undatedMileageCentsIn,
 } from "@/config/tax-rates";
+import { noParamsText } from "@/lib/tax-estimate-state";
 
 // Freelancers' taxes (spec step 123). Pure. Estimated tax is paid in four parts during the
 // year (src/config/tax-pack.ts ESTIMATED_TAX_DATES); what's still owed for the year, by the
@@ -60,9 +62,31 @@ export const homeOfficeDeduction = (sqft: number | null) =>
       HOME_OFFICE_SIMPLIFIED.perSquareFoot
     : 0;
 
-// Business miles at the standard mileage rate: the rate on the trip's own day (YYYY-MM-DD) when
-// there is one, else the rate for miles with no date (MILEAGE_RATE_NOTE says which).
-export const mileageDeduction = (miles: number | null, tripDate?: string) =>
+// Business miles at the standard mileage rate of the tax year: the rate on the trip's own day
+// (YYYY-MM-DD) when there is one, else the rate for miles with no date (mileageRateNote says
+// which). The year's own rate, never another year's: for a year whose rate is not published yet
+// this throws NoTaxParamsError with group "mileage" (use mileageFigure to keep the rest of a page).
+export const mileageDeduction = (miles: number | null, year: number, tripDate?: string) =>
   miles
-    ? Math.round(miles * (tripDate ? businessMileageCentsOn(tripDate) : MILEAGE_RATE_CENTS))
+    ? Math.round(
+        miles * (tripDate ? businessMileageCentsOn(tripDate) : undatedMileageCentsIn(year)),
+      )
     : 0;
+
+// The same for a page, a card or a chat answer: the deduction, or when the year's rate is awaited
+// no figure and the W-N sentence for it (every other figure of the year is priced normally).
+export type MileageFigure = { deductionCents: number; awaited: string | null };
+export function mileageFigure(
+  miles: number | null,
+  year: number,
+  tripDate?: string,
+): MileageFigure {
+  try {
+    return { deductionCents: mileageDeduction(miles, year, tripDate), awaited: null };
+  } catch (error) {
+    if (error instanceof NoTaxParamsError && error.group === "mileage") {
+      return { deductionCents: 0, awaited: noParamsText(error.year, error.group) };
+    }
+    throw error;
+  }
+}

@@ -137,7 +137,7 @@ export async function answerTaxIntent(
     return await answerTaxIntentFor(userId, intent, options);
   } catch (error) {
     if (!(error instanceof NoTaxParamsError)) throw error;
-    return { body: noParamsText(error.year), refs: {}, actions: [] };
+    return { body: noParamsText(error.year, error.group), refs: {}, actions: [] };
   }
 }
 
