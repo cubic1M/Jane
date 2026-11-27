@@ -19,7 +19,9 @@ vi.mock("@/lib/prior-return", () => ({
   ],
 }));
 vi.mock("@/lib/tax-estimate", () => ({ loadTaxEstimate }));
-vi.mock("@/lib/tax-organizer", () => ({ loadTaxTags: async () => ({ tagged: [], totals: {} }) }));
+vi.mock("@/lib/tax-organizer", () => ({
+  loadTaxTags: async () => ({ tagged: [], totals: { childcare: { totalCents: 0 } } }),
+}));
 vi.mock("@/lib/tax-documents", () => ({ loadTaxDocuments: async () => ({ forms: [] }) }));
 vi.mock("@/lib/family-taxes", () => ({ childrenOrUnknownAges: () => [] }));
 vi.mock("@/lib/today", () => ({ todayOf: async () => "2026-11-27" }));
