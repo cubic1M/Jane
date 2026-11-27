@@ -12,6 +12,8 @@ import { log } from "@/lib/log";
 import { runMonthlyReports } from "@/lib/monthly-report";
 import { MONTHLY_REPORTS_CRON_BUDGET_MS } from "@/config/monthly-report";
 import { runNews } from "@/lib/news/store";
+import { NEWS_CRON_BUDGET_MS } from "@/config/news";
+import { LATE, within } from "@/lib/time-limit";
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
 import { DAILY_REPORTS_CRON_BUDGET_MS } from "@/config/daily-report";
@@ -19,6 +21,23 @@ import { DAILY_REPORTS_CRON_BUDGET_MS } from "@/config/daily-report";
 // The function's limit, declared like the other long crons; the due jobs at the end get only
 // what's left of it (debugger 10-31: the health check called this job stale for over a day).
 export const maxDuration = 300;
+
+// The news, with a time limit of its own and never more than what's left: a slow feed mustn't cost
+// the daily reports and the jobs behind it their turn. With no time left it waits for tomorrow.
+async function newsInTime(startedAt: number) {
+  const budgetMs = Math.max(
+    0,
+    Math.min(
+      NEWS_CRON_BUDGET_MS,
+      maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+    ),
+  );
+  if (budgetMs === 0) return null;
+  const run = await within(budgetMs, runNews({ budgetMs }));
+  if (run !== LATE) return run;
+  log.error("News summaries ran out of time");
+  return null;
+}
 
 // Vercel Cron, daily: sends this week's digest to anyone whose Monday has arrived. With
 // ?dry_run=1 it renders every digest and returns them without sending or storing.
@@ -93,7 +112,7 @@ export async function GET(request: Request) {
           return null;
         }),
         // Spec step 293: the watchlist's news, summarised in a few batched calls at most.
-        news: await runNews().catch((error) => {
+        news: await newsInTime(startedAt).catch((error) => {
           log.error("News summaries failed", { error: String(error) });
           return null;
         }),

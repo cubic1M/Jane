@@ -487,6 +487,7 @@ export async function runTaxTool(
       const item = (i: (typeof view.items)[number]) => ({
         item: i.label,
         claimed: money(i.claimedCents),
+        ...(i.gross ? { allPaid: { what: i.gross.label, amount: money(i.gross.cents) } } : {}),
         sources: i.evidence.length,
         stillNeeded: i.needs,
       });

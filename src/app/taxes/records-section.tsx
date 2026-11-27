@@ -63,6 +63,7 @@ export function RecordsSection({ view }: { view: AuditRecordsView }) {
                 <summary className="flex cursor-pointer flex-wrap justify-between gap-x-3">
                   <span className="font-medium">{i.label}</span>
                   <span>
+                    {i.gross ? "Claimed " : ""}
                     {formatCents(i.claimedCents)}, {i.evidence.length}{" "}
                     {i.evidence.length === 1 ? "source" : "sources"}
                   </span>
@@ -75,6 +76,11 @@ export function RecordsSection({ view }: { view: AuditRecordsView }) {
                   ))}
                 </ul>
               </details>
+              {i.gross && (
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {i.gross.label}: {formatCents(i.gross.cents)}
+                </span>
+              )}
               {i.needs.map((n) => (
                 <span key={n} className="font-medium">
                   Still needed: {n}

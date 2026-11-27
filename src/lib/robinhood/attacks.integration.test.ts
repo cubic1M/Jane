@@ -43,6 +43,8 @@ const system = () => systemDb("Test: checks what was left behind, across tables"
 describe.runIf(url)("attacks on the Robinhood connection", () => {
   let fake: FakeRobinhood;
   const people: string[] = [];
+  // This suite's own fake servers: other suites' sign-in clients may be in use.
+  const issuers: string[] = [];
 
   async function person() {
     const user = await db.user.create({ data: { email: `rh-${crypto.randomUUID()}@example.com` } });
@@ -53,6 +55,7 @@ describe.runIf(url)("attacks on the Robinhood connection", () => {
   async function use(options: ConstructorParameters<typeof FakeRobinhood>[0]) {
     await fake.stop();
     fake = await new FakeRobinhood(options).start();
+    issuers.push(fake.mcpUrl);
     vi.stubEnv("ROBINHOOD_MCP_URL", fake.mcpUrl);
     forgetMetadataForTests();
   }
@@ -86,13 +89,12 @@ describe.runIf(url)("attacks on the Robinhood connection", () => {
   });
   afterAll(async () => {
     await system().user.deleteMany({ where: { id: { in: people } } });
-    await system().robinhoodOauthClient.deleteMany({
-      where: { issuer: { contains: "127.0.0.1" } },
-    });
+    await system().robinhoodOauthClient.deleteMany({ where: { issuer: { in: issuers } } });
     vi.unstubAllEnvs();
   });
   beforeEach(async () => {
     fake = await new FakeRobinhood().start();
+    issuers.push(fake.mcpUrl);
     vi.stubEnv("ROBINHOOD_LINK", "1");
     vi.stubEnv("ROBINHOOD_MCP_URL", fake.mcpUrl);
     vi.stubEnv("KILL_BANKS", "");

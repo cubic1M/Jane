@@ -1,6 +1,13 @@
 import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
-import { CRON_SYNC_BUDGET_MS, CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
+import {
+  CRON_AFTER_SYNC_RESERVE_MS,
+  CRON_REQUEST_BUDGET_MS,
+  CRON_SYNC_BUDGET_MS,
+  CRON_SYNC_LEAST_MS,
+  CRON_SYNC_LIMIT,
+  STALE_SYNC_HOURS,
+} from "@/config/plaid";
 import { db } from "@/lib/db";
 import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -35,6 +42,7 @@ import { removeAllOrphans } from "@/lib/evidence/orphans";
 import { refreshAfterRemoval } from "@/lib/import/background";
 import { STAYING } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
+import { LATE, within } from "@/lib/time-limit";
 
 const ROUTE = "/api/cron/plaid-sync";
 
@@ -124,25 +132,38 @@ const controller = (startedAt: number) =>
 // person's odd row mustn't cost everyone their deadlines, or the deleting the legal pages promise.
 // The run still ends as failed, so the health check counts it. Only the step and the error's class
 // are logged: a database error's message can carry someone's values.
-const stepRunner = (failed: string[]) =>
-  async function step<T>(name: string, run: () => Promise<T>): Promise<T | null> {
-    try {
-      return await run();
-    } catch (error) {
-      const kind = error instanceof Error ? error.name : "Error";
-      failed.push(name);
-      log.error("A nightly step failed", { step: name, error: kind });
-      await alertError(
-        { message: `${kind}: nightly step failed`, path: `${ROUTE}/${name}` },
-        { pastCeiling: true },
-      );
+// The night has one limit too: a step that outlasts it isn't waited for, and none starts after it,
+// so the run is recorded as failed instead of the function being cut off.
+const stepRunner = (failed: string[], startedAt: number) => {
+  const report = async (name: string, kind: string) => {
+    log.error("A nightly step failed", { step: name, error: kind });
+    await alertError(
+      { message: `${kind}: nightly step failed`, path: `${ROUTE}/${name}` },
+      { pastCeiling: true },
+    );
+  };
+  return async function step<T>(name: string, run: () => Promise<T>): Promise<T | null> {
+    const left = startedAt + CRON_REQUEST_BUDGET_MS - Date.now();
+    if (left <= 0) {
+      failed.push(`${name} (not started)`);
       return null;
     }
+    try {
+      const result = await within(left, run());
+      if (result !== LATE) return result;
+      failed.push(`${name} (out of time)`);
+      await report(name, "OutOfTime");
+    } catch (error) {
+      failed.push(name);
+      await report(name, error instanceof Error ? error.name : "Error");
+    }
+    return null;
   };
+};
 
 // Linked banks not synced lately. A system job across all users: it reads item ids only, and
 // syncItem scopes each one.
-async function syncBanks() {
+async function syncBanks(startedAt: number) {
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
   const items = await systemDb("Cron: finds every bank connection due a sync").plaidItem.findMany({
     where: {
@@ -158,16 +179,27 @@ async function syncBanks() {
   let synced = 0;
   let failed = 0;
   let deferred = 0;
-  // Its own clock: deleting temporary tries comes first, and isn't the banks' time to lose.
+  // Its own clock: deleting temporary tries comes first, and isn't the banks' time to lose. One
+  // under way may run past it, but not into the time kept for the steps after.
   const syncStarted = Date.now();
+  // Never past the request's own limit.
+  const waitUntil = Math.min(
+    startedAt + CRON_REQUEST_BUDGET_MS,
+    Math.max(
+      startedAt + CRON_REQUEST_BUDGET_MS - CRON_AFTER_SYNC_RESERVE_MS,
+      syncStarted + CRON_SYNC_LEAST_MS,
+    ),
+  );
   for (const item of items) {
-    if (Date.now() - syncStarted >= CRON_SYNC_BUDGET_MS) {
+    const now = Date.now();
+    if (now - syncStarted >= CRON_SYNC_BUDGET_MS || now >= waitUntil) {
       deferred += 1;
       continue;
     }
     try {
-      await syncItem(item.id);
-      synced += 1;
+      // One that doesn't answer in time carries on by itself, and counts as left for tomorrow.
+      if ((await within(waitUntil - now, syncItem(item.id))) === LATE) deferred += 1;
+      else synced += 1;
     } catch (error) {
       failed += 1;
       log.error("Scheduled Plaid sync failed", { itemId: item.id, error: String(error) });
@@ -191,13 +223,22 @@ async function inactiveCleanup() {
 
 async function dailyWork(startedAt: number) {
   const failedSteps: string[] = [];
-  const step = stepRunner(failedSteps);
+  const step = stepRunner(failedSteps, startedAt);
   await step("switches", freshSwitches);
   // Early, like the temporary tries: the privacy page promises it, and it needs little time.
   const retention = await step("retention", () => runRetention({ skipTrials: true }));
   const banks = plaidEnabled()
-    ? await step("banks", syncBanks)
+    ? await step("banks", () => syncBanks(startedAt))
     : { synced: 0, failed: 0, deferred: 0 };
+  // Some failing is each bank's own trouble, and the summary says how many. All of them failing is
+  // the job's: it ends as failed.
+  if (banks && banks.failed > 0 && banks.synced === 0) {
+    failedSteps.push(`banks (${banks.failed} of ${banks.failed} bank syncs failed)`);
+    await alertError(
+      { message: "BankSyncsFailed: every bank sync failed", path: `${ROUTE}/banks` },
+      { pastCeiling: true },
+    );
+  }
   const inactive = plaidEnabled() ? await step("inactive", inactiveCleanup) : null;
   const night = {
     ...(banks ?? { synced: 0, failed: 0, deferred: 0 }),

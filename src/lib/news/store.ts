@@ -43,6 +43,8 @@ type Options = {
   market?: MarketData;
   summarizer?: Summarizer;
   env?: Record<string, string | undefined>;
+  // The longest the run may go on asking Claude. Headlines not reached are fetched again next time.
+  budgetMs?: number;
 };
 
 const daysBefore = (now: Date, days: number) => day(new Date(now.getTime() - days * DAY_MS));
@@ -114,7 +116,7 @@ export type NewsRun = {
   filings: number;
   calls: number;
   // Why Claude wasn't (or stopped being) asked, when it wasn't.
-  skipped: "off" | "daily_calls" | "monthly_cap" | null;
+  skipped: "off" | "daily_calls" | "monthly_cap" | "time" | null;
 };
 
 async function filingsFor(market: MarketData, from: string, to: string): Promise<Filing[]> {
@@ -138,6 +140,7 @@ export async function runNews(options: Options = {}): Promise<NewsRun> {
   const market = options.market ?? marketData(env);
   const summarizer = options.summarizer ?? claudeSummarizer;
   const to = day(now);
+  const started = Date.now();
 
   const [headlines, filings] = await Promise.all([
     market.news(NEWS_WATCHLIST, daysBefore(now, NEWS_LOOKBACK_DAYS), to),
@@ -192,6 +195,10 @@ export async function runNews(options: Options = {}): Promise<NewsRun> {
   };
 
   for (let i = 0; i < fresh.length; i += NEWS_BATCH_SIZE) {
+    if (options.budgetMs !== undefined && Date.now() - started >= options.budgetMs) {
+      run.skipped = "time";
+      break;
+    }
     const batch = fresh.slice(i, i + NEWS_BATCH_SIZE);
     const fromClaude = await summariseWithClaude(
       batch.map((b) => b.h),

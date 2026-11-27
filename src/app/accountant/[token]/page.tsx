@@ -161,9 +161,14 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           {v.deductions.map((d) => (
             <li key={d.label} className="flex flex-col">
               <span>
-                {d.label}: {formatCents(d.claimedCents)} ({d.sources}{" "}
-                {d.sources === 1 ? "source" : "sources"})
+                {d.label}: {d.gross ? "claimed " : ""}
+                {formatCents(d.claimedCents)} ({d.sources} {d.sources === 1 ? "source" : "sources"})
               </span>
+              {d.gross && (
+                <span>
+                  {d.gross.label}: {formatCents(d.gross.cents)}
+                </span>
+              )}
               {d.needs.map((n) => (
                 <span key={n} className="text-amber-800">
                   Still needed: {n}

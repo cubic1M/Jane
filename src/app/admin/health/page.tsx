@@ -42,8 +42,9 @@ async function Health() {
                     ? "Last run failed"
                     : job.lastRunAt
                       ? "OK"
-                      : "Hasn't run yet"}{" "}
-                · last run {when(job.lastRunAt)} · last good run {when(job.lastSuccessAt)}
+                      : "Hasn't run yet"}
+                {job.note ? `, ${job.note}` : ""} · last run {when(job.lastRunAt)} · last good run{" "}
+                {when(job.lastSuccessAt)}
               </span>
             </li>
           ))}

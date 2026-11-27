@@ -339,7 +339,13 @@ export type AccountantView = {
   };
   pack: Pick<TaxPack, "charity" | "preparer" | "income" | "forms" | "states" | "rental">;
   collected: { form: string; from: string; boxes: Record<string, number>; matches: string }[];
-  deductions: { label: string; claimedCents: number; sources: number; needs: string[] }[];
+  deductions: {
+    label: string;
+    claimedCents: number;
+    gross?: { label: string; cents: number };
+    sources: number;
+    needs: string[];
+  }[];
   complexity: string | null;
   questions: (Question & { answers: { fromName: string; body: string; on: string }[] })[];
   notes: { fromName: string; body: string; on: string }[];
@@ -417,6 +423,7 @@ export async function viewByToken(
       deductions: records.items.map((i) => ({
         label: i.label,
         claimedCents: i.claimedCents,
+        gross: i.gross,
         sources: i.evidence.length,
         needs: i.needs,
       })),

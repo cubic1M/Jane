@@ -28,7 +28,7 @@ export function recordsReply(view: AuditRecordsView): MessageParts {
   const total = view.items.reduce((s, i) => s + i.claimedCents, 0);
   const lines = view.items.map(
     (i) =>
-      `• ${i.label}: ${formatCents(i.claimedCents)}, ${i.evidence.length} ${i.evidence.length === 1 ? "source" : "sources"}${i.needs.length > 0 ? ` (still needed: ${i.needs.join(" ")})` : ""}`,
+      `• ${i.label}: ${i.gross ? "claimed " : ""}${formatCents(i.claimedCents)}, ${i.evidence.length} ${i.evidence.length === 1 ? "source" : "sources"}${i.gross ? `. ${i.gross.label}: ${formatCents(i.gross.cents)}` : ""}${i.needs.length > 0 ? ` (still needed: ${i.needs.join(" ")})` : ""}`,
   );
   const gaps = view.gaps.map(
     (g) => `• ${g.label}: ${formatCents(g.claimedCents)} with no source yet (${g.needs.join(" ")})`,

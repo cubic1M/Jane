@@ -312,15 +312,20 @@ const held = (connectionId: string, lockedAt: Date) => ({
   syncingSince: lockedAt,
 });
 
+// A connection's credentials as one refresh knows them: opened, and as stored.
+type Credentials = { sealed: string; secrets: RobinhoodSecrets };
+
 // Asks for new tokens, and saves them at once: a server that rotates refresh tokens has already
-// retired the old one, so losing these would lose the connection.
+// retired the old one, so losing these would lose the connection. They're saved while this refresh
+// holds the connection, or while what's stored is still what it renewed (a sign-in that landed
+// before it was read). A newer sign-in's tokens are never written over.
 async function renew(
   db: ScopedDb,
   connectionId: string,
   clientId: string,
-  secrets: RobinhoodSecrets,
+  { sealed, secrets }: Credentials,
   now: Date,
-): Promise<RobinhoodSecrets> {
+): Promise<Credentials> {
   if (!secrets.refreshToken) throw new RobinhoodGrantGoneError();
   const tokens: Tokens = await refreshTokens(clientId, secrets.refreshToken, {
     now: now.getTime(),
@@ -330,11 +335,12 @@ async function renew(
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken ?? secrets.refreshToken,
   };
+  const saved = sealSecrets(next);
   await db.robinhoodConnections.updateMany({
-    where: held(connectionId, now),
-    data: { secretsEncrypted: sealSecrets(next), accessExpiresAt: tokens.expiresAt },
+    where: { id: connectionId, OR: [{ syncingSince: now }, { secretsEncrypted: sealed }] },
+    data: { secretsEncrypted: saved, accessExpiresAt: tokens.expiresAt },
   });
-  return next;
+  return { sealed: saved, secrets: next };
 }
 
 // Refreshes one person's connection. Only ever throws for a bug: every expected failure is recorded
@@ -360,24 +366,27 @@ export async function refreshConnection(
     select: { id: true, secretsEncrypted: true, clientId: true, accessExpiresAt: true },
   });
   try {
-    let secrets = openSecrets(row.secretsEncrypted);
+    let credentials: Credentials = {
+      sealed: row.secretsEncrypted,
+      secrets: openSecrets(row.secretsEncrypted),
+    };
     const signal = AbortSignal.timeout(ROBINHOOD_LIMITS.personBudgetMs);
     const expiring =
-      !secrets.accessToken ||
+      !credentials.secrets.accessToken ||
       (row.accessExpiresAt !== null && row.accessExpiresAt.getTime() - now.getTime() < 60_000);
-    if (expiring) secrets = await renew(db, row.id, row.clientId, secrets, now);
+    if (expiring) credentials = await renew(db, row.id, row.clientId, credentials, now);
     const readWith = (accessToken: string) =>
       readEverything(openReader({ accessToken, signal }), now);
     let reads: Read[];
     try {
-      reads = await readWith(secrets.accessToken ?? "");
+      reads = await readWith(credentials.secrets.accessToken ?? "");
     } catch (error) {
       if (!(error instanceof RobinhoodSignedOutError)) throw error;
       // The token may only have expired early, so try one new one before calling it gone.
-      secrets = await renew(db, row.id, row.clientId, secrets, now);
+      credentials = await renew(db, row.id, row.clientId, credentials, now);
       // Renewing worked, so the grant stands: a new token turned away is trouble at Robinhood, which
       // waits and tries again. Wiping the tokens would make them connect again for an outage.
-      reads = await readWith(secrets.accessToken ?? "").catch((error: unknown) => {
+      reads = await readWith(credentials.secrets.accessToken ?? "").catch((error: unknown) => {
         throw error instanceof RobinhoodSignedOutError
           ? new RobinhoodReadError("refused_after_renewal")
           : error;
@@ -400,7 +409,7 @@ export async function refreshConnection(
       });
       if (count === 0) return false;
       const saving = { ...tx, userId };
-      await saveEverything(saving, row.id, secrets.accountKey, reads, today);
+      await saveEverything(saving, row.id, credentials.secrets.accountKey, reads, today);
       return true;
     });
     if (!saved) return "busy";

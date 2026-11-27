@@ -23,7 +23,6 @@ import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
 import { loadPaperView, strategyLabel, strategyOf } from "@/lib/paper/account";
 import { PaperAccount } from "@/components/paper-account";
 import { RobinhoodPanel } from "@/components/robinhood-panel";
-import { robinhoodOffered } from "@/config/robinhood";
 import { TradingAgent } from "@/components/trading-agent";
 import { AGENT_INTERVAL_IDS, AGENT_MARKET_IDS } from "@/config/trading-agent";
 import { agentChoices, loadAgentView } from "@/lib/trading-agent/agent";
@@ -554,14 +553,12 @@ async function InvestmentsContent({
         </Suspense>
       )}
 
-      {robinhoodOffered() && (
-        <Suspense fallback={null}>
-          <RobinhoodPanel
-            userId={user.id}
-            notice={typeof params.robinhood === "string" ? params.robinhood : undefined}
-          />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <RobinhoodPanel
+          userId={user.id}
+          notice={typeof params.robinhood === "string" ? params.robinhood : undefined}
+        />
+      </Suspense>
 
       {data.accounts.length === 0 && (
         <p data-investments-empty="" className="text-zinc-600 dark:text-zinc-400">

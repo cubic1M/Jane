@@ -2,7 +2,8 @@
 
 A person connects their own Robinhood account, on Robinhood's sign-in page, and Jane reads their
 accounts, balances, stocks and funds and filled orders. It's off: `ROBINHOOD_LINK` isn't set anywhere,
-and until it's exactly `1` there is no button, and every route answers 404.
+and until it's exactly `1` there is no way to connect, and every route answers 404, except that
+someone with a stored connection can still disconnect it.
 
 ## How it stays read-only
 
@@ -44,9 +45,9 @@ arguments and the fields in the answers aren't published, so `src/lib/robinhood/
   Robinhood's metadata has no revocation address today, so Jane can't end the connection on Robinhood's
   side, and the person is told. If one appears in the metadata, Jane uses it.
 - `KILL_BANKS` stops new connections and refreshes. Disconnecting keeps working.
-- **Turning the switch off again** stops refreshes and hides the box, and people keep what's saved,
-  with no way to disconnect until it's back on. Account deletion and the inactivity clean-up still work.
-  Before turning it off for good, disconnect everyone (`removeConnection`).
+- **Turning the switch off again** stops refreshes, and people keep what's saved. Someone with a
+  stored connection still sees the box, with Disconnect and nothing else. Account deletion and the
+  inactivity clean-up still work.
 
 ## What must be true before switching on
 

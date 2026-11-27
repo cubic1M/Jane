@@ -3,10 +3,11 @@ import { momentTimeLabel } from "@/lib/moment-time";
 import { connectionView, whyCantConnect } from "@/lib/robinhood/connection";
 import { timezoneOf } from "@/lib/today";
 
-// The Robinhood box on the Investing page: off, nothing at all, not even a query. Before connecting,
-// it says in plain words what connecting does. Robinhood has one permission, which also lets a
-// connection trade in an agent account if the person opens one, so that gets said too. A link and a
-// form, with no script of its own, since /investments is at its size budget.
+// The Robinhood box on the Investing page. Switched off, it shows only to someone with a stored
+// connection, so they can end it. Before connecting, it says in plain words what connecting does.
+// Robinhood has one permission, which also lets a connection trade in an agent account if the person
+// opens one, so that gets said too. A link and a form, with no script of its own, since /investments
+// is at its size budget.
 
 const NOTICES: Record<string, string> = {
   connected: "Robinhood is connected.",
@@ -53,12 +54,13 @@ export async function RobinhoodPanel({
   userId: string;
   notice: string | undefined;
 }) {
-  if (!robinhoodOffered()) return null;
+  const offered = robinhoodOffered();
   const [view, timezone] = await Promise.all([connectionView(userId), timezoneOf(userId)]);
   // When Jane last read it, in the person's own time (momentTimeLabel), not UTC.
   const stamp = (date: Date) => momentTimeLabel(date, timezone);
+  if (!offered && view === null && notice !== "disconnected") return null;
   // Someone refused a new connection who already has one can still end it.
-  if (view === null && (await whyCantConnect(userId))) return null;
+  if (offered && view === null && (await whyCantConnect(userId))) return null;
   const said =
     notice && Object.hasOwn(NOTICES, notice) && trueNow(notice, view !== null)
       ? NOTICES[notice]
@@ -73,7 +75,16 @@ export async function RobinhoodPanel({
         Robinhood
       </h2>
       {said && <p role="status">{said}</p>}
-      {view === null && (
+      {!offered && view && (
+        <>
+          <p className="text-sm">
+            Jane isn&apos;t reading Robinhood right now.{" "}
+            {view.lastUpdated ? `The numbers here are from ${stamp(view.lastUpdated)}.` : ""}
+          </p>
+          <DisconnectForm />
+        </>
+      )}
+      {offered && view === null && (
         <>
           <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
             <li>You sign in on Robinhood&apos;s own page. Jane never sees your password.</li>
@@ -88,7 +99,7 @@ export async function RobinhoodPanel({
           <ConnectLink label="Connect Robinhood" />
         </>
       )}
-      {view?.status === "active" && (
+      {offered && view?.status === "active" && (
         <>
           <p className="text-sm">
             <span className="font-medium">Connected.</span>{" "}
@@ -98,7 +109,7 @@ export async function RobinhoodPanel({
           <DisconnectForm />
         </>
       )}
-      {view?.status === "reconnect" && (
+      {offered && view?.status === "reconnect" && (
         <>
           <p className="text-sm">
             <span className="font-medium">Robinhood stopped accepting this connection.</span> The

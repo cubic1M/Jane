@@ -1,7 +1,8 @@
 import { killed } from "./kill-switches";
 
 // The read-only Robinhood connection (docs/setup/robinhood.md). Off unless ROBINHOOD_LINK is exactly
-// "1": no button, and every route answers 404.
+// "1": no way to connect, nothing read, and every route answers 404, except that someone with a
+// stored connection can still disconnect it.
 
 export const robinhoodOffered = (): boolean => process.env.ROBINHOOD_LINK?.trim() === "1";
 
