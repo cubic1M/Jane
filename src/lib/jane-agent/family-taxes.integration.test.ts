@@ -215,6 +215,11 @@ describe.runIf(url)("family taxes against a real database", { timeout: 120_000 }
     expect(view.agesMissing).toBe(true);
     const care = view.choices.find((c) => c.key === "care");
     expect(care === undefined || care.sides.every((s) => !s.eligible)).toBe(true);
+    // Unknown, not "no": neither side is called closed, and no side is recommended.
+    if (care) {
+      expect(care.sides.every((s) => s.unknown === true)).toBe(true);
+      expect(care.better).toBeNull();
+    }
   });
 
   it("asks for the other children's ages when only one child has a college plan", async () => {

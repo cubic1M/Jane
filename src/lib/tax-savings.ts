@@ -9,6 +9,7 @@ import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
+import { parseChildren } from "@/planning/family-taxes";
 import { findTaxSavings, type SavingKey, type TaxSaving } from "@/planning/tax-savings";
 import { payeeOf } from "@/planning/tax-tags";
 
@@ -64,7 +65,7 @@ export async function loadTaxSavings(
       },
       select: { amountCents: true, description: true, merchantName: true },
     }),
-    db.taxProfiles.findFirst({ select: { savingsDismissed: true } }),
+    db.taxProfiles.findFirst({ select: { savingsDismissed: true, familyChildren: true } }),
     debtFirst(userId, client),
   ]);
   const elapsed = estimate.elapsed > 0 ? estimate.elapsed : 1;
@@ -103,6 +104,7 @@ export async function loadTaxSavings(
     hasFsa: await hasHealthFsa(userId, { client }),
     medicalCents: pace(tags.totals.medical.totalCents),
     childcareCents: pace(tags.totals.childcare.totalCents),
+    childAgesKnown: parseChildren(profile?.familyChildren).length > 0,
     tuition: [...tuitionByPayee.entries()].map(([payee, cents]) => ({ payee, cents })),
     energyLastYear: [...energyByPayee.entries()].map(([payee, cents]) => ({
       payee,

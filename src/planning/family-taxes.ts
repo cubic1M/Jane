@@ -24,6 +24,10 @@ type Side = {
   // state tax for a 529).
   taxCents: number;
   eligible: boolean;
+  // Not open and not closed: it depends on something Jane does not know yet (the children's
+  // ages). Shown as "may be open", never as "not open to you"; eligible is false so nothing
+  // counts it, and neither side is recommended.
+  unknown?: boolean;
   why: string[];
   // For a side that is a credit: how much of it comes off tax owed and how much is paid back
   // even with no tax, so credits chosen together can be applied to one estimate.
@@ -42,6 +46,7 @@ export type FamilyChoice = {
 const federal = (input: EstimateInput) => estimateTaxes(input).totalTaxCents;
 const choice = (key: FamilyChoice["key"], title: string, sides: [Side, Side]): FamilyChoice => {
   const [a, b] = sides;
+  if (a.unknown || b.unknown) return { key, title, sides, better: null, savesCents: 0 };
   const better =
     a.eligible && b.eligible
       ? a.taxCents <= b.taxCents
@@ -60,6 +65,8 @@ const choice = (key: FamilyChoice["key"], title: string, sides: [Side, Side]): F
 
 export type Child = {
   ageAtYearEnd: number;
+  // Counted only as "under 17": ageAtYearEnd is a placeholder, not a fact (childrenOrUnknownAges).
+  ageUnknown?: true;
   hasSsn: boolean;
   monthsLivedWithYou: number;
 };
@@ -76,13 +83,38 @@ export function childCreditRules(c: Child): string[] {
   return why;
 }
 
+// Does a child under 13 (at the end of the year) count for care? A child whose age is unknown
+// never counts as under 13, but never rules the care out either.
+export function careAgeState(children: Child[]): "yes" | "unknown" | "none" {
+  if (children.some((c) => !c.ageUnknown && c.ageAtYearEnd < FAMILY_RULES.careUnderAge))
+    return "yes";
+  return children.some((c) => c.ageUnknown) ? "unknown" : "none";
+}
+
+export const CARE_AGES_UNKNOWN =
+  "May be open to you: care counts for a child under 13, and I don't have your children's ages yet. Add them under family details.";
+
+// What is recorded on the family form, ignoring anything malformed.
+export function parseChildren(value: unknown): Child[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (c): c is Child =>
+      typeof c === "object" &&
+      c !== null &&
+      Number.isInteger((c as Child).ageAtYearEnd) &&
+      typeof (c as Child).hasSsn === "boolean" &&
+      Number.isInteger((c as Child).monthsLivedWithYou),
+  );
+}
+
 export function careRules(input: {
   children: Child[];
   status: FilingStatus;
   bothWork: boolean;
 }): string[] {
   const why: string[] = [];
-  if (!input.children.some((c) => c.ageAtYearEnd < FAMILY_RULES.careUnderAge)) {
+  // Unknown ages are not a "no": that case is left out here and careChoice says it is unknown.
+  if (careAgeState(input.children) === "none") {
     why.push("Care counts for a child under 13.");
   }
   if (input.status === "married_joint" && !input.bothWork) {
@@ -160,8 +192,14 @@ export function careChoice(input: {
     status: base.filingStatus,
     bothWork: input.bothWork,
   });
+  // Only the ages are missing: the answer is "unknown", and the figures below assume nothing.
+  const ages = careAgeState(input.children);
+  const unknown = ages === "unknown" && why.length === 0;
+  if (unknown) why.push(CARE_AGES_UNKNOWN);
   const eligible = why.length === 0;
-  const kids = input.children.filter((c) => c.ageAtYearEnd < FAMILY_RULES.careUnderAge).length;
+  const kids = input.children.filter(
+    (c) => !c.ageUnknown && c.ageAtYearEnd < FAMILY_RULES.careUnderAge,
+  ).length;
   const costLimit = DEPENDENT_CARE_CREDIT.costLimit[kids > 1 ? 1 : 0];
   const fsaLimit =
     base.filingStatus === "married_separate"
@@ -200,6 +238,7 @@ export function careChoice(input: {
       label: `Pay ${formatWholeDollars(fsa)} of care from a dependent care FSA`,
       taxCents: withFsa,
       eligible,
+      ...(unknown ? { unknown } : {}),
       why: eligible
         ? [
             `Up to ${formatWholeDollars(fsaLimit)} a year skips income and payroll tax (the figure counts the payroll tax saved).`,
@@ -211,6 +250,7 @@ export function careChoice(input: {
       taxCents: withCredit,
       credit: { nonrefundableCents: credit, refundableCents: 0 },
       eligible,
+      ...(unknown ? { unknown } : {}),
       why: eligible
         ? [
             `${Math.round(careShare(agi, jointly) * 100)}% of up to ${formatWholeDollars(costLimit)} of care at your income.`,

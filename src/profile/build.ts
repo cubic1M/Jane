@@ -161,6 +161,9 @@ export type ProfileInput = {
   // a spouse on a joint return, dependants); absent or null when not known.
   state?: string | null;
   householdSize?: number | null;
+  // False: children are counted but no child's age is recorded, so whether childcare counts for
+  // the care credit or a dependent care FSA (a child under 13) is not known. Absent: not loaded.
+  childAgesKnown?: boolean;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
   extras?: {

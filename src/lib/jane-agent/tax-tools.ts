@@ -93,7 +93,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_family",
     description:
-      "Demo advice only: the person's family tax choices for the tax year, each with both sides' federal tax and whether each side is open to them (with the eligibility rules): claiming their children, a dependent care FSA or the care credit, the American Opportunity or Lifetime Learning credit, a 529's state tax break, and married filing jointly or separately (or head of household or single); plus what Jane assumed. Choosing is the person's.",
+      "Demo advice only: the person's family tax choices for the tax year, each with both sides' federal tax and whether each side is open to them (with the eligibility rules; open null means it depends on the children's ages, which are not known yet, so say it may be open and ask for the ages, never that it is closed): claiming their children, a dependent care FSA or the care credit, the American Opportunity or Lifetime Learning credit, a 529's state tax break, and married filing jointly or separately (or head of household or single); plus what Jane assumed. Choosing is the person's.",
     input_schema: noInput,
   },
   {

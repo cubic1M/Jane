@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { parseChildren } from "@/planning/family-taxes";
 import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
 import { profileHistoryStart } from "@/config/profile";
@@ -179,6 +180,7 @@ async function loadProfileInputFrom(
         filingStatus: true,
         childrenUnder17: true,
         otherDependants: true,
+        familyChildren: true,
         answered: true,
         state: true,
       },
@@ -324,6 +326,7 @@ async function loadProfileInputFrom(
           (tax.childrenUnder17 ?? 0) +
           (tax.otherDependants ?? 0)
         : null,
+    childAgesKnown: parseChildren(tax?.familyChildren).length > 0,
     creditScore: report?.score ?? null,
     valuesExcludes: values?.excludes ?? [],
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],

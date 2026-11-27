@@ -102,6 +102,17 @@ describe("dollars", () => {
   });
 });
 
+describe("childcare and the children's ages", () => {
+  const care = (d: (x: ProfileInput) => ProfileInput) =>
+    tax("family", d).find((s) => s.topic === "childcare_tax_break");
+
+  it("is held back when children are counted and no age is recorded", () => {
+    expect(care((d) => d)).toBeDefined();
+    expect(care((d) => ({ ...d, childAgesKnown: true }))).toBeDefined();
+    expect(care((d) => ({ ...d, childAgesKnown: false }))).toBeUndefined();
+  });
+});
+
 describe("confidence", () => {
   it("is lower for what Jane can't see, with a reason a person would accept", () => {
     const cases: [PersonId, string, number, RegExp][] = [
