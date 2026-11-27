@@ -97,7 +97,9 @@ async function waitingFlow(context: FlowContext) {
 
 // A typed question that arrived while a flow waits for a name: not taken as the name, so the
 // answer to it says the flow is still waiting.
-export const WAITING_FOR_NAME = "Your goal is still waiting for its name.";
+// The answer to the question is the newest reply now, so the name is picked up with "continue".
+export const WAITING_FOR_NAME =
+  'Your goal is still waiting for its name: say "continue" to give it.';
 export async function flowWaitsForName(text: string, context: FlowContext): Promise<boolean> {
   const waiting = await waitingFlow(context);
   return waiting?.state.typed === "text" && looksLikeQuestion(text);

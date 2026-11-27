@@ -353,7 +353,8 @@ export function SuggestionCards({
       // The server refused the tap (a step that moved on, figures that changed): the card is not
       // done. It stays or comes back with the server's reason, and the page catches up to the
       // latest one. A refused Revert or Done leaves the card as it is.
-      if (result.error && actionId !== REVERT_ACTION && actionId !== DONE_ACTION) {
+      // (A refused Bring back is handled above: the card stays put away, as the server has it.)
+      if (!back && result.error && actionId !== REVERT_ACTION && actionId !== DONE_ACTION) {
         unmarkGone(id);
         setAway((now) => (now?.item.id === id ? null : now));
         setRefused((now) => ({ ...now, [id]: result.error! }));

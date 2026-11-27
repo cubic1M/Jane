@@ -103,7 +103,7 @@ describe.runIf(url)("guided flows against a real database", () => {
     expect(first.body).toMatch(/1 of 3: What are you saving for/);
     const asked = await say("How much do you need for what is safe to spend?");
     expect(asked.body).not.toMatch(/2 of 3/);
-    expect(asked.body).toContain("Your goal is still waiting for its name.");
+    expect(asked.body).toContain("Your goal is still waiting for its name");
     // Still waiting for a name, or never started: no goal carries the question.
     expect(
       await client.savingsGoal.count({ where: { userId, name: { contains: "safe to spend" } } }),
