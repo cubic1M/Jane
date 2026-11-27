@@ -614,10 +614,7 @@ async function InsuranceContent({
       </div>
 
       {savingNote && (
-        <p
-          role="alert"
-          className="bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
-        >
+        <p role="alert" className="bg-zinc-100 p-3 text-sm dark:bg-zinc-900">
           {savingNote} Nothing changed.
         </p>
       )}
