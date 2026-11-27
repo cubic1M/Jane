@@ -3,7 +3,7 @@ import type { Person } from "@/config/people";
 import { DETECTORS } from "@/detectors";
 import { reportFor, topThreeFor } from "@/detectors/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { offeredToday, scanSuggestions } from "@/lib/suggestions";
+import { isIdea, offeredToday, partsOfIdea, scanSuggestions } from "@/lib/suggestions";
 import { answerByRules } from "../answer";
 import { CHAT_TOOLS, runChatTool } from "../claude-tools";
 import { parseIntent } from "../intents";
@@ -108,6 +108,20 @@ export function unfilledInputs(tool: string, input: Record<string, string>): str
   return (schema?.required ?? []).filter((field) => input[field] === undefined);
 }
 
+// The chat tools behind a suggestion, each with the topic to ask it about. A combined idea
+// (strategist:a+b) is covered by the tools of each part, not of itself.
+export function toolsCovering(key: string, topic: string): { name: string; topic: string }[] {
+  const seen = new Set<string>();
+  return (isIdea(key) ? partsOfIdea(key) : [key]).flatMap((part) => {
+    const detector = DETECTORS.find((d) => `${d.capability}:${d.topic}` === part);
+    return (detector?.covers ?? []).flatMap((name) => {
+      if (seen.has(name)) return [];
+      seen.add(name);
+      return [{ name, topic: isIdea(key) ? (part.split(":")[1] ?? topic) : topic }];
+    });
+  });
+}
+
 export async function proveOn(
   person: Person,
   { client, now }: { client: PrismaClient; now: Date },
@@ -132,10 +146,10 @@ export async function proveOn(
     const suggestions: ProofSuggestion[] = [];
     const questions: ProofQuestion[] = [];
     for (const s of offered) {
-      const detector = DETECTORS.find((d) => `${d.capability}:${d.topic}` === s.key);
+      const covered = toolsCovering(s.key, s.topic);
       const tools = [];
-      for (const name of detector?.covers ?? []) {
-        const input = inputFor(name, s.topic);
+      for (const { name, topic } of covered) {
+        const input = inputFor(name, topic);
         if (unfilledInputs(name, input).length > 0) continue;
         const started = Date.now();
         try {
@@ -160,7 +174,7 @@ export async function proveOn(
         tools,
       });
       // The bank's questions for the features behind it, one each.
-      for (const name of detector?.covers ?? []) {
+      for (const { name } of covered) {
         const row = MORE_ROWS.find((r) => r[2] === name);
         if (!row) continue;
         const q = await ask(userId, row[3], { client, now });
