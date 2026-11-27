@@ -3,6 +3,8 @@ import { DEPENDENT_CARE_CREDIT, PAYROLL_TAX } from "@/config/tax-rates";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "./tax-estimate";
 import {
   aotcRules,
+  CARE_AGES_UNKNOWN,
+  careAgeState,
   careChoice,
   careRules,
   childCreditRules,
@@ -95,6 +97,86 @@ describe("eligibility rules", () => {
     expect(
       headOfHouseholdRules({ married: true, paysOverHalfHome: false, qualifyingPerson: false }),
     ).toHaveLength(3);
+  });
+});
+
+// A child counted only as "under 17", no age recorded (childrenOrUnknownAges): unknown, not "no".
+const unknownKid = (): Child => kid(16, { ageUnknown: true });
+
+describe("dependent care when the children's ages are not known", () => {
+  it("the age state: a known child under 13 wins, unknown ages are not a no", () => {
+    expect(careAgeState([kid(12)])).toBe("yes");
+    expect(careAgeState([kid(13), kid(16)])).toBe("none");
+    expect(careAgeState([unknownKid(), unknownKid()])).toBe("unknown");
+    expect(careAgeState([kid(15), unknownKid()])).toBe("unknown");
+    expect(careAgeState([kid(4), unknownKid()])).toBe("yes");
+    // The placeholder age (16) is never read as a real age.
+    expect(careAgeState([{ ...unknownKid(), ageAtYearEnd: 2 }])).toBe("unknown");
+  });
+
+  it("the rules do not say the care is closed for ages alone", () => {
+    expect(careRules({ children: [unknownKid()], status: "single", bothWork: true })).toEqual([]);
+    expect(careRules({ children: [kid(14)], status: "single", bothWork: true })).toEqual([
+      "Care counts for a child under 13.",
+    ]);
+  });
+
+  it("the choice is unknown on both sides: no figure compared, none recommended", () => {
+    const c = careChoice({
+      estimate: input({ childrenUnder17: 1 }),
+      careCents: 1_000_000,
+      children: [unknownKid()],
+      bothWork: true,
+    })!;
+    expect(c.sides.map((s) => [s.unknown, s.eligible])).toEqual([
+      [true, false],
+      [true, false],
+    ]);
+    expect(c.sides[0].why).toEqual([CARE_AGES_UNKNOWN]);
+    expect(CARE_AGES_UNKNOWN).not.toMatch(/Not open/i);
+    expect(c.better).toBeNull();
+    expect(c.savesCents).toBe(0);
+  });
+
+  it("a child under 13 is open; all 13 or older is closed, with the reason", () => {
+    const run = (children: Child[]) =>
+      careChoice({ estimate: input(), careCents: 1_000_000, children, bothWork: true })!;
+    const open = run([kid(12), unknownKid()]);
+    expect(open.sides.map((s) => [s.eligible, s.unknown])).toEqual([
+      [true, undefined],
+      [true, undefined],
+    ]);
+    expect(open.better).not.toBeNull();
+    const closed = run([kid(13), kid(15)]);
+    expect(closed.sides.map((s) => [s.eligible, s.unknown])).toEqual([
+      [false, undefined],
+      [false, undefined],
+    ]);
+    expect(closed.sides[0].why).toEqual(["Care counts for a child under 13."]);
+  });
+
+  it("another closed rule wins over unknown ages (married filing separately)", () => {
+    const c = careChoice({
+      estimate: input({ filingStatus: "married_separate" }),
+      careCents: 1_000_000,
+      children: [unknownKid()],
+      bothWork: true,
+    })!;
+    expect(c.sides.map((s) => s.unknown)).toEqual([undefined, undefined]);
+    expect(c.sides[0].why.join(" ")).toMatch(/separately/);
+  });
+
+  // The age is of the end of the tax year: the same recorded child is open at 12 and closed
+  // at 13, whatever day the estimate is made (the figure never reads a clock).
+  it("does not read today's date: the answer is the same either side of year end", () => {
+    const run = (age: number) =>
+      careChoice({
+        estimate: input({ year: age === 12 ? 2026 : 2027 }),
+        careCents: 500_000,
+        children: [kid(age)],
+        bothWork: true,
+      })!.sides[0].eligible;
+    expect([run(12), run(13)]).toEqual([true, false]);
   });
 });
 

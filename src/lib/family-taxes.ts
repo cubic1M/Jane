@@ -12,6 +12,7 @@ import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import {
   careChoice,
+  parseChildren,
   childrenChoice,
   educationChoice,
   filingChoice,
@@ -47,17 +48,7 @@ export type FamilyDetails = {
   student: Student | null;
 };
 
-export function parseChildren(value: unknown): Child[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (c): c is Child =>
-      typeof c === "object" &&
-      c !== null &&
-      Number.isInteger((c as Child).ageAtYearEnd) &&
-      typeof (c as Child).hasSsn === "boolean" &&
-      Number.isInteger((c as Child).monthsLivedWithYou),
-  );
-}
+export { parseChildren };
 
 // The children for a review: the ones the person recorded, else one per child counted under 17 with
 // no age (FAMILY_RULES.unknownAge), so nothing that depends on an age is claimed from a guess.
@@ -66,6 +57,7 @@ export function childrenOrUnknownAges(familyChildren: unknown, underSeventeen: n
   if (recorded.length > 0) return recorded;
   return Array.from({ length: underSeventeen }, () => ({
     ageAtYearEnd: FAMILY_RULES.unknownAge,
+    ageUnknown: true as const,
     hasSsn: true,
     monthsLivedWithYou: 12,
   }));

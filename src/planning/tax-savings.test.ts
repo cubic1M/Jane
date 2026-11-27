@@ -116,6 +116,16 @@ describe("findTaxSavings", () => {
     expect(s.estimateCents).toBeGreaterThan(0);
   });
 
+  it("dependent care: held back when the children's ages are not known", () => {
+    const run = (extra: object) =>
+      savings(input({ childrenUnder17: 1 }), { childcareCents: $(9_000), ...extra }).map(
+        (x) => x.key,
+      );
+    expect(run({ childAgesKnown: false })).not.toContain("dependent_care");
+    expect(run({ childAgesKnown: true })).toContain("dependent_care");
+    expect(run({})).toContain("dependent_care");
+  });
+
   it("itemizing, bunching gifts and student loan interest", () => {
     expect(
       savings(input({ mortgageInterestCents: $(14_000) })).find((x) => x.key === "itemize")

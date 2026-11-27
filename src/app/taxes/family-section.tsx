@@ -38,11 +38,17 @@ export function FamilySection({ view }: { view: FamilyView }) {
                         {s.label}
                         {c.better === i && <strong className="ml-2">Less tax</strong>}
                         <span className="block text-xs text-zinc-600 dark:text-zinc-400">
-                          {s.eligible ? s.why.join(" ") : `Not open to you: ${s.why.join(" ")}`}
+                          {s.eligible || s.unknown
+                            ? s.why.join(" ")
+                            : `Not open to you: ${s.why.join(" ")}`}
                         </span>
                       </th>
                       <td className="py-1 text-right whitespace-nowrap">
-                        {s.eligible ? formatWholeDollars(s.taxCents) : "n/a"}
+                        {s.eligible
+                          ? formatWholeDollars(s.taxCents)
+                          : s.unknown
+                            ? "Depends on ages"
+                            : "n/a"}
                       </td>
                     </tr>
                   ))}

@@ -445,8 +445,9 @@ export async function runTaxTool(
           choice: c.title,
           sides: c.sides.map((s, i) => ({
             option: s.label,
-            tax: money(s.taxCents),
-            open: s.eligible,
+            tax: s.unknown ? null : money(s.taxCents),
+            // null: depends on the children's ages, which Jane does not have (rules say so).
+            open: s.unknown ? null : s.eligible,
             rules: s.why,
             less: c.better === i,
           })),

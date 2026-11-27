@@ -63,6 +63,9 @@ export type SavingsInput = {
   // Out-of-pocket medical and childcare costs for the year, projected.
   medicalCents: number;
   childcareCents: number;
+  // False: the children's ages are not recorded, so whether childcare counts (a child under 13)
+  // is unknown and the FSA-or-credit comparison is held back. Absent: not asked.
+  childAgesKnown?: boolean;
   // Tuition paid this year, by payee; home energy work paid last year, by payee.
   tuition: { payee: string; cents: number }[];
   energyLastYear: { payee: string; cents: number; uncapped: boolean }[];
@@ -215,7 +218,12 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     });
   }
 
-  if (s.childcareCents > 0 && base.childrenUnder17 > 0 && base.income.wagesCents > 0) {
+  if (
+    s.childcareCents > 0 &&
+    base.childrenUnder17 > 0 &&
+    base.income.wagesCents > 0 &&
+    s.childAgesKnown !== false
+  ) {
     const limit =
       base.filingStatus === "married_separate"
         ? CONTRIBUTION_LIMITS.dependentCareFsaMarriedSeparate

@@ -291,6 +291,9 @@ const childcareTaxBreak: Detector = {
     const kids = profile.facts.has_children;
     const income = profile.facts.monthly_income;
     if (kids.value !== true) return null;
+    // Whether a child is under 13 decides whether the FSA or the credit is open at all; with no
+    // ages recorded the comparison is held back (the profile page asks for the ages).
+    if (data.childAgesKnown === false) return null;
     const care = tx(data, (t) => t.pfc === "GENERAL_SERVICES_CHILDCARE" && t.amountCents > 0);
     const spent = care.reduce((s, t) => s + t.amountCents, 0);
     if (spent < T.childcareMinCents) return null;

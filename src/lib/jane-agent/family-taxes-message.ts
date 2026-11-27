@@ -12,6 +12,7 @@ const FAMILY_HREF = "/taxes?focus=life:family";
 
 const sideLine = (c: FamilyChoice, i: 0 | 1) => {
   const s = c.sides[i];
+  if (s.unknown) return `• ${s.label}: depends on your children's ages (${s.why.join(" ")})`;
   return s.eligible
     ? `• ${s.label}: tax about ${formatWholeDollars(s.taxCents)}${c.better === i ? " (less)" : ""}`
     : `• ${s.label}: not open to you (${s.why.join(" ")})`;
