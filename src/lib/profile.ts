@@ -573,7 +573,7 @@ export async function correctFact(
   // the card, the Taxes page, the estimate and the chat read one answer (src/lib/filing-status.ts).
   if (key === "filing_status" && typeof value === "string" && isFilingStatus(value)) {
     await saveToldFiling(userId, value, { client, now });
-    await mirrorFilingToProfile(userId, value, { client });
+    await mirrorFilingToProfile(userId, value, { client, whileTold: true });
     return;
   }
   await savePreference(

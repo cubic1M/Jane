@@ -7,7 +7,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { loadFiling } from "@/lib/filing-status";
+import { loadFiling, mirrorFilingToProfile, saveToldFiling } from "@/lib/filing-status";
 import { createCheckPerson, deleteCheckPerson } from "@/lib/jane-agent/checks/person";
 import { deletePreference } from "@/lib/jane-agent/preferences";
 import { runTaxTool } from "@/lib/jane-agent/tax-tools-run";
@@ -158,6 +158,16 @@ describe.runIf(url)("forgetting takes the copies back", { timeout: 300_000 }, ()
     expect(
       (await client.taxProfile.findFirstOrThrow({ where: { userId: other } })).filingStatus,
     ).toBe("single");
+  });
+
+  it("a Forget between the two saves of an answer is not undone by the second save", async () => {
+    await saveToldFiling(id, "married_joint", { client, now: NOW });
+    await forgetEverything(id, { client });
+    await mirrorFilingToProfile(id, "married_joint", { client, whileTold: true });
+    expect((await saveRow())?.filingStatus ?? null).toBeNull();
+    // A new answer afterwards writes its own copy.
+    await correctFact(id, "filing_status", "single", { client, now: NOW });
+    expect((await saveRow())?.filingStatus).toBe("single");
   });
 
   it("a different answer on the tax profile stays when an older told answer is forgotten", async () => {
