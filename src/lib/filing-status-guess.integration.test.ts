@@ -36,7 +36,7 @@ describe.runIf(url)("one filing guess", { timeout: 300_000 }, () => {
     });
   });
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
     await client.$disconnect();
   });
   // One earner with two children, nobody has said how they file.
