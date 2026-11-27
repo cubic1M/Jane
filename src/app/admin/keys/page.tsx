@@ -5,6 +5,7 @@ import { LEGACY_KEY_ID } from "@/lib/keyring";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { rotateNow } from "./actions";
+import { LastRun, type Search } from "./last-run";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 
@@ -12,51 +13,16 @@ import { LoadingBar } from "@/components/loading-bar";
 // move everything to the current key, and when an old key can be removed. Names and counts
 // only; no key or value is ever shown.
 
-type Search = {
-  rotated?: string;
-  failed?: string;
-  done?: string;
-  error?: string;
-  // Where a run that ran out of time got to.
-  at?: string;
-};
-
 const keyName = (id: string) =>
   id === LEGACY_KEY_ID ? "TOKEN_ENCRYPTION_KEY (the original key)" : `"${id}"`;
-
-function LastRun({ search }: { search: Search }) {
-  if (search.error === "record") {
-    return (
-      <p className="rounded-xl border-2 border-zinc-900 p-3 text-sm font-semibold dark:border-zinc-100">
-        Nothing was changed: the run couldn&apos;t be written to the audit log. Press the button
-        again.
-      </p>
-    );
-  }
-  if (search.error) {
-    return (
-      <p className="rounded-xl border-2 border-zinc-900 p-3 text-sm font-semibold dark:border-zinc-100">
-        Nothing was changed: the current key isn&apos;t working. Fix the problems listed below,
-        redeploy, then press the button again.
-      </p>
-    );
-  }
-  if (search.rotated === undefined) return null;
-  const failed = Number(search.failed ?? 0);
-  return (
-    <p className="rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
-      Last run moved {search.rotated} values to the current key.
-      {failed > 0 && ` ${failed} couldn't be moved (their key is missing or wrong).`}{" "}
-      {search.done === "1" ? "It went through everything." : "It ran out of time: press it again."}
-    </p>
-  );
-}
 
 async function Keys({ search }: { search: Promise<Search> }) {
   const admin = await requireAdmin();
   const [report, params] = await Promise.all([keyReport(), search]);
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_keys", null, {});
   const behind = report.keys.filter((k) => !k.current).reduce((sum, k) => sum + k.values, 0);
+  // Under a key that isn't configured, or with a label that can't be read: no press moves these.
+  const stuck = report.missing.reduce((sum, m) => sum + m.values, 0);
 
   return (
     <>
@@ -126,13 +92,15 @@ async function Keys({ search }: { search: Promise<Search> }) {
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Move everything to the current key</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {behind === 0
-            ? "Everything is already on the current key."
-            : `${behind} values are on an older key.`}{" "}
+          {behind > 0
+            ? `${behind} values are on an older key.`
+            : stuck > 0
+              ? "No value is waiting to move; some can't be read (see Keys above)."
+              : "Everything is already on the current key."}{" "}
           Safe to press any time and to press again; it only changes values that need it, and each
           run is written to the audit log.
         </p>
-        <LastRun search={params} />
+        <LastRun search={params} behind={behind} stuck={stuck} />
         <form action={rotateNow}>
           {params.at && <input type="hidden" name="at" value={params.at} />}
           <SubmitButton className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">

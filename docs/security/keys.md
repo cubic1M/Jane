@@ -76,6 +76,11 @@ If it says some values "couldn't be moved", the page lists which key they need (
 as missing). Usually that's a key you've already removed from Vercel: add it back, redeploy,
 and press again.
 
+A press that carried on from an earlier one doesn't go back to what failed before it. If it
+reaches the end with values still on an older key, the page says how many: press again, and
+that press starts from the beginning. Values under a missing key, or unreadable, are listed
+under **Keys**; pressing doesn't move them.
+
 ## 4. Retire the old key
 
 When the page shows the original key as **0 values · not used: safe to remove from Vercel**:
