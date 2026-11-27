@@ -45,10 +45,11 @@ async function record(name: string, on: boolean, how: { tier: SwitchTier; trigge
       ...how,
       error: error instanceof Error ? error.name : "Error",
     });
+    // The kind is what an alert's subject carries, so it names the switch and which way.
     await alertError(
       {
-        message: `SwitchNotRecorded: ${name} turned ${word}, with no audit record`,
-        path: `/api/ops/switches/${name}-${word}`,
+        message: `SwitchNotRecorded.${name}.${word}: turned ${word}, with no audit record`,
+        path: "/api/ops/switches",
       },
       { pastCeiling: true },
     );

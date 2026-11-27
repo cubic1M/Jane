@@ -182,9 +182,13 @@ async function syncBanks(startedAt: number) {
   // Its own clock: deleting temporary tries comes first, and isn't the banks' time to lose. One
   // under way may run past it, but not into the time kept for the steps after.
   const syncStarted = Date.now();
-  const waitUntil = Math.max(
-    startedAt + CRON_REQUEST_BUDGET_MS - CRON_AFTER_SYNC_RESERVE_MS,
-    syncStarted + CRON_SYNC_LEAST_MS,
+  // Never past the request's own limit.
+  const waitUntil = Math.min(
+    startedAt + CRON_REQUEST_BUDGET_MS,
+    Math.max(
+      startedAt + CRON_REQUEST_BUDGET_MS - CRON_AFTER_SYNC_RESERVE_MS,
+      syncStarted + CRON_SYNC_LEAST_MS,
+    ),
   );
   for (const item of items) {
     const now = Date.now();

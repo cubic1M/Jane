@@ -11,6 +11,7 @@ vi.mock("@/lib/ops-switches", () => ({ setSwitch, switchesOn: vi.fn(async () => 
 vi.mock("@/lib/audit", () => ({ logAudit, SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/error-alerts", () => ({ alertError }));
 
+import { errorKind } from "@/lib/error-kind";
 import { POST } from "./route";
 
 const call = (on: boolean) =>
@@ -45,13 +46,13 @@ describe("a switch the audit log missed", () => {
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual({ changed: true, on: ["banks"] });
     expect(setSwitch).toHaveBeenCalledTimes(1);
-    expect(alertError).toHaveBeenCalledWith(
-      {
-        message: `SwitchNotRecorded: banks turned ${word}, with no audit record`,
-        path: `/api/ops/switches/banks-${word}`,
-      },
-      { pastCeiling: true },
-    );
+    const sent = {
+      message: `SwitchNotRecorded.banks.${word}: turned ${word}, with no audit record`,
+      path: "/api/ops/switches",
+    };
+    expect(alertError).toHaveBeenCalledWith(sent, { pastCeiling: true });
+    // What the email's subject is made of keeps the switch and which way it went.
+    expect(errorKind(sent.message)).toBe(`SwitchNotRecorded.banks.${word}`);
   });
 
   it("raises nothing when the record is written", async () => {

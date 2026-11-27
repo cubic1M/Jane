@@ -61,6 +61,7 @@ vi.mock("@/lib/controller", () => ({ queueNightlyRuns: stand("controller") }));
 import { alertError } from "@/lib/error-alerts";
 import { syncItem } from "@/lib/plaid/sync";
 import { takeSnapshots } from "@/lib/snapshots";
+import { deleteTrialsPastTheirTime } from "@/lib/trial-delete";
 import { GET, maxDuration } from "./route";
 
 const call = () =>
@@ -122,6 +123,22 @@ describe("the night's bank syncs and its limit", () => {
     const { body } = await nightWithinItsLimit();
     expect(body).toMatchObject({ synced: 0, failed: 0, deferred: 2 });
     expect(order).toEqual(expect.arrayContaining(["snapshots", "deadlines", "controller"]));
+  });
+
+  it("starts no bank sync past the request's limit, however late the banks began", async () => {
+    let clock = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    // The clean-up before them leaves the banks the last ten seconds of the night.
+    vi.mocked(deleteTrialsPastTheirTime).mockImplementationOnce(async () => {
+      clock += 260_000;
+      return {} as never;
+    });
+    vi.mocked(syncItem).mockImplementation(async () => {
+      clock += 12_000;
+      return {} as never;
+    });
+    await call().catch(() => {});
+    expect(syncItem).toHaveBeenCalledTimes(1);
   });
 
   it("stops waiting for a step that never ends, starts no more, and says which", async () => {
