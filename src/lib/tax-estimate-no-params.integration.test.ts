@@ -44,25 +44,19 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
     await client.$disconnect();
   });
 
-  it("from May 1, 2027 the year is 2027: the loader refuses it, and the state and sentence carry no figure", async () => {
-    await expect(loadTaxEstimate(id, { client, now: MAY1_NOON })).rejects.toMatchObject({
-      year: 2027,
-    });
+  it("from May 1, 2027 the usual year is 2027: priced with 2026 law and says so; a year before the first is refused", async () => {
+    const view = await loadTaxEstimate(id, { client, now: MAY1_NOON });
+    expect(view.year).toBe(2027);
+    expect(view.estimate.year).toBe(2026);
+    await expect(loadTaxEstimate(id, { client, now: CREATED, year: 2024 })).rejects.toBeInstanceOf(
+      NoTaxParamsError,
+    );
     expect(noParamsText(2027)).toBe(
       "Jane doesn't have the IRS figures for 2027 yet, so it isn't estimating that year.",
     );
     expect(
       estimateState({ noParams: true, totalTaxCents: 1, withholdingKnown: true, refundCents: 5 }),
     ).toBe("no_params");
-  });
-
-  it("the plain loader refuses it with NoTaxParamsError", async () => {
-    await expect(loadTaxEstimate(id, { client, now: MAY1_NOON })).rejects.toBeInstanceOf(
-      NoTaxParamsError,
-    );
-    await expect(loadTaxEstimate(id, { client, now: CREATED, year: 2024 })).rejects.toBeInstanceOf(
-      NoTaxParamsError,
-    );
   });
 
   it("the page for that year says the sentence and shows no money", () => {

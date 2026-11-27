@@ -171,7 +171,7 @@ describe("dependent care when the children's ages are not known", () => {
   it("does not read today's date: the answer is the same either side of year end", () => {
     const run = (age: number) =>
       careChoice({
-        estimate: input({ year: age === 12 ? 2026 : 2027 }),
+        estimate: input({ year: age === 12 ? 2025 : 2026 }),
         careCents: 500_000,
         children: [kid(age)],
         bothWork: true,
