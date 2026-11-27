@@ -22,7 +22,7 @@ const $ = (dollars: number) => Math.round(dollars * 100);
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>
     x && typeof x === "object" && !Array.isArray(x)
-      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b)))
+      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
       : x,
   );
 
@@ -32,8 +32,23 @@ const groups = (year: number): [string, Cited<unknown>][] =>
       typeof e[1] === "object" && e[1] !== null && "status" in e[1],
   );
 
-// Names of numbers that are not money in cents.
-const NOT_MONEY = /[Rr]ate|[Ss]hare|[Yy]ear|Age|businessCentsPerMile/;
+// Numbers that are not money in cents: a rate or a share (by the end of the name), and these.
+const NOT_MONEY = new Set([
+  "obbba.firstYear",
+  "obbba.lastYear",
+  "obbba.senior.minAge",
+  "savers.taxYear",
+  "saversMatch.firstYear",
+  "rothCatchUp.requiredFrom",
+  "eitc.childlessMinAge",
+  "eitc.childlessMaxAge",
+  "mileage.businessCentsPerMile",
+]);
+const isNotMoney = (path: string) =>
+  /(Rate|rate|Share|share)(\[\d+\])?$/.test(path) ||
+  NOT_MONEY.has(path) ||
+  /^mileage\.businessByPeriod\[\d+\]\.centsPerMile$/.test(path);
+
 function walk(v: unknown, path: string, visit: (path: string, n: number) => void) {
   if (typeof v === "number") visit(path, v);
   else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`, visit));
@@ -127,7 +142,7 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
 
   it("keeps money in whole cents", () => {
     walk(Object.fromEntries(groups(year).map(([k, g]) => [k, g.value])), "", (path, n) => {
-      if (NOT_MONEY.test(path)) return;
+      if (isNotMoney(path)) return;
       expect(Number.isInteger(n), `${path} = ${n}`).toBe(true);
     });
   });
@@ -187,14 +202,24 @@ describe("what is still not confirmed at the source (reported)", () => {
   it("lists exactly these groups, each with its note", () => {
     const notes = verifyNotes(2026);
     expect(notes.map((n) => n.key).sort()).toEqual([...EXPECTED_NOTES].sort());
-    // Two groups are unconfirmed outright; the rest are read, with a note on part of them.
+    // Two groups are unconfirmed outright (a wrong value today, and one not read); the rest are read.
     expect(
       notes
         .filter((n) => n.status === "unconfirmed")
         .map((n) => n.key)
         .sort(),
-    ).toEqual(["amt", "rothCatchUp"]);
+    ).toEqual(["amt", "medical"]);
     for (const n of notes) expect(n.note.length, n.key).toBeGreaterThan(20);
+  });
+});
+
+describe("a caller can't change the shared table", () => {
+  it("throws when a figure is assigned", () => {
+    const params = federalParams(2026);
+    expect(() => {
+      (params.amt.value as { phaseOutRate: number }).phaseOutRate = 0.5;
+    }).toThrow(TypeError);
+    expect(federalParams(2026).amt.value.phaseOutRate).toBe(0.25);
   });
 });
 
@@ -236,8 +261,15 @@ describe("the figures the roadmap named for T1, read at the source", () => {
     expect(p.amt.status).toBe("unconfirmed");
     expect(p.amt.verify).toContain("WRONG TODAY");
   });
-  it("the Roth catch-up threshold stays unconfirmed for 2027", () => {
-    expect(p.rothCatchUp.status).toBe("unconfirmed");
+  it("the Roth catch-up threshold is $150,000 for 2026 and $155,000 for 2027; the legacy field is flagged", () => {
+    expect(p.rothCatchUp.value.overByCatchUpYear).toEqual({ 2026: $(150_000), 2027: $(155_000) });
+    expect(p.rothCatchUp.value.priorYearFicaWagesOver).toBe($(150_000));
+    expect(p.rothCatchUp.verify).toContain("WRONG TODAY");
+  });
+  it("the mileage rate is 72.5 before July and 76 after; the single legacy rate is flagged", () => {
+    expect(p.mileage.value.businessByPeriod.map((r) => r.centsPerMile)).toEqual([72.5, 76]);
+    expect(p.mileage.value.businessCentsPerMile).toBe(72.5);
+    expect(p.mileage.verify).toContain("WRONG TODAY");
   });
 });
 

@@ -2,8 +2,8 @@ import type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 
 // United States federal figures for tax year 2026 (Tax T1). Every figure that used to sit in
 // src/config/tax-rates.ts and the AMT table in src/config/equity-tax.ts is here, with the address
-// of the page it was read at. No figure changed value in the move (src/config/tax-params/
-// unchanged-exports.test.ts and src/planning/tax-estimate-unchanged.test.ts prove it).
+// of the page it was read at. The values are copied, not changed; the proof that none moved (golden
+// files written from origin/main, compared in part 2 of Tax T1) is in the second pull request.
 //
 // All money is in cents; rates are fractions. FOR REVIEW by someone qualified before it is relied
 // on, and again each year.
@@ -345,14 +345,16 @@ export const US_2026: FederalParams = {
       priorYearFicaWagesOver: $(150_000),
       requiredFrom: 2027,
       rule: "26 USC 414(v)(7); T.D. 10033",
+      // The wage threshold by the year the catch-up is made (the wages are those of the year before).
+      overByCatchUpYear: { 2026: $(150_000), 2027: $(155_000) },
     },
     {
       source: N2567,
+      alsoSources: ["https://www.irs.gov/pub/irs-drop/n-26-66.pdf"],
       where:
-        "Notice 2025-67: the Roth catch-up wage threshold for 2025 wages (applies to 2026 catch-ups) is $150,000",
-      status: "unconfirmed",
+        "Notice 2025-67: $150,000 for 2025 wages (2026 catch-ups). Notice 2026-66: $155,000 for 2026 wages (2027 catch-ups).",
       verify:
-        "$150,000 is confirmed only for 2025 wages (2026 catch-ups). The code applies it from 2027, whose threshold (2026 wages) is an indexed figure from the 2027 notice, not read; a CodeRabbit finding says $155,000. Not wrong, not provable: left as is.",
+        "WRONG TODAY: priorYearFicaWagesOver is $150,000 and the code applies it from 2027 (requiredFrom), but the threshold for 2027 catch-ups is $155,000 (Notice 2026-66; $150,000 is the 2026 one). Legacy fields kept in T1 (no figure changes; an existing test pins $150,000 for 2027); overByCatchUpYear holds both. Nothing in the app reads this yet; no roadmap step owns the correction.",
     },
   ),
   studentLoanInterest: cited(
@@ -400,7 +402,8 @@ export const US_2026: FederalParams = {
     {
       source: code("213"),
       where: "26 USC 213(a): 7.5 percent of adjusted gross income",
-      verify: "Not re-read in T1 (statute, long unchanged).",
+      status: "unconfirmed",
+      verify: "Not read at the source in T1 (statute, long unchanged); kept as the code had it.",
     },
   ),
   contributionLimits: cited(
@@ -512,12 +515,20 @@ export const US_2026: FederalParams = {
     },
   ),
   mileage: cited(
-    { businessCentsPerMile: 72.5 },
+    {
+      businessCentsPerMile: 72.5,
+      businessByPeriod: [
+        { from: "2026-01-01", to: "2026-06-30", centsPerMile: 72.5 },
+        { from: "2026-07-01", to: "2026-12-31", centsPerMile: 76 },
+      ],
+    },
     {
       source: N2610,
-      where: "Notice 2026-10, section 3: 72.5 cents per mile for business use in 2026",
+      alsoSources: ["https://www.irs.gov/tax-professionals/standard-mileage-rates"],
+      where:
+        "Notice 2026-10, section 3: 72.5 cents per mile for business use from January 1; the IRS standard mileage rates page: 76 cents for July 1 to December 31, 2026 (release IR-2026-29, not opened).",
       verify:
-        "A report of 76 cents from July 1, 2026 is not in Notice 2026-10; if the IRS issued a mid-year notice it was not read. The value 72.5 matches the primary source read.",
+        "WRONG TODAY for July to December: businessCentsPerMile is 72.5 for every mile, the IRS rate from July 1 is 76 cents. Jane holds a year's miles with no dates, so it cannot split them (MILEAGE_RATE_NOTE says so); kept in T1, no roadmap step owns the correction. The 76 cents is read from the IRS rates page, not from the release itself.",
     },
   ),
   homeOffice: cited(

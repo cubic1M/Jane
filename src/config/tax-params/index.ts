@@ -19,7 +19,16 @@ export class NoTaxParamsError extends Error {
   }
 }
 
-const FEDERAL: Readonly<Record<number, FederalParams>> = { 2026: US_2026 };
+// A caller can't change a shared table: every level is frozen.
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.values(value).forEach(deepFreeze);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+const FEDERAL: Readonly<Record<number, FederalParams>> = { 2026: deepFreeze(US_2026) };
 
 export function federalParams(year: number): FederalParams {
   const params = FEDERAL[year];

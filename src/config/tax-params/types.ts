@@ -115,7 +115,12 @@ export type FederalParams = Readonly<{
     phaseOut: ByStatus<readonly [number, number]>;
     rule: string;
   }>;
-  rothCatchUp: Cited<{ priorYearFicaWagesOver: number; requiredFrom: number; rule: string }>;
+  rothCatchUp: Cited<{
+    priorYearFicaWagesOver: number;
+    requiredFrom: number;
+    rule: string;
+    overByCatchUpYear: Readonly<Record<number, number>>;
+  }>;
   // Null: not allowed (married filing separately).
   studentLoanInterest: Cited<{
     max: number;
@@ -178,7 +183,10 @@ export type FederalParams = Readonly<{
     highRateFrom: ByStatus<number>;
   }>;
   // Cents per mile (72.5, not 7,250).
-  mileage: Cited<{ businessCentsPerMile: number }>;
+  mileage: Cited<{
+    businessCentsPerMile: number;
+    businessByPeriod: readonly { from: string; to: string; centsPerMile: number }[];
+  }>;
   homeOffice: Cited<{ perSquareFoot: number; maxSquareFeet: number }>;
 }>;
 
