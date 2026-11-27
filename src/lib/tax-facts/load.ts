@@ -11,6 +11,7 @@ import { loadTaxFacts } from "@/lib/tax-profile";
 import { storedFactData, type TaxFactInput } from "@/lib/tax-facts/write";
 import { isTrialUser } from "@/lib/trial-ids";
 import { todayOf } from "@/lib/today";
+import { defaultTaxYear } from "@/planning/tax-pack";
 import {
   factId,
   mergeFacts,
@@ -224,4 +225,33 @@ export async function loadTaxHousehold(
       })),
     ],
   };
+}
+
+// The tax years whose household a profile carries: the one the person is working on and, while
+// the previous year's return is still being filed (January to April), the calendar year begun.
+export function taxHouseholdYears(today: string): number[] {
+  const working = defaultTaxYear(today);
+  const calendar = Number(today.slice(0, 4));
+  return working === calendar ? [working] : [working, calendar];
+}
+
+// The households a profile is built with (ProfileInput.taxHouseholds). A year that cannot be read
+// is left out and logged: the profile is still built from everything else.
+export async function loadTaxHouseholds(
+  userId: string,
+  today: string,
+  options: Options = {},
+): Promise<Record<number, TaxHousehold>> {
+  const households: Record<number, TaxHousehold> = {};
+  for (const year of taxHouseholdYears(today)) {
+    try {
+      households[year] = await loadTaxHousehold(userId, year, options);
+    } catch (error) {
+      log.error("tax household: could not be read", {
+        year,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+  return households;
 }

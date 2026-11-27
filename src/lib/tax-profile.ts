@@ -16,6 +16,7 @@ import { logAudit } from "@/lib/audit";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { loadFiling, saveToldFiling } from "@/lib/filing-status";
+import { recordProfileField } from "@/lib/tax-facts/through";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { readPeople } from "@/lib/insurance/family-rules";
@@ -204,6 +205,15 @@ export async function saveTaxAnswers(
   for (const answer of checked) {
     if (answer.field === "filingStatus")
       await saveToldFiling(userId, answer.value, { client, now });
+  }
+  // The same answers on the household's tax record (src/lib/tax-facts/).
+  for (const answer of checked) {
+    if (
+      answer.field === "state" ||
+      answer.field === "filingStatus" ||
+      answer.field === "dependants"
+    )
+      await recordProfileField(userId, answer.field, { client, now });
   }
   await logAudit(
     { type: "user", id: userId },

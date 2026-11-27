@@ -17,6 +17,8 @@ import {
   unmirrorFilingFromProfile,
 } from "@/lib/filing-status";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
+import { loadTaxHouseholds } from "@/lib/tax-facts/load";
+import { forgetToldFact, recordToldFact, syncFilingRecord } from "@/lib/tax-facts/through";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
@@ -297,6 +299,7 @@ async function loadProfileInputFrom(
     told.filing_status = filingSaid;
 
   const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
+  const taxHouseholds = await loadTaxHouseholds(userId, today, { client, now });
   return {
     today,
     transactions: transactions.map((t) => ({
@@ -379,6 +382,7 @@ async function loadProfileInputFrom(
       ),
     },
     healthPlan: healthPlanOf(healthPolicy),
+    taxHouseholds,
     fsaElectionCents: fsa
       ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
       : null,
@@ -579,6 +583,7 @@ export async function correctFact(
   if (key === "filing_status" && typeof value === "string" && isFilingStatus(value)) {
     await saveToldFiling(userId, value, { client, now });
     await mirrorFilingToProfile(userId, value, { client });
+    await syncFilingRecord(userId, { client, now });
     return;
   }
   await savePreference(
@@ -619,13 +624,15 @@ export async function correctFact(
       update: { childrenUnder17: children, answered },
     });
   }
+  // The household's tax record gets the same answer (src/lib/tax-facts/).
+  await recordToldFact(userId, key, value, { client, now });
 }
 
 // Takes a correction back, so Jane goes back to what it sees.
 export async function clearCorrection(
   userId: string,
   key: string,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
   const row = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
@@ -642,6 +649,10 @@ export async function clearCorrection(
   }
   const gone = row ? await deletePreference(userId, row.id, { client }) : false;
   if (gone) await markPrimerStale(userId, { client });
+  // Whether or not there was a correction to delete just now: taking it back again finishes the
+  // record's cleanup if an earlier try stopped half way.
+  if (key === "filing_status") await syncFilingRecord(userId, { client, now });
+  else await forgetToldFact(userId, key, { client, now });
   return gone;
 }
 

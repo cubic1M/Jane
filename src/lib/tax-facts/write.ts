@@ -182,3 +182,113 @@ export async function recordTaxFact(
   }
   return outcome;
 }
+
+// The person took an answer back: that origin's current row is superseded and nothing replaces it,
+// so the fact reads as what the other origins say, or unknown. The row stays as history.
+export async function forgetTaxFact(
+  userId: string,
+  input: { key: TaxFactKey; taxYear: number; member?: string; origin: FactOrigin },
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const spec = taxFactSpec(input.key);
+  const { count } = await personTransaction(
+    userId,
+    (tx) =>
+      tx.taxFact.updateMany({
+        where: {
+          userId,
+          taxYear: spec.yearScoped ? input.taxYear : NOT_YEAR_SCOPED,
+          memberKey: input.member ?? "self",
+          key: input.key,
+          origin: input.origin,
+          supersededAt: null,
+        },
+        data: { supersededAt: now },
+      }),
+    client,
+  );
+  return count;
+}
+
+// The details a household sync owns on the members it makes (`child:legacy-N`).
+const MEMBER_DETAIL_KEYS = [
+  "member.birth_date",
+  "member.months_lived_with_you",
+  "member.ssn_valid_for_work",
+];
+
+// Takes off the details of the profile's members that a sync no longer says: every current one of
+// those keys (from the person's answer or the copy of the older store) not in `keep`, which holds
+// `member|key`. What another source says about a member is left.
+export async function forgetMemberDetailsExcept(
+  userId: string,
+  taxYear: number,
+  keep: ReadonlySet<string>,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  await personTransaction(
+    userId,
+    async (tx) => {
+      const rows = await tx.taxFact.findMany({
+        where: {
+          userId,
+          taxYear: { in: [taxYear, NOT_YEAR_SCOPED] },
+          supersededAt: null,
+          key: { in: MEMBER_DETAIL_KEYS },
+          origin: { in: ["answer", "legacy"] },
+          memberKey: { startsWith: "child:legacy-" },
+        },
+        select: { id: true, memberKey: true, key: true },
+      });
+      const drop = rows.filter((r) => !keep.has(`${r.memberKey}|${r.key}`)).map((r) => r.id);
+      if (drop.length > 0)
+        await tx.taxFact.updateMany({
+          where: { userId, id: { in: drop }, supersededAt: null },
+          data: { supersededAt: now },
+        });
+    },
+    client,
+  );
+}
+
+export type MemberInput = { memberKey: string; label: string; relationship: string };
+
+// The household's members for a year, from the tax profile's own counts: those given are present
+// (added when missing, brought back when removed), and the ones the profile made earlier that are
+// no longer counted are marked removed, never deleted. Members the person added any other way
+// (their key is not `…:legacy-N`) are not touched.
+export async function syncProfileMembers(
+  userId: string,
+  taxYear: number,
+  members: readonly MemberInput[],
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  await personTransaction(
+    userId,
+    async (tx) => {
+      const keep = members.map((m) => m.memberKey);
+      await tx.taxHouseholdMember.createMany({
+        data: members.map((m) => ({ ...m, userId, taxYear })),
+        skipDuplicates: true,
+      });
+      await tx.taxHouseholdMember.updateMany({
+        where: { userId, taxYear, memberKey: { in: keep }, removedAt: { not: null } },
+        data: { removedAt: null },
+      });
+      await tx.taxHouseholdMember.updateMany({
+        where: {
+          userId,
+          taxYear,
+          removedAt: null,
+          memberKey: { notIn: keep },
+          OR: [
+            { memberKey: { startsWith: "child:legacy-" } },
+            { memberKey: { startsWith: "relative:legacy-" } },
+          ],
+        },
+        data: { removedAt: now },
+      });
+    },
+    client,
+  );
+}

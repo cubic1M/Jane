@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadCollege } from "@/lib/investments/college";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { recordFamilyDetails } from "@/lib/tax-facts/through";
 import { loadToldResidency } from "@/lib/tax-residency";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import {
@@ -193,7 +194,11 @@ export async function loadFamilyTaxes(
 export async function saveFamilyDetails(
   userId: string,
   details: FamilyDetails,
-  { client = defaultClient, via }: { client?: PrismaClient; via: "chat" | "page" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+  }: { client?: PrismaClient; now?: Date; via: "chat" | "page" },
 ): Promise<void> {
   for (const c of details.children) {
     if (!Number.isInteger(c.ageAtYearEnd) || c.ageAtYearEnd < 0 || c.ageAtYearEnd > 30) {
@@ -235,6 +240,7 @@ export async function saveFamilyDetails(
     create: { userId, ...data },
     update: data,
   });
+  await recordFamilyDetails(userId, { client, now });
   await logAudit(
     { type: "user", id: userId },
     "tax_profile_changed",
