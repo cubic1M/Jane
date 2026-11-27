@@ -264,6 +264,7 @@ async function handleDeposits(
             sector: part.sector,
             goalId: part.goalId,
             planKey: partKey,
+            uniqueKey: partKey,
           },
           "autopilot",
           { client, now, partner },

@@ -27,6 +27,10 @@ export const DWOLLA_SANDBOX = {
 // A transfer runs this many days after it's scheduled, and can be undone until then.
 export const TRANSFER_DELAY_DAYS = 1;
 
+// A transfer saved before the partner was asked (it has a unique key) that has no partner
+// reference after this long never reached the partner, and is failed so the move can be retried.
+export const UNSCHEDULED_RESERVATION_MS = 60 * 60 * 1000;
+
 // Safe to spend keeps at least this much after any move (spec step 144): money it needs is
 // never moved.
 export const PAYCHECK_CUSHION_CENTS = 10_000;

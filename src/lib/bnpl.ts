@@ -193,6 +193,7 @@ export async function payOffPlan(
         purpose: "debt",
         sector: "debt",
         planKey: payoffKey(plan.key),
+        uniqueKey: payoffKey(plan.key),
       },
       "person",
       { client, now, partner },

@@ -264,7 +264,7 @@ export async function declineBigMove(
   if (!pair) throw new MoneyForTwoError("Only your household partner's moves wait for you.");
   const { count } = await systemDb(WHY, client).moneyTransfer.updateMany({
     where: { id: transferId, userId: pair.partnerId, status: "awaiting_partner" },
-    data: { status: "cancelled", cancelledAt: now },
+    data: { status: "cancelled", cancelledAt: now, uniqueKey: null },
   });
   if (count === 0) throw new MoneyForTwoError("That move isn't waiting for you any more.");
   await logAudit(

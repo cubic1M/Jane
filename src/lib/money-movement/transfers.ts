@@ -1,4 +1,4 @@
-import { TRANSFER_DELAY_DAYS } from "@/config/money-movement";
+import { TRANSFER_DELAY_DAYS, UNSCHEDULED_RESERVATION_MS } from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Sector } from "@/config/autopilot-sectors";
 import { addDays } from "@/detection/units";
@@ -27,10 +27,17 @@ export type NewTransfer = {
   sector: Sector;
   goalId?: string | null;
   planKey?: string | null;
+  // One transfer for one move of a plan (money_transfers.unique_key): asked for twice, the second
+  // call returns the first's transfer and schedules nothing.
+  uniqueKey?: string | null;
   runOn?: string;
 };
 
 export class TransferError extends Error {}
+
+type Scheduled = { id: string; runOn: string; awaitingPartner?: boolean };
+const isScheduled = (row: { id: string } | Scheduled): row is Scheduled => "runOn" in row;
+const isUniqueClash = (error: unknown) => (error as { code?: string } | null)?.code === "P2002";
 
 // The transfer is saved (and, past the partner check, scheduled) before its audit row and funnel
 // event: if either fails, the caller still needs the id, to show it and to offer Undo. The failure
@@ -77,27 +84,58 @@ export async function scheduleTransfer(
   // Spec step 242: a big move out of a shared account waits for the other partner's tap, and
   // only goes to the money-movement partner once it comes (src/lib/money-for-two.ts).
   const both = await bigMoveCheck(userId, transfer.fromAccountId, transfer.amountCents, client);
-  if (both) {
-    const row = await db.moneyTransfers.create({
-      data: {
-        userId,
-        fromAccountId: transfer.fromAccountId,
-        toAccountId: transfer.toAccountId,
-        toName: transfer.toName,
-        amountCents: transfer.amountCents,
-        purpose: transfer.purpose,
-        sector: transfer.sector,
-        goalId: transfer.goalId ?? null,
-        status: "awaiting_partner",
-        runOn: new Date(`${runOn}T00:00:00Z`),
-        partner: movement.name,
-        partnerRef: null,
-        by,
-        planKey: transfer.planKey ?? null,
-        createdAt: now,
-      },
-      select: { id: true },
+  const uniqueKey = transfer.uniqueKey ?? null;
+  // The same move of a plan asked for again (a retry, two taps at once) finds the first transfer.
+  const firstOfKey = async (): Promise<Scheduled | null> => {
+    if (!uniqueKey) return null;
+    const found = await db.moneyTransfers.findFirst({
+      where: { uniqueKey },
+      select: { id: true, runOn: true, status: true },
     });
+    return found
+      ? {
+          id: found.id,
+          runOn: today(found.runOn),
+          ...(found.status === "awaiting_partner" ? { awaitingPartner: true } : {}),
+        }
+      : null;
+  };
+  const already = await firstOfKey();
+  if (already) return already;
+  const rowData = {
+    userId,
+    fromAccountId: transfer.fromAccountId,
+    toAccountId: transfer.toAccountId,
+    toName: transfer.toName,
+    amountCents: transfer.amountCents,
+    purpose: transfer.purpose,
+    sector: transfer.sector,
+    goalId: transfer.goalId ?? null,
+    runOn: new Date(`${runOn}T00:00:00Z`),
+    partner: movement.name,
+    by,
+    planKey: transfer.planKey ?? null,
+    uniqueKey,
+    createdAt: now,
+  };
+  // The key is taken before the partner is asked, so a second caller cannot schedule the same
+  // money while the first waits on the partner.
+  const take = async (status: string): Promise<{ id: string } | Scheduled> => {
+    try {
+      return await db.moneyTransfers.create({
+        data: { ...rowData, status, partnerRef: null },
+        select: { id: true },
+      });
+    } catch (error) {
+      if (!isUniqueClash(error)) throw error;
+      const first = await firstOfKey();
+      if (first) return first;
+      throw error;
+    }
+  };
+  if (both) {
+    const row = await take("awaiting_partner");
+    if (isScheduled(row)) return row;
     await recorded(row.id, async () => {
       await logAudit(
         { type: "user", id: userId },
@@ -109,33 +147,42 @@ export async function scheduleTransfer(
     });
     return { id: row.id, runOn, awaitingPartner: true };
   }
-  const { partnerRef } = await movement.schedule({
-    fromAccountId: transfer.fromAccountId,
-    toAccountId: transfer.toAccountId,
-    toName: transfer.toName,
-    amountCents: transfer.amountCents,
-    runOn,
-    memo: transfer.planKey ?? transfer.purpose,
-  });
-  const row = await db.moneyTransfers.create({
-    data: {
-      userId,
+  // A transfer with a key is saved first, with no partner reference yet (settling leaves it alone
+  // until it has one); one without is saved after the partner has it, as it always was.
+  const reserved = uniqueKey ? await take("pending") : null;
+  if (reserved && isScheduled(reserved)) return reserved;
+  let partnerRef: string;
+  try {
+    ({ partnerRef } = await movement.schedule({
       fromAccountId: transfer.fromAccountId,
       toAccountId: transfer.toAccountId,
       toName: transfer.toName,
       amountCents: transfer.amountCents,
-      purpose: transfer.purpose,
-      sector: transfer.sector,
-      goalId: transfer.goalId ?? null,
-      runOn: new Date(`${runOn}T00:00:00Z`),
-      partner: movement.name,
-      partnerRef,
-      by,
-      planKey: transfer.planKey ?? null,
-      createdAt: now,
-    },
-    select: { id: true },
-  });
+      runOn,
+      memo: transfer.planKey ?? transfer.purpose,
+    }));
+  } catch (error) {
+    // Not scheduled: the move can be tried again.
+    if (reserved) {
+      await db.moneyTransfers.updateMany({
+        where: { id: reserved.id, status: "pending" },
+        data: { status: "failed", uniqueKey: null },
+      });
+    }
+    throw error;
+  }
+  if (reserved) {
+    await db.moneyTransfers.updateMany({
+      where: { id: reserved.id, status: "pending" },
+      data: { partnerRef },
+    });
+  }
+  const row =
+    reserved ??
+    (await db.moneyTransfers.create({
+      data: { ...rowData, status: "pending", partnerRef },
+      select: { id: true },
+    }));
   await recorded(row.id, async () => {
     await logAudit(
       { type: "user", id: userId },
@@ -175,7 +222,7 @@ export async function cancelTransfer(
   }
   const { count } = await db.moneyTransfers.updateMany({
     where: { id: transferId, status: { in: ["pending", "awaiting_partner"] } },
-    data: { status: "cancelled", cancelledAt: now },
+    data: { status: "cancelled", cancelledAt: now, uniqueKey: null },
   });
   if (count === 0)
     throw new TransferError("That transfer has already gone through or been undone.");
@@ -197,10 +244,23 @@ export async function settleTransfers(
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
   if (!movement) return 0;
   const db = scopedFor(userId, client);
+  // A move saved ahead of the partner call (a unique key, no partner reference) that has waited
+  // this long never reached the partner: it is failed, which frees its key for a new try.
+  await db.moneyTransfers.updateMany({
+    where: {
+      status: "pending",
+      uniqueKey: { not: null },
+      partnerRef: null,
+      createdAt: { lt: new Date(now.getTime() - UNSCHEDULED_RESERVATION_MS) },
+    },
+    data: { status: "failed", uniqueKey: null },
+  });
   const pending = await db.moneyTransfers.findMany({
-    // A "releasing" row is one a run claimed and never finished: it is taken up again.
+    // A "releasing" row is one a run claimed and never finished: it is taken up again. A move
+    // still waiting on the partner call has no reference yet and is left alone.
     where: {
       status: { in: ["pending", "releasing"] },
+      NOT: { uniqueKey: { not: null }, partnerRef: null },
       runOn: { lte: new Date(`${today(now)}T00:00:00Z`) },
     },
     select: {
