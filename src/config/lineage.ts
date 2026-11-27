@@ -94,6 +94,11 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   PolicyReading: rescan,
   TaxTag: rescan,
   TaxCorrection: "entered",
+  // The household fact record (T9): answers and confirmed documents are the person's, and so are the
+  // members they name. Facts read off transactions or a connector are rows with their own origin;
+  // when step T9's code is written it says how those are retired.
+  TaxFact: "entered",
+  TaxHouseholdMember: "entered",
   PayrollChange: rescan,
   SuddenMoney: rescan,
 

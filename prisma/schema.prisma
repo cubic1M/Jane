@@ -454,6 +454,8 @@ model User {
   userFacts            UserFact[]
   findingArrivals      FindingArrival[]
   offerWatches         OfferWatch[]
+  taxFacts             TaxFact[]
+  taxHouseholdMembers  TaxHouseholdMember[]
 
   @@map("users")
 }
@@ -3438,6 +3440,64 @@ model TaxTag {
   @@unique([userId, merchantKey])
   @@index([userId])
   @@map("tax_tags")
+}
+
+// One tax fact about the person or a member of their household, true for one tax year (tax_year 0 =
+// not year-scoped, such as a birth date), with where it came from and how sure it is (the tax
+// roadmap, 1.3, step T9). A fact is never updated in place: a new answer sets superseded_at on the
+// same origin's current row and adds a new row, so what the person said before stays. The migration
+// also adds a partial unique index Prisma cannot express, tax_facts_current_key on (user_id,
+// tax_year, member_key, key, origin) WHERE superseded_at IS NULL: a fact has at most one current
+// row per origin. Never holds an SSN, ITIN, EIN or account number.
+model TaxFact {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  taxYear      Int       @map("tax_year")
+  // "self", "spouse", or a tax_household_members.member_key.
+  memberKey    String    @default("self") @map("member_key")
+  // A TaxFactKey (src/config/tax-facts.ts).
+  key          String
+  // { "v": string | number | boolean }, money in cents.
+  value        Json
+  // "known" (the person or a confirmed document) or "inferred".
+  status       String
+  // "answer", "document", "connector", "transaction" or "legacy".
+  origin       String
+  // "question:<fact>", "tax_document:<id>", "suggestion:<key>", "plaid:liabilities".
+  sourceRef    String?   @map("source_ref")
+  // Whole percent; answers and confirmed documents are 100.
+  confidence   Int
+  // The person's own day the fact was true (todayOf), never UTC now.
+  asOf         DateTime  @map("as_of") @db.Date
+  recordedAt   DateTime  @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  // Null = the current row.
+  supersededAt DateTime? @map("superseded_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taxYear, key])
+  @@map("tax_facts")
+}
+
+// A person in the household a tax year counts (a child or another relative), by the person's own
+// word for them; never a legal name from a document. Removing one sets removed_at, so the year's
+// earlier readings still make sense.
+model TaxHouseholdMember {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  taxYear      Int       @map("tax_year")
+  // "child:<cuid>" or "relative:<cuid>".
+  memberKey    String    @map("member_key")
+  label        String
+  // child, stepchild, foster_child, sibling, descendant, parent, other_relative or household_member.
+  relationship String
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  removedAt    DateTime? @map("removed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taxYear, memberKey])
+  @@map("tax_household_members")
 }
 
 // What the person pointed out on their tax calculation (/taxes, "This year's numbers"): income
