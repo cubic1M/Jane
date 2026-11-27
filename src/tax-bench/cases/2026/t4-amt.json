@@ -1,0 +1,59 @@
+[
+  {
+    "id": "t4-amt-gains-keep-their-rates",
+    "title": "Form 6251 (2025) Part III: single, wages $100,000, long-term gains $50,000, ISO preference $300,000 (2026 figures)",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/f6251.pdf",
+      "where": "Form 6251 (2025), Part III lines 12 to 40, with the 2026 figures of Rev. Proc. 2025-32 section 4.10"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000,
+      "longTermGainsCents": 5000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "taxable": 13390000,
+      "incomeTax": 2067000,
+      "amt": 6871200
+    },
+    "note": "AGI 150,000; standard 16,100; taxable 133,900 (gains 50,000, regular ordinary income 83,900); regular tax 1,240 + 12% x 38,000 + 22% x 33,500 = 13,170 plus 15% x 50,000 = 7,500: 20,670. AMT income 133,900 + 16,100 + 300,000 = 450,000, under the 500,000 phase-out start: exemption 90,100, line 12 = 359,900. Line 17 = 309,900: 26% x 244,500 + 28% x 65,400 = 63,570 + 18,312 = 81,882 (line 18). Zero-rate room 49,450 is used up by 83,900, so line 31 = 15% x 50,000 = 7,500. Line 38 = 89,382; line 39 (all at 26/28%) = 95,882; line 40 = 89,382. AMT = 89,382 - 20,670 = 68,712."
+  },
+  {
+    "id": "t4-amt-unused-deduction-added-back",
+    "title": "Form 6251 (2025) line 1b: single, wages $10,000, ISO preference $300,000 (2026 figures)",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/f6251.pdf",
+      "where": "Form 6251 (2025), lines 1b to 7: taxable income 'if less than zero, enter as a negative amount'"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 1000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "taxable": 0,
+      "incomeTax": 0,
+      "amt": 5717400
+    },
+    "note": "Taxable income is 10,000 - 16,100 = -6,100, entered as a negative on line 1b. AMT income = -6,100 + 16,100 add-back + 300,000 = 310,000; exemption 90,100; line 6 = 219,900 at 26% = 57,174. The regular tax is 0."
+  }
+]

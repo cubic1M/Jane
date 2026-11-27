@@ -1,12 +1,8 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
-import {
-  FEDERAL_BRACKETS,
-  SAVERS_CREDIT,
-  SAVERS_MATCH,
-  STANDARD_DEDUCTION,
-} from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
+import { SAVERS_CREDIT, SAVERS_MATCH } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestion } from "./contract";
@@ -57,9 +53,10 @@ const saversCredit: Detector = {
     const people = status === "married_joint" ? 2 : 1;
     // The credit only lowers income tax owed (it's nonrefundable): under the standard deduction
     // there's none, so nothing to get, and a little tax caps it.
+    const law = federalParams(SAVERS_CREDIT.taxYear);
     const owed = bracketTax(
-      Math.max(0, agi - STANDARD_DEDUCTION[status]),
-      FEDERAL_BRACKETS[status],
+      Math.max(0, agi - law.standardDeduction.value[status]),
+      law.brackets.value[status],
     );
     const tenPercent =
       Math.round(SAVERS_CREDIT.maxContribution * SAVERS_CREDIT.lowestRate) * people;

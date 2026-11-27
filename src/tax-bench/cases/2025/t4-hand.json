@@ -171,5 +171,34 @@
       "additionalChildTaxCredit": 170000
     },
     "note": "Taxable 20,000 - 15,750 = 4,250; tax 10% = 425. The credit 2,200 uses 425 of it; the unused 1,775 is capped at 1,700 (15% x 17,500 = 2,625 is larger)."
+  },
+  {
+    "id": "t4-2025-amt-gains-keep-their-rates",
+    "title": "2025 hand case, Form 6251 Part III: single, wages $100,000, gains $50,000, ISO preference $300,000",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-pdf/f6251.pdf",
+      "where": "Form 6251 (2025), lines 5 and 12 to 40"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000,
+      "longTermGainsCents": 5000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "taxable": 13425000,
+      "incomeTax": 2094900,
+      "amt": 6910100
+    },
+    "note": "AGI 150,000; standard 15,750; taxable 134,250 (ordinary 84,250 + gains 50,000). Regular tax 1,192.50 + 4,386 + 22% x 35,775 (7,870.50) = 13,449 plus 15% x 50,000 = 20,949. AMT income 450,000, exemption 88,100, line 12 = 361,900; line 17 = 311,900: 26% x 239,100 + 28% x 72,800 = 62,166 + 20,384 = 82,550; line 31 = 7,500; line 38 = 90,050; line 39 = 96,550; line 40 = 90,050; AMT = 90,050 - 20,949 = 69,101."
   }
 ]

@@ -2,7 +2,7 @@ import { formatCents } from "@/lib/money";
 import { ShownLink } from "@/components/shown-link";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { FILING_STATUSES } from "@/config/tax";
-import { ESTIMATE_NOTE, federalLine, stateLine, stateSource } from "@/planning/tax-estimate-copy";
+import { estimateNote, federalLine, stateLine, stateSource } from "@/planning/tax-estimate-copy";
 import { dayLabel } from "@/lib/day-label";
 import { STATE_SOURCES } from "@/config/tax-states";
 import { stateName } from "@/planning/tax-profile";
@@ -26,7 +26,7 @@ function Row({ label, cents, strong }: { label: string; cents: number; strong?: 
 
 export function EstimateSection({ view }: { view: TaxEstimateView }) {
   const e = view.estimate;
-  const state = stateLine(e.state, view.withholdingKnown);
+  const state = stateLine(e.state, view.withholdingKnown, e.year);
   const credits =
     e.credits.childTaxCreditCents +
     e.credits.otherDependantCreditCents +
@@ -171,7 +171,7 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
           </ul>
         </div>
       )}
-      <p className="text-xs text-zinc-500">{ESTIMATE_NOTE}</p>
+      <p className="text-xs text-zinc-500">{estimateNote(e.year)}</p>
     </section>
   );
 }

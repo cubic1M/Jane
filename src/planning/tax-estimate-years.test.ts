@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { lawYearFor, NoTaxParamsError } from "@/config/tax-params";
+import { estimateNote } from "@/planning/tax-estimate-copy";
 import { estimateTaxes, NO_INCOME, type EstimateInput } from "@/planning/tax-estimate";
+import { federalTaxOf, lawYearOf, standardDeductionOf } from "@/planning/student-tax";
 
 // Tax T4: the estimate prices each year with that year's law and refuses a year it has no law for.
 const $ = (dollars: number) => Math.round(dollars * 100);
@@ -102,5 +104,21 @@ describe("planning cards hold the law fixed in a year with no figures yet", () =
     expect(lawYearFor(2027)).toBe(2026);
     expect(lawYearFor(2031)).toBe(2026);
     expect(() => lawYearFor(2024)).toThrow(NoTaxParamsError);
+  });
+});
+
+describe("the student-tax helpers take the year too", () => {
+  it("the 2025 and 2026 standard deduction and tax on $50,000 of wages", () => {
+    expect(standardDeductionOf("single", false, $(50_000), 2025)).toBe($(15_750));
+    expect(standardDeductionOf("single", false, $(50_000), 2026)).toBe($(16_100));
+    // HE-2 again, through the helper the student cards use: $3,871.50 in 2025, $3,820.00 in 2026.
+    expect(federalTaxOf($(50_000), "single", false, $(50_000), 2025)).toBe(387_150);
+    expect(federalTaxOf($(50_000), "single", false, $(50_000), 2026)).toBe(382_000);
+  });
+
+  it("the note and the rough-state line name the estimate's own year", () => {
+    expect(estimateNote(2025)).toContain("Tax figures for 2025 are from the IRS");
+    expect(lawYearOf("2027-05-02")).toBe(2026);
+    expect(lawYearOf("2025-03-01")).toBe(2025);
   });
 });

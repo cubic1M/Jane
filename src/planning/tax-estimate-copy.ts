@@ -6,8 +6,8 @@ import type { StateEstimate, TaxEstimate } from "./tax-estimate";
 // How the tax estimate is said (spec step 120), on /taxes and in the chat. Every figure is
 // "about" and called an estimate.
 
-export const ESTIMATE_NOTE =
-  "An estimate from your accounts and tax profile, not a tax return. It updates after every sync. Tax figures for 2026 are from the IRS and state tax agencies, for review.";
+export const estimateNote = (year: number) =>
+  `An estimate from your accounts and tax profile, not a tax return. It updates after every sync. Tax figures for ${year} are from the IRS and state tax agencies, for review.`;
 
 // "a refund of about $4,166", "about $1,200 to pay", "about even".
 export function balancePhrase(refundCents: number): string {
@@ -32,7 +32,11 @@ export function federalLine(
   return `Federal: ${balancePhrase(estimate.refundCents)}.`;
 }
 
-export function stateLine(state: StateEstimate | null, withholdingKnown: boolean): string | null {
+export function stateLine(
+  state: StateEstimate | null,
+  withholdingKnown: boolean,
+  year: number,
+): string | null {
   if (!state) return null;
   // Spec step 165: every state that taxes some of the income, and a city's own tax.
   const names = (state.parts.length > 0 ? state.parts : [{ code: state.code }]).map(
@@ -42,7 +46,7 @@ export function stateLine(state: StateEstimate | null, withholdingKnown: boolean
   if (state.kind === "none" && !state.local) {
     return `${name}: no state income tax.`;
   }
-  const rough = state.rough ? " (rough: this state's figures aren't confirmed for 2026)" : "";
+  const rough = state.rough ? ` (rough: this state's figures aren't confirmed for ${year})` : "";
   if (!withholdingKnown)
     return `${name}: about ${formatWholeDollars(state.taxCents)} of tax${rough}.`;
   return `${name}: ${balancePhrase(state.refundCents)}${rough}.`;

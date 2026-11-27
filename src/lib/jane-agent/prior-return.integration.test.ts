@@ -286,6 +286,7 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
     expect(await loadReturnReviews(real.id, { client, now: LINKED })).toEqual({
       advice: false,
       reviews: [],
+      noParams: [],
     });
     await expect(
       prepareAmendment(real.id, 2025, { client, now: LINKED, via: "page" }),

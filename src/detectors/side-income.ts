@@ -6,6 +6,7 @@ import { sumCents } from "@/planning/student-money";
 import {
   dependentOf,
   federalTaxOf,
+  lawYearOf,
   filingStatusOf,
   marginalRateFor,
   onStudentVisa,
@@ -79,7 +80,8 @@ const sideIncomeTax: Detector = {
     // wages (no Social Security tax) and the side payouts are not in it (CodeRabbit sweep 1c, #2270).
     const baseIncome = wagesYear + yearOf.stipendCents;
     const status = filingStatusOf(facts);
-    const se = selfEmploymentTax(pace, wagesYear);
+    const law = lawYearOf(profile.today);
+    const se = selfEmploymentTax(pace, wagesYear, law);
     const dependent = dependentOf(facts) === "yes";
     // Half of the self-employment tax comes off income; the tax on the side money is what the
     // return owes with it less what it owes without (a part of it may still fall inside the
@@ -91,9 +93,13 @@ const sideIncomeTax: Detector = {
       status,
       dependent,
       baseIncome + pace,
+      law,
     );
-    const income = Math.max(0, withSide - federalTaxOf(baseIncome, status, dependent, baseIncome));
-    const rate = marginalRateFor(baseIncome + pace, status, dependent, baseIncome + pace);
+    const income = Math.max(
+      0,
+      withSide - federalTaxOf(baseIncome, status, dependent, baseIncome, law),
+    );
+    const rate = marginalRateFor(baseIncome + pace, status, dependent, baseIncome + pace, law);
     const tax = se + income;
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const payers = [...new Set(counted.map((t) => nice(t.description).split(" ")[0]))];

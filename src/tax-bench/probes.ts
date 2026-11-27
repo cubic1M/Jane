@@ -366,7 +366,10 @@ export function probePlan(year: number): Record<string, GroupPlan> {
           param: `floor.${key}`,
           points: around(
             salt.phaseDownFrom[key] +
-              Math.round((salt.cap[key] - salt.floor[key]) / salt.phaseDownRate),
+              Math.round(
+                (salt.cap[key] - salt.floor[key]) /
+                  (key === "marriedSeparate" ? salt.phaseDownRate / 2 : salt.phaseDownRate),
+              ),
           ),
           f: saltOf(s),
           kind: "falls_then_flat" as const,

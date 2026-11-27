@@ -1,7 +1,8 @@
 import { DAY_MS } from "@/lib/dates";
 import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-taxes";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
-import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
+import { federalParams, lawYearFor } from "@/config/tax-params";
+import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { payForYear, payInYearData } from "@/profile/pay-on-schedule";
@@ -34,14 +35,20 @@ export function dependentOf(facts: Facts): "yes" | "no" | null {
 // calendar years: different forms, and none of the credits below.
 export const onStudentVisa = (facts: Facts) => facts.tax_residency?.value === "student_visa";
 
-// The 2026 standard deduction: the regular one, or a dependent's (the greater of $1,350 or earned
+// The law year a student card prices with: the calendar year of its day, or the newest year Jane has
+// figures for when that year's are not out (lawYearFor).
+export const lawYearOf = (today: string) => lawYearFor(Number(today.slice(0, 4)));
+
+// The standard deduction: the regular one, or a dependent's (the greater of $1,350 or earned
 // income plus $450, never more than the regular one). A taxable fellowship counts as earned.
+// `year` is the law year (lawYearOf); the default is only for callers not yet moved (tests).
 export function standardDeductionOf(
   status: FilingStatus,
   dependent: boolean,
   earnedCents: number,
+  year: number = TAX_RATES_YEAR,
 ): number {
-  const regular = STANDARD_DEDUCTION[status];
+  const regular = federalParams(year).standardDeduction.value[status];
   if (!dependent) return regular;
   const own = Math.max(
     DEPENDENT_STANDARD_DEDUCTION.floorCents,
@@ -56,9 +63,13 @@ export function federalTaxOf(
   status: FilingStatus,
   dependent: boolean,
   earnedCents = incomeCents,
+  year: number = TAX_RATES_YEAR,
 ): number {
-  const taxable = Math.max(0, incomeCents - standardDeductionOf(status, dependent, earnedCents));
-  return bracketTax(taxable, FEDERAL_BRACKETS[status]);
+  const taxable = Math.max(
+    0,
+    incomeCents - standardDeductionOf(status, dependent, earnedCents, year),
+  );
+  return bracketTax(taxable, federalParams(year).brackets.value[status]);
 }
 
 // The next estimated payment for the tax year, or null once the last one has passed.
@@ -179,9 +190,10 @@ export function marginalRateFor(
   status: FilingStatus,
   dependent: boolean,
   earnedCents: number,
+  year: number = TAX_RATES_YEAR,
 ) {
-  const taxable = agiCents - standardDeductionOf(status, dependent, earnedCents);
-  return taxable <= 0 ? 0 : marginalRateOf(taxable, FEDERAL_BRACKETS[status]);
+  const taxable = agiCents - standardDeductionOf(status, dependent, earnedCents, year);
+  return taxable <= 0 ? 0 : marginalRateOf(taxable, federalParams(year).brackets.value[status]);
 }
 
 // Whether the American opportunity credit's refundable part can reach them by age: it is not paid to
