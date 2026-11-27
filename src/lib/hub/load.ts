@@ -143,15 +143,16 @@ export async function loadHubAreas(
         }
       : null,
     taxesNoParamsYear: taxes && "noParams" in taxes ? taxes.noParams : undefined,
-    taxes: taxes && !("noParams" in taxes)
-      ? {
-          totalTaxCents: taxes.estimate.totalTaxCents,
-          paidCents: taxes.estimate.paidCents,
-          refundCents: taxes.estimate.refundCents,
-          withholdingKnown: taxes.withholdingKnown,
-          incomeCents: taxes.estimate.totalIncomeCents,
-        }
-      : null,
+    taxes:
+      taxes && !("noParams" in taxes)
+        ? {
+            totalTaxCents: taxes.estimate.totalTaxCents,
+            paidCents: taxes.estimate.paidCents,
+            refundCents: taxes.estimate.refundCents,
+            withholdingKnown: taxes.withholdingKnown,
+            incomeCents: taxes.estimate.totalIncomeCents,
+          }
+        : null,
     investments: practice
       ? {
           totalCents: practice.totalCents,

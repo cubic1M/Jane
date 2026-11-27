@@ -64,7 +64,11 @@ describe.runIf(url)("a year with no IRS figures, on every surface", { timeout: 1
   });
 
   it("Home's tax tile says the sentence and shows no figure", async () => {
-    const areas = await loadHubAreas(id, { budgetsOver: 0, safeShort: false }, { client, now: MAY1 });
+    const areas = await loadHubAreas(
+      id,
+      { budgetsOver: 0, safeShort: false },
+      { client, now: MAY1 },
+    );
     const tile = tilesView(areas).find((t) => t.key === "taxes");
     expect(tile?.caption).toBe(W_N);
     expect(tile?.value).toBeNull();
