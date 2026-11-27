@@ -43,6 +43,10 @@ export type StoredPlan = {
   status: "on_track" | "off_track" | null;
   expectedCents: number | null;
   actualCents: number | null;
+  // The debts the plan covers (their ids); absent on a plan made before this was recorded.
+  debtIds?: string[] | null;
+  // The debts the last check left out of what it measured (they came after the plan was made).
+  checkExcludedIds?: string[] | null;
 };
 
 export type Payoff = {
@@ -66,8 +70,13 @@ const PLAN_SELECT = {
   status: true,
   expectedCents: true,
   actualCents: true,
+  debtIds: true,
+  checkExcludedIds: true,
   expected: true,
 } as const;
+
+const idsOf = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.every((id) => typeof id === "string") ? (value as string[]) : null;
 
 function toStored(row: {
   strategy: string;
@@ -79,6 +88,8 @@ function toStored(row: {
   status: string | null;
   expectedCents: number | null;
   actualCents: number | null;
+  debtIds?: unknown;
+  checkExcludedIds?: unknown;
 }): StoredPlan {
   return {
     strategy: isStrategy(row.strategy) ? row.strategy : "avalanche",
@@ -90,6 +101,8 @@ function toStored(row: {
     status: row.status === "on_track" || row.status === "off_track" ? row.status : null,
     expectedCents: row.expectedCents,
     actualCents: row.actualCents,
+    debtIds: idsOf(row.debtIds),
+    checkExcludedIds: idsOf(row.checkExcludedIds),
   };
 }
 
@@ -156,6 +169,7 @@ export async function startDebtPlan(
     status: null,
     expectedCents: null,
     actualCents: null,
+    debtIds: summary.cards.map((c) => c.id),
   };
   const row = await scopedFor(userId, client).debtPlans.upsert({
     where: { userId },
@@ -220,7 +234,12 @@ export async function refreshDebtPlan(
   const stored = toStored(row);
   const book = await loadDebts(userId, { client, now });
   const { cards } = planDebts(book.debts);
-  const actualCents = cards.reduce((sum, c) => sum + c.balanceCents, 0);
+  // What the plan's own debts add up to: a debt added since the plan was made was never in what
+  // the plan expected, so it is not counted against it (a plan with no record counts them all).
+  const covered = stored.debtIds ? new Set(stored.debtIds) : null;
+  const actualCents = cards
+    .filter((c) => !covered || covered.has(c.id))
+    .reduce((sum, c) => sum + c.balanceCents, 0);
   const expected = Array.isArray(row.expected) ? (row.expected as number[]) : [];
   const check = checkPlan(
     expected,
@@ -243,6 +262,10 @@ export async function refreshDebtPlan(
       status: check?.status ?? null,
       expectedCents: check?.expectedCents ?? null,
       actualCents: check?.actualCents ?? null,
+      // The debts the plan is laid out over from now on, which the next check measures.
+      debtIds: summary.cards.map((c) => c.id),
+      // What this check left out, named in its message.
+      checkExcludedIds: covered ? cards.filter((c) => !covered.has(c.id)).map((c) => c.id) : [],
     },
   });
   if (written.count === 0 || !check) return null;

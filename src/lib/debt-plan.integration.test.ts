@@ -1,6 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -220,6 +220,52 @@ describe.runIf(url)("payoff plans against a real database", () => {
     await expect(
       startDebtPlan(realId, { strategy: "sideways", extraCents: 0 }, opts()),
     ).rejects.toThrow("Pick an order to pay them in.");
+  });
+
+  it("records which debts the plan covers, and a debt added later is not counted against it", async () => {
+    const id = await person("payoff-covers");
+    const addCard = async (name: string, balanceCents: number) => {
+      const card = await client.account.create({
+        data: {
+          userId: id,
+          source: "csv",
+          name,
+          type: "credit",
+          subtype: "credit card",
+          currentBalanceCents: balanceCents,
+        },
+      });
+      await saveDebtTerms(
+        id,
+        { debtKey: `account:${card.id}`, apr: "24.99", minimum: "60", balance: "", payoffDate: "" },
+        opts(),
+      );
+      return card;
+    };
+    const first = await addCard("Store Card", 120_000);
+    const started = await startDebtPlan(id, { strategy: "avalanche", extraCents: 0 }, opts());
+    expect(started.debtIds).toEqual([`account:${first.id}`]);
+    // A second card, opened after the plan was made: never in what the plan expected.
+    await addCard("Travel Card", 200_000);
+    const check = await refreshDebtPlan(id, opts(later(31)));
+    expect(check!.actualCents).toBe(120_000);
+    // The message counts only what the plan covered, not the new card.
+    const snapshot = await loadSnapshot(id, opts(later(31)));
+    const [message] = gather(snapshot!, later(31), { trigger: "sync" }).filter(
+      (m) => m.source === "payoff",
+    );
+    expect(message.body).toContain("$1,200.00 left");
+    expect(message.body).not.toContain("$3,200.00");
+    expect(message.body).toContain("Not in this plan: Travel Card.");
+    // The plan now covers both, laid out from today.
+    expect(
+      ((await client.debtPlan.findUniqueOrThrow({ where: { userId: id } })).debtIds as string[])
+        .length,
+    ).toBe(2);
+    // A plan made before this was recorded has none, and counts every debt as it did.
+    await client.debtPlan.update({ where: { userId: id }, data: { debtIds: Prisma.DbNull } });
+    const old = await refreshDebtPlan(id, opts(later(62)));
+    expect(old!.actualCents).toBe(320_000);
   });
 });
 
