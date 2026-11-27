@@ -477,6 +477,11 @@ export function NetWorthChart({
       const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
       let next: ViewWindow;
       if (sideways) {
+        // Nothing to pan that way: leave the swipe to the page.
+        if (e.deltaX < 0 ? win.from <= 0 : win.to >= total - 1) {
+          wheelRemainder.current = 0;
+          return;
+        }
         // Slow swipes move a fraction of a day each: they add up until there is a whole day.
         wheelRemainder.current += (e.deltaX / r.width) * (win.to - win.from);
         const days = Math.trunc(wheelRemainder.current);
@@ -896,6 +901,7 @@ export function NetWorthChart({
               )}
               <Scale
                 width={width}
+                height={H}
                 left={labels.left}
                 right={labels.right}
                 start={fit.focused ? null : shown[0].cents}
@@ -1339,6 +1345,7 @@ function Brush({
 // when the line crosses it. Not read out: the slider says each day's figure.
 function Scale({
   width,
+  height,
   left,
   right,
   start,
@@ -1349,6 +1356,7 @@ function Scale({
   // Off while the figure is hidden: the highest and lowest would give it away.
   amounts: boolean;
   width: number;
+  height: number;
   // The highest and lowest at the left edge, true for the days there; and at the right edge (the
   // same heights) when big steps are taken out of the line, true for the days there.
   left: { high: number; low: number };
@@ -1359,6 +1367,8 @@ function Scale({
 }) {
   const label = "pointer-events-none absolute text-[10px] leading-none text-zinc-500 tabular-nums";
   const { high, low } = left;
+  // While the scale eases to a new fit a label's height can be off the chart: it waits there.
+  const on = (cents: number) => y(cents) >= 0 && y(cents) <= height;
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
       {zero !== null && (
@@ -1373,7 +1383,7 @@ function Scale({
           </span>
         </>
       )}
-      {amounts && (
+      {amounts && on(high) && (
         <span
           data-net-worth-scale="high"
           className={label}
@@ -1382,12 +1392,12 @@ function Scale({
           {dollars(high)}
         </span>
       )}
-      {amounts && low !== high && (
+      {amounts && low !== high && on(low) && (
         <span data-net-worth-scale="low" className={label} style={{ top: y(low) + 2, left: 2 }}>
           {dollars(low)}
         </span>
       )}
-      {amounts && right && (
+      {amounts && right && on(high) && on(low) && (
         <>
           <span
             data-net-worth-scale="high-right"
@@ -1405,15 +1415,21 @@ function Scale({
           </span>
         </>
       )}
-      {amounts && !right && start !== null && start !== high && start !== low && width > 0 && (
-        <span
-          data-net-worth-scale="start"
-          className={label}
-          style={{ top: y(start) - 12, right: 2 }}
-        >
-          {dollars(start)}
-        </span>
-      )}
+      {amounts &&
+        !right &&
+        start !== null &&
+        on(start) &&
+        start !== high &&
+        start !== low &&
+        width > 0 && (
+          <span
+            data-net-worth-scale="start"
+            className={label}
+            style={{ top: y(start) - 12, right: 2 }}
+          >
+            {dollars(start)}
+          </span>
+        )}
     </div>
   );
 }
