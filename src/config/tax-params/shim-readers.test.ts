@@ -39,7 +39,7 @@ const KNOWN: readonly string[] = [
   "config/learn.ts: CONTRIBUTION_LIMITS, STANDARD_DEDUCTION",
   "detectors/savers-credit.ts: SAVERS_MATCH",
   "detectors/student-credits.ts: EDUCATION_CREDITS",
-  "detectors/taxes.ts: CONTRIBUTION_LIMITS, DEPENDENT_CARE_CREDIT, FEDERAL_BRACKETS, HOME_OFFICE_SIMPLIFIED, PAYROLL_TAX, SELF_EMPLOYMENT_TAX, STANDARD_DEDUCTION",
+  "detectors/taxes.ts: DEPENDENT_CARE_CREDIT, HOME_OFFICE_SIMPLIFIED, PAYROLL_TAX",
   "lib/investments/company-stock.ts: CAPITAL_GAINS_BRACKETS",
   "lib/investments/location.ts: CAPITAL_GAINS_BRACKETS",
   "lib/investments/sudden-money.ts: CAPITAL_GAINS_BRACKETS",

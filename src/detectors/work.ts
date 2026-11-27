@@ -1,4 +1,5 @@
 import { plural } from "@/lib/plural";
+import { ownLawYear } from "@/config/tax-params";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { rateMonthsOf } from "@/profile/build";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
@@ -52,6 +53,9 @@ const estimatedTaxes: Detector = {
     const year = Number(today.slice(0, 4));
     const janOf = (y: number) => estimatedDueDates([y - 1])[3];
     const taxYear = today <= janOf(year) ? year - 1 : year;
+    // The tax year's own rules: with no IRS figures for it the card is held back (NoTaxParamsError,
+    // runDetectors), not said with another year's (walk 11-27, Tax T32c).
+    ownLawYear(taxYear);
     // A payment belongs to the tax year by its own date, Feb 1 to Jan 31 as the tax estimate counts
     // it (src/lib/tax-estimate.ts): a late fourth installment paid Jan 20 is last year's, not this
     // year's April one.

@@ -13,15 +13,11 @@ import { APPEAL_GAP_RATE } from "@/config/property-tax";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
 import { ESTIMATED_TAX_DATES } from "@/config/tax-pack";
 import {
-  CONTRIBUTION_LIMITS,
   DEPENDENT_CARE_CREDIT,
-  FEDERAL_BRACKETS,
   HOME_OFFICE_SIMPLIFIED,
   mileageRateNote,
   undatedMileageCentsIn,
   PAYROLL_TAX,
-  SELF_EMPLOYMENT_TAX,
-  STANDARD_DEDUCTION,
 } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
@@ -31,7 +27,7 @@ import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
 import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
-import { lawYearFor } from "@/config/tax-params";
+import { federalParams, lawYearFor, ownLawYear } from "@/config/tax-params";
 import { filingNoteOf, filingStatusOf } from "@/planning/student-tax";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
@@ -57,11 +53,20 @@ const month = (today: string) => Number(today.slice(5, 7));
 type Facts = Parameters<typeof filingStatusOf>[0];
 const statusOf = (facts: Facts) => filingStatusOf(facts);
 
+// The year's own law for a card read on `today` (Tax T32c): the calendar year of the person's own day.
+// A year without IRS figures throws NoTaxParamsError and the card is held back (runDetectors), never
+// priced with another year's brackets, deduction or limits.
+const lawOn = (today: string) => federalParams(ownLawYear(Number(today.slice(0, 4))));
+
 // The top federal bracket a person's income reaches, from their take-home pay.
-function marginalRate(netAnnualCents: number, extraCents: number, facts: Facts) {
+function marginalRate(netAnnualCents: number, extraCents: number, facts: Facts, today: string) {
   const status = statusOf(facts);
+  const law = lawOn(today);
   const gross = Math.round(netAnnualCents * T.netToGross) + extraCents;
-  return marginalRateOf(Math.max(0, gross - STANDARD_DEDUCTION[status]), FEDERAL_BRACKETS[status]);
+  return marginalRateOf(
+    Math.max(0, gross - law.standardDeduction.value[status]),
+    law.brackets.value[status],
+  );
 }
 
 // Gross income for brackets: take-home pay grossed up (pensions and Social Security arrive
@@ -87,13 +92,14 @@ const FEDERAL_REFUND =
   /\b(?:IRS|U\.?S\.? TREAS(?:URY)?|UNITED STATES TREAS(?:URY)?|TREAS 3\d\d)\b/i;
 
 const bracketOf = (
-  profile: Parameters<typeof grossIncome>[0],
+  profile: Parameters<typeof grossIncome>[0] & { today: string },
   data: Parameters<typeof grossIncome>[1],
 ) => {
   const status = statusOf(profile.facts);
+  const law = lawOn(profile.today);
   return marginalRateOf(
-    Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]),
-    FEDERAL_BRACKETS[status],
+    Math.max(0, grossIncome(profile, data) - law.standardDeduction.value[status]),
+    law.brackets.value[status],
   );
 };
 
@@ -175,7 +181,7 @@ export function stockVestGap({ profile, data }: Parameters<Detector["detect"]>[0
   const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
   const rate = given
     ? given.marginalRate
-    : marginalRate(annual(income.value), vested, profile.facts);
+    : marginalRate(annual(income.value), vested, profile.facts, profile.today);
   if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
   const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
   return { plan, income, stock, vested, rate, short, assumed: !given || given.assumed };
@@ -246,13 +252,14 @@ const rothConversion: Detector = {
     let how: string;
     if (retired) {
       // Their income is known: convert only what fits in the bracket they're in now.
-      const taxable = Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]);
-      nowRate = marginalRateOf(taxable, FEDERAL_BRACKETS[status]);
+      const law = lawOn(profile.today);
+      const taxable = Math.max(0, grossIncome(profile, data) - law.standardDeduction.value[status]);
+      nowRate = marginalRateOf(taxable, law.brackets.value[status]);
       // Spec step 271: on Social Security, each converted dollar can make up to 85 cents more of it
       // taxable, so the real rate on the conversion is higher than the bracket.
       nowRate = Math.max(nowRate, readRetirementTaxes(profile, data).nextDollarRate);
       if (nowRate >= T.rothLaterRate) return null;
-      const next = FEDERAL_BRACKETS[status].find((b) => b.over > taxable);
+      const next = law.brackets.value[status].find((b) => b.over > taxable);
       convert = Math.min(convert, next ? next.over - taxable : convert);
       how = `Your income puts you in the ${Math.round(nowRate * 100)}% bracket now, with about ${formatCents(next ? next.over - taxable : 0)} of room before the next one. Converting ${formatCents(convert)} of your ${formatCents(balance)} in pre-tax accounts this year, instead of taking it out later at about ${Math.round(T.rothLaterRate * 100)}%, would save roughly ${formatCents(Math.round(convert * (T.rothLaterRate - nowRate)))}. Money you must withdraw this year can't be converted, so do this after that.`;
     } else {
@@ -298,7 +305,7 @@ const childcareTaxBreak: Detector = {
     const care = tx(data, (t) => t.pfc === "GENERAL_SERVICES_CHILDCARE" && t.amountCents > 0);
     const spent = care.reduce((s, t) => s + t.amountCents, 0);
     if (spent < T.childcareMinCents) return null;
-    const fsa = Math.min(spent, CONTRIBUTION_LIMITS.dependentCareFsa);
+    const fsa = Math.min(spent, lawOn(profile.today).contributionLimits.value.dependentCareFsa);
     const rate = bracketOf(profile, data);
     const payroll = PAYROLL_TAX.socialSecurityRate + PAYROLL_TAX.medicareRate;
     const gross = Math.round(annual(income.value) * T.netToGross);
@@ -383,7 +390,9 @@ const yearEndMoves: Detector = {
     // Someone short of cash or in debt trouble has better uses for the money first.
     if (profile.facts.debt_trouble.value === true) return null;
     const room = Math.min(
-      Math.round(CONTRIBUTION_LIMITS.workplace * T.yearEndUnusedRoomShare),
+      Math.round(
+        lawOn(profile.today).contributionLimits.value.workplace * T.yearEndUnusedRoomShare,
+      ),
       Math.round(grossIncome(profile, data) * T.yearEndMaxIncomeShare),
     );
     const rate = bracketOf(profile, data);
@@ -399,7 +408,7 @@ const yearEndMoves: Detector = {
         factEvidence(income),
         {
           percent: Math.min(plan.confidence, 50),
-          reason: `I can't see what you've put in this year, so I assumed ${Math.round(T.yearEndUnusedRoomShare * 100)}% of the ${formatCents(CONTRIBUTION_LIMITS.workplace)} limit is unused`,
+          reason: `I can't see what you've put in this year, so I assumed ${Math.round(T.yearEndUnusedRoomShare * 100)}% of the ${formatCents(lawOn(profile.today).contributionLimits.value.workplace)} limit is unused`,
         },
       ]),
       urgency: profile.today.slice(5) >= "12-10" ? "now" : "soon",
@@ -636,17 +645,15 @@ const heldFixed = (year: number) => {
 };
 // What a deduction saves a sole proprietor: income tax at their bracket plus the 15.3% on 92.35%
 // of it that self-employment tax takes.
-const deductionRate = (profit: number, facts: Facts) => {
+const deductionRate = (profit: number, facts: Facts, today: string) => {
   const status = statusOf(facts);
+  const law = lawOn(today);
+  const se = law.selfEmployment.value;
   const bracket = marginalRateOf(
-    Math.max(0, profit - STANDARD_DEDUCTION[status]),
-    FEDERAL_BRACKETS[status],
+    Math.max(0, profit - law.standardDeduction.value[status]),
+    law.brackets.value[status],
   );
-  return (
-    bracket +
-    (SELF_EMPLOYMENT_TAX.socialSecurityRate + SELF_EMPLOYMENT_TAX.medicareRate) *
-      SELF_EMPLOYMENT_TAX.netEarningsShare
-  );
+  return bracket + (se.socialSecurityRate + se.medicareRate) * se.netEarningsShare;
 };
 
 // An S corporation saves payroll tax on what isn't paid as salary; worth raising only when that
@@ -712,7 +719,7 @@ const homeOffice: Detector = {
     if (away.length > 0) return null;
     const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
     const profit = profitOf(profile);
-    const saves = Math.round(deduction * deductionRate(profit, profile.facts));
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts, profile.today));
     return suggestion("taxes", "home_office_deduction", {
       title: "Claim a home office if you work from home",
       headline: headlineOf("Claim a home office", saves, "saves"),
@@ -753,7 +760,7 @@ const vehicleDeduction: Detector = {
     const rate = undatedMileageCentsIn(year);
     const deduction = Math.round(VEHICLE_ASSUMED_MILES * rate);
     const profit = profitOf(profile);
-    const saves = Math.round(deduction * deductionRate(profit, profile.facts));
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts, profile.today));
     return suggestion("taxes", "vehicle_deduction", {
       title: "Keep a mileage log for the driving you do for your business",
       headline: headlineOf("Keep a mileage log", saves, "saves"),
