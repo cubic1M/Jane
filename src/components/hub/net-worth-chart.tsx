@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   changeOver,
@@ -32,7 +40,16 @@ import {
 import { formatWholeDollars } from "@/lib/money";
 import { Blinded, ShowValue } from "./blinded";
 import { MarchingPath } from "@/components/marching-path";
-import { chartScale, linePath } from "./net-worth-geometry";
+import {
+  SCALE_EASE_MS,
+  fitControlWords,
+  fitScale,
+  linePath,
+  scaleAt,
+  sideLabels,
+  stepWords,
+  type ChartScale,
+} from "./net-worth-geometry";
 import { dayLabel } from "@/lib/day-label";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
@@ -67,6 +84,99 @@ const RANGE_WORDS: Record<RangeKey, string> = {
   "3M": "Past 3 months",
   "1Y": "Past year",
   ALL: "All time",
+};
+
+// The session's choice between taking big steps out of the scale and fitting all of it.
+const FIT_KEY = "jane:net-worth-fit";
+// The break mark's size where a big step is taken out of the line, in px.
+const BREAK_W = 8;
+const BREAK_H = 20;
+// Each break's label sits this far below the one before it, in px, so two close together don't
+// print over each other.
+const BREAK_LABEL_STAGGER = 14;
+// The space between a break and its label, in px.
+const STEP_MARKER_GAP = 6;
+
+// The scale's own range, eased to each new fit (SCALE_EASE_MS in net-worth-geometry.ts), so
+// zooming or focusing slides the line rather than jumping it. Reduced motion gets each fit at
+// once, and so does the first draw.
+const REDUCED = "(prefers-reduced-motion: reduce)";
+const subscribeReduced = (onChange: () => void) => {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const query = window.matchMedia(REDUCED);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+const reducedNow = () =>
+  typeof window.matchMedia === "function" && window.matchMedia(REDUCED).matches;
+
+// `frame` names the coordinate frame the bounds are in (which big steps are taken out of the
+// line): when it changes the bounds snap, since easing across frames would draw the line far
+// off the chart.
+function useEasedRange(target: { lo: number; hi: number; frame: string }): {
+  lo: number;
+  hi: number;
+} {
+  const [shown, setShown] = useState(target);
+  const now = useRef(target);
+  const reduced = useSyncExternalStore(subscribeReduced, reducedNow, () => false);
+  const { lo, hi, frame: inFrame } = target;
+  useEffect(() => {
+    const goal = { lo, hi, frame: inFrame };
+    const from = now.current;
+    const same = from.lo === goal.lo && from.hi === goal.hi;
+    if (reduced || same || from.frame !== goal.frame) {
+      now.current = goal;
+      // Keep the eased copy current too, for when reduced motion is turned off again.
+      setShown((s) => (s.lo === goal.lo && s.hi === goal.hi && s.frame === goal.frame ? s : goal));
+      return;
+    }
+    const start = performance.now();
+    let frame = 0;
+    const tick = (at: number) => {
+      const t = Math.min(1, (at - start) / SCALE_EASE_MS);
+      const e = 1 - (1 - t) ** 3;
+      now.current = {
+        lo: from.lo + (goal.lo - from.lo) * e,
+        hi: from.hi + (goal.hi - from.hi) * e,
+        frame: goal.frame,
+      };
+      setShown(now.current);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduced, lo, hi, inFrame]);
+  return reduced || shown.frame !== inFrame ? target : shown;
+}
+
+// The session's fit choice, in sessionStorage (and in memory where that is not allowed): read
+// without a flash of the other choice on the first paint, kept across a reload.
+let fitInMemory: "focus" | "all" = "focus";
+// Set once a write to the storage fails: from then on the memory copy is the truth.
+let fitStorageFailed = false;
+const fitListeners = new Set<() => void>();
+function readFit(): "focus" | "all" {
+  if (fitStorageFailed) return fitInMemory;
+  try {
+    return window.sessionStorage.getItem(FIT_KEY) === "all" ? "all" : "focus";
+  } catch {
+    return fitInMemory;
+  }
+}
+function saveFit(choice: "focus" | "all") {
+  fitInMemory = choice;
+  try {
+    window.sessionStorage.setItem(FIT_KEY, choice);
+  } catch {
+    // Not kept across a reload.
+    fitStorageFailed = true;
+  }
+  fitListeners.forEach((listen) => listen());
+}
+const subscribeFit = (onChange: () => void) => {
+  fitListeners.add(onChange);
+  return () => void fitListeners.delete(onChange);
 };
 
 // Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
@@ -179,6 +289,10 @@ export function NetWorthChart({
   const [view, setView] = useState<ViewWindow | null>(null);
   const [scrub, setScrub] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
+  // One big step in view: focus on the side with more days (the scale fits it), or fit all of
+  // it. The choice holds for the session.
+  const clipId = useId();
+  const focusOn = useSyncExternalStore(subscribeFit, readFit, () => "focus") === "focus";
   // What's open: a day (collapsed, a significant day's dot) or one of every movement's dots
   // (expanded), and whether its details are open beside it.
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -210,6 +324,7 @@ export function NetWorthChart({
   // Expanded, the wheel zooms the time axis around the pointer. A native listener, not React's
   // (passive, so it couldn't stop the page scrolling); it reads this render's state through a ref.
   const onWheel = useRef<(e: WheelEvent) => void>(() => {});
+  const wheelRemainder = useRef(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -233,6 +348,8 @@ export function NetWorthChart({
     watch.observe(el);
     return () => watch.disconnect();
   }, []);
+
+  const chooseFocus = (on: boolean) => saveFit(on ? "focus" : "all");
 
   // Every movement, once, the first time the chart opens.
   const firstDay = points[0]?.date;
@@ -319,15 +436,26 @@ export function NetWorthChart({
   const narrow = width < 480;
   const H = expanded ? (narrow ? H_EXPANDED_NARROW : H_EXPANDED_WIDE) : narrow ? H_NARROW : H_WIDE;
   const values = shown.map((p) => p.cents);
-  const scale = chartScale(values, width, H);
-  const { top, bottom, lo, hi, x, y } = scale;
+  // The scale fits exactly the days in view (their own range, and a floor that follows their own
+  // moves) and settles on each new fit over a moment (not with reduced motion).
+  const fit = fitScale(values, { focus: focusOn });
+  const taken = fit.focused ? fit.breaks.map((b) => `${b.index}:${b.cents}`).join() : "";
+  const eased = useEasedRange({ lo: fit.lo, hi: fit.hi, frame: taken });
+  const { lo, hi } = eased;
+  const { breaks, offsets } = fit;
+  const { x, y } = scaleAt(eased, values.length, width, H);
+  const scale: ChartScale = { ...fit, lo, hi, x, y };
+  // Where each day sits down the chart: its value less what the big steps taken out moved it (all
+  // zero otherwise). The scale's labels, the scrub and the header say the true values.
+  const plotDays = shown.map((p, i) => ({ ...p, cents: p.cents - (offsets[i] ?? 0) }));
+  const yDay = (i: number) => y(plotDays[i].cents);
 
   // A dot for every movement in view, overlapping ones as one until zoomed apart.
   const layout = useMemo(() => {
     if (!moves || shown.length === 0) return null;
     // A phone's narrow chart groups more: a dot and its ×N label need the room (QA round 9).
     const gap = narrow ? DOT_GAP_NARROW : DOT_GAP;
-    const dots = layoutDots({ events: moves, days: shown, x, y, gap });
+    const dots = layoutDots({ events: moves, days: plotDays, x, y, gap });
     const inView = new Set(shown.map((p) => p.date));
     return {
       dots,
@@ -335,7 +463,7 @@ export function NetWorthChart({
       count: moves.filter((m) => inView.has(m.date)).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow]);
+  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow, taken]);
 
   // The wheel's handler, with this render's window; the page scrolls again once the chart can't
   // zoom further that way.
@@ -344,8 +472,32 @@ export function NetWorthChart({
       if (!expanded || !box.current) return;
       const r = box.current.getBoundingClientRect();
       const share = (e.clientX - r.left) / r.width;
-      const next = zoomWindow(win, total, e.deltaY > 0 ? 1.25 : 0.8, share);
-      if (next.from === win.from && next.to === win.to) return;
+      // A sideways swipe (a trackpad, shift and the wheel) moves the days in view, so a big step
+      // can be dragged out of them without the brush.
+      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      let next: ViewWindow;
+      if (sideways) {
+        // Nothing to pan that way: leave the swipe to the page.
+        if (e.deltaX < 0 ? win.from <= 0 : win.to >= total - 1) {
+          wheelRemainder.current = 0;
+          return;
+        }
+        // Slow swipes move a fraction of a day each: they add up until there is a whole day.
+        wheelRemainder.current += (e.deltaX / r.width) * (win.to - win.from);
+        const days = Math.trunc(wheelRemainder.current);
+        if (days === 0) {
+          e.preventDefault();
+          return;
+        }
+        wheelRemainder.current -= days;
+        next = panWindow(win, total, days);
+      } else {
+        next = zoomWindow(win, total, e.deltaY > 0 ? 1.25 : 0.8, share);
+      }
+      if (next.from === win.from && next.to === win.to) {
+        wheelRemainder.current = 0;
+        return;
+      }
       e.preventDefault();
       setView(next);
       setScrub(null);
@@ -382,7 +534,7 @@ export function NetWorthChart({
       return m
         ? {
             group: m.group,
-            at: { x: x(m.i), y: y(shown[m.i].cents) },
+            at: { x: x(m.i), y: yDay(m.i) },
             title: dayLabel(m.group.date, { year: true }),
           }
         : null;
@@ -392,6 +544,20 @@ export function NetWorthChart({
   })();
 
   const path = linePath(values, scale, width);
+  // The dashed "where the range started" line is true only left of the first big step taken out.
+  const startEnd =
+    fit.focused && breaks.length ? x(Math.min(...breaks.map((b) => b.index)) - 1) : width;
+  const labels = sideLabels(fit);
+  // Each big step taken out: where its break mark goes and what its label says (the day it landed
+  // on; no figure while the figures are hidden).
+  const marks2 = fit.focused
+    ? breaks.map((b, k) => ({
+        at: (x(b.index - 1) + x(b.index)) / 2,
+        y: (yDay(b.index - 1) + yDay(b.index)) / 2,
+        words: stepWords(b, dayLabel(shown[b.index].date), figureShown),
+        k,
+      }))
+    : [];
 
   const place = open
     ? placeBoxes({
@@ -636,53 +802,84 @@ export function NetWorthChart({
                 viewBox={`0 0 ${width} ${H}`}
                 className="absolute inset-0 overflow-visible"
               >
-                {/* Where the range started. */}
-                <line
-                  x1={0}
-                  x2={width}
-                  y1={y(shown[0].cents)}
-                  y2={y(shown[0].cents)}
-                  strokeWidth={1}
-                  strokeDasharray="2 5"
-                  className="stroke-zinc-400 dark:stroke-zinc-600"
-                />
-                <path
-                  key={`${chip}-${zoomed ? "zoom" : shown.length}`}
-                  d={path}
-                  pathLength={1}
-                  fill="none"
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  className={`nw-line ${stroke}`}
-                />
-                {scrub !== null && (
-                  <>
-                    <line
-                      x1={x(at)}
-                      x2={x(at)}
-                      y1={0}
-                      y2={H}
-                      strokeWidth={1}
-                      className="stroke-zinc-500 dark:stroke-zinc-400"
-                    />
-                    <circle
-                      cx={x(at)}
-                      cy={y(point.cents)}
-                      r={4.5}
-                      strokeWidth={2}
-                      className={`fill-white dark:fill-zinc-950 ${stroke}`}
-                    />
-                  </>
-                )}
-                {scrub === null && (
-                  <circle
-                    cx={x(shown.length - 1)}
-                    cy={y(shown[shown.length - 1].cents)}
-                    r={3.5}
-                    className="fill-current"
+                {/* Whatever is drawn stays on the chart (a little room for the dots and the line's
+                    width), also while the scale eases to a new fit. */}
+                <clipPath id={clipId}>
+                  <rect x={-6} y={-6} width={width + 12} height={H + 12} />
+                </clipPath>
+                <g clipPath={`url(#${clipId})`}>
+                  {/* Where the range started (only as far as it is true: left of the first big step
+                    taken out). */}
+                  <line
+                    x1={0}
+                    x2={startEnd}
+                    y1={yDay(0)}
+                    y2={yDay(0)}
+                    strokeWidth={1}
+                    strokeDasharray="2 5"
+                    className="stroke-zinc-400 dark:stroke-zinc-600"
                   />
-                )}
+                  <path
+                    key={`${chip}-${zoomed ? "zoom" : shown.length}`}
+                    d={path}
+                    pathLength={1}
+                    fill="none"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    className={`nw-line ${stroke}`}
+                  />
+                  {/* A big step taken out of the line: a gap with a break mark (//). */}
+                  {marks2.map((m) => (
+                    <g key={m.k} data-net-worth-break="">
+                      <rect
+                        x={m.at - BREAK_W / 2}
+                        y={m.y - BREAK_H / 2}
+                        width={BREAK_W}
+                        height={BREAK_H}
+                        className="fill-white dark:fill-zinc-950"
+                      />
+                      {[-2, 2].map((dx) => (
+                        <line
+                          key={dx}
+                          x1={m.at + dx - 2}
+                          y1={m.y + 7}
+                          x2={m.at + dx + 2}
+                          y2={m.y - 7}
+                          strokeWidth={1.5}
+                          className="stroke-current"
+                        />
+                      ))}
+                    </g>
+                  ))}
+                  {scrub !== null && (
+                    <>
+                      <line
+                        x1={x(at)}
+                        x2={x(at)}
+                        y1={0}
+                        y2={H}
+                        strokeWidth={1}
+                        className="stroke-zinc-500 dark:stroke-zinc-400"
+                      />
+                      <circle
+                        cx={x(at)}
+                        cy={yDay(at)}
+                        r={4.5}
+                        strokeWidth={2}
+                        className={`fill-white dark:fill-zinc-950 ${stroke}`}
+                      />
+                    </>
+                  )}
+                  {scrub === null && (
+                    <circle
+                      cx={x(shown.length - 1)}
+                      cy={yDay(shown.length - 1)}
+                      r={3.5}
+                      className="fill-current"
+                    />
+                  )}
+                </g>
               </svg>
               {layout && (
                 <MovementDots
@@ -704,13 +901,27 @@ export function NetWorthChart({
               )}
               <Scale
                 width={width}
-                high={top}
-                low={bottom}
-                start={shown[0].cents}
+                height={H}
+                left={labels.left}
+                right={labels.right}
+                start={fit.focused ? null : shown[0].cents}
                 y={y}
-                zero={lo < 0 && hi > 0 ? y(0) : null}
+                zero={!fit.focused && lo < 0 && hi > 0 ? y(0) : null}
                 amounts={figureShown}
               />
+              {marks2.map((m) => (
+                <p
+                  key={m.k}
+                  data-net-worth-step=""
+                  className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
+                  style={{
+                    top: m.k * BREAK_LABEL_STAGGER,
+                    ...stepSide(m.at, width),
+                  }}
+                >
+                  {m.words}
+                </p>
+              ))}
             </div>
             {expanded && movesState !== "idle" && (
               <p
@@ -749,7 +960,7 @@ export function NetWorthChart({
                   className="pointer-events-auto absolute flex items-center justify-center"
                   style={{
                     left: x(i) - MARK / 2,
-                    top: y(shown[i].cents) - MARK / 2,
+                    top: yDay(i) - MARK / 2,
                     width: MARK,
                     height: MARK,
                   }}
@@ -836,6 +1047,21 @@ export function NetWorthChart({
                 </button>
               );
             })}
+            {breaks.length > 0 && (
+              <button
+                type="button"
+                data-net-worth-fit=""
+                onClick={() => {
+                  chooseFocus(!fit.focused);
+                  // The dots move with the scale: whatever was open is shut.
+                  setFocusDot(null);
+                  shut();
+                }}
+                className="ml-auto inline-flex min-h-11 items-center px-3 text-sm font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+              >
+                {fitControlWords(fit.focused)}
+              </button>
+            )}
           </div>
         </>
       )}
@@ -844,6 +1070,12 @@ export function NetWorthChart({
 }
 
 type Opened = { kind: "day"; key: string } | { kind: "dot"; index: number; key: string };
+
+// The marker's place across: beside the step, on the side with more room (so it never runs off a
+// phone's screen, and never sits on the line's end).
+function stepSide(at: number, width: number): React.CSSProperties {
+  return at > width / 2 ? { right: width - at + STEP_MARKER_GAP } : { left: at + STEP_MARKER_GAP };
+}
 
 // A range chip's days, as a window over the whole history.
 function windowFor(points: readonly SeriesPoint[], range: RangeKey): ViewWindow {
@@ -1113,8 +1345,9 @@ function Brush({
 // when the line crosses it. Not read out: the slider says each day's figure.
 function Scale({
   width,
-  high,
-  low,
+  height,
+  left,
+  right,
   start,
   y,
   zero,
@@ -1123,13 +1356,19 @@ function Scale({
   // Off while the figure is hidden: the highest and lowest would give it away.
   amounts: boolean;
   width: number;
-  high: number;
-  low: number;
-  start: number;
+  height: number;
+  // The highest and lowest at the left edge, true for the days there; and at the right edge (the
+  // same heights) when big steps are taken out of the line, true for the days there.
+  left: { high: number; low: number };
+  right: { high: number; low: number } | null;
+  start: number | null;
   y: (cents: number) => number;
   zero: number | null;
 }) {
   const label = "pointer-events-none absolute text-[10px] leading-none text-zinc-500 tabular-nums";
+  const { high, low } = left;
+  // While the scale eases to a new fit a label's height can be off the chart: it waits there.
+  const on = (cents: number) => y(cents) >= 0 && y(cents) <= height;
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
       {zero !== null && (
@@ -1144,7 +1383,7 @@ function Scale({
           </span>
         </>
       )}
-      {amounts && (
+      {amounts && on(high) && (
         <span
           data-net-worth-scale="high"
           className={label}
@@ -1153,20 +1392,44 @@ function Scale({
           {dollars(high)}
         </span>
       )}
-      {amounts && low !== high && (
+      {amounts && low !== high && on(low) && (
         <span data-net-worth-scale="low" className={label} style={{ top: y(low) + 2, left: 2 }}>
           {dollars(low)}
         </span>
       )}
-      {amounts && start !== high && start !== low && width > 0 && (
-        <span
-          data-net-worth-scale="start"
-          className={label}
-          style={{ top: y(start) - 12, right: 2 }}
-        >
-          {dollars(start)}
-        </span>
+      {amounts && right && on(high) && on(low) && (
+        <>
+          <span
+            data-net-worth-scale="high-right"
+            className={label}
+            style={{ top: Math.max(0, y(high) - 12), right: 2 }}
+          >
+            {dollars(right.high)}
+          </span>
+          <span
+            data-net-worth-scale="low-right"
+            className={label}
+            style={{ top: y(low) + 2, right: 2 }}
+          >
+            {dollars(right.low)}
+          </span>
+        </>
       )}
+      {amounts &&
+        !right &&
+        start !== null &&
+        on(start) &&
+        start !== high &&
+        start !== low &&
+        width > 0 && (
+          <span
+            data-net-worth-scale="start"
+            className={label}
+            style={{ top: y(start) - 12, right: 2 }}
+          >
+            {dollars(start)}
+          </span>
+        )}
     </div>
   );
 }

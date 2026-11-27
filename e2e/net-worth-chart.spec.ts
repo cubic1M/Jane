@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { STEP_PERSON, seedHistory } from "./chart-people";
+import { signInWith } from "./session";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
 
@@ -253,4 +255,106 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
   await expect(details).toHaveCount(0);
+});
+
+// The line's vertical extent as a share of the chart's height, for each piece of it (a big step
+// taken out of the scale splits it in two), and whether today's dot is on the chart.
+async function linePieces(chart: Locator): Promise<{ shares: number[]; todayOnChart: boolean }> {
+  return chart.locator("[data-net-worth-plot]").evaluate((plot) => {
+    const h = plot.getBoundingClientRect().height;
+    const d = plot.querySelector("path.nw-line")?.getAttribute("d") ?? "";
+    const shares = d
+      .split("M")
+      .filter(Boolean)
+      .map((piece) => {
+        const ys = [...piece.matchAll(/,([\d.-]+)/g)].map((m) => Number(m[1]));
+        return (Math.max(...ys) - Math.min(...ys)) / h;
+      });
+    const dot = plot.querySelector("svg circle.fill-current");
+    const cy = Number(dot?.getAttribute("cy") ?? NaN);
+    return { shares, todayOnChart: cy >= 0 && cy <= h };
+  });
+}
+
+test("one big step does not flatten the rest: both sides keep their shape, a break says the step, Fit all brings it back, zooming out restores", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  // Months of moves of $20 to $300 around $6,000, and one +$5,120 day 60 days ago.
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, STEP_PERSON);
+  await page.goto("/home");
+
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
+  const label = chart.locator("[data-net-worth-step]");
+  const breaks = chart.locator("[data-net-worth-break]");
+  const control = chart.locator("[data-net-worth-fit]");
+
+  // Hidden figures: the break's label says what happened and when, with no figure, and the
+  // scale's labels are hidden too.
+  await expect(label).toHaveText(/^A big rise on [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(label).not.toContainText("$");
+  await expect(chart.locator("[data-net-worth-scale]")).toHaveCount(0);
+  await chart.locator("[data-show-value]").click();
+
+  // The step is out of the scale: both sides of the break each take at least a third of the
+  // chart's height, today's dot is on the chart, and the break says the step.
+  await expect(label).toHaveText(/^\+\$[45],\d{3} on [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(breaks).toHaveCount(1);
+  await expect(control).toHaveText("Fit all");
+  await expect
+    .poll(async () => {
+      const { shares, todayOnChart } = await linePieces(chart);
+      return shares.length === 2 && shares.every((s) => s >= 0.33) && todayOnChart;
+    })
+    .toBe(true);
+  // Each edge's labels are true for the days next to it: the days before the step near $5,000 to
+  // $7,000 on the left, the days after it near $10,000 to $12,000 on the right.
+  const dollarsOf = async (el: Locator) =>
+    Number(((await el.textContent()) ?? "").replace(/\D/g, ""));
+  const scale = (name: string) => chart.locator(`[data-net-worth-scale="${name}"]`);
+  await expect.poll(() => dollarsOf(scale("high"))).toBeLessThan(8_000);
+  await expect.poll(() => dollarsOf(scale("low-right"))).toBeGreaterThan(9_000);
+  expect(await dollarsOf(scale("high-right"))).toBeGreaterThan(await dollarsOf(scale("high")));
+
+  // Fit all: the one true scale, the step back in the line, no break.
+  await control.click();
+  await expect(control).toHaveText("Focus");
+  await expect(label).toHaveCount(0);
+  await expect(breaks).toHaveCount(0);
+  await expect.poll(() => dollarsOf(scale("high"))).toBeGreaterThan(10_000);
+  await expect.poll(async () => (await linePieces(chart)).shares[0]).toBeGreaterThanOrEqual(0.9);
+  await control.click();
+  await expect(label).toBeVisible();
+  await expect(control).toHaveText("Fit all");
+
+  // Zoomed in on today with the brush, the step leaves the view: no break, and the small moves
+  // still have shape (the plain fitted scale with the adaptive floor).
+  const brush = chart.getByRole("slider", { name: "Days in view" });
+  await brush.focus();
+  await page.keyboard.press("+");
+  await page.keyboard.press("+");
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
+  await expect(label).toHaveCount(0);
+  await expect(breaks).toHaveCount(0);
+  await expect(control).toHaveCount(0);
+  await expect.poll(async () => (await linePieces(chart)).shares[0]).toBeGreaterThanOrEqual(0.33);
+  expect(await dollarsOf(scale("high"))).toBeLessThan(13_000);
+
+  // Zoomed out again: the whole picture, with the same rules.
+  for (let i = 0; i < 4; i++) await page.keyboard.press("-");
+  await expect(label).toHaveText(/^\+\$[45],\d{3} on /);
+  await expect(breaks).toHaveCount(1);
+  // The range chips still work.
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
+  await expect(label).toHaveCount(0);
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^ALL/ }).click();
+  await expect(label).toBeVisible();
 });

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
 import { signInWith } from "./session";
@@ -42,6 +42,13 @@ async function upload(page: Page, file: string | { name: string; text: string })
   await waitForImport(page, { open: "/import" });
 }
 
+// A history with one big step can open focused on the side of it with more days, the other side
+// off the chart (src/components/hub/net-worth-geometry.ts). These checks read the whole range.
+async function fitAll(chart: Locator) {
+  const fit = chart.locator("[data-net-worth-fit]");
+  if ((await fit.count()) > 0 && (await fit.textContent()) === "Fit all") await fit.click();
+}
+
 async function owe(page: Page, amount: string) {
   const ask = page.locator("[data-uploaded-account] [data-balance-ask]").filter({ hasText: "owe" });
   await ask.getByRole("textbox").fill(amount);
@@ -63,6 +70,7 @@ test("a card-only net worth stays below zero on the chart, and says so", async (
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
   await chart.locator("[data-show-value]").click();
+  await fitAll(chart);
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText("-$900");
   await expect(chart.locator("[data-net-worth-plot]")).toHaveAttribute(
     "aria-valuetext",
@@ -95,6 +103,7 @@ test("a net worth that crosses zero draws $0 between its low and high", async ({
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
   await chart.locator("[data-show-value]").click();
+  await fitAll(chart);
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText("$1,500");
   await expect(chart.locator("[data-net-worth-zero]")).toHaveCount(1);
   await expect(chart.locator('[data-net-worth-scale="zero"]')).toHaveText("$0");
