@@ -105,6 +105,28 @@ describe("affordReply", () => {
     expect(body).toMatch(/worse than it already is/);
   });
 
+  // Walk 11-26: "Yes" with safe to spend still positive, then "checking goes below zero in February".
+  // By hand: balance $3,000, safe to spend $1,100 until Dec 1. A $2,500 bill on Feb 5 and a
+  // $700 bill on May 5. Before: Feb $500, May -$200, so May is the first month below zero. After the
+  // $900: safe to spend $200, Feb $500 - $900 = -$400, so February is. Covered now, short later.
+  it("does not say yes when safe to spend holds but a later month goes below zero", () => {
+    const later: AffordNumbers = {
+      asOf: "2026-11-26",
+      safe: { payday: "2026-12-01", balanceCents: 300_000, safeCents: 110_000 },
+      flows: [
+        { date: "2027-02-05", amountCents: -250_000 },
+        { date: "2027-05-05", amountCents: -70_000 },
+      ],
+      goals: [],
+    };
+    const body = affordReply({ ...intent("can I afford $900 for a laptop", "afford") }, later).body;
+    expect(body).not.toMatch(/Yes/);
+    expect(body).toMatch(
+      /^After \$900\.00 on a laptop now, you'd still have \$200\.00 safe to spend until Dec 1 \(in 5 days\), but checking would go below zero in February 2027\./,
+    );
+    expect(body).toContain("May 2027 before the change, and in February 2027 after");
+  });
+
   it("asks for an amount, and keeps to the next 12 months", () => {
     expect(affordReply(intent("can I afford a trip", "afford"), numbers).body).toMatch(
       /^How much is it\?/,

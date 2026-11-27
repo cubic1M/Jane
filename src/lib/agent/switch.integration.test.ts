@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { CHEAPER_PLANS } from "@/config/student-money";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -120,7 +121,8 @@ describe.runIf(url)("switching to the best option, on the demo bank", () => {
     expect(await action(actionId)).toMatchObject({
       status: "done",
       agentState: "finished",
-      confirmedAnnualCents: (1_799 - 799) * 12,
+      // The tier is priced as the cheaper-plan card prices it (src/config/student-money.ts).
+      confirmedAnnualCents: (1_799 - CHEAPER_PLANS[0].cents) * 12,
     });
   });
 

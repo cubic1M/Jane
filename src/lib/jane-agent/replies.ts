@@ -242,20 +242,32 @@ function categoryLines(
 function affordVerdict(result: AffordResult, what: string, asOf: string): string | null {
   const { safe, firstShort } = result;
   if (!safe) return null;
+  // Checking month by month, as /afford shows it: the first month this change takes below zero
+  // (firstShort.after is that page's own "First month below zero"), or a month already short that
+  // it makes shorter. Either way the answer is not a plain yes.
+  const tightMonth =
+    firstShort?.after && firstShort.after !== firstShort.before ? firstShort.after : null;
+  const deeper = result.months?.find((m) => m.afterCents < 0 && m.afterCents < m.beforeCents);
+  const monthsClause = tightMonth
+    ? `checking would go below zero in ${monthLabel(tightMonth)}`
+    : deeper
+      ? `${monthLabel(deeper.month)} would end ${fmt(-deeper.afterCents)} below zero${deeper.beforeCents < 0 ? `, up from ${fmt(-deeper.beforeCents)}` : ""}`
+      : null;
   if (safe.beforeCents !== safe.afterCents) {
     const until = safe.payday ? ` until ${dateAndDays(safe.payday, asOf)}` : "";
-    return safe.afterCents >= 0
-      ? `Yes: after ${what}, you'd still have ${fmt(safe.afterCents)} safe to spend${until}.`
-      : `Not without dipping into your bills: ${what} would leave you ${fmt(-safe.afterCents)} short${until}.`;
+    if (safe.afterCents < 0) {
+      return `Not without dipping into your bills: ${what} would leave you ${fmt(-safe.afterCents)} short${until}.`;
+    }
+    // Covered now, short later: one sentence that says both, never "Yes" over a shortfall.
+    if (monthsClause) {
+      return `After ${what}, you'd still have ${fmt(safe.afterCents)} safe to spend${until}, but ${monthsClause}.`;
+    }
+    return `Yes: after ${what}, you'd still have ${fmt(safe.afterCents)} safe to spend${until}.`;
   }
-  if (firstShort?.after && firstShort.after !== firstShort.before) {
-    return `It would be tight: with ${what}, checking would go below zero in ${monthLabel(firstShort.after)}.`;
-  }
+  if (tightMonth) return `It would be tight: with ${what}, ${monthsClause}.`;
   // A month already short that this makes shorter is not "fits".
-  const deeper = result.months?.find((m) => m.afterCents < 0 && m.afterCents < m.beforeCents);
-  if (deeper) {
-    return `It would make checking worse than it already is: with ${what}, ${monthLabel(deeper.month)} would end ${fmt(-deeper.afterCents)} below zero${deeper.beforeCents < 0 ? `, up from ${fmt(-deeper.beforeCents)}` : ""}.`;
-  }
+  if (deeper)
+    return `It would make checking worse than it already is: with ${what}, ${monthsClause}.`;
   return `Yes: ${what} fits${firstShort?.before ? "" : ", and checking stays above zero every month"}.`;
 }
 

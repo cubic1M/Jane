@@ -91,6 +91,23 @@ describe("runScenario", () => {
     expect(run.sectors.taxes).toMatch(/more in tax/);
   });
 
+  // Walk 11-26. By hand: cash $12,000, spending $4,500 a month, income $6,000. Four months with no
+  // income: $12,000 - 4 x $4,500 = -$6,000, so cash runs out; the margin is back to +$1,500, so
+  // there is nothing to trim.
+  it("has no trim step when cash runs out but the margin comes back", () => {
+    const run = runScenario("job_loss", baseline, { incomeLossShare: 1, months: 4 });
+    expect(run.after.runsOutMonth).not.toBeNull();
+    expect(run.after.marginCents).toBe(150_000);
+    expect(run.plan.map((c) => c.key)).toContain("pause-extra");
+    expect(run.plan.some((c) => /Trim spending/.test(c.title))).toBe(false);
+    expect(run.plan.every((c) => !/\$0\.00/.test(c.title))).toBe(true);
+  });
+
+  it("has a trim step worth the shortfall when spending sits above income", () => {
+    const run = runScenario("job_loss", { ...baseline, monthlyIncomeCents: 400_000 });
+    expect(run.plan.find((c) => c.key === "trim")?.title).toBe("Trim spending by $500.00 a month");
+  });
+
   it("leaves tax and debt out when there is nothing to say", () => {
     const run = runScenario("car", {
       ...baseline,
