@@ -27,6 +27,18 @@ describe("HSA limit when the cover type is not told", () => {
     expect(v.selfLimitCents).toBeLessThan(v.limitCents);
   });
 
+  // T8b (CodeRabbit): a parent priced as single is not read as self-only cover.
+  it("keeps the family limit for a household of a family that files single", () => {
+    const d = inputFor("equity");
+    const profile = buildProfile(d);
+    const facts = {
+      ...profile.facts,
+      household: { ...profile.facts.household, value: "family" },
+      filing_status: { ...profile.facts.filing_status, value: "single", source: "told" as const },
+    };
+    expect(readHealthTaxes({ ...profile, facts }, d).hsa.family).toBe(true);
+  });
+
   it("assumes nothing for a single filer", () => {
     const v = read("single");
     expect(v.family).toBe(false);

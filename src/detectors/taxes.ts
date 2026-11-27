@@ -1252,6 +1252,7 @@ const draftReturnCheck: Detector = {
 // who has not said how they file, with children and no sign of a partner, is priced as single: these
 // cards say so, as the estimate does (filingNoteOf).
 const PRICED_BY_STATUS: ReadonlySet<string> = new Set([
+  "withholding_gap",
   "roth_conversion",
   "childcare_tax_break",
   "year_end_moves",

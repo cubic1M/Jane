@@ -181,7 +181,10 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
   const contributed = useReported ? reported.cents : fromRows;
   const depositCount = useReported ? reported.count : puts.length;
   const projected = Math.round(contributed + (contributed / month) * (12 - month));
-  const family = status === "married_joint";
+  // Cover is not a filing status: a married filer, or a household of a couple or a family, is read as
+  // family cover (the higher limit), as it always was, so a parent filing single keeps it.
+  const family =
+    status === "married_joint" || f.household.value === "couple" || f.household.value === "family";
   const limit = hsaLimitFor(family, toldNumber(f.age.value));
   const excess = hsaExcess({
     contributedCents: contributed,
