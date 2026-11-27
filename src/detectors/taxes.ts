@@ -33,7 +33,6 @@ import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { lawYearFor } from "@/config/tax-params";
 import { filingStatusOf } from "@/planning/student-tax";
-import { defaultTaxYear } from "@/planning/tax-pack";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import { IP_PIN_TOOL_DOWN, ipPinToolOpen } from "@/planning/tax-identity";
@@ -654,10 +653,13 @@ const sCorpElection: Detector = {
     const income = profile.facts.monthly_income;
     if (!selfPaid(pattern.value)) return null;
     const profit = profitOf(profile);
-    const result = structureFor(soleInput(profit, profile.facts, defaultTaxYear(profile.today)));
+    const md = profile.today.slice(5);
+    // The year the election would count for: this one through March 15, the next after it. (Not the
+    // prior-return year defaultTaxYear gives in January to April.)
+    const electionYear = Number(profile.today.slice(0, 4)) + (md <= T.sCorpElectionBy ? 0 : 1);
+    const result = structureFor(soleInput(profit, profile.facts, electionYear));
     if (!result.sCorp.worthIt) return null;
     const business = pattern.value === "business";
-    const md = profile.today.slice(5);
     return suggestion("taxes", "s_corp_election", {
       title: "Ask a tax professional whether an S corporation would save you tax",
       headline: headlineOf("Ask about an S corporation", result.sCorp.savesCents, "saves"),

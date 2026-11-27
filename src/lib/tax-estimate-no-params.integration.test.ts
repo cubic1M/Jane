@@ -14,6 +14,7 @@ import { NoTaxParamsError } from "@/config/tax-params";
 import { createCheckPerson, deleteCheckPerson } from "@/lib/jane-agent/checks/person";
 import { NoParamsPage } from "@/app/taxes/no-params";
 import { loadTaxEstimate } from "./tax-estimate";
+import { loadRefunds } from "./tax-refund";
 import { estimateState, noParamsText } from "./tax-estimate-state";
 
 // Tax T4: a year Jane has no IRS figures for gets no estimate, never another year's. The default
@@ -57,6 +58,24 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
     expect(
       estimateState({ noParams: true, totalTaxCents: 1, withholdingKnown: true, refundCents: 5 }),
     ).toBe("no_params");
+  });
+
+  it("a refund of tax year 2024 (deposited December 2025) leaves its match unknown instead of failing the load", async () => {
+    const account = await client.account.findFirstOrThrow({ where: { userId: id } });
+    await client.transaction.create({
+      data: {
+        userId: id,
+        accountId: account.id,
+        source: "csv",
+        date: new Date("2025-12-20T00:00:00Z"),
+        amountCents: -50_000,
+        description: "IRS TREAS 310 TAX REF",
+        pfcDetailed: "INCOME_TAX_REFUND",
+      },
+    });
+    const { refunds } = await loadRefunds(id, { client, now: CREATED });
+    const old = refunds.find((r) => r.refund.taxYear === 2024);
+    expect(old?.match).toBeNull();
   });
 
   it("the page for that year says the sentence and shows no money", () => {

@@ -78,3 +78,13 @@ describe("the qualified business income deduction", () => {
     expect(s.qbiCents).toBe(0);
   });
 });
+
+describe("the S corporation's payroll tax reads the year's own wage base", () => {
+  it("is lower under 2025's $176,100 than 2026's $184,500 for a salary above both", () => {
+    const in2025 = structureFor({ ...owner(900_000), year: 2025 }).sCorp;
+    const in2026 = structureFor(owner(900_000)).sCorp;
+    expect(in2025.salaryCents).toBe(in2026.salaryCents);
+    // Both halves of 6.2% on the $8,400 the wage base moved.
+    expect(in2026.payrollTaxCents - in2025.payrollTaxCents).toBe(Math.round($(8_400) * 0.062) * 2);
+  });
+});
