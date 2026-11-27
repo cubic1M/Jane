@@ -131,6 +131,18 @@ function descriptionColumn(headers: string[], rows: string[][], varies: (i: numb
   return memo !== null && different(memo) >= MEMO_NAMES_MORE * different(best) ? memo : best;
 }
 
+// A currency code written in an amount's own cell ("12.50 EUR"): not US dollars, whatever the
+// file's other columns say. parseAmount strips it, so it is looked for first.
+const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b|([€£¥])/i;
+const SYMBOL_CODE: Record<string, string> = { "€": "EUR", "£": "GBP", "¥": "JPY" };
+export function foreignCurrencyIn(...texts: string[]): string | null {
+  for (const text of texts) {
+    const found = FOREIGN_CODE.exec(text);
+    if (found) return found[1] ? found[1].toUpperCase() : SYMBOL_CODE[found[2]];
+  }
+  return null;
+}
+
 // An amount as banks outside the US write it too: "€12,50", "1.234,56", "12.50 USD".
 export function parseAmount(text: string): number | null {
   const plain = text.replace(/[€£¥]|\b(?:USD|EUR|GBP|CAD)\b/gi, "").trim();
@@ -387,6 +399,12 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
         if (NOT_COMPLETED.test(state)) return { ok: false, reason: `Not completed (${state})` };
         const code = currency >= 0 ? at(get, currency).trim().toUpperCase() : "";
         if (code && code !== "USD") return { ok: false, reason: `In ${code}, not US dollars` };
+        const amountCells =
+          mapping.amount.kind === "split"
+            ? [at(get, mapping.amount.debit), at(get, mapping.amount.credit)]
+            : [at(get, mapping.amount.column)];
+        const foreign = foreignCurrencyIn(...amountCells);
+        if (foreign) return { ok: false, reason: `In ${foreign}, not US dollars` };
         const dateText = at(get, mapping.date);
         const date = parseDate(dateText, order);
         if (!date) {
@@ -509,6 +527,7 @@ export function mappingFromForm(
   if (debit === null || credit === null) {
     return "Pick the amount column, or both the money out and money in columns.";
   }
+  if (debit === credit) return "Money out and money in need two different columns.";
   return {
     hasHeader,
     date,

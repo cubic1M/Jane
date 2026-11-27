@@ -40,6 +40,10 @@ describe("parseTextDate", () => {
 });
 
 describe("detectDateOrder", () => {
+  it("takes no evidence from a value that is no date in either order", () => {
+    expect(detectDateOrder(["01/02/2026", "03/04/2026", "99/01/2026"])).toBe("unknown");
+  });
+
   it("is settled by a day over 12 on either side", () => {
     expect(detectDateOrder(["05/09/2026", "13/09/2026"])).toBe("dmy");
     expect(detectDateOrder(["05/09/2026", "09/13/2026"])).toBe("mdy");

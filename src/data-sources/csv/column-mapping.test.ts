@@ -851,3 +851,67 @@ describe("a currency column beside the amount", () => {
     ]);
   });
 });
+
+describe("an amount that names a currency in its own cell", () => {
+  const mapping: ColumnMapping = {
+    hasHeader: true,
+    date: 0,
+    description: 2,
+    amount: { kind: "signed", column: 1, moneyOut: "negative" },
+  };
+  it("leaves out 12.50 EUR, and keeps an unlabelled or USD amount", () => {
+    const text = [
+      "Date,Amount,Description",
+      "10/20/2026,-12.50 EUR,CAFE ONE",
+      "10/19/2026,-8.00 USD,CAFE TWO",
+      "10/18/2026,-3.00,CAFE THREE",
+    ].join("\n");
+    const result = readCsvFile({ name: "x.csv", text, mapping });
+    expect(rows(result)).toEqual([
+      ["2026-10-19", 800],
+      ["2026-10-18", 300],
+    ]);
+    expect(result.ok && result.skipped.map((s) => s.reason)).toEqual(["In EUR, not US dollars"]);
+  });
+});
+
+describe("an amount with a foreign currency symbol in its own cell", () => {
+  const mapping: ColumnMapping = {
+    hasHeader: true,
+    date: 0,
+    description: 2,
+    amount: { kind: "signed", column: 1, moneyOut: "negative" },
+  };
+  it("leaves out €, £ and ¥ amounts, and keeps a dollar one", () => {
+    const text = [
+      "Date,Amount,Description",
+      "10/20/2026,-12.50 €,CAFE ONE",
+      "10/19/2026,£4.00,CAFE TWO",
+      "10/18/2026,¥500,CAFE THREE",
+      "10/17/2026,-$3.00,CAFE FOUR",
+    ].join("\n");
+    const result = readCsvFile({ name: "x.csv", text, mapping });
+    expect(rows(result)).toEqual([["2026-10-17", 300]]);
+    expect(result.ok && result.skipped.map((s) => s.reason)).toEqual([
+      "In EUR, not US dollars",
+      "In GBP, not US dollars",
+      "In JPY, not US dollars",
+    ]);
+  });
+});
+
+describe("mappingFromForm with the same column twice", () => {
+  it("refuses money out and money in being one column", () => {
+    const result = mappingFromForm(
+      form({
+        "map.0.date": "0",
+        "map.0.description": "1",
+        "map.0.amount": "",
+        "map.0.debit": "2",
+        "map.0.credit": "2",
+      }),
+      0,
+    );
+    expect(typeof result).toBe("string");
+  });
+});
