@@ -11,6 +11,8 @@ import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING } from "@/lib/cards";
 import { savedToDate } from "@/lib/membership/service";
 import { findingOfType } from "../__fixtures__/findings";
+import { ALERTS_PAGE_LIMIT } from "@/config/alerts";
+import { EmailSendError } from "@/lib/email";
 import { runDigests } from "./send";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
@@ -433,6 +435,116 @@ describe.runIf(url)("runDigests against a real database", () => {
       await client.user.delete({ where: { id: ids.late } });
       delete ids.late;
       await client.user.update({ where: { id: ids.news }, data: { digestEnabled: true } });
+    });
+
+    it("keeps the row when the provider may have accepted the email, and retries with the same key", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      // No answer, twice in the run (the run itself asks once more, with the same key).
+      send.mockRejectedValue(new EmailSendError("Resend did not answer", true));
+
+      const first = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      expect(first.failed).toBe(1);
+      expect(send).toHaveBeenCalledTimes(2);
+      const rows = await digestsOf("news");
+      expect(rows).toHaveLength(1);
+      expect(rows[0].sentAt).toBeNull();
+
+      // A later run resumes the same row, with the same key, and a refusal then does not release it.
+      send
+        .mockReset()
+        .mockRejectedValue(new EmailSendError("Resend rejected the email (422)", false));
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      expect(await digestsOf("news")).toHaveLength(1);
+
+      send.mockReset().mockResolvedValue({ id: "re_retry" });
+      const second = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      expect(second.sent).toBe(1);
+      expect(send.mock.calls[0][0].idempotencyKey).toBe(`digest-${rows[0].id}`);
+      expect(await digestsOf("news")).toHaveLength(1);
+      expect((await digestsOf("news"))[0].sentAt).not.toBeNull();
+    });
+
+    it("keeps the row when the first attempt was uncertain and the retry is then refused outright", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send
+        .mockRejectedValueOnce(new EmailSendError("Resend did not answer", true))
+        .mockRejectedValueOnce(new EmailSendError("Email is paused (KILL_EMAIL)", false));
+
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(await digestsOf("news")).toHaveLength(1);
+    });
+
+    it("sends once when only the first answer was lost: the run asks again with the same key", async () => {
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send
+        .mockRejectedValueOnce(new EmailSendError("Resend did not answer", true))
+        .mockResolvedValueOnce({ id: "re_second" });
+
+      const run = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(run).toMatchObject({ sent: 1, failed: 0 });
+      const keys = send.mock.calls.map(([mail]) => mail.idempotencyKey);
+      expect(keys).toHaveLength(2);
+      expect(keys[1]).toBe(keys[0]);
+    });
+
+    it("lets go of the row when the provider refused the email outright", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send.mockRejectedValueOnce(new EmailSendError("Resend rejected the email (422)", false));
+
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(await digestsOf("news")).toEqual([]);
+    });
+
+    it("leaves a send never confirmed for a day alone, and says so", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      await client.digest.create({
+        data: {
+          userId: ids.news,
+          weekStart: new Date("2026-11-02"),
+          payload: {},
+          createdAt: new Date(NOV_MONDAY.getTime() - 25 * 60 * 60 * 1000),
+        },
+      });
+
+      const run = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(run.failed).toBe(1);
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("says how many alerts the email leaves out, and none is skipped past the first page", async () => {
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      await client.alert.createMany({
+        data: Array.from({ length: ALERTS_PAGE_LIMIT + 5 }, (_, i) => ({
+          userId: ids.news,
+          type: "fee_charged" as const,
+          key: `many_${i}`,
+          title: `$${35 + i}.00 fee on Checking`,
+          body: "b",
+          createdAt: new Date(Date.UTC(2026, 10, 1, 0, 0, i)),
+        })),
+      });
+      send.mockResolvedValue({ id: "re_many" });
+
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      const text: string = send.mock.calls[0][0].text;
+      expect(text).toContain("And 5 more alerts in Jane.");
+      // The last one raised was past the first page of 50: it is counted, not left behind.
+      const stored = (await digestsOf("news"))[0].payload as {
+        alerts: unknown[];
+        alertsMore: number;
+      };
+      expect(stored.alerts).toHaveLength(ALERTS_PAGE_LIMIT);
+      expect(stored.alertsMore).toBe(5);
+      await client.alert.deleteMany({ where: { userId: ids.news, key: { startsWith: "many_" } } });
     });
 
     it("counts a delivered email as sent when only its audit entry fails", async () => {

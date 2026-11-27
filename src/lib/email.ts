@@ -18,7 +18,23 @@ type Email = {
   text: string;
   headers?: Record<string, string>;
   replyTo?: string;
+  // Resend remembers it for 24 hours: the same key is one email, however often it is asked for
+  // (docs: Idempotency-Key, 1 to 256 characters). Only the Resend sender uses it.
+  idempotencyKey?: string;
 };
+
+// A send that failed. `maybeSent` is true when the provider may still have accepted the email
+// (no answer, a timeout, a 5xx): the caller must not make a fresh email of it, only retry with
+// the same idempotency key.
+export class EmailSendError extends Error {
+  constructor(
+    message: string,
+    readonly maybeSent: boolean,
+  ) {
+    super(message);
+    this.name = "EmailSendError";
+  }
+}
 
 // Words from Resend, for the log and for errors: its messages can name the address ("send testing
 // emails to your own email address (you@…)") and carry links, and neither belongs on a log.
@@ -84,6 +100,7 @@ export async function sendEmail({
   text,
   headers,
   replyTo,
+  idempotencyKey,
 }: Email): Promise<SentEmail | void> {
   // Spec step 138: a trial person's address can never receive mail; nothing is sent.
   if (isTrialEmail(to)) return;
@@ -97,24 +114,46 @@ export async function sendEmail({
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) throw new Error("RESEND_API_KEY and EMAIL_FROM must be set");
 
-  const response = await fetch(RESEND_ENDPOINT, {
-    method: "POST",
-    signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
-    redirect: "error",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      html,
-      text,
-      ...(headers ? { headers } : {}),
-      ...(replyTo ? { reply_to: replyTo } : {}),
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+      redirect: "error",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey.slice(0, 256) } : {}),
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        text,
+        ...(headers ? { headers } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+    });
+  } catch (error) {
+    throw new EmailSendError(`Resend did not answer: ${safeDetail(String(error))}`, true);
+  }
   if (!response.ok) {
-    throw new Error(
-      `Resend rejected the email (${response.status}): ${safeDetail(await response.text())}`,
+    // A body that cannot be read still has a status: the failure is classified by that.
+    const detail = safeDetail(
+      await response.text().catch((error: unknown) => `response body unreadable: ${String(error)}`),
+    );
+    // The key was used before: the first request was accepted, so the email is on its way.
+    if (
+      response.status === 409 &&
+      idempotencyKey &&
+      detail.includes("invalid_idempotent_request")
+    ) {
+      return { id: null };
+    }
+    throw new EmailSendError(
+      `Resend rejected the email (${response.status}): ${detail}`,
+      response.status >= 500 || (response.status === 409 && !!idempotencyKey),
     );
   }
   const body = (await response.json().catch(() => null)) as { id?: unknown } | null;

@@ -87,6 +87,9 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       items: [
         ...(p.alerts ?? []).map((a) => `${fact(a.title)}${sure(a.percent)}`),
         ...(p.changes ?? []).map((c) => `${fact(c.title)}${sure(c.percent)}`),
+        ...(p.alertsMore
+          ? [`And ${p.alertsMoreAtLeast ? "at least " : ""}${p.alertsMore} more alerts in Jane.`]
+          : []),
       ],
       link: { label: "See it in Jane", url: links.alerts },
     });
@@ -231,6 +234,8 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
   const totals = [
     p.savedToDateCents > 0 &&
       `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
+    (p.savedToDateOnceCents ?? 0) > 0 &&
+      `Money that came back once: ${formatCents(p.savedToDateOnceCents ?? 0)}`,
     // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
     // 10-30: an insurance reshop on its own).
     stillToLook(p),

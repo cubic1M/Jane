@@ -213,6 +213,29 @@ describe.runIf(url)("runDailyReports against a real database", () => {
     expect((await run(MORNING)).sent).toBe(1);
   });
 
+  it("counts a report whose time was never recorded as the last one, so its lines are not listed twice", async () => {
+    await client.dailyReport.deleteMany({ where: { userId: ids.on } });
+    await client.dailyReport.create({
+      data: { userId: ids.on, day: at("2026-11-23"), createdAt: MORNING },
+    });
+    await client.alert.create({
+      data: {
+        userId: ids.on,
+        type: "fee_charged",
+        key: `lost_${suffix}`,
+        title: "$35.00 fee on Lost Report Checking",
+        body: "b",
+        createdAt: new Date(MORNING.getTime() - HOUR),
+      },
+    });
+
+    await run(new Date(MORNING.getTime() + 24 * HOUR));
+
+    const text = send.mock.calls.map(([mail]) => mail.text as string).join("\n");
+    expect(text).not.toContain("Lost Report Checking");
+    await client.alert.deleteMany({ where: { userId: ids.on, key: `lost_${suffix}` } });
+  });
+
   it("out of time, does no lookup for the rest: they count as deferred, not as already sent", async () => {
     expect((await run(MORNING)).sent).toBe(1);
     const result = await run(MORNING, { budgetMs: 0 });

@@ -213,6 +213,27 @@ describe("renderDigest", () => {
     );
   });
 
+  it("says how many alerts it leaves out, and 'at least' when reading stopped early", () => {
+    const more = { ...payload, alerts: [{ title: "A fee.", percent: 90 }], alertsMore: 5 };
+    expect(renderDigest(more, LINKS).text).toContain("And 5 more alerts in Jane.");
+    expect(renderDigest({ ...more, alertsMoreAtLeast: true }, LINKS).text).toContain(
+      "And at least 5 more alerts in Jane.",
+    );
+  });
+
+  it("keeps money that came back once apart from the yearly saved-so-far figure", () => {
+    const text = renderDigest({ ...payload, savedToDateOnceCents: 12_000 }, LINKS).text;
+    expect(text).toContain("about $359.76 a year");
+    expect(text).toContain("Money that came back once: $120.00");
+    expect(text).not.toContain("$479.76");
+    const onceOnly = renderDigest(
+      { ...payload, savedToDateCents: 0, savedToDateOnceCents: 12_000 },
+      LINKS,
+    ).text;
+    expect(onceOnly).not.toContain("Saved so far");
+    expect(onceOnly).toContain("Money that came back once: $120.00");
+  });
+
   it("says these are facts, not advice, and always has an unsubscribe link", () => {
     const email = renderDigest(payload, LINKS);
     expect(email.text).toContain(FACTS_NOT_ADVICE);

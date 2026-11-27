@@ -109,6 +109,8 @@ export const ALERT_EMAILS_PER_DAY = 3;
 
 // How many alerts the weekly email looks at.
 export const ALERTS_PAGE_LIMIT = 50;
+// The weekly email reads this many pages of that size before it stops looking (a safety bound).
+export const DIGEST_ALERT_MAX_PAGES = 20;
 
 // How long a read alert stays in the Jane hub's list.
 export const ALERTS_RECENT_DAYS = 30;
