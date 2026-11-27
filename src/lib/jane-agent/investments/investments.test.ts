@@ -644,6 +644,7 @@ describe("Claude's portfolio_review tool", () => {
 // Spec step 132: on track for retirement?
 const DEMO_RETIREMENT = retirementPlan({
   age: 45,
+  year: 2026,
   balanceCents: 8_425_040,
   employeeCents: 326_400,
   employerCents: 163_200,
@@ -723,6 +724,7 @@ describe("the retirement message", () => {
     expect(gatherRetirement(false)).toEqual([]);
     const fine = retirementPlan({
       age: 45,
+      year: 2026,
       balanceCents: 90_000_000,
       employeeCents: 489_600,
       employerCents: 244_800,
@@ -1054,6 +1056,7 @@ describe("Claude's auto_invest tool", () => {
 // Spec step 135: which account first.
 const ORDER = accountOrder({
   age: 45,
+  year: 2026,
   horizon: "over_20",
   goals: ["retirement"],
   marginalRate: 0.22,
@@ -1579,6 +1582,7 @@ describe("collegeReply and the college message", () => {
 // Spec step 159: the HSA.
 const HSA_PLAN = hsaPlan({
   balanceCents: 427_180,
+  year: 2026,
   cashCents: 285_000,
   contributedCents: 240_000,
   coverage: "self",
@@ -2065,6 +2069,7 @@ describe("steadyReply and the drop message", () => {
 const RA_VIEW = {
   advice: true,
   age: 45,
+  limitsSource: "IRS Notice 2025-67 (2026 limits)",
   limits: [
     {
       key: "workplace" as const,

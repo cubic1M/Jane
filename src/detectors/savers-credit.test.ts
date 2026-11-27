@@ -126,3 +126,22 @@ describe("the Saver's Match card", () => {
     expect(recommendsAChoice(`${s.title} ${s.short} ${s.why}`)).toBe(false);
   });
 });
+
+// Tax T32c: the card is for the credit's own tax year (2026) on either side of the new year, with
+// the 2026 limit, and the 2027 match card has the 2027 figures.
+describe("the Saver's Credit across the new year", () => {
+  const told = { monthly_income: 220_000, filing_status: "single" } as const;
+  it("shows the 2026 figures on December 31 2026 and on January 2 2027", () => {
+    for (const day of ["2026-12-31", "2027-01-02"]) {
+      const s = run({ ...told }, day)!;
+      expect(s.title, day).toContain("put in for 2026");
+      expect(s.why, day).toContain("under the $40,250.00 limit");
+      expect(s.why, day).toContain("IRA money until April 15, 2027");
+    }
+  });
+  it("shows the Saver's Match with its own 2027 figures on both days", () => {
+    for (const day of ["2026-12-31", "2027-01-02"]) {
+      expect(run({ ...told }, day, "savers_match")?.why, day).toContain("2027");
+    }
+  });
+});

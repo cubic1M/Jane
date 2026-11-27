@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { retirementLimits } from "@/config/retirement";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
@@ -79,22 +80,24 @@ const catchUp: Detector = {
     const stage = profile.facts.life_stage;
     const has = profile.facts.has_401k;
     if (stage.value !== "approaching" || has.value !== true) return null;
+    // The year's own catch-up amount (a year without IRS limits holds the card back).
+    const catchUpCents = retirementLimits(Number(profile.today.slice(0, 4))).catchUpCents;
     return suggestion("investing", "catch_up", {
       title: "Use the catch-up contribution for people over 50",
       headline: headlineOf(
         "Use the over-50 catch-up contribution",
-        Math.round(R.catchUpCents * R.selfRetireTaxRate),
+        Math.round(catchUpCents * R.selfRetireTaxRate),
         "saves",
       ),
-      short: `You can put in about ${formatCents(R.catchUpCents)} more a year.`,
-      worthCents: Math.round(R.catchUpCents * R.selfRetireTaxRate),
+      short: `You can put in about ${formatCents(catchUpCents)} more a year.`,
+      worthCents: Math.round(catchUpCents * R.selfRetireTaxRate),
       worthKind: "saves",
       confidence: weakest([
         { percent: stage.confidence, reason: "your age is a guess from your accounts and income" },
         factEvidence(has),
       ]),
       urgency: "soon",
-      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, if you are not already using it, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
+      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(catchUpCents)} more a year, if you are not already using it, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(catchUpCents * R.selfRetireTaxRate))}.`,
       action: { label: "See your limits", href: "/investments/retirement-accounts" },
     });
   },
@@ -143,8 +146,10 @@ const backdoorRoth: Detector = {
         ? R.backdoorIncomeMinCents
         : R.backdoorIncomeMinCents * 2;
     if (profile.facts.income_pattern.value !== "salary" || pay < limit) return null;
+    // The year's own IRA limit (a year without IRS limits holds the card back).
+    const iraLimitCents = retirementLimits(Number(profile.today.slice(0, 4))).iraCents;
     const growth = Math.round(
-      R.iraLimitCents * ((1 + R.assumedGrowthBps / 10_000) ** R.growthYears - 1),
+      iraLimitCents * ((1 + R.assumedGrowthBps / 10_000) ** R.growthYears - 1),
     );
     return suggestion("investing", "backdoor_roth", {
       title: "Ask whether a backdoor Roth IRA fits you",
@@ -161,7 +166,7 @@ const backdoorRoth: Detector = {
         evidence("seen", profile.months, 1, "high salary deposits"),
       ]),
       urgency: "later",
-      why: `Your pay of about ${formatCents(pay)} a year is above where a direct Roth IRA is usually allowed. A backdoor Roth lets ${formatCents(R.iraLimitCents)} a year grow tax free; at an assumed ${R.assumedGrowthBps / 100}% a year that is about ${formatCents(growth)} of growth over ${R.growthYears} years, saving about ${formatCents(Math.round(growth * R.growthTaxRate))} in tax. Check the rules for your situation with a tax professional.`,
+      why: `Your pay of about ${formatCents(pay)} a year is above where a direct Roth IRA is usually allowed. A backdoor Roth lets ${formatCents(iraLimitCents)} a year grow tax free; at an assumed ${R.assumedGrowthBps / 100}% a year that is about ${formatCents(growth)} of growth over ${R.growthYears} years, saving about ${formatCents(Math.round(growth * R.growthTaxRate))} in tax. Check the rules for your situation with a tax professional.`,
       action: { label: "See Roth options", href: "/investments/retirement-accounts" },
     });
   },

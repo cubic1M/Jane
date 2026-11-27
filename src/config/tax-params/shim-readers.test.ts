@@ -36,10 +36,8 @@ const SHIMS = [
 
 const KNOWN: readonly string[] = [
   "app/taxes/self-employed/page.tsx: HOME_OFFICE_SIMPLIFIED",
-  "config/hsa.ts: CONTRIBUTION_LIMITS",
   "config/learn.ts: CONTRIBUTION_LIMITS, STANDARD_DEDUCTION",
-  "config/retirement.ts: CONTRIBUTION_LIMITS",
-  "detectors/savers-credit.ts: SAVERS_CREDIT, SAVERS_MATCH",
+  "detectors/savers-credit.ts: SAVERS_MATCH",
   "detectors/student-credits.ts: EDUCATION_CREDITS",
   "detectors/taxes.ts: CONTRIBUTION_LIMITS, DEPENDENT_CARE_CREDIT, FEDERAL_BRACKETS, HOME_OFFICE_SIMPLIFIED, PAYROLL_TAX, SELF_EMPLOYMENT_TAX, STANDARD_DEDUCTION",
   "lib/investments/company-stock.ts: CAPITAL_GAINS_BRACKETS",
@@ -47,7 +45,6 @@ const KNOWN: readonly string[] = [
   "lib/investments/sudden-money.ts: CAPITAL_GAINS_BRACKETS",
   "lib/jane-agent/tax-replies.ts: STANDARD_DEDUCTION",
   "lib/tax-decisions.ts: HOME_OFFICE_SIMPLIFIED",
-  "planning/account-order.ts: CONTRIBUTION_LIMITS",
   "planning/audit-records.ts: ITEMIZED",
   "planning/family-taxes.ts: CONTRIBUTION_LIMITS, DEPENDENT_CARE_CREDIT, EDUCATION_CREDITS, PAYROLL_TAX",
   "planning/health-taxes.ts: ITEMIZED",
@@ -76,7 +73,7 @@ describe("readers of the frozen 2026 shims in tax-rates.ts", () => {
       if (relative === "config/tax-rates.ts") continue;
       const text = readFileSync(path, "utf8");
       for (const m of text.matchAll(
-        /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"@\/config\/tax-rates"/g,
+        /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"(?:@\/config\/|\.\/)tax-rates"/g,
       )) {
         const names = (m[1] ?? "")
           .split(",")

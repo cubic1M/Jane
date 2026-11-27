@@ -1,3 +1,4 @@
+import { orNull } from "@/config/tax-params/or-null";
 import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { randomUUID } from "node:crypto";
 import {
@@ -19,6 +20,7 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { currentAge } from "@/planning/investor-profile";
 import { hsaPlan, type HsaPlan } from "@/planning/hsa";
+import { todayOf } from "@/lib/today";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
@@ -147,13 +149,19 @@ export async function loadHsa(
       },
       select: { amountCents: true },
     });
-    plan = hsaPlan({
-      balanceCents: hsa.balanceCents ?? 0,
-      cashCents: hsa.holdings.filter((h) => h.isCash).reduce((s, h) => s + h.valueCents, 0),
-      contributedCents: contributions.reduce((s, c) => s - c.amountCents, 0),
-      coverage,
-      age: currentAge(answers, iso(now)),
-    });
+    const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
+    // The limit is the calendar year's of the person's own day; a year without IRS limits has no
+    // plan to show (held back, never the last year's limit).
+    plan = orNull(() =>
+      hsaPlan({
+        balanceCents: hsa.balanceCents ?? 0,
+        cashCents: hsa.holdings.filter((h) => h.isCash).reduce((s, h) => s + h.valueCents, 0),
+        contributedCents: contributions.reduce((s, c) => s - c.amountCents, 0),
+        coverage,
+        age: currentAge(answers, iso(now)),
+        year,
+      }),
+    );
   }
   const mapped = receipts.map((r) => ({ ...r, date: iso(r.date) }));
   return {

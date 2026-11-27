@@ -1,3 +1,4 @@
+import { orNull } from "@/config/tax-params/or-null";
 import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { isRetirement } from "@/insights/investments";
@@ -70,15 +71,19 @@ export async function loadRetirement(
     balanceCents,
     accounts: retirementAccounts.map((a) => a.name),
     ageGuessed: told === null && guessedAge !== null,
+    // A year without IRS limits has no plan to show (held back, never the last year's limit).
     retirement:
       age !== null && retirementAccounts.length > 0
-        ? retirementPlan({
-            age,
-            balanceCents,
-            employeeCents: Math.max(0, sum(false)),
-            employerCents: Math.max(0, sum(true)),
-            plan,
-          })
+        ? orNull(() =>
+            retirementPlan({
+              age,
+              year: Number(asOf.slice(0, 4)),
+              balanceCents,
+              employeeCents: Math.max(0, sum(false)),
+              employerCents: Math.max(0, sum(true)),
+              plan,
+            }),
+          )
         : null,
   };
 }

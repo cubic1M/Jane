@@ -5,15 +5,7 @@ import {
   ROTH_IRA_PHASEOUT,
   TRADITIONAL_AT_OR_ABOVE_RATE,
 } from "@/config/retirement-accounts";
-import {
-  CATCH_UP_AGE,
-  EMPLOYEE_DEFERRAL_LIMIT_CENTS,
-  IRA_CATCH_UP_CENTS,
-  IRA_LIMIT_CENTS,
-  SUPER_CATCH_UP_AGES,
-  SUPER_CATCH_UP_CENTS,
-  CATCH_UP_CENTS,
-} from "@/config/retirement";
+import { CATCH_UP_AGE, retirementLimits, SUPER_CATCH_UP_AGES } from "@/config/retirement";
 import type { FilingStatus } from "@/config/tax";
 
 // Retirement accounts used fully (spec step 210, demo advice). Pure. Every limit with
@@ -30,27 +22,34 @@ export type LimitRow = {
   roomCents: number;
 };
 
-function workplaceLimit(age: number) {
+function workplaceLimit(age: number, year: number) {
+  const limits = retirementLimits(year);
   const catchUp =
     age >= SUPER_CATCH_UP_AGES[0] && age <= SUPER_CATCH_UP_AGES[1]
-      ? SUPER_CATCH_UP_CENTS
+      ? limits.superCatchUpCents
       : age >= CATCH_UP_AGE
-        ? CATCH_UP_CENTS
+        ? limits.catchUpCents
         : 0;
-  return { baseCents: EMPLOYEE_DEFERRAL_LIMIT_CENTS, catchUpCents: catchUp };
+  return { baseCents: limits.employeeDeferralCents, catchUpCents: catchUp };
 }
 
-function iraLimit(age: number) {
-  return { baseCents: IRA_LIMIT_CENTS, catchUpCents: age >= CATCH_UP_AGE ? IRA_CATCH_UP_CENTS : 0 };
+function iraLimit(age: number, year: number) {
+  const limits = retirementLimits(year);
+  return {
+    baseCents: limits.iraCents,
+    catchUpCents: age >= CATCH_UP_AGE ? limits.iraCatchUpCents : 0,
+  };
 }
 
 export function limitRows(input: {
   age: number;
+  // The calendar year of the contributions (the person's own day): the limits are that year's.
+  year: number;
   workplaceUsedCents: number;
   iraUsedCents: number;
 }): LimitRow[] {
-  const w = workplaceLimit(input.age);
-  const i = iraLimit(input.age);
+  const w = workplaceLimit(input.age, input.year);
+  const i = iraLimit(input.age, input.year);
   const row = (
     key: LimitRow["key"],
     label: string,

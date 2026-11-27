@@ -1,12 +1,12 @@
 import { GIFT_ANNUAL_EXCLUSION_CENTS, GIFT_MIN_CENTS } from "@/config/family";
-import { IRA_LIMIT_CENTS } from "@/config/retirement";
+import { retirementLimits } from "@/config/retirement";
 
 // Investing for the family (spec step 213, demo advice). Pure.
 
 // How much a child can still put in a Roth IRA this year: the lower of what they earned and
 // the IRA limit, less what's gone in. Nothing without earned income.
-export function childRothRoom(earnedCents: number, usedCents: number): number {
-  return Math.max(0, Math.min(earnedCents, IRA_LIMIT_CENTS) - usedCents);
+export function childRothRoom(earnedCents: number, usedCents: number, year: number): number {
+  return Math.max(0, Math.min(earnedCents, retirementLimits(year).iraCents) - usedCents);
 }
 
 // A gift's amount is checked against the annual exclusion (no gift tax return up to it).

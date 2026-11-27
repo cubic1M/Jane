@@ -11,13 +11,9 @@ import {
   type Goal,
   type Horizon,
 } from "@/config/investing";
-import {
-  EMPLOYEE_DEFERRAL_LIMIT_CENTS,
-  IRA_CATCH_UP_CENTS,
-  IRA_LIMIT_CENTS,
-} from "@/config/retirement";
+import { hsaLimits } from "@/config/hsa";
+import { retirementLimits } from "@/config/retirement";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
-import { CONTRIBUTION_LIMITS } from "@/config/tax-rates";
 import type { HoldingView, InvestmentAccountView } from "@/insights/investments";
 import { formatWholeDollars as dollars } from "@/lib/money";
 import { formatPercentTenths } from "@/lib/percent";
@@ -42,6 +38,8 @@ export type AccountStep = {
 
 export type OrderInput = {
   age: number;
+  // The calendar year the room is for (the person's own day): each limit is that year's.
+  year: number;
   horizon: Horizon;
   goals: Goal[];
   // The marginal federal rate from the tax estimate, or null when it isn't known.
@@ -98,8 +96,9 @@ export function accountOrder(input: OrderInput): AccountStep[] {
       why: `You'll need this money ${HORIZONS[input.horizon].label.toLowerCase()}, for ${input.goals.map((g) => GOALS[g].toLowerCase()).join(" and ")}. Retirement accounts charge a ${EARLY_WITHDRAWAL_PENALTY * 100}% penalty if you take money out before 59½.`,
     });
   }
-  const hsaRoom =
-    CONTRIBUTION_LIMITS.hsaSelf + (input.age >= 55 ? CONTRIBUTION_LIMITS.hsaCatchUp55 : 0);
+  const hsa = hsaLimits(input.year);
+  const retirement = retirementLimits(input.year);
+  const hsaRoom = hsa.selfCents + (input.age >= hsa.catchUpAge ? hsa.catchUpCents : 0);
   steps.push({
     key: "hsa",
     short: "an HSA",
@@ -108,7 +107,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
     why: "Money goes in before tax, grows tax-free and comes out tax-free for health costs: the only account that's tax-free all three ways.",
   });
   const kind = rothOrTraditionalByRate(input.marginalRate);
-  const iraRoom = IRA_LIMIT_CENTS + (input.age >= 50 ? IRA_CATCH_UP_CENTS : 0);
+  const iraRoom = retirement.iraCents + (input.age >= 50 ? retirement.iraCatchUpCents : 0);
   steps.push({
     key: "ira",
     short: kind ? IRA_KIND[kind] : "an IRA",
@@ -129,7 +128,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
     title: "Back to your 401(k), up to the limit",
     roomCents: Math.max(
       0,
-      EMPLOYEE_DEFERRAL_LIMIT_CENTS + input.catchUpCents - input.employeeCents,
+      retirement.employeeDeferralCents + input.catchUpCents - input.employeeCents,
     ),
     why: "Still taxed less than a regular account, and it comes straight from your pay.",
   });

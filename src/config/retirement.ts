@@ -1,22 +1,36 @@
-import { CONTRIBUTION_LIMITS, TAX_RATES_YEAR } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 
 // The retirement planner (spec step 132): contribution limits, the target and the rules
 // of thumb behind it, each with its source. Projections use the returns and inflation in
 // src/config/market-assumptions.ts and are always shown as a range.
 
-// 2026 limits (IRS Notice 2025-67): what a person may put into a 401(k), 403(b) or 457(b)
-// plan from their pay, the extra from 50 (catch-up) and the larger extra at 60 to 63, and
-// IRA limits. The figures are the tax lane's table (CONTRIBUTION_LIMITS), so a new year's
-// limits change in one place.
-export const LIMITS_YEAR = TAX_RATES_YEAR;
-export const EMPLOYEE_DEFERRAL_LIMIT_CENTS = CONTRIBUTION_LIMITS.workplace;
+// A year's limits (the tax-params table, Tax T32c): what a person may put into a 401(k), 403(b) or
+// 457(b) plan from their pay, the extra from 50 (catch-up) and the larger extra at 60 to 63, and
+// IRA limits. They are indexed every year, so a reader asks for the year its own figure is for (the
+// calendar year of the pay or the contribution). A year without figures throws NoTaxParamsError and
+// the card is held back or shows W-N, never another year's number.
 export const CATCH_UP_AGE = 50;
-export const CATCH_UP_CENTS = CONTRIBUTION_LIMITS.workplaceCatchUp50;
 export const SUPER_CATCH_UP_AGES = [60, 63] as const;
-export const SUPER_CATCH_UP_CENTS = CONTRIBUTION_LIMITS.workplaceCatchUp60to63;
-export const IRA_LIMIT_CENTS = CONTRIBUTION_LIMITS.ira;
-export const IRA_CATCH_UP_CENTS = CONTRIBUTION_LIMITS.iraCatchUp50;
-export const LIMITS_SOURCE = "IRS Notice 2025-67 (2026 limits)";
+
+// The notice each year's limits were read from (the figures themselves are in tax-params).
+const LIMITS_NOTICE: Readonly<Record<number, string>> = {
+  2025: "IRS Notice 2024-80",
+  2026: "IRS Notice 2025-67",
+  2027: "IRS Notice 2026-66",
+};
+
+export function retirementLimits(year: number) {
+  const l = federalParams(ownLawYear(year)).contributionLimits.value;
+  return {
+    year,
+    employeeDeferralCents: l.workplace,
+    catchUpCents: l.workplaceCatchUp50,
+    superCatchUpCents: l.workplaceCatchUp60to63,
+    iraCents: l.ira,
+    iraCatchUpCents: l.iraCatchUp50,
+    source: `${LIMITS_NOTICE[year] ?? "IRS"} (${year} limits)`,
+  };
+}
 
 // When the projection stops: the full Social Security retirement age for anyone born in
 // 1960 or later (Social Security Administration).

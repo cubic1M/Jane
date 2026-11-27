@@ -124,7 +124,7 @@ export async function loadFamily(
                 accountId: rothAccount.id,
                 name: rothAccount.name,
                 usedCents: rothUsed,
-                roomCents: childRothRoom(k.earnedCents, rothUsed),
+                roomCents: childRothRoom(k.earnedCents, rothUsed, year),
               }
             : null,
         college:
