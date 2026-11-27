@@ -8,7 +8,9 @@ import type { FilingStatus } from "@/config/tax";
 // verified: read at the primary source (the IRS Revenue Procedure, a form's instructions, the Code).
 // draft: read in an IRS draft document; shown with "(IRS draft instructions)".
 // unconfirmed: not read at a primary source; a rule that needs it can't state an amount.
-export type ParamStatus = "verified" | "draft" | "unconfirmed";
+// awaited: its source has not published it yet (Tax T32b); it holds no value, and reading it throws
+// NoTaxParamsError with the year and the group (see awaited.ts).
+export type ParamStatus = "verified" | "draft" | "unconfirmed" | "awaited";
 
 export type Cited<T> = Readonly<{
   value: T;

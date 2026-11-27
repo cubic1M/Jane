@@ -1,3 +1,4 @@
+import { NoTaxParamsError } from "./errors";
 import versions from "./params-version.json";
 import type { FederalParams, ParamStatus } from "./types";
 import { US_2025 } from "./us-2025";
@@ -10,16 +11,10 @@ export { ALLOWED_SOURCE_HOSTS } from "./types";
 // The tax years Jane has complete, cited figures for: 2026 (Tax T1) and 2025 (Tax T3).
 export const SUPPORTED_TAX_YEARS = [2025, 2026] as const;
 
-// A year with no figures is refused, never priced with another year's law.
-export class NoTaxParamsError extends Error {
-  constructor(
-    readonly year: number,
-    readonly jurisdiction: "US" | "CA",
-  ) {
-    super(`No ${jurisdiction} tax figures for ${year}`);
-    this.name = "NoTaxParamsError";
-  }
-}
+// A year with no figures is refused, never priced with another year's law; an awaited group of a
+// supported year is refused the same way, naming the group (awaited.ts).
+export { NoTaxParamsError };
+export { isAwaited } from "./awaited";
 
 // A caller can't change a shared table: every level is frozen.
 function deepFreeze<T>(value: T): T {
@@ -82,7 +77,10 @@ export function pendingGroups(): PendingGroup[] {
         : [],
     );
   return [
-    ...SUPPORTED_TAX_YEARS.flatMap((y) => pending(y, federalParams(y), (s) => s === "draft")),
+    // A supported year may hold awaited groups (T32b): listed here so the nightly check names them.
+    ...SUPPORTED_TAX_YEARS.flatMap((y) =>
+      pending(y, federalParams(y), (s) => s === "draft" || s === "awaited"),
+    ),
     ...DRAFT_TAX_YEARS.flatMap((y) => pending(y, draftParams(y), (s) => s !== "verified")),
   ];
 }

@@ -87,7 +87,7 @@ export async function runTaxTool(
     return toolAnswer().out({
       year: error.year,
       noParams: true,
-      note: `${noParamsText(error.year)} Say that, give no tax figure for that year, and don't guess one from another year.`,
+      note: `${noParamsText(error.year, error.group)} Say that, give no tax figure for that year, and don't guess one from another year.`,
     });
   }
 }
@@ -299,7 +299,9 @@ async function runTaxToolFor(
         homeOffice: v.homeOffice.sqft
           ? { squareFeet: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) }
           : null,
-        businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+        businessMiles: v.mileage.awaited
+          ? { miles: v.mileage.miles, deduction: null, note: v.mileage.awaited }
+          : { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
         demoAdvice: v.advice
           ? {
               setAsideShareOfEachPayment: `${Math.round(v.setAsideRate * 100)}%`,
@@ -707,7 +709,9 @@ async function runTaxToolFor(
               }
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
-        businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+        businessMiles: v.mileage.awaited
+          ? { miles: v.mileage.miles, deduction: null, note: v.mileage.awaited }
+          : { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
       });
     }
     case "tax_draft_check": {

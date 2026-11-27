@@ -17,8 +17,8 @@ import {
   DEPENDENT_CARE_CREDIT,
   FEDERAL_BRACKETS,
   HOME_OFFICE_SIMPLIFIED,
-  MILEAGE_RATE_CENTS,
-  MILEAGE_RATE_NOTE,
+  mileageRateNote,
+  undatedMileageCentsIn,
   PAYROLL_TAX,
   SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
@@ -747,7 +747,11 @@ const vehicleDeduction: Detector = {
     if (!selfPaid(pattern.value)) return null;
     const gas = tx(data, (t) => t.pfc === "TRANSPORTATION_GAS" && t.amountCents > 0);
     if (gas.length < 6) return null;
-    const deduction = Math.round(VEHICLE_ASSUMED_MILES * MILEAGE_RATE_CENTS);
+    // The calendar year's own IRS rate; for a year whose rate is not published yet (2027 until the
+    // notice) this throws NoTaxParamsError and runDetectors holds the card back (T32b).
+    const year = Number(profile.today.slice(0, 4));
+    const rate = undatedMileageCentsIn(year);
+    const deduction = Math.round(VEHICLE_ASSUMED_MILES * rate);
     const profit = profitOf(profile);
     const saves = Math.round(deduction * deductionRate(profit, profile.facts));
     return suggestion("taxes", "vehicle_deduction", {
@@ -763,7 +767,7 @@ const vehicleDeduction: Detector = {
         { percent: 45, reason: "I can't see how much of your driving is for the business" },
       ]),
       urgency: "later",
-      why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons. ${MILEAGE_RATE_NOTE}`,
+      why: `You buy gas regularly. Every business mile is a ${(rate / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons. ${mileageRateNote(year)}`,
       action: { label: "Log your miles", href: "/taxes/profile" },
     });
   },

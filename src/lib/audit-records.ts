@@ -27,7 +27,7 @@ import {
   type Evidence,
   type Retention,
 } from "@/planning/audit-records";
-import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { homeOfficeDeduction, mileageFigure } from "@/planning/self-employed";
 import { isoDay as iso } from "@/lib/dates";
 
 // Audit-ready records (spec step 171), loaded from the person's own accounts: every
@@ -233,11 +233,13 @@ export async function loadAuditRecords(
       needs: ["A floor plan or photo of the space used only for work."],
     });
   }
-  if (profile?.businessMilesYear === year && profile.businessMiles) {
+  // No candidate (so no dollar figure) while the year's IRS mileage rate is not published (T32b).
+  const mileage = mileageFigure(profile?.businessMiles ?? null, year);
+  if (profile?.businessMilesYear === year && profile.businessMiles && !mileage.awaited) {
     candidates.push({
       key: "mileage",
       label: "Business miles",
-      claimedCents: mileageDeduction(profile.businessMiles),
+      claimedCents: mileage.deductionCents,
       evidence: [{ kind: "answer", label: `${profile.businessMiles} miles, in your mileage log` }],
       needs: ["A log of dates, places and reasons for each trip."],
     });

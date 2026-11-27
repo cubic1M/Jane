@@ -165,7 +165,14 @@ export function businessMileageCentsOn(isoDate: string): number {
   return period.centsPerMile;
 }
 
-// The rate for miles with no date: the first period's, so a year's total is never overstated.
+// The rate for miles with no date in `year`: the first period's, so a year's total is never
+// overstated. Throws NoTaxParamsError for a year with no figures and, for a year whose rate is not
+// published yet (2027 until the IRS notice), NoTaxParamsError with group "mileage".
+export function undatedMileageCentsIn(year: number): number {
+  return federalParams(year).mileage.value.businessCentsPerMile;
+}
+// 2026's, kept for the old import (frozen shim, T1); no reader outside this file uses it: the
+// mileage ratchet test (src/planning/mileage-readers.test.ts) forbids it.
 export const MILEAGE_RATE_CENTS = US.mileage.value.businessCentsPerMile;
 
 const dayName = (iso: string) =>
@@ -175,13 +182,19 @@ const dayName = (iso: string) =>
     timeZone: "UTC",
   });
 const rateName = (cents: number) => `${cents} cents`;
-const [FIRST_PERIOD, ...LATER_PERIODS] = MILEAGE_PERIODS;
-// Says which rate undated miles use and what the IRS rate is for the rest of the year.
-export const MILEAGE_RATE_NOTE =
-  `Miles with no date are counted at ${rateName(FIRST_PERIOD.centsPerMile)}, the IRS rate for ${dayName(FIRST_PERIOD.from)} to ${dayName(FIRST_PERIOD.to)}.` +
-  (LATER_PERIODS.length
-    ? ` The IRS rate is ${LATER_PERIODS.map((p) => `${rateName(p.centsPerMile)} for ${dayName(p.from)} to ${dayName(p.to)}`).join(" and ")}, so miles driven then are worth a little more than this shows.`
-    : "");
+// Says which rate undated miles use and what the IRS rate is for the rest of the year. Throws like
+// undatedMileageCentsIn for a year with no (or an awaited) rate.
+export function mileageRateNote(year: number): string {
+  const [first, ...later] = federalParams(year).mileage.value.businessByPeriod;
+  if (!first) throw new Error(`No business mileage periods for ${year}`);
+  return (
+    `Miles with no date are counted at ${rateName(first.centsPerMile)}, the IRS rate for ${dayName(first.from)} to ${dayName(first.to)}.` +
+    (later.length
+      ? ` The IRS rate is ${later.map((p) => `${rateName(p.centsPerMile)} for ${dayName(p.from)} to ${dayName(p.to)}`).join(" and ")}, so miles driven then are worth a little more than this shows.`
+      : "")
+  );
+}
+export const MILEAGE_RATE_NOTE = mileageRateNote(TAX_RATES_YEAR);
 
 // Home office, simplified method: $5 a square foot, up to 300 square feet.
 export const HOME_OFFICE_SIMPLIFIED = US.homeOffice.value;

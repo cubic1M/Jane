@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { IRS_DIRECT_PAY_URL } from "@/config/tax";
-import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS, MILEAGE_RATE_NOTE } from "@/config/tax-rates";
+import { HOME_OFFICE_SIMPLIFIED, mileageRateNote, undatedMileageCentsIn } from "@/config/tax-rates";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { requireUser } from "@/lib/session";
@@ -83,9 +83,10 @@ async function Content() {
           Business miles
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Miles driven for this work in {v.year}, at {MILEAGE_RATE_CENTS} cents a mile: about{" "}
-          {formatWholeDollars(v.mileage.deductionCents)} so far. {MILEAGE_RATE_NOTE} You can also
-          tell Jane in the chat (&ldquo;I drove 40 business miles&rdquo;).
+          {v.mileage.awaited
+            ? `Miles driven for this work in ${v.year}. ${v.mileage.awaited}`
+            : `Miles driven for this work in ${v.year}, at ${undatedMileageCentsIn(v.year)} cents a mile: about ${formatWholeDollars(v.mileage.deductionCents)} so far. ${mileageRateNote(v.year)}`}{" "}
+          You can also tell Jane in the chat (&ldquo;I drove 40 business miles&rdquo;).
         </p>
         <HelperForm
           intent="miles"

@@ -11,8 +11,17 @@
 export type EstimateState = "refund" | "owed" | "tax" | "no_tax" | "unknown" | "no_params";
 
 // W-N (tax engine roadmap 1.12): said in place of every figure for a year with no parameters.
-export const noParamsText = (year: number) =>
-  `Jane doesn't have the IRS figures for ${year} yet, so it isn't estimating that year.`;
+// With `group` (an awaited group of a supported year, NoTaxParamsError.group) it says that one
+// figure is missing and what Jane left out, never that the whole year is.
+const AWAITED_GROUP_TEXT: Readonly<Record<string, (year: number) => string>> = {
+  mileage: (year) =>
+    `Jane doesn't have the IRS's ${year} mileage rate yet, so it hasn't counted those miles.`,
+};
+export const noParamsText = (year: number, group?: string) =>
+  group
+    ? (AWAITED_GROUP_TEXT[group]?.(year) ??
+      `Jane doesn't have the IRS's ${year} ${group} figures yet, so it hasn't counted them.`)
+    : `Jane doesn't have the IRS figures for ${year} yet, so it isn't estimating that year.`;
 
 export function estimateState(t: {
   noParams?: boolean;

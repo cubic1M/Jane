@@ -49,7 +49,9 @@ export function businessReply(v: BusinessView): MessageParts {
   );
   lines.push(
     v.mileage.miles > 0
-      ? `Business miles this year: ${v.mileage.miles}, a ${formatCents(v.mileage.deductionCents)} deduction.`
+      ? v.mileage.awaited
+        ? `Business miles this year: ${v.mileage.miles}. ${v.mileage.awaited}`
+        : `Business miles this year: ${v.mileage.miles}, a ${formatCents(v.mileage.deductionCents)} deduction.`
       : "Business miles: none logged.",
   );
   return {

@@ -18,7 +18,9 @@ export type BusinessView = {
   active: boolean;
   structure: Structure | null;
   homeOffice: { sqft: number | null; deductionCents: number };
-  mileage: { miles: number; deductionCents: number };
+  // `awaited` is the W-N sentence when the year's IRS rate is not published (the figure is then 0 and
+  // must not be shown as a deduction).
+  mileage: { miles: number; deductionCents: number; awaited: string | null };
 };
 
 export async function loadBusinessStructure(

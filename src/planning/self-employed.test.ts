@@ -85,7 +85,7 @@ describe("helpers", () => {
     expect(homeOfficeDeduction(150)).toBe(75_000);
     expect(homeOfficeDeduction(500)).toBe(150_000);
     expect(homeOfficeDeduction(null)).toBe(0);
-    expect(mileageDeduction(1_000)).toBe(72_500);
+    expect(mileageDeduction(1_000, 2026)).toBe(72_500);
   });
 
   it("suggests office supplies as a business expense only for freelancers, and asks", () => {
