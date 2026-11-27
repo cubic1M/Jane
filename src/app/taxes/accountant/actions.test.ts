@@ -40,7 +40,9 @@ describe("accountant actions", () => {
     });
     expect(revokeAccountantLink).toHaveBeenCalledWith("u1", "l1");
     expect(await accountantAction(null, form({ intent: "seen" }))).toMatchObject({ ok: true });
-    expect(markNotesSeen).toHaveBeenCalledWith("u1");
+    expect(markNotesSeen).toHaveBeenCalledWith("u1", { ids: undefined });
+    await accountantAction(null, form({ intent: "seen", ids: "n1,n2" }));
+    expect(markNotesSeen).toHaveBeenLastCalledWith("u1", { ids: ["n1", "n2"] });
   });
 
   it("says what's wrong", async () => {

@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { DEADLINE_HORIZON_DAYS } from "@/config/deadlines";
-import { isoDate } from "@/detection/units";
+import { todayOf } from "@/lib/today";
 import { DEADLINE_KIND_LABELS, dueIn, groupDeadlines, type Deadline } from "@/insights/deadlines";
 import { listDeadlines } from "@/lib/deadlines";
 import { formatCents } from "@/lib/money";
@@ -88,7 +88,7 @@ async function DeadlinesContent() {
   const user = await requireUser();
   await connection();
   const now = new Date();
-  const today = isoDate(now);
+  const today = await todayOf(user.id, { now });
   const [coming, furtherOut] = await Promise.all([
     listDeadlines(user.id, { now }),
     listDeadlines(user.id, { now, furtherOut: true }),

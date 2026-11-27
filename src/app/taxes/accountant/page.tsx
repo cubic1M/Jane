@@ -104,7 +104,7 @@ async function Content() {
             ))}
           </ul>
         )}
-        {v.unseen > 0 && <SeenButton />}
+        {v.unseen > 0 && <SeenButton ids={v.notes.filter((n) => !n.seen).map((n) => n.id)} />}
       </section>
     </>
   );
