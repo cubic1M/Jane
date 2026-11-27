@@ -113,10 +113,9 @@
       "blind": true
     },
     "expected": {
-      "standardDeduction": 1975000,
-      "taxable": 1025000
+      "standardDeduction": 1975000
     },
-    "note": "15,750 + 2 x 2,000 = 19,750 (Pub. 501 chart). Taxable 30,000 - 19,750 = 10,250."
+    "note": "15,750 + 2 x 2,000 = 19,750 (Pub. 501 chart). (Taxable income is not asserted: the senior deduction, T19, changes it.)"
   },
   {
     "id": "he3d-2025-joint-both-65",
@@ -141,10 +140,9 @@
       "spouseAge": 66
     },
     "expected": {
-      "standardDeduction": 3470000,
-      "taxable": 2530000
+      "standardDeduction": 3470000
     },
-    "note": "31,500 + 2 x 1,600 = 34,700. Taxable 60,000 - 34,700 = 25,300."
+    "note": "31,500 + 2 x 1,600 = 34,700. (Taxable income is not asserted: the senior deduction, T19, changes it.)"
   },
   {
     "id": "he3d-2025-head-of-household-65",

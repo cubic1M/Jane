@@ -539,11 +539,9 @@
       "wagesCents": 3000000
     },
     "expected": {
-      "standardDeduction": 1815000,
-      "taxable": 1185000,
-      "incomeTax": 118500
+      "standardDeduction": 1815000
     },
-    "note": "16,100 + 2,050 = 18,150. Taxable 30,000 - 18,150 = 11,850. Tax 10% x 11,850 = 1,185.00 (before the senior deduction, which T19 adds)."
+    "note": "16,100 + 2,050 = 18,150. (Before the senior deduction, tax would be 10% x (30,000 - 18,150) = 1,185.00; the full result is the age-67 senior case below, which T19 completes.)"
   },
   {
     "id": "he4-itemize-or-standard-plus-gifts",

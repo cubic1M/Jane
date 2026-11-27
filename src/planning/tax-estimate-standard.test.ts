@@ -37,6 +37,15 @@ describe("standardDeductionFor", () => {
   });
 
   it("counts a taxable scholarship as earned income for a dependent, and never a negative amount", () => {
+    // A $2,000 loss and a $3,000 scholarship are combined first: 1,000 + 450 = 1,450, over the floor.
+    expect(
+      standardDeductionFor(P25, {
+        status: "single",
+        claimedAsDependent: true,
+        earnedCents: -$(2_000),
+        taxableScholarshipCents: $(3_000),
+      }),
+    ).toBe($(1_450));
     // 2,000 wages + 3,000 scholarship + 450 = 5,450.
     expect(
       standardDeductionFor(P25, {
@@ -141,11 +150,10 @@ describe("the estimate reads the situation", () => {
     expect(e.incomeTaxCents).toBe($(390));
   });
 
-  it("HE-3c: single, 67, wages $30,000: standard $18,150, taxable $11,850, tax $1,185.00", () => {
-    const e = est(2026, "single", 30_000, { age: 67 });
-    expect(e.deduction.standardCents).toBe($(18_150));
-    expect(e.taxableCents).toBe($(11_850));
-    expect(e.incomeTaxCents).toBe($(1_185));
+  it("HE-3c: single, 67, wages $30,000: the standard deduction is $18,150", () => {
+    // Before the senior deduction (T19) taxable would be $11,850 and the tax $1,185.00; they are not
+    // asserted here because T19 changes them.
+    expect(est(2026, "single", 30_000, { age: 67 }).deduction.standardCents).toBe($(18_150));
   });
 
   it("the deduction an itemizer compares against is the full one, extra amounts included", () => {

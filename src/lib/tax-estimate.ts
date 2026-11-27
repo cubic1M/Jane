@@ -234,8 +234,9 @@ export const DEPENDENCY_UNKNOWN_LINE =
 // An age told on a day, at the tax year's last day: older for a later year, and younger for an earlier
 // one (a person told 65 in November 2026 was 64 at the end of 2025: the 65-and-over amounts and the
 // childless earned income credit's ages read the year's own age).
+// The year's last day counts to its end, so an age told on December 31 itself is not made a year younger.
 const ageAtYearEnd = (age: number, on: Date, year: number) =>
-  age + Math.floor((Date.UTC(year, 11, 31) - on.getTime()) / (365.25 * DAY_MS));
+  age + Math.floor((Date.UTC(year, 11, 31, 23, 59, 59, 999) - on.getTime()) / (365.25 * DAY_MS));
 
 async function loadTaxEstimateFrom(
   userId: string,

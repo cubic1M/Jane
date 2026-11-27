@@ -387,7 +387,8 @@ export function standardDeductionFor(
         regular,
         Math.max(
           dep.floor,
-          clamp0(s.earnedCents) + clamp0(s.taxableScholarshipCents ?? 0) + dep.plusEarned,
+          // A loss and a scholarship are combined before the floor (Pub. 501 Table 8, line 1).
+          clamp0(s.earnedCents + (s.taxableScholarshipCents ?? 0)) + dep.plusEarned,
         ),
       )
     : regular;
