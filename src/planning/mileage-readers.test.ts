@@ -124,6 +124,22 @@ describe("every reader of the mileage group, for 2027", () => {
       "2026-03-01",
     );
     expect(priced.body).toContain("At the 2026 rate that's about $725");
+    // In January to April the page's year is still last year's, but the miles are saved to the
+    // calendar year (saveMiles), so the quote names that year: the 2027 sentence, not 2026's rate.
+    const january = selfEmployedReply(
+      { kind: "tax", ask: "miles", miles: 1_000 },
+      view2026,
+      "2027-01-15",
+    );
+    expect(january.body).toContain(W_N_2027);
+    expect(january.body).not.toMatch(mileageCents);
+    // And December is still the 2026 rate.
+    const december = selfEmployedReply(
+      { kind: "tax", ask: "miles", miles: 1_000 },
+      view2026,
+      "2026-12-10",
+    );
+    expect(december.body).toContain("At the 2026 rate that's about $725");
   });
 
   it("6 the business-taxes chat message: the miles line carries W-N, no deduction", () => {

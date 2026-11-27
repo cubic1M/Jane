@@ -377,11 +377,14 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, tod
   const page = link("Freelance taxes", "/taxes/self-employed");
   if (intent.ask === "miles") {
     if (intent.miles !== null && intent.miles > 0) {
-      const added = mileageFigure(intent.miles, view.year);
+      // Saved to the calendar year of the person's own day (saveMiles), which in January to April
+      // is not the tax year the view is for: the quote names the year the miles will count for.
+      const savedYear = Number(today.slice(0, 4));
+      const added = mileageFigure(intent.miles, savedYear);
       return {
         body: added.awaited
           ? `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? ${added.awaited}`
-          : `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? At the ${view.year} rate that's about ${formatWholeDollars(added.deductionCents)} off your freelance income.`,
+          : `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? At the ${savedYear} rate that's about ${formatWholeDollars(added.deductionCents)} off your freelance income.`,
         actions: [{ id: "tax.miles_add", label: "Add them", kind: "primary" }, page],
         refs: { taxMiles: intent.miles },
       };

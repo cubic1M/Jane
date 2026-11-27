@@ -242,7 +242,9 @@ export async function saveMiles(
   if (!Number.isInteger(miles) || miles < 0 || miles > MAX_BUSINESS_MILES) {
     throw new SelfEmployedError("Give the miles as a whole number.");
   }
-  const year = now.getUTCFullYear();
+  // The calendar year of the person's own day, which is the year the chat quotes before it saves
+  // (selfEmployedReply): in January to April it is not the tax year the freelance page shows.
+  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   const db = scopedFor(userId, client);
   const current = await db.taxProfiles.findFirst({
     select: { businessMiles: true, businessMilesYear: true },
