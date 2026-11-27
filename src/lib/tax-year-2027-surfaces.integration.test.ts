@@ -102,6 +102,22 @@ describe.runIf(url)("tax year 2027 on every surface", { timeout: 240_000 }, () =
       expect(out).not.toContain("$32,200.00");
     });
 
+    it("miles added in January are quoted for the year they are saved to (2027), not the page's 2026", async () => {
+      const reply = await answerTaxIntent(
+        freelancer,
+        { kind: "tax", ask: "miles", miles: 40 } as never,
+        { client, now: JAN15 } as never,
+      );
+      expect(reply.body).toContain(MILEAGE_W_N);
+      expect(reply.body).not.toMatch(/\$\d/);
+      // Saved for 2027, the year quoted: the 2026 record is replaced, not added to.
+      expect(await saveMiles(freelancer, 40, { client, now: JAN15, via: "chat", add: true })).toBe(
+        40,
+      );
+      const stored = await client.taxProfile.findFirst({ where: { userId: freelancer } });
+      expect(stored?.businessMilesYear).toBe(2027);
+    });
+
     it("the retirement section prices 2027 (the Medicare surcharge it sets is for 2029)", async () => {
       const out = JSON.stringify(
         await runTaxTool(retiring, "tax_retirement", {}, { client, now: JAN15 }),
