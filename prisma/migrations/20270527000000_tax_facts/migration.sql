@@ -25,10 +25,7 @@ CREATE TABLE "tax_facts" (
     "recorded_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "superseded_at" TIMESTAMPTZ(3),
 
-    CONSTRAINT "tax_facts_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "tax_facts_status_check" CHECK ("status" IN ('known', 'inferred')),
-    CONSTRAINT "tax_facts_origin_check" CHECK ("origin" IN ('answer', 'document', 'connector', 'transaction', 'legacy')),
-    CONSTRAINT "tax_facts_confidence_check" CHECK ("confidence" BETWEEN 0 AND 100)
+    CONSTRAINT "tax_facts_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "tax_household_members" (
