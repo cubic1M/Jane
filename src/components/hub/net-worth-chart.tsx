@@ -1086,10 +1086,12 @@ type Opened = { kind: "day"; key: string } | { kind: "dot"; index: number; key: 
 // The label's place: its anchor edge across (or its middle), and its top, from placeStepLabels.
 function stepStyle(place: StepLabelPlace, width: number): React.CSSProperties {
   const top = place.y;
-  const maxWidth = width;
-  if (place.anchor === "start") return { top, left: place.x, maxWidth };
-  if (place.anchor === "end") return { top, right: width - place.x, maxWidth };
-  return { top, left: place.x, maxWidth, transform: "translateX(-50%)" };
+  // Never wider than the room from its anchor to the chart's edge (both edges, centred), so text
+  // wider than its estimate is cut with an ellipsis rather than crossing the chart's edge.
+  if (place.anchor === "start") return { top, left: place.x, maxWidth: width - place.x };
+  if (place.anchor === "end") return { top, right: width - place.x, maxWidth: place.x };
+  const half = Math.min(place.x, width - place.x);
+  return { top, left: place.x, maxWidth: half * 2, transform: "translateX(-50%)" };
 }
 
 // A range chip's days, as a window over the whole history.
