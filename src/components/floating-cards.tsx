@@ -63,6 +63,7 @@ const STEP =
 export type CardAnswer = "yes" | "not_now" | "never";
 
 const NONE: readonly string[] = [];
+const NO_REASONS: Readonly<Record<string, string>> = {};
 // On a card whose answer never reached the server.
 const UNSENT_WORDS = "That didn't reach me. Try again.";
 
@@ -228,6 +229,7 @@ export function FloatingCards({
   onDetails,
   onFollow,
   unsent = NONE,
+  refused = NO_REASONS,
   putAway = null,
   onBringBack,
 }: {
@@ -266,6 +268,9 @@ export function FloatingCards({
   // Cards whose answer never reached the server (the network dropped): they come back, showing,
   // with a line saying so, until the person answers again.
   unsent?: readonly string[];
+  // The server's reason for a card it refused, shown in place of the dropped-network line ("":
+  // back on the stack with no line).
+  refused?: Readonly<Record<string, string>>;
   // The card just put away, whose line in its place brings it back (founder, 11-16), and what to
   // do when it's tapped (the caller undoes the put-away on the server).
   putAway?: string | null;
@@ -719,9 +724,9 @@ export function FloatingCards({
                   />
                 ) : (
                   <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
-                    {unsent.includes(current.id) && (
+                    {unsent.includes(current.id) && refused[current.id] !== "" && (
                       <p role="status" data-card-unsent="" className="w-full text-sm font-medium">
-                        {UNSENT_WORDS}
+                        {refused[current.id] ?? UNSENT_WORDS}
                       </p>
                     )}
                     {current.yesHref && linkOpens(current.yesLabel) === "details" ? (

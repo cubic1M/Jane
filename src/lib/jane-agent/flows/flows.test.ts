@@ -78,6 +78,10 @@ describe("typedAnswer", () => {
     expect(typedAnswer("text", "what is my safe to spend")).toBeNull();
     expect(typedAnswer("text", "Trip?")).toBeNull();
     expect(typedAnswer("text", "Can opener")).toBe("Can opener");
+    // Names that merely open like a question (#2313 refused them).
+    for (const name of ["When I graduate", "Where to next", "Do it fund", "What a year"]) {
+      expect(typedAnswer("text", name)).toBe(name);
+    }
     expect(typedAnswer("text", "Emergency fund")).toBe("Emergency fund");
     expect(typedAnswer(undefined, "anything")).toBeNull();
   });

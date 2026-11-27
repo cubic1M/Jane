@@ -9,6 +9,7 @@ import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { Comparison } from "@/lib/comparison";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
+import { tapPayload } from "@/lib/jane-agent/tap";
 import { tapButton } from "./actions";
 import { PracticeCards } from "./practice-cards";
 
@@ -52,10 +53,7 @@ export function ChatCards({
   async function pickOn(message: MessageView, comparison: Comparison, optionId: string) {
     setKept({ message, comparison });
     setError(null);
-    const data = new FormData();
-    data.set("messageId", message.id);
-    data.set("actionId", "option.pick");
-    data.set("choice", optionId);
+    const data = tapPayload(message, "option.pick", optionId);
     const result = await tapButton({ message, error: null }, data);
     router.refresh();
     return result.error
@@ -69,9 +67,7 @@ export function ChatCards({
 
   // Revert on the sheet: the message's own choice.revert, which takes the pick back.
   async function revertOn(message: MessageView) {
-    const data = new FormData();
-    data.set("messageId", message.id);
-    data.set("actionId", REVERT_ACTION);
+    const data = tapPayload(message, REVERT_ACTION);
     const result = await tapButton({ message, error: null }, data);
     router.refresh();
     return result.error
@@ -88,10 +84,7 @@ export function ChatCards({
     setAnswered((ids) => [...ids, message.id]);
     setError(null);
     startTransition(async () => {
-      const data = new FormData();
-      data.set("messageId", message.id);
-      data.set("actionId", optionAction(how));
-      if (how === "yes") data.set("choice", optionId);
+      const data = tapPayload(message, optionAction(how), how === "yes" ? optionId : undefined);
       const result = await tapButton({ message, error: null }, data);
       if (result.error) setError(result.error);
       router.refresh();
