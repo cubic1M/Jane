@@ -313,6 +313,8 @@ describe("categorizeByRules", () => {
     expect(into("STRIPE PAYOUT DIRECT DEP")).toBe("INCOME_CONTRACTOR");
     expect(into("UPWORK DIRECT DEPOSIT")).toBe("INCOME_CONTRACTOR");
     expect(into("ACME DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("UPWORK PAYROLL DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("FIVERR SALARY DIRECT DEP")).toBe("INCOME_SALARY");
   });
 
   it("reads rent a tenant sends as rental income, not a card payment", () => {
