@@ -238,7 +238,6 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
   BooksIssue: "booksIssues",
   CostlyProduct: "costlyProducts",
   TaxTag: "taxTags",
-  TaxCorrection: "taxCorrections",
   PayrollChange: "payrollChanges",
   SuddenMoney: "suddenMoneys",
   MonthClose: "monthCloses",
