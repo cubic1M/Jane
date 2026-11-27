@@ -14,6 +14,7 @@ import {
   isChoice,
   revertedView,
 } from "@/lib/jane-agent/choices";
+import { shownFields } from "@/lib/jane-agent/tap";
 import { tapButton, type MessageState } from "./actions";
 import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
@@ -199,10 +200,9 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
               className="flex flex-wrap gap-2"
             >
               <input type="hidden" name="messageId" value={message.id} />
-              {message.flowShown && (
-                <input type="hidden" name="flowShown" value={message.flowShown} />
-              )}
-              {message.shown && <input type="hidden" name="shown" value={message.shown} />}
+              {Object.entries(shownFields(message)).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
               {buttons.map((b) => (
                 <button
                   key={b.id}

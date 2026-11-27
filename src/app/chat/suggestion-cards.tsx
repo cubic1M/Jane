@@ -18,6 +18,7 @@ import {
 import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
 import { afterAnswer, putAwayBy, withReturned, type Away } from "@/lib/put-away";
 import { STEP_LINK_LABELS } from "@/config/suggestion-step";
+import { tapPayload } from "@/lib/jane-agent/tap";
 import { noteDetailsOpened, tapButton, type MessageState } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
@@ -59,6 +60,8 @@ if (typeof window !== "undefined") {
     }, 1_000);
   });
 }
+
+const STUDENT_NEXT_ACTION = "student.next";
 
 const ACTION_FOR: Record<CardAnswer, string> = {
   yes: "suggestion.yes",
@@ -202,6 +205,9 @@ export function SuggestionCards({
   const sending = useRef(new Map<string, Promise<unknown>>());
   // Cards whose last answer never reached the server: back on the stack, saying so.
   const [unsent, setUnsent] = useState<readonly string[]>([]);
+  // The server's own words for a tap it refused (a stale step, figures that moved), on that card;
+  // "" for a card back on the stack with nothing to say (a student step moved on).
+  const [refused, setRefused] = useState<Readonly<Record<string, string>>>({});
   const cards = useMemo(
     () =>
       messages.map((m): FloatingCardData | PopupCard => (m.suggestion ? cardOf(m) : popupCard(m))),
@@ -228,6 +234,7 @@ export function SuggestionCards({
         docked={docked}
         onShowing={onShowing}
         unsent={unsent}
+        refused={refused}
         putAway={away?.item.id ?? null}
         onBringBack={(id) => {
           if (away?.item.id !== id) return;
@@ -262,6 +269,7 @@ export function SuggestionCards({
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           if (unsent.includes(id)) setUnsent((now) => now.filter((u) => u !== id));
+          setRefused(({ [id]: _old, ...rest }) => rest);
           const message = messages.find((m) => m.id === id)!;
           const card = cards.find((c) => c.id === id) as PopupCard;
           // Gone from every stack in this tab at once, unless it stays on screen chosen (with
@@ -302,9 +310,7 @@ export function SuggestionCards({
 
   // In order behind the card's last tap (a choice right after a Revert).
   function queue(message: MessageView, actionId: string) {
-    const data = new FormData();
-    data.set("messageId", message.id);
-    data.set("actionId", actionId);
+    const data = tapPayload(message, actionId);
     const sent = (sending.current.get(message.id) ?? Promise.resolve())
       .catch(() => undefined)
       .then(() => tapButton({ message, error: null }, data));
@@ -343,6 +349,29 @@ export function SuggestionCards({
       if (back && result?.error) {
         markGone(id);
         setReturned((now) => now.filter((r) => r.item.id !== id));
+      }
+      // The server refused the tap (a step that moved on, figures that changed): the card is not
+      // done. It stays or comes back with the server's reason, and the page catches up to the
+      // latest one. A refused Revert or Done leaves the card as it is.
+      // (A refused Bring back is handled above: the card stays put away, as the server has it.)
+      if (!back && result.error && actionId !== REVERT_ACTION && actionId !== DONE_ACTION) {
+        unmarkGone(id);
+        setAway((now) => (now?.item.id === id ? null : now));
+        setRefused((now) => ({ ...now, [id]: result.error! }));
+        setUnsent((now) => (now.includes(id) ? now : [...now, id]));
+        setOpen((n) => n + 1);
+        router.refresh();
+        onAnswered?.();
+        return;
+      }
+      // "Done, next step" turns the same message into the next step: it stays on the stack, now
+      // showing that step, not gone as if the guide were over (the last step answers it for good).
+      if (actionId === STUDENT_NEXT_ACTION && result.message.status === "open") {
+        unmarkGone(id);
+        setAway((now) => (now?.item.id === id ? null : now));
+        setRefused((now) => ({ ...now, [id]: "" }));
+        setUnsent((now) => (now.includes(id) ? now : [...now, id]));
+        setOpen((n) => n + 1);
       }
       // Yes ends on the step Jane prepared, not on the next card (find → prefill → yes).
       const step = actionId === ACTION_FOR.yes ? stepAfterYes(result) : null;

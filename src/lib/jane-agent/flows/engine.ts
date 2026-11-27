@@ -109,10 +109,11 @@ export function stepMessage<D>(
 
 // A typed question is not a name: "How much do you need for what is safe to spend?" asked while
 // the goal flow waited for a name was saved as the goal's name (walk 11-26). It ends in a question
-// mark, or opens like a question and is a few words long ("Can opener" stays a name).
+// mark, or opens like a question and is a whole sentence long: "Can opener", "When I graduate",
+// "Where to next", "Do it fund" and "What a year" stay names (#2313 refused them).
 const QUESTION_OPENER =
   /^(?:how|what|why|when|where|who|which|can|could|should|would|will|do|does|did|is|are|am)\b/i;
-const QUESTION_MIN_WORDS = 3;
+export const QUESTION_MIN_WORDS = 6;
 export function looksLikeQuestion(text: string): boolean {
   const words = text.trim();
   return (

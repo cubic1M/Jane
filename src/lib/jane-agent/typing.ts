@@ -39,7 +39,7 @@ import {
 } from "./claude";
 import { resolvePronoun, type Topic } from "./context";
 import { fakeChatClaude } from "./fake-chat-claude";
-import { typedFlowReply } from "./flows/chat";
+import { WAITING_FOR_NAME, flowWaitsForName, typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { sinceSignIn, storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
@@ -448,6 +448,7 @@ async function sendToJaneWork(
   // What the message says about them, before the answer, so the answer knows it too.
   await learnFromChat(userId, text, `jane_message:${sent.id}`, { client, now });
 
+  const waitingForName = await flowWaitsForName(text, { userId, client, now });
   const { reply, intent, source, issues } = await answer(userId, text, history, {
     client,
     now,
@@ -457,6 +458,8 @@ async function sendToJaneWork(
     since,
     onFigures,
   });
+  // A question typed where the goal's name was due was not taken as the name: say it still waits.
+  if (waitingForName) reply.body = `${reply.body} ${WAITING_FOR_NAME}`;
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
   // Whatever the answer was, even one that failed, the next \"why\" is about THIS question,

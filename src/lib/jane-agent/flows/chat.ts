@@ -2,7 +2,13 @@ import type { Prisma } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import type { Reply } from "../replies";
 import { parseActions, parseRefs } from "../types";
-import { typedAnswer, type FlowContext, type FlowId, type FlowState } from "./engine";
+import {
+  looksLikeQuestion,
+  typedAnswer,
+  type FlowContext,
+  type FlowId,
+  type FlowState,
+} from "./engine";
 import { FLOWS } from "./index";
 import { answerFlow, showFlow, startFlow } from "./run";
 
@@ -79,14 +85,30 @@ export async function flowReply(flow: FlowId | "resume", context: FlowContext): 
 
 // A typed answer to the question just asked, when it takes one; null when the text isn't
 // an answer to it (then it's read as a question of its own).
-export async function typedFlowReply(text: string, context: FlowContext): Promise<Reply | null> {
+async function waitingFlow(context: FlowContext) {
   const newest = await scopedFor(context.userId, context.client).janeMessages.findFirst({
     where: { kind: "reply" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { id: true, status: true, refs: true },
   });
   const state = newest?.status === "open" ? parseRefs(newest.refs).flow : undefined;
-  if (!newest || !state?.typed || !FLOWS[state.id]) return null;
+  return newest && state?.typed && FLOWS[state.id] ? { newest, state } : null;
+}
+
+// A typed question that arrived while a flow waits for a name: not taken as the name, so the
+// answer to it says the flow is still waiting.
+// The answer to the question is the newest reply now, so the name is picked up with "continue".
+export const WAITING_FOR_NAME =
+  'Your goal is still waiting for its name: say "continue" to give it.';
+export async function flowWaitsForName(text: string, context: FlowContext): Promise<boolean> {
+  const waiting = await waitingFlow(context);
+  return waiting?.state.typed === "text" && looksLikeQuestion(text);
+}
+
+export async function typedFlowReply(text: string, context: FlowContext): Promise<Reply | null> {
+  const waiting = await waitingFlow(context);
+  if (!waiting) return null;
+  const { newest, state } = waiting;
   const value = typedAnswer(state.typed, text);
   if (value === null) return null;
   const move = await answerFlow(state, value, context);
