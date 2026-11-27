@@ -25,7 +25,7 @@ export function Rows({ rows, cards }: { rows: RecurringCharge[]; cards: Map<stri
             {cards.has(r.key) && (
               <Link
                 href={`/report/${cards.get(r.key)}`}
-                className="text-xs font-medium text-emerald-700 hover:underline"
+                className="text-xs font-medium underline hover:no-underline"
               >
                 Cancel or review
               </Link>
