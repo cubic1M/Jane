@@ -1,3 +1,4 @@
+import { FALLBACK_AMOUNT_TOLERANCE } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -32,8 +33,9 @@ export type RecurringMarks = {
     accountId?: string;
     merchantName: string | null;
     description: string;
-    // The person's day of the payment (YYYY-MM-DD).
+    // The person's day of the payment (YYYY-MM-DD) and its amount (positive is money out).
     date?: string;
+    amountCents?: number;
   }) => RepeatMark | null;
   forMerchant: (merchant: string) => RepeatMark | null;
 };
@@ -76,6 +78,19 @@ function merchantMarkOf(list: readonly RecurringCharge[]): RepeatMark {
   };
 }
 
+// Whether an amount looks like the charge: within the tolerance the recurring detection itself
+// uses to put a payment in a stream, of its last amount or, for a bill that varies, of the
+// range of its own transactions' amounts.
+function looksLike(c: RecurringCharge, amountCents: number | undefined): boolean {
+  if (amountCents === undefined) return false;
+  const low = c.varies?.lowCents ?? c.lastAmountCents;
+  const high = c.varies?.highCents ?? c.lastAmountCents;
+  return (
+    amountCents >= low * (1 - FALLBACK_AMOUNT_TOLERANCE) &&
+    amountCents <= high * (1 + FALLBACK_AMOUNT_TOLERANCE)
+  );
+}
+
 const merchantKeyOf = (name: string): string | null => normalizeMerchant(name)?.key ?? null;
 
 export function recurringMarks(charges: readonly RecurringCharge[]): RecurringMarks {
@@ -110,7 +125,11 @@ export function recurringMarks(charges: readonly RecurringCharge[]): RecurringMa
       // Inside any stream's own days of this merchant and account, a payment that isn't one of
       // its transactions is a one-off (a second plan's run covers the days of the first's).
       if (same.some(inside)) return null;
-      const own = same.find((c) => c.transactionIds.length === 0 || spans(c));
+      // Not the charge's own transaction, so it must also look like it: a laptop bought at the
+      // merchant that bills a small monthly plan is a purchase, whenever it is dated.
+      const own = same.find(
+        (c) => (c.transactionIds.length === 0 || spans(c)) && looksLike(c, t.amountCents),
+      );
       return own ? markOf(own) : null;
     },
     forMerchant: (merchant) => {
