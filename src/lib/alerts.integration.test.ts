@@ -304,6 +304,22 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect(send).toHaveBeenCalledTimes(ALERT_EMAILS_PER_DAY);
   });
 
+  it("holds the daily email cap when two scans run at the same moment", async () => {
+    const user = await person();
+    const many = Array.from({ length: ALERT_EMAILS_PER_DAY * 2 }, () => alert());
+    send.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ id: null }), 50)),
+    );
+
+    await Promise.all([
+      raiseAlerts(user.id, many.slice(0, ALERT_EMAILS_PER_DAY), { client, now: NOW, send }),
+      raiseAlerts(user.id, many.slice(ALERT_EMAILS_PER_DAY), { client, now: NOW, send }),
+    ]);
+
+    expect(send).toHaveBeenCalledTimes(ALERT_EMAILS_PER_DAY);
+    expect((await alertsOf(user.id)).filter((r) => r.emailedAt)).toHaveLength(ALERT_EMAILS_PER_DAY);
+  });
+
   it("leaves a failed email for the weekly email instead", async () => {
     const user = await person();
     send.mockRejectedValue(new Error("Resend is down"));

@@ -264,12 +264,12 @@ export async function loadMetricRows({
     }),
     systemDb(WHY, client).analyticsEvent.findMany({
       where: { name: "card_opened" },
-      select: { properties: true, createdAt: true },
+      select: { userId: true, properties: true, createdAt: true },
     }),
     // A finding Jane posted in the chat counts as shown, like a card opened on its page.
     systemDb(WHY, client).janeMessage.findMany({
       where: { userId: REAL },
-      select: { refs: true, createdAt: true },
+      select: { userId: true, refs: true, createdAt: true },
     }),
     systemDb(WHY, client).decision.findMany({
       where: { undoneAt: null, userId: REAL },
@@ -304,6 +304,9 @@ export async function loadMetricRows({
   ]);
 
   const findingType = new Map(findings.map((f) => [f.id, f.type]));
+  // A card counts as shown only to the person whose finding it is: an event or a message that
+  // names someone else's finding id says nothing about that finding.
+  const findingOwner = new Map(findings.map((f) => [f.id, f.userId]));
   return {
     users,
     links: accounts.flatMap((a) =>
@@ -313,12 +316,18 @@ export async function loadMetricRows({
     cardOpens: [
       ...opens.flatMap((o) => {
         const id = (o.properties as { finding_id?: unknown } | null)?.finding_id;
-        const type = typeof id === "string" ? findingType.get(id) : undefined;
+        const type =
+          typeof id === "string" && findingOwner.get(id) === o.userId
+            ? findingType.get(id)
+            : undefined;
         return type ? [{ findingType: type, at: o.createdAt }] : [];
       }),
       ...posted.flatMap((m) => {
         const id = (m.refs as { findingId?: unknown } | null)?.findingId;
-        const type = typeof id === "string" ? findingType.get(id) : undefined;
+        const type =
+          typeof id === "string" && findingOwner.get(id) === m.userId
+            ? findingType.get(id)
+            : undefined;
         return type ? [{ findingType: type, at: m.createdAt }] : [];
       }),
     ],

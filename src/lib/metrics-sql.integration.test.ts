@@ -150,6 +150,26 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
         createdAt: ago(3),
       },
     });
+    // Ben's event and chat message that name Ana's finding id: not his to have been shown, so
+    // neither adds to "shown" (the reference and the SQL both bind it to the finding's owner).
+    await client.analyticsEvent.create({
+      data: {
+        userId: ben,
+        name: "card_opened",
+        properties: { finding_id: fees.id },
+        createdAt: ago(2),
+      },
+    });
+    await client.janeMessage.create({
+      data: {
+        userId: ben,
+        kind: "decision",
+        body: "Another question",
+        refs: { findingId: fees.id },
+        dedupeKey: `metrics-other-${suffix}`,
+        createdAt: ago(2),
+      },
+    });
     const benYes = await client.decision.create({
       data: {
         userId: ben,

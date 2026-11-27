@@ -97,12 +97,14 @@ export async function computeMetricsSql(
   const opens = await client.$queryRaw<{ type: FindingType; count: bigint }[]>`
     SELECT type, COUNT(*) AS count FROM (
       SELECT f.type::text AS type
-      FROM analytics_events e JOIN findings f ON f.id = e.properties->>'finding_id'
+      FROM analytics_events e
+      JOIN findings f ON f.id = e.properties->>'finding_id' AND f.user_id = e.user_id
       WHERE e.name = 'card_opened' AND ${inWindow(Prisma.sql`e.created_at`)}
         AND ${real("f.user_id")}
       UNION ALL
       SELECT f.type::text AS type
-      FROM jane_messages m JOIN findings f ON f.id = m.refs->>'findingId'
+      FROM jane_messages m
+      JOIN findings f ON f.id = m.refs->>'findingId' AND f.user_id = m.user_id
       WHERE ${inWindow(Prisma.sql`m.created_at`)} AND ${real("m.user_id")}
     ) shown
     GROUP BY type`;

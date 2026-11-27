@@ -2,6 +2,7 @@ import { type SwitchTier, type KillSwitch, rememberStoredSwitches } from "@/conf
 import {
   OPS_SWITCH_CACHE_MS,
   OPS_SWITCH_FIRST_READ_TIMEOUT_MS,
+  OPS_SWITCH_READ_DEADLINE_MS,
   OPS_SWITCH_READ_TIMEOUT_MS,
 } from "@/config/health";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -16,23 +17,47 @@ const WHY = "The emergency switches apply to everyone, so they belong to no one 
 let readAt = 0;
 let everRead = false;
 let reading: Promise<void> | null = null;
+// Which read may publish: each attempt takes the next number, and one given up on loses its right
+// (a late answer from it must not replace what a newer read has published).
+let current = 0;
 
 async function systemClient(client?: PrismaClient) {
   const { systemDb } = await import("@/lib/system-db");
   return systemDb(WHY, client);
 }
 
-async function read(client?: PrismaClient): Promise<void> {
+async function read(client: PrismaClient | undefined, mine: number): Promise<void> {
   try {
     const rows = await (await systemClient(client)).opsSwitch.findMany({ where: { on: true } });
+    if (mine !== current) return;
     rememberStoredSwitches(rows.map((row) => row.name));
     readAt = Date.now();
     everRead = true;
   } catch (error) {
+    if (mine !== current) return;
     // Keep what it last knew: a database that's down isn't a reason to lift a stop. Try again soon.
     readAt = Date.now() - OPS_SWITCH_CACHE_MS + 1000;
     log.warn("Ops switches: read failed", { error });
   }
+}
+
+// The read, given up on after OPS_SWITCH_READ_DEADLINE_MS: a stalled database would otherwise leave
+// `reading` pending for good, and no refresh would ever start again. What was last known stays.
+async function readWithin(client?: PrismaClient): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  current += 1;
+  const mine = current;
+  const gaveUp = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      // This read's answer, if it ever comes, is no longer published.
+      current += 1;
+      readAt = Date.now() - OPS_SWITCH_CACHE_MS + 1000;
+      log.warn("Ops switches: read timed out");
+      resolve();
+    }, OPS_SWITCH_READ_DEADLINE_MS);
+  });
+  await Promise.race([read(client, mine), gaveUp]);
+  clearTimeout(timer);
 }
 
 // Brings the switches up to date, at most once per OPS_SWITCH_CACHE_MS. Never throws, and never
@@ -40,7 +65,7 @@ async function read(client?: PrismaClient): Promise<void> {
 export async function freshSwitches({ client }: { client?: PrismaClient } = {}): Promise<void> {
   if (process.env.OPS_SWITCHES !== "1") return;
   if (Date.now() - readAt < OPS_SWITCH_CACHE_MS) return;
-  reading ??= read(client).finally(() => {
+  reading ??= readWithin(client).finally(() => {
     reading = null;
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -60,6 +85,7 @@ export function forgetSwitchesForTests(): void {
   readAt = 0;
   everRead = false;
   reading = null;
+  current += 1;
   rememberStoredSwitches([]);
 }
 

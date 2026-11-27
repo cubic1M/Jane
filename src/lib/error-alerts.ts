@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { errorKind, safePath } from "@/lib/error-kind";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
+import { sendToAny } from "@/lib/team-send";
 import { hit } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 
@@ -150,7 +151,7 @@ export async function sendErrorDigest({
       )}${more > 0 ? `<li>and ${more} more kinds</li>` : ""}</ul><p>Details, scrubbed: <a href="${escape(adminLink("/admin/errors"))}">/admin/errors</a></p>`,
   };
   try {
-    await Promise.all(to.map((address) => send({ ...message, to: address })));
+    await sendToAny(to, message, send);
   } catch (failure) {
     // Unclaim, so the next run tries again.
     await systemDb(WHY, client).healthNotice.deleteMany({

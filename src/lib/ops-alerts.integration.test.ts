@@ -64,6 +64,25 @@ describe.runIf(url)("ops alerts", () => {
     expect(sent()[2].text).toContain("2 sign-in emails didn't send in the last hour");
   });
 
+  it("counts an alert as sent when only one of two inboxes took it, and gives the claim back when neither did", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    send.mockImplementationOnce(async () => {
+      throw new Error("a@example.test bounced");
+    });
+    const some = await recordOpsEvent("sign_in_email_failed", { client, now: NOW, send });
+    expect(some).toEqual({ recorded: true, emailed: true });
+    // The one that took it is not asked again an hour later by a retry.
+    expect(sent().filter((m) => m.to === "b@example.test")).toHaveLength(1);
+    expect(await client.healthNotice.count({ where: { key: "ops:sign_in_email_failed" } })).toBe(1);
+
+    await clear();
+    send.mockRejectedValue(new Error("Resend is down"));
+    const none = await recordOpsEvent("sign_in_email_failed", { client, now: NOW, send });
+    expect(none.emailed).toBe(false);
+    expect(await client.healthNotice.count({ where: { key: "ops:sign_in_email_failed" } })).toBe(0);
+    send.mockReset().mockResolvedValue(undefined);
+  });
+
   it("keeps a bank breaking for the daily email, not an email at once", async () => {
     expect(
       await recordOpsEvent("bank_connection_broken", {

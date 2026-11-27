@@ -13,6 +13,7 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { withPersonLock } from "@/lib/person-lock";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { tellsThemToAct } from "@/lib/real-account-text";
 import { savingsLine } from "@/lib/savings-text";
@@ -169,35 +170,47 @@ export async function recordArrivals(
   // who may be told now: never a sample person's or the demo bank's scan.
   if (!held) await recheckChargedServices(found, { client, now });
   const best = held ? null : ([...found].filter(clearsBar).sort(byValue)[0] ?? null);
-  const sentToday = best
-    ? await db.findingArrivals.count({
-        where: { notice: "posted", createdAt: { gt: new Date(now.getTime() - DAY_MS) } },
-      })
-    : 0;
-  const noticeOf = (f: Arrived): Notice => {
-    if (held) return held;
-    if (!clearsBar(f)) return "below_bar";
-    if (f.id !== best?.id || sentToday >= LIVE_NOTICES_PER_DAY) return "today_used";
-    return "posted";
-  };
-  const rows = found.map((f) => ({
+  // The day's count and the rows that take from it are one step per person: two scans at once
+  // (two banks' webhooks) each count, then insert, and would both find today's notice free.
+  const { value: inserted } = (await withPersonLock(
+    "live-notice",
     userId,
-    findingId: f.id,
-    trigger,
-    triggerAt,
-    foundAt,
-    // An int column: a clock that's off (a stored webhook against a replayed scan) can't overflow it.
-    latencyMs: Math.min(MAX_LATENCY_MS, Math.max(0, foundAt.getTime() - triggerAt.getTime())),
-    notice: noticeOf(f),
-    // The day's count reads this, against the same clock as the rest of the run.
-    createdAt: now,
-  }));
-  // The unique finding id: a scan running twice over the same change records each once.
-  const inserted = await db.findingArrivals.createManyAndReturn({
-    data: rows,
-    skipDuplicates: true,
-    select: { id: true, findingId: true, notice: true, latencyMs: true },
-  });
+    async () => {
+      const sentToday = best
+        ? await db.findingArrivals.count({
+            where: { notice: "posted", createdAt: { gt: new Date(now.getTime() - DAY_MS) } },
+          })
+        : 0;
+      const noticeOf = (f: Arrived): Notice => {
+        if (held) return held;
+        if (!clearsBar(f)) return "below_bar";
+        if (f.id !== best?.id || sentToday >= LIVE_NOTICES_PER_DAY) return "today_used";
+        return "posted";
+      };
+      const rows = found.map((f) => ({
+        userId,
+        findingId: f.id,
+        trigger,
+        triggerAt,
+        foundAt,
+        // An int column: a clock that's off (a stored webhook against a replayed scan) can't overflow it.
+        latencyMs: Math.min(MAX_LATENCY_MS, Math.max(0, foundAt.getTime() - triggerAt.getTime())),
+        notice: noticeOf(f),
+        // The day's count reads this, against the same clock as the rest of the run.
+        createdAt: now,
+      }));
+      // The unique finding id: a scan running twice over the same change records each once.
+      return db.findingArrivals.createManyAndReturn({
+        data: rows,
+        skipDuplicates: true,
+        select: { id: true, findingId: true, notice: true, latencyMs: true },
+      });
+    },
+    { client, wait: true },
+  )) as {
+    ran: true;
+    value: { id: string; findingId: string; notice: Notice; latencyMs: number }[];
+  };
   for (const row of inserted) {
     log.info("live_finding", { trigger, latencyMs: row.latencyMs, notice: row.notice });
   }

@@ -38,5 +38,8 @@ export const PROBE_TIMEOUT_MS = 15_000;
 // How old the emergency switches may be, and the longest a request waits to read them.
 export const OPS_SWITCH_CACHE_MS = 5_000;
 export const OPS_SWITCH_READ_TIMEOUT_MS = 800;
+// A read that has not answered by now is given up on (and tried again soon), so a database that
+// stalls cannot keep every later refresh waiting on the same read.
+export const OPS_SWITCH_READ_DEADLINE_MS = 10_000;
 // A new instance knows nothing yet, so it waits longer rather than serve through a stop.
 export const OPS_SWITCH_FIRST_READ_TIMEOUT_MS = 3_000;

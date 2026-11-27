@@ -18,6 +18,7 @@ import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/log";
+import { withPersonLock } from "@/lib/person-lock";
 import { pushEnabled, sendPush } from "@/lib/push";
 import { DAY_MS } from "@/lib/dates";
 
@@ -109,7 +110,14 @@ export async function raiseAlerts(
       merged: asked.length - wanted.length,
     });
   }
-  const emailed = await emailUrgentAlerts(userId, { client, now, send, push });
+  // The day's count and the sends it allows are one step per person: two scans at once would each
+  // count the same room and send past the cap.
+  const { value: emailed } = (await withPersonLock(
+    "alert-email",
+    userId,
+    () => emailUrgentAlerts(userId, { client, now, send, push }),
+    { client, wait: true },
+  )) as { ran: true; value: number };
   return { raised: created.length, emailed };
 }
 

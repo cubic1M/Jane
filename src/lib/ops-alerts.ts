@@ -10,6 +10,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { escapeHtml } from "@/lib/escape-html";
 import { sendEmail } from "@/lib/email";
+import { sendToAny } from "@/lib/team-send";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
 import { siteOrigin } from "@/lib/site-origin";
@@ -96,15 +97,14 @@ async function alertNow(
     `You'll get at most one email about this each ${OPS_ALERT_MINUTES} minutes; the daily email counts the rest.`,
   ];
   try {
-    await Promise.all(
-      to.map((address) =>
-        send({
-          to: address,
-          subject: `Jane: ${label}`,
-          text: lines.join("\n\n"),
-          html: lines.map((l) => `<p>${escapeHtml(l)}</p>`).join(""),
-        }),
-      ),
+    await sendToAny(
+      to,
+      {
+        subject: `Jane: ${label}`,
+        text: lines.join("\n\n"),
+        html: lines.map((l) => `<p>${escapeHtml(l)}</p>`).join(""),
+      },
+      send,
     );
     return true;
   } catch (failure) {
@@ -176,17 +176,16 @@ export async function sendOpsDigest({
   );
   const link = adminLink("/admin/health");
   try {
-    await Promise.all(
-      to.map((address) =>
-        send({
-          to: address,
-          subject: `Jane, last 24 hours: ${lines[0]}${counts.length > 1 ? ` and ${counts.length - 1} more` : ""}`,
-          text: ["In the last 24 hours:", ...lines.map((l) => `- ${l}`), `Details: ${link}`].join(
-            "\n",
-          ),
-          html: `<p>In the last 24 hours:</p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p>Details: <a href="${escapeHtml(link)}">/admin/health</a></p>`,
-        }),
-      ),
+    await sendToAny(
+      to,
+      {
+        subject: `Jane, last 24 hours: ${lines[0]}${counts.length > 1 ? ` and ${counts.length - 1} more` : ""}`,
+        text: ["In the last 24 hours:", ...lines.map((l) => `- ${l}`), `Details: ${link}`].join(
+          "\n",
+        ),
+        html: `<p>In the last 24 hours:</p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p>Details: <a href="${escapeHtml(link)}">/admin/health</a></p>`,
+      },
+      send,
     );
   } catch (failure) {
     await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
