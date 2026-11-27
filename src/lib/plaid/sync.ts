@@ -32,7 +32,13 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { withReadCache } from "@/lib/read-cache";
 import { enqueueJob, runJob } from "@/lib/jobs";
-import { plaid, plaidCall, plaidErrorCode, plaidInvestmentsEnabled } from "./client";
+import {
+  PlaidRequestError,
+  plaid,
+  plaidCall,
+  plaidErrorCode,
+  plaidInvestmentsEnabled,
+} from "./client";
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
@@ -178,6 +184,15 @@ async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: Norm
   return new Map(sync.accounts.map((account, i) => [account.ref, saved[i].id]));
 }
 
+// An optional read (recurring streams, loans and cards, investments) that Plaid refused or could
+// not answer (a 502, a time-out) is skipped for this sync, not fatal to it: the accounts and
+// transactions are saved, so the cursor must move. Anything that isn't Plaid's own failure is ours,
+// and still stops the sync. Returns what to log.
+function optionalFailure(error: unknown): string {
+  if (!(error instanceof PlaidRequestError)) throw error;
+  return error.code ?? (error.status ? `HTTP_${error.status}` : "NO_ANSWER");
+}
+
 async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, sync: PlaidSync) {
   const categorized = await categorizeTransactions(sync.transactions, db, {
     claude: meteredClaude(db.userId),
@@ -232,11 +247,6 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
         categorySource: "user",
       });
   }
-  if (replaced.length > 0)
-    await db.transactions.deleteMany({
-      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
-    });
-
   const saved = await db.transactions.findMany({
     where: { plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
     select: { plaidTransactionId: true, categorySource: true },
@@ -263,6 +273,12 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
           : { ...rest, pfcPrimary, pfcDetailed, categorySource },
     });
   }
+  // The pending ones go only once their posted rows are saved or updated: a save that fails leaves them, so
+  // the next sync (from the same cursor) can still carry a category the person set across.
+  if (replaced.length > 0)
+    await db.transactions.deleteMany({
+      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
+    });
   const { count: removed } =
     sync.removedTransactionIds.length > 0
       ? await db.transactions.deleteMany({
@@ -305,8 +321,7 @@ async function saveRecurringStreams(
     const data = await plaidCall(api.transactionsRecurringGet({ access_token: accessToken }));
     streams = [...data.outflow_streams, ...data.inflow_streams];
   } catch (error) {
-    const code = plaidErrorCode(error);
-    if (!code) throw error;
+    const code = optionalFailure(error);
     log.warn("Plaid recurring transactions unavailable; using our own detection", { code });
     return "unavailable";
   }
@@ -346,8 +361,7 @@ async function saveLiabilities(
   try {
     data = await plaidCall(api.liabilitiesGet({ access_token: accessToken }));
   } catch (error) {
-    const code = plaidErrorCode(error);
-    if (!code) throw error;
+    const code = optionalFailure(error);
     log.warn("Plaid liabilities unavailable", { code });
     return "unavailable";
   }
@@ -475,8 +489,7 @@ async function saveInvestments(
   try {
     holdings = await plaidCall(api.investmentsHoldingsGet({ access_token: accessToken }));
   } catch (error) {
-    const code = plaidErrorCode(error);
-    if (!code) throw error;
+    const code = optionalFailure(error);
     log.warn("Plaid investments unavailable", { code });
     return "unavailable";
   }
@@ -592,8 +605,7 @@ async function saveInvestmentTransactions(
         break;
     }
   } catch (error) {
-    const code = plaidErrorCode(error);
-    if (!code) throw error;
+    const code = optionalFailure(error);
     log.warn("Plaid investment transactions unavailable", { code });
     return;
   }
@@ -812,7 +824,8 @@ async function syncItemWork(
   });
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
-  if (progressive && item.transactionsCursor === null) {
+  // Not on an empty first batch: Plaid has nothing ready yet, and the chat would open on no data.
+  if (progressive && item.transactionsCursor === null && !sync.notReady) {
     timing.log("chat_ready");
     onReady?.();
   }
@@ -887,13 +900,19 @@ async function syncItemWork(
   // A first report from no rows would say nothing's wrong: the next sync does the first scan's work.
   if (sync.notReady && result.firstSync) return { ...result, notReady: true };
   if (result.firstSync) {
-    await track(item.userId, "first_sync_completed", {
-      accounts: result.accounts,
-      transactions: result.added,
-      recurring,
-      liabilities,
-      investments,
-    });
+    // An event that fails to write must not skip the first brief: the cursor is saved, so no later
+    // sync is a first one.
+    try {
+      await track(item.userId, "first_sync_completed", {
+        accounts: result.accounts,
+        transactions: result.added,
+        recurring,
+        liabilities,
+        investments,
+      });
+    } catch (error) {
+      log.error("Couldn't record a first sync", { error: String(error) });
+    }
   }
 
   timing.mark("cursor_and_track");

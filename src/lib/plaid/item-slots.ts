@@ -119,16 +119,24 @@ export async function reserveItemSlot(
   });
   if (count === 0) throw new LinkingClosedError("person");
 
+  // Past this point the claim is ours: a failure before the count is taken gives it back, or the
+  // person's only claim would stay and every later try would say "person" with Plaid never asked.
   const limit = plaidItemLimit();
-  await systemDb(WHY, client).plaidItemCounter.createMany({
-    data: [{ id: COUNTER_ID }],
-    skipDuplicates: true,
-  });
-  const won = await systemDb(WHY, client).plaidItemCounter.updateManyAndReturn({
-    where: { id: COUNTER_ID, used: { lt: await limitFor(userId, limit, client) } },
-    data: { used: { increment: 1 } },
-    select: { used: true },
-  });
+  let won: { used: number }[];
+  try {
+    await systemDb(WHY, client).plaidItemCounter.createMany({
+      data: [{ id: COUNTER_ID }],
+      skipDuplicates: true,
+    });
+    won = await systemDb(WHY, client).plaidItemCounter.updateManyAndReturn({
+      where: { id: COUNTER_ID, used: { lt: await limitFor(userId, limit, client) } },
+      data: { used: { increment: 1 } },
+      select: { used: true },
+    });
+  } catch (error) {
+    await db.plaidItemClaims.deleteMany({ where: { ordinal } }).catch(() => undefined);
+    throw error;
+  }
   if (won.length === 0) {
     await db.plaidItemClaims.deleteMany({ where: { ordinal } });
     throw new LinkingClosedError("full");

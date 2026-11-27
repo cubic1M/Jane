@@ -83,8 +83,12 @@ export async function planWebhook(
   // New or changed loan and card details (spec step 65) or investment balances (step 66);
   // the sync reads them again.
   if (
-    (body.webhook_type === "LIABILITIES" || body.webhook_type === "HOLDINGS") &&
-    body.webhook_code === "DEFAULT_UPDATE"
+    (body.webhook_type === "LIABILITIES" ||
+      body.webhook_type === "HOLDINGS" ||
+      body.webhook_type === "INVESTMENTS_TRANSACTIONS") &&
+    (body.webhook_code === "DEFAULT_UPDATE" ||
+      (body.webhook_type === "INVESTMENTS_TRANSACTIONS" &&
+        body.webhook_code === "HISTORICAL_UPDATE"))
   ) {
     return { itemId: item.id, sync: true };
   }
@@ -142,8 +146,22 @@ export async function planWebhook(
     // nightly scan works out again whatever the other accounts still support.
     if (count > 0) {
       forgetPrimer(item.userId);
-      await removeOrphans(item.userId, { client });
-      await forgetSince(scoped, item.createdAt, "bank");
+      // The account is gone, so Plaid's retry would delete nothing and skip these: each runs on its
+      // own, a failure is logged, and the delivery is answered (the nightly scan sweeps orphans).
+      const steps: [string, () => Promise<unknown>][] = [
+        ["orphans", () => removeOrphans(item.userId, { client })],
+        ["since", () => forgetSince(scoped, item.createdAt, "bank")],
+      ];
+      for (const [what, step] of steps) {
+        await Promise.resolve()
+          .then(step)
+          .catch((error: unknown) =>
+            log.error("A clean-up after a revoked account failed", {
+              step: what,
+              error: String(error),
+            }),
+          );
+      }
     }
     return { itemId: item.id, sync: false };
   }
@@ -236,8 +254,10 @@ export async function syncFromWebhook(
       if (again === 0) break;
     }
   } finally {
+    // Only our own lease: a run that stalled past SYNC_LOCK_MINUTES must not clear the lock of the
+    // one that took over (the same `now` is the lease's stamp).
     await systemDb(WHY, client).plaidItem.updateMany({
-      where: { id: itemId },
+      where: { id: itemId, syncingSince: now },
       data: { syncingSince: null },
     });
   }

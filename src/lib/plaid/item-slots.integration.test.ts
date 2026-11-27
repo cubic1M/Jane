@@ -357,6 +357,19 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
     });
   });
 
+  it("gives the claim back when the count can't be taken, so a retry can work", async () => {
+    const userId = await person();
+    // A counter that can't count one more: the increment fails inside the database.
+    vi.stubEnv("PLAID_TRIAL_ITEM_LIMIT", "3000000000");
+    await setUsed(2147483647);
+    await expect(link(userId)).rejects.toThrow();
+    await setUsed(0);
+    vi.stubEnv("PLAID_TRIAL_ITEM_LIMIT", "");
+    expect(itemPublicTokenExchange).not.toHaveBeenCalled();
+    expect(await client.plaidItemClaim.count({ where: { userId } })).toBe(0);
+    await expect(link(userId)).resolves.toEqual(expect.any(String));
+  });
+
   it("keeps one person's claim from counting against another", async () => {
     const [a, b] = [await person(), await person()];
     await link(a);

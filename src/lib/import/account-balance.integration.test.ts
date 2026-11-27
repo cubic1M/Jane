@@ -115,6 +115,24 @@ describe.runIf(url)("asking for an uploaded card's balance, against a real datab
     expect(history?.todayCents).toBe(198800 - 35000);
   });
 
+  it("still works the numbers out again when the audit line can't be written", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = scopedFor(userId, client);
+    const made = await saveUpload(
+      db,
+      form(
+        { accountId: "new", "new.name": "Audit card", "new.kind": "credit_card" },
+        "a.csv",
+        card.replace("-24.00", "-31.00").replace("-80.00", "-47.00"),
+      ),
+    );
+    if (!made.ok) throw new Error(made.error);
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+    await expect(setUploadedBalance(db, made.accountId, 12000)).resolves.toEqual({
+      jobId: "job_1",
+    });
+  });
+
   it("never sets another person's, or a linked bank's, balance", async () => {
     const theirs = await saveUpload(
       scopedFor(otherId, client),

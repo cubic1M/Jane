@@ -66,6 +66,33 @@ async function warn(
   });
 }
 
+// When each person last did anything: an event, or any page they opened (a chip of a page view
+// isn't an event, and someone who reads Home every day hasn't stopped using Jane).
+async function lastActiveOf(
+  ids: string[],
+  client: PrismaClient,
+): Promise<Map<string, Date | null>> {
+  const last = await systemDb(WHY, client).analyticsEvent.groupBy({
+    by: ["userId"],
+    where: { userId: { in: ids }, name: { in: [...ACTIVITY_EVENTS] } },
+    _max: { createdAt: true },
+  });
+  const seen = await systemDb(WHY, client).session.groupBy({
+    by: ["userId"],
+    where: { userId: { in: ids } },
+    _max: { lastSeenAt: true },
+  });
+  const lastActive = new Map<string, Date | null>(
+    last.map((row) => [row.userId as string, row._max.createdAt]),
+  );
+  for (const row of seen) {
+    const at = row._max.lastSeenAt;
+    const before = lastActive.get(row.userId);
+    if (at && (!before || at > before)) lastActive.set(row.userId, at);
+  }
+  return lastActive;
+}
+
 export async function runInactiveCleanup({
   client = defaultClient,
   now = new Date(),
@@ -95,26 +122,10 @@ export async function runInactiveCleanup({
       robinhoodConnection: { select: { id: true } },
     },
   });
-  const last = await systemDb(WHY, client).analyticsEvent.groupBy({
-    by: ["userId"],
-    where: { userId: { in: people.map((p) => p.id) }, name: { in: [...ACTIVITY_EVENTS] } },
-    _max: { createdAt: true },
-  });
-  // Any page they opened counts too: a chip of a page view isn't an event, and someone who reads
-  // Home every day hasn't stopped using Jane.
-  const seen = await systemDb(WHY, client).session.groupBy({
-    by: ["userId"],
-    where: { userId: { in: people.map((p) => p.id) } },
-    _max: { lastSeenAt: true },
-  });
-  const lastActive = new Map<string, Date | null>(
-    last.map((row) => [row.userId as string, row._max.createdAt]),
+  const lastActive = await lastActiveOf(
+    people.map((p) => p.id),
+    client,
   );
-  for (const row of seen) {
-    const at = row._max.lastSeenAt;
-    const before = lastActive.get(row.userId);
-    if (at && (!before || at > before)) lastActive.set(row.userId, at);
-  }
 
   const run: InactiveRun = { warned: 0, removed: 0, failed: 0 };
   for (const person of people) {
@@ -143,6 +154,15 @@ export async function runInactiveCleanup({
         });
         run.warned += 1;
       } else if (step === "remove") {
+        // The first read is minutes old by now (earlier people were warned and removed in turn):
+        // someone who has come back since is read again and left alone.
+        const fresh = (await lastActiveOf([person.id], client)).get(person.id) ?? person.createdAt;
+        if (
+          inactivityStep({ lastActive: fresh, warnedAt: person.plaidRemovalWarnedAt }, now) !==
+          "remove"
+        ) {
+          continue;
+        }
         for (const item of person.plaidItems) {
           await remove(person.id, item.id, "inactive", { client, actor: SYSTEM_ACTOR });
         }

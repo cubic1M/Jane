@@ -24,6 +24,8 @@ const FAILED = "Jane couldn't read these files just now. Try again.";
 // natively, so the chosen files stay after the preview.
 export function PositionsForm() {
   const formRef = useRef<HTMLFormElement>(null);
+  // Counts file choices: a preview that finishes after the files changed is for files no longer chosen.
+  const selection = useRef(0);
   const [preview, setPreview] = useState<PositionsPreviewResult | null>(null);
   const [saved, setSaved] = useState<Extract<PositionsImportResult, { ok: true }> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +50,12 @@ export function PositionsForm() {
     setSaved(null);
     const data = formData();
     if (!data) return setPreview(null);
+    const gen = selection.current;
     startTransition(async () => {
       const result = await previewPositions(data)
         .catch(() => previewPositions(data))
         .catch(() => null);
+      if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
       setPreview(result);
@@ -63,8 +67,10 @@ export function PositionsForm() {
     setError(null);
     const data = formData();
     if (!data) return;
+    const gen = selection.current;
     startTransition(async () => {
       const result = await importPositions(data).catch(() => null);
+      if (gen !== selection.current) return;
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
       setSaved(result);
@@ -93,6 +99,7 @@ export function PositionsForm() {
           required
           className="text-sm"
           onChange={() => {
+            selection.current += 1;
             setPreview(null);
             setSaved(null);
           }}

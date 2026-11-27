@@ -83,6 +83,47 @@ describe("Plaid Link", () => {
     });
   });
 
+  describe("when a check after the exchange fails", () => {
+    beforeEach(() => {
+      itemPublicTokenExchange.mockResolvedValue({
+        data: { access_token: "access-sandbox-only-copy", item_id: "plaid_item_9" },
+      });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+    afterEach(() => vi.mocked(console.error).mockRestore());
+
+    it("still saves the Item when the lookup of an earlier save fails", async () => {
+      scoped.plaidItems.findFirst
+        .mockRejectedValueOnce(new Error("lookup failed"))
+        .mockResolvedValue(null);
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).resolves.toBe(
+        "item_row_1",
+      );
+      expect(scoped.plaidItems.create).toHaveBeenCalledTimes(1);
+      expect(itemRemove).not.toHaveBeenCalled();
+    });
+
+    it("returns the saved Item even when the record of the link can't be written", async () => {
+      scoped.plaidItems.findFirst.mockResolvedValue(null);
+      vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).resolves.toBe(
+        "item_row_1",
+      );
+      expect(itemRemove).not.toHaveBeenCalled();
+    });
+
+    it("still saves the Item when the same-bank check can't read the database", async () => {
+      scoped.plaidItems.findFirst
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error("lookup failed"));
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).resolves.toBe(
+        "item_row_1",
+      );
+      expect(scoped.plaidItems.create).toHaveBeenCalledTimes(1);
+      expect(itemRemove).not.toHaveBeenCalled();
+    });
+  });
+
   it("asks for Investments only once PLAID_INVESTMENTS is on", async () => {
     await createLinkToken("user_1", null, { api });
     expect(linkTokenCreate.mock.calls[0][0].additional_consented_products).toEqual(["liabilities"]);

@@ -144,6 +144,20 @@ describe.runIf(url)("a bank connection", () => {
     await expect(reserveItemSlot(next, { client })).resolves.not.toBeNull();
   });
 
+  it("doesn't clear the lock of a run that took over from a stalled one", async () => {
+    const userId = await person();
+    const row = await item(userId, "c-lease");
+    const startedAt = new Date("2026-11-01T10:00:00Z");
+    const takenOverAt = new Date("2026-11-01T10:30:00Z");
+    const sync = async (itemId: string) => {
+      // While this run stalls, another takes the lock over and is still going.
+      await client.plaidItem.update({ where: { id: itemId }, data: { syncingSince: takenOverAt } });
+    };
+    await syncFromWebhook(row.id, { client, sync, now: startedAt });
+    const after = await client.plaidItem.findUniqueOrThrow({ where: { id: row.id } });
+    expect(after.syncingSince).toEqual(takenOverAt);
+  });
+
   it("syncs again when a webhook came while it was running", async () => {
     const userId = await person();
     const row = await item(userId, "c1");
@@ -179,8 +193,11 @@ describe.runIf(url)("a bank connection", () => {
         },
       }),
     } as unknown as PlaidApi;
-    const result = await syncItem(row.id, { client, api: nothingYet });
+    const onReady = vi.fn();
+    const result = await syncItem(row.id, { client, api: nothingYet, progressive: true, onReady });
     expect(result.notReady).toBe(true);
+    // The chat must not open on a first sync that has no accounts or transactions yet.
+    expect(onReady).not.toHaveBeenCalled();
     const after = await client.plaidItem.findUniqueOrThrow({ where: { id: row.id } });
     expect(after.transactionsCursor).toBeNull();
     const user = await client.user.findUniqueOrThrow({ where: { id: userId } });

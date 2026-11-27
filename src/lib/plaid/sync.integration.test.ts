@@ -787,4 +787,85 @@ describe.runIf(url)("syncItem against a real database", () => {
     expect((await syncItem(item.id, { client, api, now: NOW })).investments).toBe("off");
     expect(investmentsHoldingsGet).not.toHaveBeenCalled();
   });
+
+  it("keeps the pending transaction when its posted one can't be saved, so the retry carries the category", async () => {
+    const acc = `${suffix}-acc-keep`;
+    const noStreams = { data: { outflow_streams: [], inflow_streams: [] } };
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: acc })],
+        added: [{ ...netflix("p2", "2026-10-10", 9.99), account_id: acc, pending: true }],
+        next_cursor: "cursor-r1",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    await syncItem(itemId, { client, api, now: NOW });
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${suffix}-p2` },
+      data: { pfcPrimary: "ENTERTAINMENT", categorySource: "user" },
+    });
+    const posts = (id: string, amount: number) =>
+      syncPage({
+        accounts: [plaidAccount({ account_id: acc })],
+        added: [
+          {
+            ...netflix(id, "2026-10-11", amount),
+            ...(id === "posted-bad" ? { name: "FAILME", merchant_name: "FAILME" } : {}),
+            account_id: acc,
+            pending: false,
+            pending_transaction_id: `${suffix}-p2`,
+          },
+        ],
+        next_cursor: "cursor-r2",
+      });
+    // The database refuses the posted row (a trigger that exists for this test only).
+    await client.$executeRawUnsafe(
+      `CREATE OR REPLACE FUNCTION cr4_fail_save() RETURNS trigger AS $$ BEGIN
+         IF NEW.description = 'FAILME' THEN RAISE EXCEPTION 'refused for the test'; END IF;
+         RETURN NEW; END; $$ LANGUAGE plpgsql`,
+    );
+    await client.$executeRawUnsafe(
+      `CREATE TRIGGER cr4_fail_save BEFORE INSERT ON transactions
+         FOR EACH ROW EXECUTE FUNCTION cr4_fail_save()`,
+    );
+    transactionsSync.mockResolvedValueOnce(posts("posted-bad", 9.99));
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    try {
+      const r = await syncItem(itemId, { client, api, now: NOW }).then(
+        (v) => v,
+        (e) => e,
+      );
+      expect(r).toBeInstanceOf(Error);
+    } finally {
+      await client.$executeRawUnsafe(`DROP TRIGGER cr4_fail_save ON transactions`);
+      await client.$executeRawUnsafe(`DROP FUNCTION cr4_fail_save()`);
+    }
+    expect((await transactions()).map((t) => t.plaidTransactionId)).toContain(`${suffix}-p2`);
+
+    transactionsSync.mockResolvedValueOnce(posts("posted-good", 9.99));
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    await syncItem(itemId, { client, api, now: NOW });
+    expect(
+      await client.transaction.findFirstOrThrow({
+        where: { plaidTransactionId: `${suffix}-posted-good` },
+      }),
+    ).toMatchObject({ pfcPrimary: "ENTERTAINMENT", categorySource: "user" });
+    expect((await transactions()).map((t) => t.plaidTransactionId)).not.toContain(`${suffix}-p2`);
+  });
+
+  it("moves the cursor on when an optional read fails with a 502 and no Plaid code", async () => {
+    const acc = `${suffix}-acc`;
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({ accounts: [plaidAccount({ account_id: acc })], next_cursor: "cursor-502" }),
+    );
+    transactionsRecurringGet.mockRejectedValueOnce(
+      Object.assign(new Error("Bad gateway"), { response: { status: 502, data: "<html>" } }),
+    );
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await syncItem(itemId, { client, api, now: NOW });
+    expect(result.recurring).toBe("unavailable");
+    expect(
+      (await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).transactionsCursor,
+    ).toBe("cursor-502");
+  });
 });

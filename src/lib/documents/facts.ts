@@ -63,7 +63,7 @@ export const KIND_FIELDS: Record<DocumentKind, (keyof DocumentFacts)[]> = {
 };
 
 export function isDocumentKind(value: unknown): value is DocumentKind {
-  return typeof value === "string" && value in DOCUMENT_KINDS;
+  return typeof value === "string" && Object.hasOwn(DOCUMENT_KINDS, value);
 }
 
 // What the person or Claude wrote for each fact, as text. Blank means not known.
@@ -113,7 +113,7 @@ function parseChoice<T extends string>(
 ): Parsed<T | null> {
   const text = (raw ?? "").trim();
   if (!text) return { value: null };
-  return text in choices ? { value: text as T } : { error: "Pick one from the list." };
+  return Object.hasOwn(choices, text) ? { value: text as T } : { error: "Pick one from the list." };
 }
 
 const PARSERS: {
