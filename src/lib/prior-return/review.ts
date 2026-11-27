@@ -56,7 +56,8 @@ export async function loadReturnReviews(
     (r) => r.year !== null,
   );
   const db = scopedFor(userId, client);
-  const { kind: residency } = await loadToldResidency(userId, { client });
+  // Read once, and only when a return of a year with figures needs it.
+  let residency: Awaited<ReturnType<typeof loadToldResidency>>["kind"] | undefined;
   const reviews: ReturnReview[] = [];
   const noParams: { returnId: string; year: number; text: string }[] = [];
   for (const r of confirmed) {
@@ -68,6 +69,7 @@ export async function loadReturnReviews(
       noParams.push({ returnId: r.id, year, text: noParamsText(year) });
       continue;
     }
+    residency ??= (await loadToldResidency(userId, { client })).kind;
     const [estimate, tags, docs, amendment, family] = await Promise.all([
       loadTaxEstimate(userId, { client, now, year }),
       loadTaxTags(userId, year, { client }),

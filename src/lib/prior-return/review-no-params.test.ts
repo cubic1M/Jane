@@ -19,6 +19,9 @@ vi.mock("@/lib/prior-return", () => ({
   ],
 }));
 vi.mock("@/lib/tax-estimate", () => ({ loadTaxEstimate }));
+vi.mock("@/lib/tax-residency", () => ({
+  loadToldResidency: async () => ({ allowed: true, kind: "resident" }),
+}));
 vi.mock("@/lib/tax-organizer", () => ({
   loadTaxTags: async () => ({ tagged: [], totals: { childcare: { totalCents: 0 } } }),
 }));
