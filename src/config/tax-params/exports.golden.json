@@ -1,0 +1,1154 @@
+{
+ "tax-rates": {
+  "ADDITIONAL_MEDICARE": {
+   "rate": 0.009,
+   "threshold": {
+    "single": 20000000,
+    "married_joint": 25000000,
+    "married_separate": 12500000,
+    "head_of_household": 20000000
+   }
+  },
+  "ADDITIONAL_STANDARD_65": {
+   "unmarried": 205000,
+   "married": 165000
+  },
+  "CAPITAL_GAINS_BRACKETS": {
+   "single": [
+    {
+     "over": 0,
+     "rate": 0
+    },
+    {
+     "over": 4945000,
+     "rate": 0.15
+    },
+    {
+     "over": 54550000,
+     "rate": 0.2
+    }
+   ],
+   "married_joint": [
+    {
+     "over": 0,
+     "rate": 0
+    },
+    {
+     "over": 9890000,
+     "rate": 0.15
+    },
+    {
+     "over": 61370000,
+     "rate": 0.2
+    }
+   ],
+   "married_separate": [
+    {
+     "over": 0,
+     "rate": 0
+    },
+    {
+     "over": 4945000,
+     "rate": 0.15
+    },
+    {
+     "over": 30685000,
+     "rate": 0.2
+    }
+   ],
+   "head_of_household": [
+    {
+     "over": 0,
+     "rate": 0
+    },
+    {
+     "over": 6620000,
+     "rate": 0.15
+    },
+    {
+     "over": 57960000,
+     "rate": 0.2
+    }
+   ]
+  },
+  "CAPITAL_LOSS_LIMIT": {
+   "normal": 300000,
+   "marriedSeparate": 150000
+  },
+  "CHILD_TAX_CREDIT": {
+   "perChild": 220000,
+   "refundablePerChild": 170000,
+   "earnedIncomeFloor": 250000,
+   "refundableRate": 0.15,
+   "otherDependant": 50000,
+   "phaseOutStep": 100000,
+   "phaseOutPerStep": 5000,
+   "phaseOutFrom": {
+    "single": 20000000,
+    "married_joint": 40000000,
+    "married_separate": 20000000,
+    "head_of_household": 20000000
+   }
+  },
+  "CONTRIBUTION_LIMITS": {
+   "workplace": 2450000,
+   "workplaceCatchUp50": 800000,
+   "workplaceCatchUp60to63": 1125000,
+   "ira": 750000,
+   "iraCatchUp50": 110000,
+   "hsaSelf": 440000,
+   "hsaFamily": 875000,
+   "hsaCatchUp55": 100000,
+   "healthFsa": 340000,
+   "dependentCareFsa": 750000,
+   "dependentCareFsaMarriedSeparate": 375000
+  },
+  "DEPENDENT_CARE_CREDIT": {
+   "costLimit": [
+    300000,
+    600000
+   ],
+   "topShare": 0.5,
+   "middleShare": 0.35,
+   "bottomShare": 0.2,
+   "firstStepFrom": 1500000,
+   "secondStepFrom": {
+    "normal": 7500000,
+    "marriedJoint": 15000000
+   },
+   "stepSize": {
+    "normal": 200000,
+    "marriedJoint": 400000
+   }
+  },
+  "EDUCATION_CREDITS": {
+   "aotcMax": 250000,
+   "llcRate": 0.2,
+   "llcCostLimit": 1000000,
+   "phaseOut": {
+    "single": [
+     8000000,
+     9000000
+    ],
+    "married_joint": [
+     16000000,
+     18000000
+    ]
+   }
+  },
+  "EITC": {
+   "maxCredit": [
+    66400,
+    442700,
+    731600,
+    823100
+   ],
+   "phaseInRate": [
+    0.0765,
+    0.34,
+    0.4,
+    0.45
+   ],
+   "phaseOutRate": [
+    0.0765,
+    0.1598,
+    0.2106,
+    0.2106
+   ],
+   "phaseOutFrom": {
+    "single": [
+     1086000,
+     2389000,
+     2389000,
+     2389000
+    ],
+    "married_joint": [
+     1814000,
+     3116000,
+     3116000,
+     3116000
+    ]
+   },
+   "investmentIncomeLimit": 1220000,
+   "childlessMinAge": 25,
+   "childlessMaxAge": 64
+  },
+  "ENERGY_CREDITS_2025": {
+   "rate": 0.3,
+   "improvementCap": 120000,
+   "heatPumpCap": 200000
+  },
+  "ENERGY_CREDITS_END": {
+   "home": "2025-12-31",
+   "vehicle": "2025-09-30"
+  },
+  "FEDERAL_BRACKETS": {
+   "single": [
+    {
+     "over": 0,
+     "rate": 0.1
+    },
+    {
+     "over": 1240000,
+     "rate": 0.12
+    },
+    {
+     "over": 5040000,
+     "rate": 0.22
+    },
+    {
+     "over": 10570000,
+     "rate": 0.24
+    },
+    {
+     "over": 20177500,
+     "rate": 0.32
+    },
+    {
+     "over": 25622500,
+     "rate": 0.35
+    },
+    {
+     "over": 64060000,
+     "rate": 0.37
+    }
+   ],
+   "married_joint": [
+    {
+     "over": 0,
+     "rate": 0.1
+    },
+    {
+     "over": 2480000,
+     "rate": 0.12
+    },
+    {
+     "over": 10080000,
+     "rate": 0.22
+    },
+    {
+     "over": 21140000,
+     "rate": 0.24
+    },
+    {
+     "over": 40355000,
+     "rate": 0.32
+    },
+    {
+     "over": 51245000,
+     "rate": 0.35
+    },
+    {
+     "over": 76870000,
+     "rate": 0.37
+    }
+   ],
+   "married_separate": [
+    {
+     "over": 0,
+     "rate": 0.1
+    },
+    {
+     "over": 1240000,
+     "rate": 0.12
+    },
+    {
+     "over": 5040000,
+     "rate": 0.22
+    },
+    {
+     "over": 10570000,
+     "rate": 0.24
+    },
+    {
+     "over": 20177500,
+     "rate": 0.32
+    },
+    {
+     "over": 25622500,
+     "rate": 0.35
+    },
+    {
+     "over": 38435000,
+     "rate": 0.37
+    }
+   ],
+   "head_of_household": [
+    {
+     "over": 0,
+     "rate": 0.1
+    },
+    {
+     "over": 1770000,
+     "rate": 0.12
+    },
+    {
+     "over": 6745000,
+     "rate": 0.22
+    },
+    {
+     "over": 10570000,
+     "rate": 0.24
+    },
+    {
+     "over": 20175000,
+     "rate": 0.32
+    },
+    {
+     "over": 25620000,
+     "rate": 0.35
+    },
+    {
+     "over": 64060000,
+     "rate": 0.37
+    }
+   ]
+  },
+  "HOME_OFFICE_SIMPLIFIED": {
+   "perSquareFoot": 500,
+   "maxSquareFeet": 300
+  },
+  "ITEMIZED": {
+   "saltCap": {
+    "normal": 4040000,
+    "marriedSeparate": 2020000
+   },
+   "saltPhaseDownFrom": {
+    "normal": 50500000,
+    "marriedSeparate": 25250000
+   },
+   "saltPhaseDownRate": 0.3,
+   "saltFloor": {
+    "normal": 1000000,
+    "marriedSeparate": 500000
+   },
+   "charityFloorShare": 0.005,
+   "medicalFloorShare": 0.075,
+   "nonItemizerCharity": {
+    "normal": 100000,
+    "marriedJoint": 200000
+   }
+  },
+  "LONG_TERM_DAYS": 365,
+  "MILEAGE_RATE_CENTS": 72.5,
+  "MILEAGE_RATE_NOTE": "Every mile is counted at one rate; if the IRS changes its rate partway through the year, miles after the change are worth a little more than this shows.",
+  "NET_INVESTMENT_INCOME_TAX": {
+   "rate": 0.038,
+   "threshold": {
+    "single": 20000000,
+    "married_joint": 25000000,
+    "married_separate": 12500000,
+    "head_of_household": 20000000
+   }
+  },
+  "OBBBA_DEDUCTIONS": {
+   "firstYear": 2025,
+   "lastYear": 2028,
+   "tips": {
+    "max": {
+     "normal": 2500000,
+     "marriedJoint": 2500000
+    },
+    "phaseOutFrom": {
+     "normal": 15000000,
+     "marriedJoint": 30000000
+    },
+    "cutPerStep": 10000,
+    "joint": true,
+    "rule": "26 USC 224 (qualified tips)"
+   },
+   "overtime": {
+    "max": {
+     "normal": 1250000,
+     "marriedJoint": 2500000
+    },
+    "phaseOutFrom": {
+     "normal": 15000000,
+     "marriedJoint": 30000000
+    },
+    "cutPerStep": 10000,
+    "joint": true,
+    "rule": "26 USC 225 (qualified overtime: the FLSA premium only)"
+   },
+   "carLoanInterest": {
+    "max": {
+     "normal": 1000000,
+     "marriedJoint": 1000000
+    },
+    "phaseOutFrom": {
+     "normal": 10000000,
+     "marriedJoint": 20000000
+    },
+    "cutPerStep": 20000,
+    "joint": false,
+    "rule": "26 USC 163(h)(4) (new US-assembled car, loan after 2024, VIN on the return)"
+   },
+   "step": 100000,
+   "senior": {
+    "perPerson": 600000,
+    "minAge": 65,
+    "phaseOutFrom": {
+     "normal": 7500000,
+     "marriedJoint": 15000000
+    },
+    "phaseOutRate": 0.06,
+    "rule": "26 USC 151(d)(5)(C) (age 65 or older)"
+   }
+  },
+  "PAYROLL_TAX": {
+   "socialSecurityRate": 0.062,
+   "medicareRate": 0.0145
+  },
+  "QBI": {
+   "rate": 0.2,
+   "threshold": {
+    "single": 20175000,
+    "married_joint": 40350000,
+    "married_separate": 20177500,
+    "head_of_household": 20175000
+   }
+  },
+  "ROTH_CATCH_UP": {
+   "priorYearFicaWagesOver": 15000000,
+   "requiredFrom": 2027,
+   "rule": "26 USC 414(v)(7); T.D. 10033"
+  },
+  "SAVERS_CREDIT": {
+   "taxYear": 2026,
+   "agiLimit": {
+    "single": 4025000,
+    "married_separate": 4025000,
+    "head_of_household": 6037500,
+    "married_joint": 8050000
+   },
+   "maxContribution": 200000,
+   "lowestRate": 0.1,
+   "iraDeadline": "2027-04-15",
+   "rule": "26 USC 25B; IRS Form 8880"
+  },
+  "SAVERS_MATCH": {
+   "firstYear": 2027,
+   "shownFrom": "2026-08-07",
+   "shownUntil": "2027-12-31",
+   "rate": 0.5,
+   "maxContribution": 200000,
+   "phaseOut": {
+    "single": [
+     2050000,
+     3550000
+    ],
+    "married_separate": [
+     2050000,
+     3550000
+    ],
+    "head_of_household": [
+     3075000,
+     5325000
+    ],
+    "married_joint": [
+     4100000,
+     7100000
+    ]
+   },
+   "rule": "IRS Notice 2026-48 (proposed)"
+  },
+  "SELF_EMPLOYMENT_TAX": {
+   "netEarningsShare": 0.9235,
+   "socialSecurityRate": 0.124,
+   "medicareRate": 0.029,
+   "wageBase": 18450000,
+   "minimumNetEarnings": 40000
+  },
+  "STANDARD_DEDUCTION": {
+   "single": 1610000,
+   "married_joint": 3220000,
+   "married_separate": 1610000,
+   "head_of_household": 2415000
+  },
+  "STATE_TAX": {
+   "AK": {
+    "kind": "none",
+    "source": "Alaska has no income tax."
+   },
+   "FL": {
+    "kind": "none",
+    "source": "Florida has no income tax."
+   },
+   "NV": {
+    "kind": "none",
+    "source": "Nevada has no income tax."
+   },
+   "NH": {
+    "kind": "none",
+    "source": "New Hampshire doesn't tax wages (its interest and dividends tax ended in 2025)."
+   },
+   "SD": {
+    "kind": "none",
+    "source": "South Dakota has no income tax."
+   },
+   "TN": {
+    "kind": "none",
+    "source": "Tennessee has no income tax."
+   },
+   "TX": {
+    "kind": "none",
+    "source": "Texas has no income tax."
+   },
+   "WA": {
+    "kind": "none",
+    "source": "Washington doesn't tax wages (it taxes some capital gains)."
+   },
+   "WY": {
+    "kind": "none",
+    "source": "Wyoming has no income tax."
+   },
+   "AZ": {
+    "kind": "flat",
+    "rate": 0.025,
+    "deduction": 0,
+    "source": "Arizona flat rate, 2.5%."
+   },
+   "CO": {
+    "kind": "flat",
+    "rate": 0.044,
+    "deduction": 0,
+    "source": "Colorado flat rate, 4.4%.",
+    "estimate": true
+   },
+   "GA": {
+    "kind": "flat",
+    "rate": 0.0519,
+    "deduction": 0,
+    "source": "Georgia flat rate, 5.19% for 2025; 2026 may be lower.",
+    "estimate": true
+   },
+   "ID": {
+    "kind": "flat",
+    "rate": 0.053,
+    "deduction": 0,
+    "source": "Idaho flat rate, 5.3%.",
+    "estimate": true
+   },
+   "IL": {
+    "kind": "flat",
+    "rate": 0.0495,
+    "deduction": 0,
+    "source": "Illinois flat rate, 4.95%."
+   },
+   "IN": {
+    "kind": "flat",
+    "rate": 0.0295,
+    "deduction": 0,
+    "source": "Indiana flat rate, 2.95% for 2026 (county taxes not included)."
+   },
+   "IA": {
+    "kind": "flat",
+    "rate": 0.038,
+    "deduction": 0,
+    "source": "Iowa flat rate, 3.8%."
+   },
+   "KY": {
+    "kind": "flat",
+    "rate": 0.035,
+    "deduction": 0,
+    "source": "Kentucky flat rate, 3.5% for 2026."
+   },
+   "LA": {
+    "kind": "flat",
+    "rate": 0.03,
+    "deduction": 0,
+    "source": "Louisiana flat rate, 3%."
+   },
+   "MA": {
+    "kind": "flat",
+    "rate": 0.05,
+    "deduction": 0,
+    "source": "Massachusetts 5% (plus 4% on income over about $1 million)."
+   },
+   "MI": {
+    "kind": "flat",
+    "rate": 0.0425,
+    "deduction": 0,
+    "source": "Michigan flat rate, 4.25% (city taxes not included)."
+   },
+   "MS": {
+    "kind": "flat",
+    "rate": 0.04,
+    "deduction": 1000000,
+    "source": "Mississippi 4% for 2026 on income over $10,000 (its own standard deduction and exemptions aren't counted).",
+    "estimate": true
+   },
+   "NC": {
+    "kind": "flat",
+    "rate": 0.0399,
+    "deduction": 0,
+    "source": "North Carolina flat rate, 3.99% for 2026."
+   },
+   "PA": {
+    "kind": "flat",
+    "rate": 0.0307,
+    "deduction": 0,
+    "source": "Pennsylvania flat rate, 3.07% (local taxes not included)."
+   },
+   "UT": {
+    "kind": "flat",
+    "rate": 0.045,
+    "deduction": 0,
+    "source": "Utah flat rate, 4.5%.",
+    "estimate": true
+   },
+   "CA": {
+    "kind": "brackets",
+    "brackets": {
+     "single": [
+      {
+       "over": 0,
+       "rate": 0.01
+      },
+      {
+       "over": 1107900,
+       "rate": 0.02
+      },
+      {
+       "over": 2626400,
+       "rate": 0.04
+      },
+      {
+       "over": 4145200,
+       "rate": 0.06
+      },
+      {
+       "over": 5754200,
+       "rate": 0.08
+      },
+      {
+       "over": 7272400,
+       "rate": 0.093
+      },
+      {
+       "over": 37147900,
+       "rate": 0.103
+      },
+      {
+       "over": 44577100,
+       "rate": 0.113
+      },
+      {
+       "over": 74295300,
+       "rate": 0.123
+      },
+      {
+       "over": 100000000,
+       "rate": 0.133
+      }
+     ],
+     "married_separate": [
+      {
+       "over": 0,
+       "rate": 0.01
+      },
+      {
+       "over": 1107900,
+       "rate": 0.02
+      },
+      {
+       "over": 2626400,
+       "rate": 0.04
+      },
+      {
+       "over": 4145200,
+       "rate": 0.06
+      },
+      {
+       "over": 5754200,
+       "rate": 0.08
+      },
+      {
+       "over": 7272400,
+       "rate": 0.093
+      },
+      {
+       "over": 37147900,
+       "rate": 0.103
+      },
+      {
+       "over": 44577100,
+       "rate": 0.113
+      },
+      {
+       "over": 74295300,
+       "rate": 0.123
+      },
+      {
+       "over": 100000000,
+       "rate": 0.133
+      }
+     ],
+     "married_joint": [
+      {
+       "over": 0,
+       "rate": 0.01
+      },
+      {
+       "over": 2215800,
+       "rate": 0.02
+      },
+      {
+       "over": 5252800,
+       "rate": 0.04
+      },
+      {
+       "over": 8290400,
+       "rate": 0.06
+      },
+      {
+       "over": 11508400,
+       "rate": 0.08
+      },
+      {
+       "over": 14544800,
+       "rate": 0.093
+      },
+      {
+       "over": 74295800,
+       "rate": 0.103
+      },
+      {
+       "over": 89154200,
+       "rate": 0.113
+      },
+      {
+       "over": 100000000,
+       "rate": 0.123
+      },
+      {
+       "over": 148590600,
+       "rate": 0.133
+      }
+     ],
+     "head_of_household": [
+      {
+       "over": 0,
+       "rate": 0.01
+      },
+      {
+       "over": 2217300,
+       "rate": 0.02
+      },
+      {
+       "over": 5253000,
+       "rate": 0.04
+      },
+      {
+       "over": 6771600,
+       "rate": 0.06
+      },
+      {
+       "over": 8380500,
+       "rate": 0.08
+      },
+      {
+       "over": 9899000,
+       "rate": 0.093
+      },
+      {
+       "over": 50520800,
+       "rate": 0.103
+      },
+      {
+       "over": 60625100,
+       "rate": 0.113
+      },
+      {
+       "over": 100000000,
+       "rate": 0.123
+      },
+      {
+       "over": 101041700,
+       "rate": 0.133
+      }
+     ]
+    },
+    "deduction": {
+     "single": 570600,
+     "married_separate": 570600,
+     "married_joint": 1141200,
+     "head_of_household": 1141200
+    },
+    "personalCredit": {
+     "single": 15300,
+     "married_separate": 15300,
+     "married_joint": 30600,
+     "head_of_household": 15300
+    },
+    "dependantCredit": 47500,
+    "source": "California Franchise Tax Board, 2025 figures (2026 not yet confirmed).",
+    "estimate": true
+   },
+   "NY": {
+    "kind": "brackets",
+    "brackets": {
+     "single": [
+      {
+       "over": 0,
+       "rate": 0.04
+      },
+      {
+       "over": 850000,
+       "rate": 0.045
+      },
+      {
+       "over": 1170000,
+       "rate": 0.0525
+      },
+      {
+       "over": 1390000,
+       "rate": 0.055
+      },
+      {
+       "over": 8065000,
+       "rate": 0.06
+      },
+      {
+       "over": 21540000,
+       "rate": 0.0685
+      },
+      {
+       "over": 107755000,
+       "rate": 0.0965
+      },
+      {
+       "over": 500000000,
+       "rate": 0.103
+      },
+      {
+       "over": 2500000000,
+       "rate": 0.109
+      }
+     ],
+     "married_separate": [
+      {
+       "over": 0,
+       "rate": 0.04
+      },
+      {
+       "over": 850000,
+       "rate": 0.045
+      },
+      {
+       "over": 1170000,
+       "rate": 0.0525
+      },
+      {
+       "over": 1390000,
+       "rate": 0.055
+      },
+      {
+       "over": 8065000,
+       "rate": 0.06
+      },
+      {
+       "over": 21540000,
+       "rate": 0.0685
+      },
+      {
+       "over": 107755000,
+       "rate": 0.0965
+      },
+      {
+       "over": 500000000,
+       "rate": 0.103
+      },
+      {
+       "over": 2500000000,
+       "rate": 0.109
+      }
+     ],
+     "married_joint": [
+      {
+       "over": 0,
+       "rate": 0.04
+      },
+      {
+       "over": 1715000,
+       "rate": 0.045
+      },
+      {
+       "over": 2360000,
+       "rate": 0.0525
+      },
+      {
+       "over": 2790000,
+       "rate": 0.055
+      },
+      {
+       "over": 16155000,
+       "rate": 0.06
+      },
+      {
+       "over": 32320000,
+       "rate": 0.0685
+      },
+      {
+       "over": 215535000,
+       "rate": 0.0965
+      },
+      {
+       "over": 500000000,
+       "rate": 0.103
+      },
+      {
+       "over": 2500000000,
+       "rate": 0.109
+      }
+     ],
+     "head_of_household": [
+      {
+       "over": 0,
+       "rate": 0.04
+      },
+      {
+       "over": 850000,
+       "rate": 0.045
+      },
+      {
+       "over": 1170000,
+       "rate": 0.0525
+      },
+      {
+       "over": 1390000,
+       "rate": 0.055
+      },
+      {
+       "over": 8065000,
+       "rate": 0.06
+      },
+      {
+       "over": 21540000,
+       "rate": 0.0685
+      },
+      {
+       "over": 107755000,
+       "rate": 0.0965
+      },
+      {
+       "over": 500000000,
+       "rate": 0.103
+      },
+      {
+       "over": 2500000000,
+       "rate": 0.109
+      }
+     ]
+    },
+    "deduction": {
+     "single": 800000,
+     "married_separate": 800000,
+     "married_joint": 1605000,
+     "head_of_household": 1120000
+    },
+    "personalCredit": {
+     "single": 0,
+     "married_separate": 0,
+     "married_joint": 0,
+     "head_of_household": 0
+    },
+    "dependantCredit": 0,
+    "source": "New York State Department of Taxation and Finance, 2025 figures (city taxes not included; head of household is worked out on the single schedule, which can be a little high).",
+    "estimate": true
+   },
+   "AL": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "AR": {
+    "kind": "approximate",
+    "rate": 0.035,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "CT": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "DE": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "DC": {
+    "kind": "approximate",
+    "rate": 0.06,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "HI": {
+    "kind": "approximate",
+    "rate": 0.065,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "KS": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "ME": {
+    "kind": "approximate",
+    "rate": 0.06,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "MD": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "MN": {
+    "kind": "approximate",
+    "rate": 0.06,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "MO": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "MT": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "NE": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "NJ": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "NM": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "ND": {
+    "kind": "approximate",
+    "rate": 0.015,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "OH": {
+    "kind": "approximate",
+    "rate": 0.03,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "OK": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "OR": {
+    "kind": "approximate",
+    "rate": 0.08,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "RI": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "SC": {
+    "kind": "approximate",
+    "rate": 0.06,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "VT": {
+    "kind": "approximate",
+    "rate": 0.06,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "VA": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "WV": {
+    "kind": "approximate",
+    "rate": 0.045,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   },
+   "WI": {
+    "kind": "approximate",
+    "rate": 0.05,
+    "source": "A rough average rate; this state's own brackets aren't in Jane yet."
+   }
+  },
+  "STUDENT_LOAN_INTEREST": {
+   "max": 250000,
+   "phaseOut": {
+    "single": [
+     8500000,
+     10000000
+    ],
+    "married_joint": [
+     17500000,
+     20500000
+    ],
+    "married_separate": null,
+    "head_of_household": [
+     8500000,
+     10000000
+    ]
+   }
+  },
+  "TAX_RATES_YEAR": 2026,
+  "WASH_SALE_DAYS": 30
+ },
+ "equity-tax": {
+  "AMT": {
+   "exemption": {
+    "single": 9010000,
+    "married_joint": 14020000,
+    "married_separate": 7010000,
+    "head_of_household": 9010000
+   },
+   "phaseOutStart": {
+    "single": 50000000,
+    "married_joint": 100000000,
+    "married_separate": 50000000,
+    "head_of_household": 50000000
+   },
+   "phaseOutRate": 0.25,
+   "lowRate": 0.26,
+   "highRate": 0.28,
+   "highRateFrom": {
+    "single": 24450000,
+    "married_joint": 24450000,
+    "married_separate": 12225000,
+    "head_of_household": 24450000
+   }
+  },
+  "CRYPTO_TAX": {
+   "longTermDays": 365
+  },
+  "EQUITY_EVENT_KINDS": {
+   "rsu": "RSUs vested",
+   "espp": "ESPP shares sold",
+   "iso": "ISOs exercised"
+  },
+  "EQUITY_SET_ASIDE_MIN_CENTS": 20000,
+  "ESPP_RULES": {
+   "yearsAfterGrant": 2,
+   "yearsAfterPurchase": 1
+  },
+  "ISO_RULES": {
+   "yearsAfterGrant": 2,
+   "yearsAfterExercise": 1
+  },
+  "RSU_WITHHOLDING": {
+   "flatRate": 0.22,
+   "highRate": 0.37,
+   "highFromCents": 100000000
+  }
+ }
+}
