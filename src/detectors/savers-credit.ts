@@ -1,5 +1,5 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { isFilingStatus, type FilingStatus } from "@/config/tax";
+import { filingStatusWithEarners } from "@/planning/student-tax";
 import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
 import { federalParams } from "@/config/tax-params";
 import { SAVERS_CREDIT, SAVERS_MATCH } from "@/config/tax-rates";
@@ -14,16 +14,9 @@ import { dayLabel } from "@/lib/day-label";
 // workplace-plan money put in for 2026. Facts and the deadline only: whether to save, and where,
 // is the person's. Pure; see ./contract.ts.
 
-// Before they say how they file: a couple, or a family with two earners, files jointly; one
-// earner with children is a head of household (debugger 11-06: a single parent was measured
-// against the joint limit and told "$2,000 each").
-const statusOf = (filing: unknown, household: unknown, earners: unknown): FilingStatus => {
-  if (isFilingStatus(filing)) return filing;
-  if (household === "couple") return "married_joint";
-  if (household === "family")
-    return typeof earners === "number" && earners >= 2 ? "married_joint" : "head_of_household";
-  return "single";
-};
+// How they file is read as everywhere else (filingStatusOf, src/planning/student-tax.ts, which goes
+// through filingStatusFor): what they said, else a couple, or a family with two earners, files
+// jointly and one earner with children is a head of household (debugger 11-06).
 
 // The year's income as every income-tested card reads it (yearIncomeOf), so "income near" is one
 // figure (debug 2, upload S6, 11-19).
@@ -47,7 +40,7 @@ const saversCredit: Detector = {
     if (facts.debt_trouble.value === true) return null;
     const agi = agiOf(input, SAVERS_CREDIT.taxYear);
     if (agi <= 0) return null;
-    const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
+    const status = filingStatusWithEarners(facts);
     const limit = SAVERS_CREDIT.agiLimit[status];
     if (agi > limit) return null;
     const people = status === "married_joint" ? 2 : 1;
@@ -103,7 +96,7 @@ const saversMatch: Detector = {
     if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     const agi = agiOf(input);
     if (agi <= 0) return null;
-    const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
+    const status = filingStatusWithEarners(facts);
     const [from, to] = SAVERS_MATCH.phaseOut[status];
     if (agi >= to) return null;
     const people = status === "married_joint" ? 2 : 1;

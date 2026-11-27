@@ -1,6 +1,6 @@
 import { DAY_MS } from "@/lib/dates";
 import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-taxes";
-import { isFilingStatus, type FilingStatus } from "@/config/tax";
+import type { FilingStatus } from "@/config/tax";
 import { federalParams, lawYearFor } from "@/config/tax-params";
 import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
@@ -10,19 +10,28 @@ import { monthsBetweenLines } from "@/detection/units";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
 import { marginalRateOf } from "./tax-estimate";
+import { filingStatusFor } from "./tax-profile";
 
 // The arithmetic the student tax cards share (suggest-taxes, 11-18), from the published rules in
 // src/config/student-taxes.ts and ./tax-rates.ts. Pure.
 
 type Facts = Record<string, { value: unknown }>;
 
-// How they file: what they said, else a couple files jointly and anyone else alone. A student's
-// household is nearly always just them.
+// How they file, as every reader reads it (filingStatusFor): what they said (the loader has
+// already settled the question card against the tax profile), else the household's signs.
 export function filingStatusOf(facts: Facts): FilingStatus {
-  const said = facts.filing_status?.value;
-  if (isFilingStatus(said)) return said;
-  const household = facts.household?.value;
-  return household === "couple" || household === "family" ? "married_joint" : "single";
+  return filingStatusFor(facts, null, { household: facts.household?.value }).status;
+}
+
+// The same, for a card that knows how many people in the household earn: one earner with
+// children is a head of household (the Saver's Credit; debugger 11-06).
+export function filingStatusWithEarners(facts: Facts): FilingStatus {
+  // An earner count that is not known reads as one earner, as the Saver's Credit has always read it.
+  const earners = facts.earners?.value;
+  return filingStatusFor(facts, null, {
+    household: facts.household?.value,
+    earners: typeof earners === "number" ? earners : 1,
+  }).status;
 }
 
 // What they said about being someone's dependent: "yes", "no", or null for not said or not sure.
