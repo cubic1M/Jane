@@ -376,7 +376,7 @@ export const US_2025: FederalParams = {
       where:
         "Notice 2024-80: $145,000 on 2024 wages (2025 catch-ups); Notice 2025-67: $150,000 on 2025 wages (2026 catch-ups); Notice 2026-66: $155,000 on 2026 wages (2027 catch-ups)",
       verify:
-        "The thresholds were read in the three notices. The first year the Roth requirement bites (requiredFrom 2027) is T.D. 10033's applicability date and was not re-read in T3; nothing in the app reads this yet.",
+        "The thresholds were read in the three notices. requiredFrom (2027) is the final regulations' applicability date (T.D. 10033), the same meaning as in the 2026 file, not necessarily the first year the statute applies (2026, with a good-faith reading allowed); it was not re-read in T3, and nothing in the app reads this yet.",
     },
   ),
   studentLoanInterest: cited(
