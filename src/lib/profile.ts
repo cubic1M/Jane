@@ -284,14 +284,16 @@ async function loadProfileInputFrom(
     }
   }
 
-  // The settled answer comes last: it is the told fact or the profile row, whichever is newer.
-  if (filingSaid) told.filing_status = filingSaid;
-
   // Everything a sample person has is the demo bank's: a made-up US citizen, so the credits that
   // are for residents only (src/planning/tax-engine/residency-gate.ts) show on their pages. Not
   // stored (the demo bank leaves no trace), and anything they answer wins.
-  if (told.tax_residency === undefined && (await onlyDemoBank(userId, client)))
-    told.tax_residency = "citizen";
+  const sample = await onlyDemoBank(userId, client);
+  if (told.tax_residency === undefined && sample) told.tax_residency = "citizen";
+
+  // The settled answer comes last: it is the told fact or the profile row, whichever is newer. A
+  // sample person's seeded profile row is not an answer the card has heard: the demo still asks
+  // them how they file (src/config/people.ts firstQuestion), until they say.
+  if (filingSaid && (filing.read.source === "told" || !sample)) told.filing_status = filingSaid;
 
   const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
   return {
@@ -628,14 +630,16 @@ export async function clearCorrection(
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
     select: { id: true, value: true },
   });
-  const gone = row ? await deletePreference(userId, row.id, { client }) : false;
   // Taking back how they file takes back the tax profile's copy of it too, so Jane goes back to
-  // what it sees and not to the answer they just took back (src/lib/filing-status.ts).
-  if (gone && key === "filing_status") {
-    await unmirrorFilingFromProfile(userId, (row?.value as { value?: unknown } | null)?.value, {
+  // what it sees and not to the answer they just took back (src/lib/filing-status.ts). The copy
+  // goes first: if the delete then fails the told answer is still there and still wins, and
+  // taking it back again finishes the job.
+  if (row && key === "filing_status") {
+    await unmirrorFilingFromProfile(userId, (row.value as { value?: unknown } | null)?.value, {
       client,
     });
   }
+  const gone = row ? await deletePreference(userId, row.id, { client }) : false;
   if (gone) await markPrimerStale(userId, { client });
   return gone;
 }

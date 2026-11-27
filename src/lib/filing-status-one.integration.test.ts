@@ -54,6 +54,7 @@ describe.runIf(url)("one filing status", { timeout: 300_000 }, () => {
     });
     await client.userFact.deleteMany({ where: { userId: id, key: "filing_status" } });
     await client.taxProfile.deleteMany({ where: { userId: id } });
+    await client.auditLog.deleteMany({ where: { targetId: id } });
   });
 
   // Every place a person can see how they file, read for them now.
@@ -161,10 +162,23 @@ describe.runIf(url)("one filing status", { timeout: 300_000 }, () => {
           createdAt,
         },
       });
-    const oldProfile = (filingStatus: FilingStatus, updatedAt: Date) =>
-      client.taxProfile.create({
-        data: { userId: id, filingStatus, answered: ["filingStatus"], updatedAt },
+    // The profile form's save, as it was logged then: the row and the audit entry that names it.
+    const oldProfile = async (filingStatus: FilingStatus, at: Date) => {
+      await client.taxProfile.create({
+        data: { userId: id, filingStatus, answered: ["filingStatus"], updatedAt: at },
       });
+      await client.auditLog.create({
+        data: {
+          actorType: "user",
+          actorId: id,
+          event: "tax_profile_changed",
+          targetType: "user",
+          targetId: id,
+          metadata: { fields: "filingStatus", via: "page" },
+          createdAt: at,
+        },
+      });
+    };
 
     it("the newer answer is read by the page, the chat, the estimate and the detectors", async () => {
       // The profile form said married filing jointly after the card said single.
@@ -193,6 +207,40 @@ describe.runIf(url)("one filing status", { timeout: 300_000 }, () => {
       await oldTold("single", at);
       await oldProfile("married_joint", at);
       allSay(await everywhere(), "single");
+    });
+
+    it("a profile row with no save on record, changed later for something else, does not outrank the card", async () => {
+      // A row from before saves were logged (or a seeded one): its updated_at moves with the state.
+      await oldTold("single", new Date("2026-10-01T12:00:00Z"));
+      await client.taxProfile.create({
+        data: {
+          userId: id,
+          filingStatus: "married_joint",
+          state: "CA",
+          answered: ["filingStatus", "state"],
+          updatedAt: new Date("2026-11-01T12:00:00Z"),
+        },
+      });
+      allSay(await everywhere(), "single");
+    });
+
+    it("a card answer from before times were kept is dated by its own save, not by memory's other answer", async () => {
+      await oldTold("single", new Date("2026-09-01T12:00:00Z"));
+      await client.userFact.create({
+        data: {
+          userId: id,
+          key: "filing_status",
+          value: { value: "married_joint" },
+          label: "How you file taxes: married joint",
+          source: "answer",
+          confidence: 100,
+          firstSeen: new Date("2026-11-01T12:00:00Z"),
+          lastConfirmed: new Date("2026-11-01T12:00:00Z"),
+        },
+      });
+      // The profile form's answer sits between the two dates, and is newer than the card's.
+      await oldProfile("head_of_household", new Date("2026-10-01T12:00:00Z"));
+      allSay(await everywhere(), "head_of_household");
     });
 
     it("an answer whose stores agree, or only one store, reads the same", async () => {

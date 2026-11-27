@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { filingStatusWithEarners } from "./student-tax";
 import { filingStatusFor, type StoredFiling } from "./tax-profile";
 
 const told = (value: unknown, at: string | null = null) => ({
@@ -12,6 +13,22 @@ const row = (
   filingStatus,
   answered: answered ? ["filingStatus"] : [],
   at: at ? new Date(at) : null,
+});
+
+describe("filingStatusWithEarners (the Saver's Credit's read)", () => {
+  it("reads a family with one earner, or an earner count not known, as a head of household", () => {
+    const family = (earners: unknown) => ({
+      household: { value: "family" },
+      earners: { value: earners },
+    });
+    expect(filingStatusWithEarners(family(1))).toBe("head_of_household");
+    expect(filingStatusWithEarners(family(undefined))).toBe("head_of_household");
+    expect(filingStatusWithEarners(family(2))).toBe("married_joint");
+    // And what they said still wins.
+    expect(
+      filingStatusWithEarners({ ...family(1), filing_status: { value: "married_separate" } }),
+    ).toBe("married_separate");
+  });
 });
 
 describe("filingStatusFor", () => {

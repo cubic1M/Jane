@@ -26,9 +26,11 @@ export function filingStatusOf(facts: Facts): FilingStatus {
 // The same, for a card that knows how many people in the household earn: one earner with
 // children is a head of household (the Saver's Credit; debugger 11-06).
 export function filingStatusWithEarners(facts: Facts): FilingStatus {
+  // An earner count that is not known reads as one earner, as the Saver's Credit has always read it.
+  const earners = facts.earners?.value;
   return filingStatusFor(facts, null, {
     household: facts.household?.value,
-    earners: facts.earners?.value,
+    earners: typeof earners === "number" ? earners : 1,
   }).status;
 }
 

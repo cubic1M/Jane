@@ -54,7 +54,7 @@ export async function loadFiling(
       select: { value: true, lastConfirmed: true },
     }),
     db.taxProfiles.findFirst({
-      select: { filingStatus: true, answered: true, updatedAt: true },
+      select: { filingStatus: true, answered: true },
     }),
   ]);
   // A correction made on the card wins over what memory holds, as everywhere else.
@@ -72,11 +72,20 @@ export async function loadFiling(
   let toldAt: Date | null = null;
   let storedAt: Date | null = null;
   if (toldValue && profileValue && toldValue !== profileValue && row) {
-    // The preference row keeps its first save's time, so the time written in it comes first, then
-    // what memory last confirmed.
-    toldAt = atOf(pref?.value) ?? latest(memory?.lastConfirmed, pref?.createdAt);
+    // The time written in the preference comes first. A preference saved before that has none: its
+    // first save's time, and what memory last confirmed only when memory holds the same answer
+    // (memory's time dates memory's own value). Told only in memory: when memory last confirmed it.
+    const fromPref = isFilingStatus(valueOf(pref?.value));
+    toldAt = fromPref
+      ? (atOf(pref?.value) ??
+        latest(
+          valueOf(memory?.value) === toldValue ? memory?.lastConfirmed : null,
+          pref?.createdAt,
+        ))
+      : (memory?.lastConfirmed ?? null);
     // The profile row's own updatedAt moves with every field (state, pay stub), so the day the
-    // filing status was answered is read from the audit log: the last save that named it.
+    // filing status was answered is read from the audit log: the last save that named it. A row
+    // with no such entry has no time, and what the person told Jane wins.
     const audited = await systemDb(
       "Filing status: when the person last answered it on the tax profile",
       client,
@@ -89,7 +98,7 @@ export async function loadFiling(
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     });
-    storedAt = audited?.createdAt ?? row.updatedAt;
+    storedAt = audited?.createdAt ?? null;
   }
   const stored: StoredFiling | null = row
     ? { filingStatus: row.filingStatus, answered: row.answered, at: storedAt }
@@ -144,13 +153,15 @@ export async function unmirrorFilingFromProfile(
   { client = defaultClient }: Options = {},
 ): Promise<void> {
   const db = scopedFor(userId, client);
+  if (!isFilingStatus(was)) return;
   const row = await db.taxProfiles.findUnique({
     where: { userId },
     select: { filingStatus: true, answered: true },
   });
   if (!row || row.filingStatus !== was || !row.answered.includes("filingStatus")) return;
-  await db.taxProfiles.update({
-    where: { userId },
+  // Only while the row still says what was read: an answer saved a moment ago stays.
+  await db.taxProfiles.updateMany({
+    where: { filingStatus: was },
     data: { filingStatus: null, answered: row.answered.filter((f) => f !== "filingStatus") },
   });
 }
