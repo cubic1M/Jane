@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { MAX_FILE_NAME_LENGTH } from "@/config/documents";
+import { isoDay } from "@/lib/dates";
 import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
@@ -197,10 +198,21 @@ async function accountHoldingRows(
   if (keys.length === 0) return null;
   const there = await db.transactions.findMany({
     where: { source: "csv", dedupeKey: { in: keys } },
-    select: { accountId: true, dedupeKey: true },
+    select: { accountId: true, dedupeKey: true, date: true, amountCents: true },
   });
+  // A bank's row id (FITID) is an id only within its own account: the same id in another
+  // account's file is the same row only on the same day and amount.
+  const incoming = new Map(batch.transactions.map((t) => [t.externalId, t]));
   const byAccount = new Map<string, Set<string>>();
   for (const row of there) {
+    const sent = incoming.get(row.dedupeKey ?? "");
+    if (
+      sent &&
+      sent.externalId.startsWith("ofx:") &&
+      (sent.date !== isoDay(row.date) || sent.amountCents !== row.amountCents)
+    ) {
+      continue;
+    }
     const set = byAccount.get(row.accountId) ?? new Set<string>();
     set.add(row.dedupeKey ?? "");
     byAccount.set(row.accountId, set);

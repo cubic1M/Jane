@@ -60,6 +60,23 @@ describe("paying off one debt, in the chat", () => {
     ]);
   });
 
+  // Walk of 11-27: "..., you'd be it doesn't finish within 50 years." Both forms are sentences.
+  it("says a plan that never ends as its own sentence, not after 'you'd be'", () => {
+    const never = (advice: boolean): Payoff => ({
+      ...payoff(advice),
+      summary: payoffSummary(book.debts, { extraCents: 0, advice }),
+    });
+    for (const advice of [false, true]) {
+      const first = payoffReply(never(advice), ASOF).body.split("\n")[0];
+      expect(first).toBe(
+        "Paying $25.00 a month (your minimums), it doesn't finish within 50 years.",
+      );
+    }
+    expect(payoffReply(payoff(false), ASOF).body.split("\n")[0]).toMatch(
+      /, you'd be debt-free by .*\.$/,
+    );
+  });
+
   it("still sets two orders side by side for two debts", () => {
     const two = debtBook(
       {

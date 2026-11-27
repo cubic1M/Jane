@@ -151,7 +151,11 @@ export async function importCsvFiles(
   });
   // The same rows from the account's statement in the other format (a CSV, then its QFX) are
   // already there under other keys: dropped too (src/lib/import/cross-format.ts).
-  const fresh = await withoutCrossFormatTwins(db, account.id, unique);
+  const fresh = await withoutCrossFormatTwins(
+    db,
+    account.id,
+    await apartFromReusedIds(db, account.id, unique),
+  );
   const categorized = await categorizeTransactions(fresh, db, { askClaude: false });
 
   const { corrections, rekeyed } = await correctStoredRows(db, account.id, categorized);
@@ -226,6 +230,28 @@ async function correctStoredRows(db: ScopedDb, accountId: string, rows: Incoming
     });
   }
   return { corrections: corrections.length, rekeyed };
+}
+
+// A bank's row id (FITID) is an id only within its own account: another account's file can reuse
+// it for a different transaction. A row whose id is already stored here for another day or amount
+// is a different transaction, so it gets a key of its own (the database would skip it as a repeat
+// and it would be lost). The same row again keeps its key and is skipped as before.
+async function apartFromReusedIds<
+  T extends { externalId: string; date: string; amountCents: number },
+>(db: ScopedDb, accountId: string, rows: T[]): Promise<T[]> {
+  const ofx = rows.filter((r) => r.externalId.startsWith("ofx:"));
+  if (ofx.length === 0) return rows;
+  const there = await db.transactions.findMany({
+    where: { accountId, dedupeKey: { in: ofx.map((r) => r.externalId) } },
+    select: { dedupeKey: true, date: true, amountCents: true },
+  });
+  const stored = new Map(there.map((t) => [t.dedupeKey, t]));
+  return rows.map((r) => {
+    const kept = stored.get(r.externalId);
+    return kept && (isoDay(kept.date) !== r.date || kept.amountCents !== r.amountCents)
+      ? { ...r, externalId: `${r.externalId}|${r.date}|${r.amountCents}` }
+      : r;
+  });
 }
 
 // The rows less those whose twin from the other format is in the account already, or earlier in

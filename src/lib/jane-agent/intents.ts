@@ -591,7 +591,7 @@ const FLOW_STARTS: readonly [FlowId | "resume", RegExp][] = [
   ],
   [
     "goal",
-    /^(?:let'?s |help me )?(?:set ?up|make|create|start|add)(?: (?:a|my|new))?(?: savings)? goal$|^(?:new|start a) savings goal$/,
+    /^(?:let'?s |help me )?(?:set(?: ?up)?|make|create|start|add)(?: (?:a|my|new))?(?: savings)? goal$|^(?:new|start a) savings goal$/,
   ],
   [
     "switch",

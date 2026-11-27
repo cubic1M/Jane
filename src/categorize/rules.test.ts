@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorizeByRules, payoutByRules } from "./rules";
+import { categorizeByRules, keywordPattern, payoutByRules } from "./rules";
 import { ALL_DETAILED, categoryOf } from "./taxonomy";
 
 const out = (description: string, hints = {}) =>
@@ -78,6 +78,25 @@ describe("a bank's own category names", () => {
 
   it("still goes by the merchant first", () => {
     expect(out("DELTA AIR LINES", { bankCategory: "Shopping" })).toBe("TRAVEL_FLIGHTS");
+  });
+});
+
+// Walk of 11-27: "TRADER JOES" (no apostrophe) stayed Uncategorized without Claude, because the
+// keyword is the whole word "TRADER JOE". A longer keyword also matches with a trailing S.
+describe("a keyword and its possessive or plural", () => {
+  it.each([["TRADER JOES"], ["TRADER JOE'S #552"], ["TRADER JOE S #552"], ["TRADER JOE #552"]])(
+    "calls %s groceries",
+    (description) => {
+      expect(out(description)).toBe("FOOD_AND_DRINK_GROCERIES");
+    },
+  );
+
+  it("keeps short keywords and other words exact", () => {
+    expect(out("UBEREATS")).not.toBe(out("UBER *TRIP"));
+    expect(keywordPattern(["BP", "GAP"]).test("BPS")).toBe(false);
+    expect(keywordPattern(["BP", "GAP"]).test("GAPS")).toBe(false);
+    expect(keywordPattern(["SAFEWAY"]).test("SAFEWAYS")).toBe(true);
+    expect(keywordPattern(["SAFEWAY"]).test("SAFEWAYX")).toBe(false);
   });
 });
 
