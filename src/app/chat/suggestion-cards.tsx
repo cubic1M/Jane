@@ -351,6 +351,9 @@ export function SuggestionCards({
         setOpen((n) => n + 1);
         return;
       }
+      // Brought back: shown again, even if a refusal of the tap it undoes marked it gone meanwhile
+      // (that tap was queued before this one and came back refused as already answered).
+      if (back && !result.error) unmarkGone(id);
       // The server wouldn't bring it back (too late): it stays put away, as the server has it.
       if (back && result?.error) {
         markGone(id);
