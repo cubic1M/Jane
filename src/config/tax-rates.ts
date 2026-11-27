@@ -1,382 +1,165 @@
 import type { FilingStatus } from "@/config/tax";
+import { federalParams } from "@/config/tax-params";
+import type { Bracket } from "@/config/tax-params/types";
 
-// Tax figures for Jane's estimates (spec step 120 on). FOR REVIEW: every figure here should be
-// checked by someone qualified before it's relied on, and again each year.
-//
-// Sources:
-// - IRS Rev. Proc. 2025-32 (tax year 2026 inflation adjustments, including the One Big
-//   Beautiful Bill Act's changes) and the IRS news release on it: brackets, standard
-//   deduction, child tax credit, EITC, AMT, capital gains thresholds, health FSA.
-// - IRS news releases for 2026 retirement plan limits (401(k) $24,500, IRA $7,500) and
-//   HSA limits (Rev. Proc. 2025-19).
-// - SSA: 2026 Social Security wage base ($184,500).
-// - One Big Beautiful Bill Act (P.L. 119-21): SALT cap ($40,400 for 2026), charitable
-//   deduction for non-itemizers ($1,000 / $2,000), the 0.5% floor on itemized gifts,
-//   dependent care FSA ($7,500), the end of the home energy credits after 2025.
-// - State figures: each state's revenue department; see each entry. Where a 2026 figure
-//   wasn't published or couldn't be confirmed, it's marked ESTIMATE TO VERIFY.
+// Tax figures for Jane's estimates (spec step 120 on). Since Tax T1 the federal figures live in
+// src/config/tax-params/us-2026.ts, each with the page it was read at, the day it was read and
+// whether it is confirmed; this file re-exports them under the names the rest of the app already
+// uses (until T4 moves the callers to the year-keyed parameters), and keeps the state schedules.
+// FOR REVIEW: every figure should be checked by someone qualified before it's relied on, and
+// again each year. Where a 2026 state figure wasn't published or couldn't be confirmed, it's
+// marked ESTIMATE TO VERIFY.
 //
 // All money is in cents; rates are fractions.
 
 export const TAX_RATES_YEAR = 2026;
 
 // A bracket: the rate applies to income over `over` (cents), up to the next bracket.
-export type Bracket = { over: number; rate: number };
+export type { Bracket };
 
 const $ = (dollars: number) => Math.round(dollars * 100);
 
-// Rev. Proc. 2025-32 §4.01, Tables 1–4. Head of household: sources disagree on where the
-// 24% and 32% brackets end ($201,750 / $256,200 here, $201,775 / $256,225 in some
-// summaries). ESTIMATE TO VERIFY against the Rev. Proc. itself.
-export const FEDERAL_BRACKETS: Readonly<Record<FilingStatus, readonly Bracket[]>> = {
-  single: [
-    { over: 0, rate: 0.1 },
-    { over: $(12_400), rate: 0.12 },
-    { over: $(50_400), rate: 0.22 },
-    { over: $(105_700), rate: 0.24 },
-    { over: $(201_775), rate: 0.32 },
-    { over: $(256_225), rate: 0.35 },
-    { over: $(640_600), rate: 0.37 },
-  ],
-  married_joint: [
-    { over: 0, rate: 0.1 },
-    { over: $(24_800), rate: 0.12 },
-    { over: $(100_800), rate: 0.22 },
-    { over: $(211_400), rate: 0.24 },
-    { over: $(403_550), rate: 0.32 },
-    { over: $(512_450), rate: 0.35 },
-    { over: $(768_700), rate: 0.37 },
-  ],
-  married_separate: [
-    { over: 0, rate: 0.1 },
-    { over: $(12_400), rate: 0.12 },
-    { over: $(50_400), rate: 0.22 },
-    { over: $(105_700), rate: 0.24 },
-    { over: $(201_775), rate: 0.32 },
-    { over: $(256_225), rate: 0.35 },
-    { over: $(384_350), rate: 0.37 },
-  ],
-  head_of_household: [
-    { over: 0, rate: 0.1 },
-    { over: $(17_700), rate: 0.12 },
-    { over: $(67_450), rate: 0.22 },
-    { over: $(105_700), rate: 0.24 },
-    { over: $(201_750), rate: 0.32 },
-    { over: $(256_200), rate: 0.35 },
-    { over: $(640_600), rate: 0.37 },
-  ],
-};
+const US = federalParams(TAX_RATES_YEAR);
 
-export const STANDARD_DEDUCTION: Readonly<Record<FilingStatus, number>> = {
-  single: $(16_100),
-  married_joint: $(32_200),
-  married_separate: $(16_100),
-  head_of_household: $(24_150),
-};
-
-// The additional standard deduction for each person 65 or older (or blind), Rev. Proc. 2025-32:
-// unmarried, and each spouse of a married couple. Spec step 269 uses it to judge whether
-// itemizing medical costs beats the standard deduction for a retiree.
-export const ADDITIONAL_STANDARD_65 = { unmarried: $(2_050), married: $(1_650) } as const;
-
-// Long-term gains and qualified dividends: 0% up to the first figure of taxable income, 15%
-// up to the second, 20% above (Rev. Proc. 2025-32). Married separately: half of joint.
-export const CAPITAL_GAINS_BRACKETS: Readonly<Record<FilingStatus, readonly Bracket[]>> = {
-  single: [
-    { over: 0, rate: 0 },
-    { over: $(49_450), rate: 0.15 },
-    { over: $(545_500), rate: 0.2 },
-  ],
-  married_joint: [
-    { over: 0, rate: 0 },
-    { over: $(98_900), rate: 0.15 },
-    { over: $(613_700), rate: 0.2 },
-  ],
-  married_separate: [
-    { over: 0, rate: 0 },
-    { over: $(49_450), rate: 0.15 },
-    { over: $(306_850), rate: 0.2 },
-  ],
-  head_of_household: [
-    { over: 0, rate: 0 },
-    { over: $(66_200), rate: 0.15 },
-    { over: $(579_600), rate: 0.2 },
-  ],
-};
+export const FEDERAL_BRACKETS: Readonly<Record<FilingStatus, readonly Bracket[]>> =
+  US.brackets.value;
+export const STANDARD_DEDUCTION: Readonly<Record<FilingStatus, number>> =
+  US.standardDeduction.value;
+// The additional standard deduction for each person 65 or older (or blind): unmarried, and each
+// spouse of a married couple. Spec step 269 uses it to judge whether itemizing medical costs beats
+// the standard deduction for a retiree.
+export const ADDITIONAL_STANDARD_65 = US.additionalStandard.value;
+// Long-term gains and qualified dividends: 0% up to the first figure of taxable income, 15% up to
+// the second, 20% above. Married separately: half of joint.
+export const CAPITAL_GAINS_BRACKETS: Readonly<Record<FilingStatus, readonly Bracket[]>> =
+  US.capitalGains.value;
 
 // Spec step 124: a net capital loss comes off other income up to this much a year (the rest
 // carries forward); wash sales look this many days either side of a sale at a loss.
-export const CAPITAL_LOSS_LIMIT = { normal: $(3_000), marriedSeparate: $(1_500) } as const;
+export const CAPITAL_LOSS_LIMIT = US.capitalLoss.value;
 export const WASH_SALE_DAYS = 30;
 // Gains on shares held longer than this many days are long-term.
 export const LONG_TERM_DAYS = 365;
 
-// Child tax credit (OBBBA, permanent): per qualifying child under 17, up to the refundable
-// part from 15% of earned income over $2,500; less $50 per $1,000 (or part) of income over
-// the threshold. Other dependants: $500, not refundable.
-export const CHILD_TAX_CREDIT = {
-  perChild: $(2_200),
-  refundablePerChild: $(1_700),
-  earnedIncomeFloor: $(2_500),
-  refundableRate: 0.15,
-  otherDependant: $(500),
-  phaseOutStep: $(1_000),
-  phaseOutPerStep: $(50),
-  phaseOutFrom: {
-    single: $(200_000),
-    married_joint: $(400_000),
-    married_separate: $(200_000),
-    head_of_household: $(200_000),
-  } satisfies Record<FilingStatus, number>,
-} as const;
+// Child tax credit (OBBBA, permanent): per qualifying child under 17, up to the refundable part
+// from 15% of earned income over $2,500; less $50 per $1,000 (or part) of income over the
+// threshold. Other dependants: $500, not refundable.
+export const CHILD_TAX_CREDIT = US.ctc.value;
 
-// Earned income tax credit, by qualifying children (0, 1, 2, 3+): the credit rises at the
-// phase-in rate up to the maximum, then falls at the phase-out rate past the threshold.
-// Married filing separately can claim it only in narrow cases, so Jane doesn't count it.
-// The investment income limit for 2026 is ESTIMATE TO VERIFY ($11,950 for 2025, indexed).
-export const EITC = {
-  maxCredit: [$(664), $(4_427), $(7_316), $(8_231)],
-  phaseInRate: [0.0765, 0.34, 0.4, 0.45],
-  phaseOutRate: [0.0765, 0.1598, 0.2106, 0.2106],
-  phaseOutFrom: {
-    single: [$(10_860), $(23_890), $(23_890), $(23_890)],
-    married_joint: [$(18_140), $(31_160), $(31_160), $(31_160)],
-  },
-  investmentIncomeLimit: $(12_200),
-  // Without a qualifying child the credit needs the filer to be 25 to 64 at the end of the year
-  // (IRC 32(c)(1)(A)(ii)(II)); a student under 25 can't claim it (overnight upload QA).
-  childlessMinAge: 25,
-  childlessMaxAge: 64,
-} as const;
+// Earned income tax credit, by qualifying children (0, 1, 2, 3+): the credit rises at the phase-in
+// rate up to the maximum, then falls at the phase-out rate past the threshold. Married filing
+// separately can claim it only in narrow cases, so Jane doesn't count it. Without a qualifying
+// child the credit needs the filer to be 25 to 64 at the end of the year (IRC 32(c)(1)(A)(ii)(II));
+// a student under 25 can't claim it (overnight upload QA).
+export const EITC = US.eitc.value;
 
-// Self-employment tax: 92.35% of net earnings, 12.4% Social Security up to the wage base
-// (less W-2 Social Security wages) and 2.9% Medicare; half is deducted from income.
-export const SELF_EMPLOYMENT_TAX = {
-  netEarningsShare: 0.9235,
-  socialSecurityRate: 0.124,
-  medicareRate: 0.029,
-  wageBase: $(184_500),
-  // Below this much net earnings, no self-employment tax.
-  minimumNetEarnings: $(400),
-} as const;
+// Self-employment tax: 92.35% of net earnings, 12.4% Social Security up to the wage base (less W-2
+// Social Security wages) and 2.9% Medicare; half is deducted from income. Below the minimum net
+// earnings, no self-employment tax.
+export const SELF_EMPLOYMENT_TAX = US.selfEmployment.value;
 
 // Employee payroll tax, for checking pay stubs and the demo's stand-in stubs.
-export const PAYROLL_TAX = { socialSecurityRate: 0.062, medicareRate: 0.0145 } as const;
+export const PAYROLL_TAX = US.payroll.value;
 
 // 0.9% on wages and self-employment income over the threshold (not indexed).
-export const ADDITIONAL_MEDICARE = {
-  rate: 0.009,
-  threshold: {
-    single: $(200_000),
-    married_joint: $(250_000),
-    married_separate: $(125_000),
-    head_of_household: $(200_000),
-  } satisfies Record<FilingStatus, number>,
-} as const;
+export const ADDITIONAL_MEDICARE = US.additionalMedicare.value;
 
 // 3.8% on investment income over the threshold of modified AGI (not indexed).
-export const NET_INVESTMENT_INCOME_TAX = {
-  rate: 0.038,
-  threshold: ADDITIONAL_MEDICARE.threshold,
-} as const;
+export const NET_INVESTMENT_INCOME_TAX = US.netInvestmentIncomeTax.value;
 
-// Qualified business income deduction: 20%, counted only below the threshold where its
-// limits start (Jane doesn't work out the limits above it). Rev. Proc. 2025-32 section 4.26: the
-// threshold isn't the 32% bracket's edge (connectors roadmap round 16 found the old figures were).
-export const QBI = {
-  rate: 0.2,
-  threshold: {
-    single: $(201_750),
-    married_joint: $(403_500),
-    married_separate: $(201_775),
-    head_of_household: $(201_750),
-  } satisfies Record<FilingStatus, number>,
-} as const;
+// Qualified business income deduction: 20%, counted only below the threshold where its limits start
+// (Jane doesn't work out the limits above it). Rev. Proc. 2025-32 section 4.26: the threshold isn't
+// the 32% bracket's edge (connectors roadmap round 16 found the old figures were).
+export const QBI = US.qbi.value;
 
-// The One Big Beautiful Bill Act's deductions for tax years 2025 through 2028, taken whether or
-// not the person itemizes (connectors roadmap round 16). Tips, overtime and the senior deduction
-// need a joint return when married. Each is cut as modified AGI passes its line: tips and overtime
-// by $100, car-loan interest by $200, for each $1,000 over; the senior deduction by 6% of what's
-// over, for each person who's 65 or older.
-export const OBBBA_DEDUCTIONS = {
-  firstYear: 2025,
-  lastYear: 2028,
-  tips: {
-    max: { normal: $(25_000), marriedJoint: $(25_000) },
-    phaseOutFrom: { normal: $(150_000), marriedJoint: $(300_000) },
-    cutPerStep: $(100),
-    joint: true,
-    rule: "26 USC 224 (qualified tips)",
-  },
-  overtime: {
-    max: { normal: $(12_500), marriedJoint: $(25_000) },
-    phaseOutFrom: { normal: $(150_000), marriedJoint: $(300_000) },
-    cutPerStep: $(100),
-    joint: true,
-    rule: "26 USC 225 (qualified overtime: the FLSA premium only)",
-  },
-  carLoanInterest: {
-    max: { normal: $(10_000), marriedJoint: $(10_000) },
-    phaseOutFrom: { normal: $(100_000), marriedJoint: $(200_000) },
-    cutPerStep: $(200),
-    joint: false,
-    rule: "26 USC 163(h)(4) (new US-assembled car, loan after 2024, VIN on the return)",
-  },
-  step: $(1_000),
-  senior: {
-    perPerson: $(6_000),
-    minAge: 65,
-    phaseOutFrom: { normal: $(75_000), marriedJoint: $(150_000) },
-    phaseOutRate: 0.06,
-    rule: "26 USC 151(d)(5)(C) (age 65 or older)",
-  },
-} as const;
+// The One Big Beautiful Bill Act's deductions for tax years 2025 through 2028, taken whether or not
+// the person itemizes (connectors roadmap round 16). Tips, overtime and the senior deduction need a
+// joint return when married. Each is cut as modified AGI passes its line: tips and overtime by
+// $100, car-loan interest by $200, for each $1,000 over; the senior deduction by 6% of what's over,
+// for each person who's 65 or older.
+export const OBBBA_DEDUCTIONS = US.obbba.value;
 
-// The Saver's Credit's last year (connectors roadmap round 17; from 2027 the Saver's Match replaces
-// it): a nonrefundable credit (Form 8880) on IRA and workplace-plan money put in for 2026, for
-// anyone 18 or older who isn't a full-time student or someone's dependent, with AGI at or under the
-// limit. The credit is 50%, 20% or 10% of up to $2,000 each; the tier lines aren't confirmed
-// (round 17), so only the 10% everyone under the limit gets is said. IRA money counts until the
-// filing deadline.
-export const SAVERS_CREDIT = {
-  taxYear: 2026,
-  agiLimit: {
-    single: $(40_250),
-    married_separate: $(40_250),
-    head_of_household: $(60_375),
-    married_joint: $(80_500),
-  } satisfies Record<FilingStatus, number>,
-  maxContribution: $(2_000),
-  lowestRate: 0.1,
-  iraDeadline: "2027-04-15",
-  rule: "26 USC 25B; IRS Form 8880",
-} as const;
+// The Saver's Credit's last year (from 2027 the Saver's Match replaces it): a nonrefundable credit
+// (Form 8880) on IRA and workplace-plan money put in for 2026, for anyone 18 or older who isn't a
+// full-time student or someone's dependent, with AGI at or under the limit. The credit is 50%, 20%
+// or 10% of up to $2,000 each; the tier lines are in the notice (Notice 2025-67) but the estimate
+// only says the 10% everyone under the limit gets. IRA money counts until the filing deadline.
+export const SAVERS_CREDIT = US.savers.value;
 
-// The Saver's Match from 2027 (connectors roadmap round 17; IRS Notice 2026-48, proposed rules, not
-// final): a federal match of 50% of up to $2,000 each, phased out over these incomes, paid only
-// into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. Shown labelled
-// "proposed" until the rules are final.
-export const SAVERS_MATCH = {
-  firstYear: 2027,
-  shownFrom: "2026-08-07",
-  shownUntil: "2027-12-31",
-  rate: 0.5,
-  maxContribution: $(2_000),
-  phaseOut: {
-    single: [$(20_500), $(35_500)],
-    married_separate: [$(20_500), $(35_500)],
-    head_of_household: [$(30_750), $(53_250)],
-    married_joint: [$(41_000), $(71_000)],
-  } satisfies Record<FilingStatus, [number, number]>,
-  rule: "IRS Notice 2026-48 (proposed)",
-} as const;
+// The Saver's Match from 2027 (IRS Notice 2026-48, proposed rules, not final): a federal match of
+// 50% of up to $2,000 each, phased out over these incomes, paid only into a traditional IRA or a
+// workplace plan that accepts it, never into a Roth IRA. Shown labelled "proposed" until the rules
+// are final.
+export const SAVERS_MATCH = US.saversMatch.value;
 
-// Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over
-// this (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026).
-// FOR REVIEW at IRS Notice 2026-66 (the wage threshold is indexed each year): a finding (CodeRabbit
-// sweep 1c, cfg-03 #3) says $150,000 is the figure for 2026 catch-ups and $155,000 for 2027 ones,
-// so $150,000 may be low for 2027. Nothing in the app reads this yet (catchUpMustBeRoth is
-// tested only); an existing test pins $150,000 for 2027, so the figure is left until it is checked.
+// Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over this
+// (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026). The figure is
+// marked WRONG TODAY in us-2026.ts: $150,000 is the threshold for 2026 catch-ups, the one for 2027
+// ones is $155,000 (Notice 2026-66; us-2026.ts holds both). Nothing in the app reads this yet
+// (catchUpMustBeRoth is tested only), and an existing test pins $150,000, so it is left.
 export const ROTH_CATCH_UP = {
-  priorYearFicaWagesOver: $(150_000),
-  requiredFrom: 2027,
-  rule: "26 USC 414(v)(7); T.D. 10033",
+  priorYearFicaWagesOver: US.rothCatchUp.value.priorYearFicaWagesOver,
+  requiredFrom: US.rothCatchUp.value.requiredFrom,
+  rule: US.rothCatchUp.value.rule,
 } as const;
 
-// Student loan interest: up to $2,500, phased out over the range of modified AGI; not for
-// married filing separately.
-export const STUDENT_LOAN_INTEREST = {
-  max: $(2_500),
-  phaseOut: {
-    single: [$(85_000), $(100_000)],
-    married_joint: [$(175_000), $(205_000)],
-    married_separate: null,
-    head_of_household: [$(85_000), $(100_000)],
-  } satisfies Record<FilingStatus, [number, number] | null>,
-} as const;
+// Student loan interest: up to $2,500, phased out over the range of modified AGI; not for married
+// filing separately.
+export const STUDENT_LOAN_INTEREST = US.studentLoanInterest.value;
 
-// Itemized deductions (OBBBA): state and local taxes up to the cap, cut by 30% of income
-// over the threshold but never below the floor; gifts to charity above 0.5% of AGI; medical
-// costs above 7.5% of AGI. Non-itemizers can deduct cash gifts up to the limit.
+// Itemized deductions (OBBBA): state and local taxes up to the cap, cut by 30% of income over the
+// threshold but never below the floor; gifts to charity above 0.5% of AGI; medical costs above 7.5%
+// of AGI. Non-itemizers can deduct cash gifts up to the limit.
 export const ITEMIZED = {
-  saltCap: { normal: $(40_400), marriedSeparate: $(20_200) },
-  saltPhaseDownFrom: { normal: $(505_000), marriedSeparate: $(252_500) },
-  saltPhaseDownRate: 0.3,
-  saltFloor: { normal: $(10_000), marriedSeparate: $(5_000) },
-  charityFloorShare: 0.005,
-  medicalFloorShare: 0.075,
-  nonItemizerCharity: { normal: $(1_000), marriedJoint: $(2_000) },
+  saltCap: US.salt.value.cap,
+  saltPhaseDownFrom: US.salt.value.phaseDownFrom,
+  saltPhaseDownRate: US.salt.value.phaseDownRate,
+  saltFloor: US.salt.value.floor,
+  charityFloorShare: US.charity.value.floorShare,
+  medicalFloorShare: US.medical.value.floorShare,
+  nonItemizerCharity: US.charity.value.nonItemizer,
 } as const;
 
 // Contribution limits for 2026.
-export const CONTRIBUTION_LIMITS = {
-  // 401(k), 403(b), most 457 plans: employee deferrals.
-  workplace: $(24_500),
-  workplaceCatchUp50: $(8_000),
-  workplaceCatchUp60to63: $(11_250),
-  ira: $(7_500),
-  iraCatchUp50: $(1_100),
-  hsaSelf: $(4_400),
-  hsaFamily: $(8_750),
-  hsaCatchUp55: $(1_000),
-  healthFsa: $(3_400),
-  dependentCareFsa: $(7_500),
-  dependentCareFsaMarriedSeparate: $(3_750),
-} as const;
+export const CONTRIBUTION_LIMITS = US.contributionLimits.value;
 
-// Child and dependent care credit (OBBBA, from 2026): a share of up to $3,000 of costs for
-// one child, $6,000 for two or more. The share starts at 50% and steps down to 35% from
-// $15,000 of AGI (1 point per $2,000), then from 35% to 20% above $75,000 ($150,000 joint),
-// 1 point per $2,000 ($4,000 joint). ESTIMATE TO VERIFY the step-down details.
-export const DEPENDENT_CARE_CREDIT = {
-  costLimit: [$(3_000), $(6_000)],
-  topShare: 0.5,
-  middleShare: 0.35,
-  bottomShare: 0.2,
-  firstStepFrom: $(15_000),
-  secondStepFrom: { normal: $(75_000), marriedJoint: $(150_000) },
-  stepSize: { normal: $(2_000), marriedJoint: $(4_000) },
-} as const;
+// Child and dependent care credit (OBBBA, from 2026): a share of up to $3,000 of costs for one
+// child, $6,000 for two or more. The share starts at 50% and steps down to 35% from $15,000 of AGI
+// (1 point per $2,000), then from 35% to 20% above $75,000 ($150,000 joint), 1 point per $2,000
+// ($4,000 joint) (26 USC 21(a)(2)).
+export const DEPENDENT_CARE_CREDIT = US.dependentCare.value;
 
-// Education credits: American Opportunity (100% of the first $2,000, 25% of the next
-// $2,000; 40% refundable) and Lifetime Learning (20% of up to $10,000), phased out over the
-// modified AGI ranges (Rev. Proc. 2025-32; AOTC range is fixed in law).
-export const EDUCATION_CREDITS = {
-  aotcMax: $(2_500),
-  llcRate: 0.2,
-  llcCostLimit: $(10_000),
-  phaseOut: {
-    single: [$(80_000), $(90_000)],
-    married_joint: [$(160_000), $(180_000)],
-  },
-} as const;
+// Education credits: American Opportunity (100% of the first $2,000, 25% of the next $2,000; 40%
+// refundable) and Lifetime Learning (20% of up to $10,000), phased out over the modified AGI
+// ranges.
+export const EDUCATION_CREDITS = US.education.value;
 
-// The 2025 home energy credits, still claimable on 2025 returns for property placed in
-// service in 2025: 30% of costs; improvements (25C) capped at $1,200 a year, $2,000 for heat
-// pumps; solar and batteries (25D) uncapped.
+// The 2025 home energy credits, still claimable on 2025 returns for property placed in service in
+// 2025: 30% of costs; improvements (25C) capped at $1,200 a year, $2,000 for heat pumps; solar and
+// batteries (25D) uncapped.
 export const ENERGY_CREDITS_2025 = {
-  rate: 0.3,
-  improvementCap: $(1_200),
-  heatPumpCap: $(2_000),
+  rate: US.energy.value.rate,
+  improvementCap: US.energy.value.improvementCap,
+  heatPumpCap: US.energy.value.heatPumpCap,
 } as const;
 
-// The home energy credits (25C, 25D) ended for property placed in service after Dec 31,
-// 2025, and the clean vehicle credits for vehicles acquired after Sep 30, 2025 (OBBBA).
-export const ENERGY_CREDITS_END = { home: "2025-12-31", vehicle: "2025-09-30" } as const;
+// The home energy credits (25C, 25D) ended for property placed in service after Dec 31, 2025, and
+// the clean vehicle credits for vehicles acquired after Sep 30, 2025 (OBBBA).
+export const ENERGY_CREDITS_END = {
+  home: US.energy.value.homeEnds,
+  vehicle: US.energy.value.vehicleEnds,
+} as const;
 
 // Standard mileage rate for business driving in 2026: 72.5 cents (IRS Notice 2026-10).
-// Some later sources report a mid-year rise to 76 cents from July 1, 2026: ESTIMATE TO
-// VERIFY; Jane uses 72.5.
-export const MILEAGE_RATE_CENTS = 72.5;
-// FOR REVIEW at irs.gov (standard mileage rates, 2026): a finding (CodeRabbit sweep 1c, cfg-03 #5)
-// says the rate is 76 cents for business expenses paid or incurred on or after July 1, 2026, and
-// 72.5 cents before. The miles Jane holds are a year's total with no dates, so it can't split
-// them: every mile is counted at 72.5, and this says so wherever the figure shows.
+export const MILEAGE_RATE_CENTS = US.mileage.value.businessCentsPerMile;
+// The miles Jane holds are a year's total with no dates, so it can't split them: the IRS rate is 72.5
+// cents to June 30 and 76 cents from July 1, 2026 (us-2026.ts holds both and marks this WRONG TODAY
+// for July to December). Every mile is counted at 72.5, and this says so wherever the figure shows.
 export const MILEAGE_RATE_NOTE =
   "Every mile is counted at one rate; if the IRS changes its rate partway through the year, miles after the change are worth a little more than this shows.";
 
 // Home office, simplified method: $5 a square foot, up to 300 square feet.
-export const HOME_OFFICE_SIMPLIFIED = { perSquareFoot: $(5), maxSquareFeet: 300 } as const;
+export const HOME_OFFICE_SIMPLIFIED = US.homeOffice.value;
 
 // State income tax.
 // - none: no tax on wages.

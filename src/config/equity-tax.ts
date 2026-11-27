@@ -6,6 +6,8 @@
 // (crypto is property: sales are capital gains), Form 1099-DA (digital asset proceeds,
 // brokers report from 2025, cost basis from 2026).
 
+import { federalParams } from "@/config/tax-params";
+
 // ESPP: a sale is a qualifying disposition only if it's more than 2 years after the offering
 // (grant) date AND more than 1 year after the shares were bought. Otherwise it's
 // disqualifying: the discount is ordinary income, not capital gain.
@@ -17,36 +19,13 @@ export const ESPP_RULES = { yearsAfterGrant: 2, yearsAfterPurchase: 1 } as const
 // the grant and 1 year from the exercise makes the sale a long-term gain.
 export const ISO_RULES = { yearsAfterGrant: 2, yearsAfterExercise: 1 } as const;
 
-// The alternative minimum tax, 2026 (ESTIMATE TO VERIFY: Rev. Proc. 2025-32 figures; the
-// exemption amounts and thresholds are indexed each year). Tentative minimum tax is 26% of
-// AMT income over the exemption up to the 28% threshold and 28% above; the exemption
-// shrinks by 25 cents for each dollar over the phase-out start. AMT is what it exceeds the
-// regular tax by.
+// The alternative minimum tax, 2026 (Rev. Proc. 2025-32 section 4.10, read in Tax T1; the figures
+// live in src/config/tax-params/us-2026.ts). Tentative minimum tax is 26% of AMT income over the
+// exemption up to the 28% threshold and 28% above; the exemption shrinks by 25 cents for each
+// dollar over the phase-out start. AMT is what it exceeds the regular tax by.
+export const AMT = federalParams(2026).amt.value;
+
 const $ = (dollars: number) => Math.round(dollars * 100);
-export const AMT = {
-  exemption: {
-    single: $(90_100),
-    married_joint: $(140_200),
-    married_separate: $(70_100),
-    head_of_household: $(90_100),
-  },
-  phaseOutStart: {
-    single: $(500_000),
-    married_joint: $(1_000_000),
-    married_separate: $(500_000),
-    head_of_household: $(500_000),
-  },
-  phaseOutRate: 0.25,
-  lowRate: 0.26,
-  highRate: 0.28,
-  // The 28% rate applies to AMT income over this, after the exemption.
-  highRateFrom: {
-    single: $(244_500),
-    married_joint: $(244_500),
-    married_separate: $(122_250),
-    head_of_household: $(244_500),
-  },
-} as const;
 
 // RSUs: employers withhold a flat rate on vests ("supplemental wages"): 22% up to $1
 // million of supplemental wages in the year, 37% above. The real rate can be higher.
