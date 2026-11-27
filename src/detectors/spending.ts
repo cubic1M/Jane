@@ -216,18 +216,22 @@ const billNegotiation: Detector = {
             last(s) >= S.phoneBillMinCents &&
             !(plan && s.description === plan.latest.description)),
       )
-      .map((s) => ({ s, yearly: last(s) * 12 }));
+      .map((s) => ({ s, yearly: last(s) * 12 }))
+      // Biggest first, ties by name: two bills of one size must not swap places between loads.
+      .sort((a, b) => b.yearly - a.yearly || a.s.description.localeCompare(b.s.description));
     if (bills.length === 0) return null;
     const yearly = bills.reduce((n, b) => n + b.yearly, 0);
     // The report's figure when it has one: each phone or internet bill above its typical price
     // (gate B: $576 on the report against this detector's share of the whole bill, $343). Not a
     // medical bill checked against a plan, a bill_negotiation finding too (debug 2, 11-22: the demo
     // person's "save $1,240" counted an imaging center's $160 beside Comcast's and Verizon's $540).
-    const asks = (data.findings ?? []).flatMap((f) =>
-      f.type === "bill_negotiation" && f.bill && f.annualSavingsCents !== null
-        ? [{ ...f.bill, yearlyCents: f.annualSavingsCents }]
-        : [],
-    );
+    const asks = (data.findings ?? [])
+      .flatMap((f) =>
+        f.type === "bill_negotiation" && f.bill && f.annualSavingsCents !== null
+          ? [{ ...f.bill, yearlyCents: f.annualSavingsCents }]
+          : [],
+      )
+      .sort((a, b) => b.yearlyCents - a.yearlyCents || a.merchant.localeCompare(b.merchant));
     const worth =
       asks.length > 0
         ? asks.reduce((n, a) => n + a.yearlyCents, 0)
