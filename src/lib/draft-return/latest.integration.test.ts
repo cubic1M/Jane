@@ -51,8 +51,11 @@ describe.runIf(url)("the latest checked draft return", () => {
   });
   afterAll(async () => {
     // Never with an unset id: Prisma would drop the filter and delete every person.
-    if (userId) await client.user.deleteMany({ where: { id: userId } });
-    await client.$disconnect();
+    try {
+      if (userId) await client.user.deleteMany({ where: { id: userId } });
+    } finally {
+      await client.$disconnect();
+    }
   });
 
   it("picks the draft confirmed last, even when another was uploaded after it", async () => {
