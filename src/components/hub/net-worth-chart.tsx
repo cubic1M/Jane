@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   changeOver,
@@ -283,6 +291,7 @@ export function NetWorthChart({
   const [expanded, setExpanded] = useState(false);
   // One big step in view: focus on the side with more days (the scale fits it), or fit all of
   // it. The choice holds for the session.
+  const clipId = useId();
   const focusOn = useSyncExternalStore(subscribeFit, readFit, () => "focus") === "focus";
   // What's open: a day (collapsed, a significant day's dot) or one of every movement's dots
   // (expanded), and whether its details are open beside it.
@@ -788,77 +797,84 @@ export function NetWorthChart({
                 viewBox={`0 0 ${width} ${H}`}
                 className="absolute inset-0 overflow-visible"
               >
-                {/* Where the range started (only as far as it is true: left of the first big step
+                {/* Whatever is drawn stays on the chart (a little room for the dots and the line's
+                    width), also while the scale eases to a new fit. */}
+                <clipPath id={clipId}>
+                  <rect x={-6} y={-6} width={width + 12} height={H + 12} />
+                </clipPath>
+                <g clipPath={`url(#${clipId})`}>
+                  {/* Where the range started (only as far as it is true: left of the first big step
                     taken out). */}
-                <line
-                  x1={0}
-                  x2={startEnd}
-                  y1={yDay(0)}
-                  y2={yDay(0)}
-                  strokeWidth={1}
-                  strokeDasharray="2 5"
-                  className="stroke-zinc-400 dark:stroke-zinc-600"
-                />
-                <path
-                  key={`${chip}-${zoomed ? "zoom" : shown.length}`}
-                  d={path}
-                  pathLength={1}
-                  fill="none"
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  className={`nw-line ${stroke}`}
-                />
-                {/* A big step taken out of the line: a gap with a break mark (//). */}
-                {marks2.map((m) => (
-                  <g key={m.k} data-net-worth-break="">
-                    <rect
-                      x={m.at - BREAK_W / 2}
-                      y={m.y - BREAK_H / 2}
-                      width={BREAK_W}
-                      height={BREAK_H}
-                      className="fill-white dark:fill-zinc-950"
-                    />
-                    {[-2, 2].map((dx) => (
-                      <line
-                        key={dx}
-                        x1={m.at + dx - 2}
-                        y1={m.y + 7}
-                        x2={m.at + dx + 2}
-                        y2={m.y - 7}
-                        strokeWidth={1.5}
-                        className="stroke-current"
-                      />
-                    ))}
-                  </g>
-                ))}
-                {scrub !== null && (
-                  <>
-                    <line
-                      x1={x(at)}
-                      x2={x(at)}
-                      y1={0}
-                      y2={H}
-                      strokeWidth={1}
-                      className="stroke-zinc-500 dark:stroke-zinc-400"
-                    />
-                    <circle
-                      cx={x(at)}
-                      cy={yDay(at)}
-                      r={4.5}
-                      strokeWidth={2}
-                      className={`fill-white dark:fill-zinc-950 ${stroke}`}
-                    />
-                  </>
-                )}
-                {scrub === null && (
-                  <circle
-                    cx={x(shown.length - 1)}
-                    cy={yDay(shown.length - 1)}
-                    r={3.5}
-                    className="fill-current"
+                  <line
+                    x1={0}
+                    x2={startEnd}
+                    y1={yDay(0)}
+                    y2={yDay(0)}
+                    strokeWidth={1}
+                    strokeDasharray="2 5"
+                    className="stroke-zinc-400 dark:stroke-zinc-600"
                   />
-                )}
+                  <path
+                    key={`${chip}-${zoomed ? "zoom" : shown.length}`}
+                    d={path}
+                    pathLength={1}
+                    fill="none"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    className={`nw-line ${stroke}`}
+                  />
+                  {/* A big step taken out of the line: a gap with a break mark (//). */}
+                  {marks2.map((m) => (
+                    <g key={m.k} data-net-worth-break="">
+                      <rect
+                        x={m.at - BREAK_W / 2}
+                        y={m.y - BREAK_H / 2}
+                        width={BREAK_W}
+                        height={BREAK_H}
+                        className="fill-white dark:fill-zinc-950"
+                      />
+                      {[-2, 2].map((dx) => (
+                        <line
+                          key={dx}
+                          x1={m.at + dx - 2}
+                          y1={m.y + 7}
+                          x2={m.at + dx + 2}
+                          y2={m.y - 7}
+                          strokeWidth={1.5}
+                          className="stroke-current"
+                        />
+                      ))}
+                    </g>
+                  ))}
+                  {scrub !== null && (
+                    <>
+                      <line
+                        x1={x(at)}
+                        x2={x(at)}
+                        y1={0}
+                        y2={H}
+                        strokeWidth={1}
+                        className="stroke-zinc-500 dark:stroke-zinc-400"
+                      />
+                      <circle
+                        cx={x(at)}
+                        cy={yDay(at)}
+                        r={4.5}
+                        strokeWidth={2}
+                        className={`fill-white dark:fill-zinc-950 ${stroke}`}
+                      />
+                    </>
+                  )}
+                  {scrub === null && (
+                    <circle
+                      cx={x(shown.length - 1)}
+                      cy={yDay(shown.length - 1)}
+                      r={3.5}
+                      className="fill-current"
+                    />
+                  )}
+                </g>
               </svg>
               {layout && (
                 <MovementDots
