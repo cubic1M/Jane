@@ -2,7 +2,7 @@ import { escapeHtml } from "@/lib/escape-html";
 import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
-import { siteOrigin } from "@/lib/site-origin";
+import { siteBase } from "@/lib/site-origin";
 
 // A beta tester's feedback, emailed to the founders (ADMIN_EMAILS) as it arrives. Only what the
 // person wrote and the page's path: never a balance, a transaction, an account or the screenshot
@@ -14,7 +14,7 @@ export async function emailFeedback(
 ): Promise<boolean> {
   const to = teamEmails();
   if (to.length === 0) return false;
-  const link = `${siteOrigin() ?? ""}/admin/reports`;
+  const link = `${siteBase()}/admin/reports`;
   const extra = report.screenshot ? "A screenshot is attached on /admin/reports." : null;
   const text = [
     `Feedback from a beta tester, on ${report.path}:`,

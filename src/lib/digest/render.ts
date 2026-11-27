@@ -161,7 +161,8 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
     out.push({
       heading: "New since last week",
       items: p.newFindings.map(
-        (f) => `${f.title}${worth(f)}${f.percent ? sure(f.percent) : levelSure(f.confidence)}`,
+        (f) =>
+          `${f.title}${worth(f)}${typeof f.percent === "number" ? sure(f.percent) : levelSure(f.confidence)}`,
       ),
       link: { label: "Open your report", url: links.report },
     });

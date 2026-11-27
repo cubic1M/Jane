@@ -283,16 +283,16 @@ export async function runDailyReports({
         run.outsideWindow += 1;
         continue;
       }
+      // Out of time: stop before any lookup for the next person, leaving them unclaimed for the next run, so what
+      // the cron does after this (the chat, the news, the due jobs) still has its time.
+      if (Date.now() - startedAt >= budgetMs) {
+        run.deferred += 1;
+        continue;
+      }
       const db = scopedFor(user.id, client);
       const day = new Date(`${localDate(now, user.timezone)}T00:00:00Z`);
       if (await db.dailyReports.findFirst({ where: { day }, select: { id: true } })) {
         run.alreadySent += 1;
-        continue;
-      }
-      // Out of time: stop before the next person, leaving them unclaimed for the next run, so what
-      // the cron does after this (the chat, the news, the due jobs) still has its time.
-      if (Date.now() - startedAt >= budgetMs) {
-        run.deferred += 1;
         continue;
       }
       const last = await db.dailyReports.findFirst({

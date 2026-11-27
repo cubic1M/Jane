@@ -178,6 +178,20 @@ describe("renderDigest", () => {
     expect(text).not.toContain("80%+");
   });
 
+  it("says 0% when a finding's own percent is 0, not its level's band", () => {
+    const { text } = renderDigest(
+      {
+        ...payload,
+        newFindings: [
+          { title: "Idle cash", annualSavingsCents: null, confidence: "high", percent: 0 },
+        ],
+      },
+      LINKS,
+    );
+    expect(text).toContain("- Idle cash (0% sure)");
+    expect(text).not.toContain("80%+");
+  });
+
   it("sums the checkup in one line, linked to the report", () => {
     const { text } = renderDigest(
       { ...payload, checkup: { checks: 12, found: 2, passed: 9, notEnoughData: 1 } },

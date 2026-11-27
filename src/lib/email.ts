@@ -132,7 +132,11 @@ export async function sendMagicLink({
   const url = linkOnSite(asked);
   // Local dev without Resend: print the link instead. Never in production, where the
   // link is a credential and must only go to the user's inbox.
-  if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
+  if (
+    !process.env.RESEND_API_KEY &&
+    process.env.EMAIL_PROVIDER !== "agentmail" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     log.dev(`[dev] Magic link for ${to}: ${url}`);
     return;
   }

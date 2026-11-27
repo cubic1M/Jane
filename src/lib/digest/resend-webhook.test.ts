@@ -10,6 +10,13 @@ vi.mock("@/lib/db-scoped", () => ({
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+// The opt-out runs in a system transaction; here the transaction is the stand-in client itself.
+vi.mock("@/lib/system-db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/system-db")>()),
+  systemTransaction: vi.fn(async (_why: string, run: (tx: unknown) => unknown, c: unknown) =>
+    run(c),
+  ),
+}));
 
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -108,6 +115,7 @@ describe("recordEmailEvent", () => {
       "digest_unsubscribed",
       { type: "user", id: "u1" },
       { why: "spam_complaint" },
+      { tx: client },
     );
   });
 

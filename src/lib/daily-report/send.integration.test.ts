@@ -213,6 +213,12 @@ describe.runIf(url)("runDailyReports against a real database", () => {
     expect((await run(MORNING)).sent).toBe(1);
   });
 
+  it("out of time, does no lookup for the rest: they count as deferred, not as already sent", async () => {
+    expect((await run(MORNING)).sent).toBe(1);
+    const result = await run(MORNING, { budgetMs: 0 });
+    expect(result).toMatchObject({ sent: 0, deferred: 1, alreadySent: 0 });
+  });
+
   // The email went: a failure to write the audit log or the analytics event afterwards doesn't make it
   // a failure, and doesn't give the day back to be sent twice. The audit write is tried twice and, if
   // it still fails, said in the log: never dropped silently.

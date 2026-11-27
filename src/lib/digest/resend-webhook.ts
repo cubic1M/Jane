@@ -4,7 +4,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { systemDb } from "@/lib/system-db";
+import { systemDb, systemTransaction } from "@/lib/system-db";
 
 // Resend's webhook, for the weekly email (src/lib/digest/send.ts). Resend signs every delivery
 // the way Svix does: an HMAC-SHA256 of "<svix-id>.<svix-timestamp>.<body>", keyed by the
@@ -68,20 +68,29 @@ export async function recordEmailEvent(
     return "opened";
   }
   if (event.type === "email.complained") {
-    const { count } = await systemDb(
+    // The opt-out and its audit entry commit together: a failed audit write leaves the person
+    // still on, so the provider's retry records both. A repeat after the commit finds nothing to turn off.
+    const count = await systemTransaction(
       "Email provider's webhook: nobody is signed in",
+      async (tx) => {
+        const { count } = await tx.user.updateMany({
+          where: { id: digest.userId, digestEnabled: true },
+          data: { digestEnabled: false },
+        });
+        if (count > 0) {
+          await logAudit(
+            { type: "system", id: null },
+            "digest_unsubscribed",
+            { type: "user", id: digest.userId },
+            { why: "spam_complaint" },
+            { tx },
+          );
+        }
+        return count;
+      },
       client,
-    ).user.updateMany({
-      where: { id: digest.userId, digestEnabled: true },
-      data: { digestEnabled: false },
-    });
+    );
     if (count > 0) {
-      await logAudit(
-        { type: "system", id: null },
-        "digest_unsubscribed",
-        { type: "user", id: digest.userId },
-        { why: "spam_complaint" },
-      );
       await track(digest.userId, "digest_unsubscribed", { why: "spam_complaint" });
     }
     return "complained";

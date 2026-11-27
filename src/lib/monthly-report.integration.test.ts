@@ -296,6 +296,24 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(await client.monthlyReport.count({ where: { userId: sample.id } })).toBe(0);
   });
 
+  it("doesn't spend its budget on people already sent this month's report", async () => {
+    const sent = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    const first = await runMonthlyReports({ client, now: NOW, send: sent, userIds: [userId] });
+    expect(
+      await client.monthlyReport.count({ where: { userId, emailedAt: { not: null } } }),
+    ).toBeGreaterThan(0);
+    const again = await runMonthlyReports({
+      client,
+      now: new Date(NOW.getTime() + 86_400_000),
+      send: sent,
+      userIds: [userId],
+      budgetMs: 0,
+    });
+    // Already emailed (by this or an earlier test): not even counted as left for later.
+    expect(again.deferred).toBe(0);
+    expect(first.failed).toBe(0);
+  });
+
   it("isn't made after the first days of the month, or for an empty month", async () => {
     expect(
       await monthlyReportFor(userId, { client, now: new Date("2026-10-12T15:00:00Z") }),
