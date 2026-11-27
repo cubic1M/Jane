@@ -175,7 +175,14 @@ export async function loadAuditRecords(
       key,
       label,
       ...(line
-        ? itemizedLineFigures(line, f.cents, estimate.estimate.deduction)
+        ? itemizedLineFigures(
+            line,
+            // What was paid, before the debt limit scales mortgage interest down.
+            line === "mortgage_interest"
+              ? f.sources.reduce((sum, s) => sum + ("cents" in s ? s.cents : 0), 0)
+              : f.cents,
+            estimate.estimate.deduction,
+          )
         : { claimedCents: f.cents }),
       evidence: f.sources.flatMap(homeEvidence),
       needs: [],
