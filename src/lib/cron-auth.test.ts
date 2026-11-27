@@ -25,12 +25,19 @@ describe("cronAuthorized", () => {
 // /api/cron and the read-only ops routes ask before they do any work (before their first await).
 describe("every cron route asks for the secret first", () => {
   const dirs = ["src/app/api/cron", "src/app/api/ops/evidence", "src/app/api/ops/invariants"];
-  const routes = dirs.flatMap((dir) =>
-    (dir.endsWith("cron")
-      ? readdirSync(dir).map((name) => `${dir}/${name}/route.ts`)
-      : [`${dir}/route.ts`]
-    ).filter((file) => existsSync(file)),
-  );
+  // Every route.ts anywhere under /api/cron (deeper folders and the root included).
+  const under = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? under(`${dir}/${entry.name}`)
+        : entry.name === "route.ts"
+          ? [`${dir}/route.ts`]
+          : [],
+    );
+  const routes = [
+    ...under("src/app/api/cron"),
+    ...dirs.slice(1).map((dir) => `${dir}/route.ts`),
+  ].filter((file) => existsSync(file));
 
   it("finds the routes", () => {
     expect(routes.length).toBeGreaterThanOrEqual(13);

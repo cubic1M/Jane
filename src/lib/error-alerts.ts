@@ -74,12 +74,15 @@ export async function alertError(
       ].join("\n\n"),
       html: `<p>A server error (<b>${escape(kind)}</b>) happened on <code>${escape(where)}</code> at ${at}.</p><p>Details, scrubbed: <a href="${escape(adminLink("/admin/errors"))}">/admin/errors</a></p><p>You'll get at most one email for this kind of error, in this place, each ${ERROR_ALERT_MINUTES} minutes.</p>`,
     };
-    try {
-      await Promise.all(to.map((address) => send({ ...message, to: address })));
-    } catch (failure) {
-      // Unclaim, so the next one tries again once email works (as in ops-alerts.ts).
+    const results = await Promise.allSettled(
+      to.map((address) => send({ ...message, to: address })),
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length === results.length) {
+      // Nobody got it: unclaim, so the next one tries again once email works (as in ops-alerts.ts).
+      // When someone did get it the claim stays, so they are not emailed again within the hour.
       await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
-      throw failure;
+      throw (failed[0] as PromiseRejectedResult).reason;
     }
     return true;
   } catch (failure) {

@@ -156,8 +156,14 @@ describe.runIf(url)("reverse matching", () => {
       scanned.push(userId);
       throw new Error("scan down");
     });
+    const before = await watchesOf(idle);
     await matchOffers({ client, now: NOW, scan: broken });
     expect(scanned).toContain(idle);
+    // Behind the people not tried yet: its place in the queue moved.
+    const after = await watchesOf(idle);
+    expect(after.map((w) => w.updatedAt.getTime())).not.toEqual(
+      before.map((w) => w.updatedAt.getTime()),
+    );
 
     scanned.length = 0;
     const fine = vi.fn(async (userId: string) => {
