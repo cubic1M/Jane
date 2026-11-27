@@ -66,6 +66,9 @@ export type SavingsInput = {
   // False: the children's ages are not recorded, so whether childcare counts (a child under 13)
   // is unknown and the FSA-or-credit comparison is held back. Absent: not asked.
   childAgesKnown?: boolean;
+  // The person told Jane they are a US citizen or green card holder: the education credits are for
+  // residents only (IRS Pub. 519), so without it the tuition saving is held back.
+  residentOnlyAllowed?: boolean;
   // Tuition paid this year, by payee; home energy work paid last year, by payee.
   tuition: { payee: string; cents: number }[];
   energyLastYear: { payee: string; cents: number; uncapped: boolean }[];
@@ -304,7 +307,8 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   }
 
   const tuition = s.tuition.reduce((sum, t) => sum + t.cents, 0);
-  if (tuition > 0) {
+  // Married filing separately can't take either education credit (Form 8863 instructions).
+  if (tuition > 0 && s.residentOnlyAllowed === true && base.filingStatus !== "married_separate") {
     const range = jointly
       ? EDUCATION_CREDITS.phaseOut.married_joint
       : EDUCATION_CREDITS.phaseOut.single;

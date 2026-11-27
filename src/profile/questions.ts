@@ -25,7 +25,15 @@ export function decidedBy(
 ): { cents: number; count: number } {
   const detectors = DETECTORS.filter((d) => d.needs.includes(fact));
   if (detectors.length === 0) return { cents: 0, count: 0 };
-  const worth = (told: ProfileInput["told"]) => {
+  const worth = (answers: ProfileInput["told"]) => {
+    // A credit that is for residents only is held until they say they're a citizen or green card
+    // holder (src/planning/tax-engine/residency-gate.ts). Another answer's worth is then measured as
+    // a resident's, or two questions would each wait for the other and neither would be asked; the
+    // status question itself is measured as it is, held until it is answered.
+    const told =
+      fact === "tax_residency" || answers.tax_residency !== undefined
+        ? answers
+        : { ...answers, tax_residency: "citizen" };
     const input = { ...data, told };
     const fired = runDetectors({ profile: buildProfile(input), data: input }, detectors);
     return new Map(fired.map((s) => [s.id, { cents: s.worthCents, urgency: s.urgency }]));

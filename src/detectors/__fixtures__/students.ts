@@ -132,4 +132,43 @@ export const grad = (): ProfileInput => ({
   householdSize: 1,
 });
 
-export const STUDENTS = { undergrad, grad } as const;
+// An international student on an F-1 visa (the residency gate's tests, tax program T10): tuition, a
+// campus job, student loan payments and California rent, everything the resident-only credits and
+// the ones open to a nonresident look at. Their status is what they told Jane unless the test says
+// otherwise (`told` replaces the answers about status and school).
+const F1 = "f1-checking";
+const f1Rows = (pay: number): Row[] => [
+  ["2026-10-01", 145_000, "ESSEX PORTOLA APTS RENT", "RENT_AND_UTILITIES_RENT"],
+  ["2026-11-01", 145_000, "ESSEX PORTOLA APTS RENT", "RENT_AND_UTILITIES_RENT"],
+  ["2026-10-05", 320_000, "STANFORD UNIVERSITY TUITION PAYMENT", "GENERAL_SERVICES_EDUCATION"],
+  ["2026-10-20", 21_740, "NELNET STUDENT LOAN PAYMENT", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
+  ["2026-11-20", 21_740, "NELNET STUDENT LOAN PAYMENT", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
+  ...["2026-09-18", "2026-10-02", "2026-10-16", "2026-10-30", "2026-11-13"].flatMap((d): Row[] => [
+    [d, 6_000, "SAFEWAY #1234 MOUNTAIN VIEW CA", "FOOD_AND_DRINK_GROCERIES"],
+    [d, -pay, "STANFORD UNIVERSITY PAYROLL", "INCOME_WAGES"],
+  ]),
+];
+
+export const f1 = (
+  told: ProfileInput["told"] = { tax_residency: "student_visa" },
+  // What each of the five paychecks is, in cents.
+  pay = 150_000,
+): ProfileInput => ({
+  today: STUDENT_TODAY,
+  told: {
+    home_state: "CA",
+    enrollment: "grad",
+    claimed_as_dependent: "no",
+    age_25_plus: "yes",
+    ...told,
+  },
+  transactions: rows(F1, f1Rows(pay)),
+  accounts: [
+    { id: F1, name: "Checking", type: "depository", subtype: "checking", balanceCents: 410_000 },
+  ],
+  liabilities: [],
+  state: "CA",
+  householdSize: 1,
+});
+
+export const STUDENTS = { undergrad, grad, f1 } as const;

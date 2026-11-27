@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadCollege } from "@/lib/investments/college";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { loadToldResidency } from "@/lib/tax-residency";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import {
   careChoice,
@@ -155,6 +156,7 @@ export async function loadFamilyTaxes(
     0,
   );
 
+  const { kind: residency } = await loadToldResidency(userId, { client });
   const choices = [
     childrenChoice(input, children),
     careChoice({
@@ -163,7 +165,12 @@ export async function loadFamilyTaxes(
       children,
       bothWork: !married || (spouseWages ?? 0) > 0,
     }),
-    educationChoice({ estimate: input, tuitionCents, student }),
+    educationChoice({
+      estimate: input,
+      tuitionCents,
+      student,
+      residency,
+    }),
     plan529Choice({ estimate: input, state: input.state, contributionCents: yearly529 }),
     married && spouseWages !== null
       ? filingChoice({

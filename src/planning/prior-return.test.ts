@@ -75,6 +75,7 @@ const review = (over: Partial<Parameters<typeof reviewReturn>[0]> = {}) =>
     tuitionCents: 0,
     careCents: 0,
     children: [],
+    residency: "citizen",
     ...over,
   });
 
@@ -137,5 +138,19 @@ describe("reviewing a return", () => {
     });
     expect(small.totalCents).toBeLessThan(AMEND_MIN_CENTS);
     expect(small.worthAmending).toBe(false);
+  });
+});
+
+describe("the education credit on a return, for residents only (IRS Pub. 519)", () => {
+  const withTuition = { tuitionCents: 400_000 };
+  it("is found for a citizen or green card holder", () => {
+    expect(review(withTuition).findings.map((f) => f.key)).toContain("education_credit");
+  });
+  it("is held back for anyone who has not said so: not asked, not sure, a student or other visa", () => {
+    for (const residency of [undefined, "unknown", "student_visa", "other_visa"] as const)
+      expect(
+        review({ ...withTuition, residency }).findings.map((f) => f.key),
+        String(residency),
+      ).not.toContain("education_credit");
   });
 });

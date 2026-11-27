@@ -18,6 +18,7 @@ const ANSWERS: Record<string, Record<string, string>> = {
     claimed_as_dependent: "yes",
     enrollment: "undergrad",
     age_25_plus: "no",
+    tax_residency: "citizen",
   },
   "fellowship-one-month": { school_deposit: "fellowship", tax_residency: "student_visa" },
   "gig-two-months": {
@@ -25,6 +26,7 @@ const ANSWERS: Record<string, Record<string, string>> = {
     age_25_plus: "yes",
     claimed_as_dependent: "no",
     filing_status: "single",
+    tax_residency: "citizen",
   },
 };
 
@@ -63,9 +65,9 @@ describe("answering Jane's questions", () => {
     expect(r.after).not.toContain("stipend_tax");
   });
 
-  it("drops the Saver's cards for a graduate gig student, and shows the earned income credit on the fourth answer", async () => {
-    // Enrollment, filing status and dependency rank above age for this person.
-    const r = await answerUpTo("gig-two-months", 4);
+  it("drops the Saver's cards for a graduate gig student, and shows the earned income credit on the fifth answer (the status question is one of them)", async () => {
+    // Enrollment, filing status, dependency and status for US tax rank above age for this person.
+    const r = await answerUpTo("gig-two-months", 5);
     expect(r.asked).toEqual(expect.arrayContaining(["enrollment", "age_25_plus"]));
     expect(r.appeared).toContain("earned_income_credit");
     expect(r.after).not.toContain("savers_credit");

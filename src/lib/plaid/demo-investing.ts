@@ -25,8 +25,9 @@ export async function ensureDemoInvestingFacts(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<void> {
   const person = await demoPersonFor(userId, { client });
-  if (!person) return;
+  // The original demo bank has no life of its own to seed, but it is a made-up US citizen too.
   await ensureDemoTold(userId, person, { client, now });
+  if (!person) return;
   const excludes = DEMO_VALUES_EXCLUDES[person];
   if (excludes && excludes.length > 0) {
     // One row a person: what they've already set stays.
@@ -62,10 +63,10 @@ export async function ensureDemoInvestingFacts(
 // person has already answered or added stays.
 async function ensureDemoTold(
   userId: string,
-  person: PersonId,
+  person: PersonId | null,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<void> {
-  const told = demoToldFor(person, await todayOf(userId, { client, now }));
+  const told = demoToldFor(person ?? "", await todayOf(userId, { client, now }));
   for (const [key, value] of Object.entries(told)) {
     const spec = factSpec(key);
     if (!spec) continue;
@@ -81,7 +82,7 @@ async function ensureDemoTold(
       update: {},
     });
   }
-  const credit = DEMO_FAMILY_CREDIT[person] ?? [];
+  const credit = person ? (DEMO_FAMILY_CREDIT[person] ?? []) : [];
   if (credit.length > 0 && (await scopedFor(userId, client).familyCredit.count()) === 0) {
     await scopedFor(userId, client).familyCredit.createMany({
       data: credit.map((c) => ({

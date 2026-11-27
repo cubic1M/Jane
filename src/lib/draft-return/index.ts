@@ -14,6 +14,7 @@ import { log } from "@/lib/log";
 import { childrenOrUnknownAges } from "@/lib/family-taxes";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadToldResidency } from "@/lib/tax-residency";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import {
   checkDraft,
@@ -139,6 +140,7 @@ async function knownFor(
       .reduce((s, t) => s + t.amountCents, 0),
     careCents: tags.totals.childcare.totalCents,
     children: childrenOrUnknownAges(family?.familyChildren, input.childrenUnder17),
+    residency: (await loadToldResidency(userId, { client })).kind,
     from,
   };
 }

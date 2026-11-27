@@ -9,6 +9,7 @@ import {
 import type { FilingStatus } from "@/config/tax";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare, phaseOut } from "@/planning/tax-savings";
+import { educationHeldWhy, type ResidencyKind } from "@/planning/tax-engine/residency-gate";
 import { residentTax } from "@/planning/tax-states";
 import { formatWholeDollars } from "@/lib/money";
 
@@ -264,6 +265,10 @@ export function educationChoice(input: {
   estimate: EstimateInput;
   tuitionCents: number;
   student: Student;
+  // What the person told Jane about their status for US tax. The credits are for residents only
+  // (IRS Pub. 519): anything but a citizen or green card holder leaves them held back (absent: not
+  // known).
+  residency?: ResidencyKind;
 }): FamilyChoice | null {
   const base = input.estimate;
   if (input.tuitionCents <= 0) return null;
@@ -296,14 +301,17 @@ export function educationChoice(input: {
     federal({ ...base, otherCreditsCents: (base.otherCreditsCents ?? 0) + aotc - refundable }) -
     refundable;
   const withLlc = federal({ ...base, otherCreditsCents: (base.otherCreditsCents ?? 0) + llc });
-  const aotcWhy = aotcRules(input.student, status);
-  const llcWhy = llcRules(status);
+  const held =
+    input.residency === "citizen" ? null : educationHeldWhy(input.residency ?? "unknown");
+  const aotcWhy = held ? [held.why] : aotcRules(input.student, status);
+  const llcWhy = held ? [held.why] : llcRules(status);
   return choice("education", "Tuition: which education credit fits", [
     {
       label: `American Opportunity Credit (${formatWholeDollars(aotc)})`,
       taxCents: withAotc,
       credit: { nonrefundableCents: aotc - refundable, refundableCents: refundable },
       eligible: aotcWhy.length === 0,
+      ...(held?.open ? { unknown: true } : {}),
       why:
         aotcWhy.length > 0
           ? aotcWhy
@@ -314,6 +322,7 @@ export function educationChoice(input: {
       taxCents: withLlc,
       credit: { nonrefundableCents: llc, refundableCents: 0 },
       eligible: llcWhy.length === 0,
+      ...(held?.open ? { unknown: true } : {}),
       why: llcWhy.length > 0 ? llcWhy : ["20% of up to $10,000 of tuition, any year of study."],
     },
   ]);

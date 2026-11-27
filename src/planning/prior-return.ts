@@ -9,6 +9,7 @@ import {
 import { FILING_STATUSES } from "@/config/tax";
 import { parseMoneyToCents, formatWholeDollars } from "@/lib/money";
 import { careChoice, educationChoice, type Child, type Student } from "@/planning/family-taxes";
+import type { ResidencyKind } from "@/planning/tax-engine/residency-gate";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 
 // Last year's return, read and reviewed (spec step 172). Pure. Two halves:
@@ -108,6 +109,9 @@ export type ReviewInput = {
   //   needs them, the Lifetime Learning Credit doesn't.
   bothWork?: boolean;
   student?: Student;
+  // What they told Jane about their status for US tax. The education credits are for residents
+  // only (IRS Pub. 519): without "citizen" that finding is held back.
+  residency?: ResidencyKind;
 };
 
 export type Review = {
@@ -214,7 +218,12 @@ export function reviewReturn(r: ReviewInput): Review {
   if (centsOf(f, "educationCredit") === 0 && r.tuitionCents > 0) {
     // Without the student's facts the American Opportunity Credit isn't assumed.
     const student = r.student ?? { yearsOfCollegeBefore: 0, halfTime: true };
-    const c = educationChoice({ estimate: withLoan, tuitionCents: r.tuitionCents, student });
+    const c = educationChoice({
+      estimate: withLoan,
+      tuitionCents: r.tuitionCents,
+      student,
+      residency: r.residency,
+    });
     const sides = (c?.sides ?? []).filter((s, i) => s.eligible && (i === 1 || r.student));
     const best =
       sides.length > 0 ? sides.reduce((a, b) => (b.taxCents < a.taxCents ? b : a)) : null;

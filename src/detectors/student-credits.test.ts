@@ -53,7 +53,7 @@ function student({ pay = 0, tuition = [], loan = 0, rent, told = {} }: Shape): P
     ],
     accounts: [{ id: "checking", type: "depository", subtype: "checking", balanceCents: 300_000 }],
     liabilities: [],
-    told: { home_state: "CA", ...told },
+    told: { home_state: "CA", tax_residency: "citizen", ...told },
   };
 }
 const run = (data: ProfileInput, topic: string) =>
@@ -314,5 +314,18 @@ describe("the questions credits need", () => {
       "other",
       "unsure",
     ]);
+  });
+
+  it("asks the status question next once the answers that leave the education credit open are in", async () => {
+    // The education credit is for residents only, so it is held until they say they're a citizen or
+    // green card holder: before the answer to who claims them, that question is measured as a
+    // resident's (neither waits for the other), after it, the status question decides the credit.
+    const data = await inputFromStatements(STUDENT_SHAPES["undergrad-one-month"](), STUDENT_TODAY, {
+      claimed_as_dependent: "yes",
+      enrollment: "undergrad",
+    });
+    const best = bestQuestion(buildProfile(data), data, new Set())!;
+    expect(best.spec.fact).toBe("tax_residency");
+    expect(decidesLine(best.spec, best.decidesCount)).toBe("It decides a credit or form for you.");
   });
 });

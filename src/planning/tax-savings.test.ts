@@ -41,6 +41,7 @@ const savings = (i: EstimateInput, o: Partial<SavingsInput> = {}) =>
     hasHsa: false,
     medicalCents: 0,
     childcareCents: 0,
+    residentOnlyAllowed: true,
     tuition: [],
     energyLastYear: [],
     ...o,
@@ -153,6 +154,17 @@ describe("findTaxSavings", () => {
     expect(all.find((x) => x.key === "education_credit")?.estimateCents).toBe($(600));
     const energy = all.filter((x) => x.key === "energy_credit").map((x) => x.estimateCents);
     expect(energy.sort((a, b) => a - b)).toEqual([$(1_200), $(6_000)]);
+  });
+
+  it("holds the tuition saving until the person says they are a citizen or green card holder, and for married filing separately", () => {
+    const tuition = [{ payee: "STATE UNIVERSITY BURSAR", cents: $(6_000) }];
+    const key = (i: EstimateInput, o: Partial<SavingsInput>) =>
+      savings(i, { tuition, ...o }).some((x) => x.key === "education_credit");
+    expect(key(input(), {})).toBe(true);
+    expect(key(input(), { residentOnlyAllowed: false })).toBe(false);
+    expect(key(input(), { residentOnlyAllowed: undefined })).toBe(false);
+    // Neither education credit is open to married filing separately (Form 8863 instructions).
+    expect(key(input({ filingStatus: "married_separate" }), {})).toBe(false);
   });
 
   it("leaves out savings too small to matter, and lists the biggest first", () => {

@@ -235,6 +235,7 @@ describe("each choice shows both sides' tax", () => {
       estimate: base,
       tuitionCents: 500_000,
       student: { yearsOfCollegeBefore: 1, halfTime: true },
+      residency: "citizen",
     })!;
     // AOTC $2,500 (40% refundable) against LLC 20% of $5,000 = $1,000.
     expect(c.sides[0].label).toBe("American Opportunity Credit ($2,500)");
@@ -246,10 +247,40 @@ describe("each choice shows both sides' tax", () => {
       estimate: base,
       tuitionCents: 500_000,
       student: { yearsOfCollegeBefore: 4, halfTime: true },
+      residency: "citizen",
     })!;
     expect(later.sides[0].eligible).toBe(false);
     expect(later.better).toBe(1);
     expect(later.savesCents).toBe(0);
+  });
+
+  it("holds the education credits back until the person says they are a citizen or green card holder", () => {
+    const base = input({
+      filingStatus: "single",
+      childrenUnder17: 0,
+      income: { ...NO_INCOME, wagesCents: 6_000_000, socialSecurityWagesCents: 6_000_000 },
+    });
+    const ask = (residency?: "citizen" | "student_visa" | "other_visa" | "unknown") =>
+      educationChoice({
+        estimate: base,
+        tuitionCents: 500_000,
+        student: { yearsOfCollegeBefore: 1, halfTime: true },
+        ...(residency ? { residency } : {}),
+      })!;
+    // Not said (or "not sure", or another visa): may be open, depends on the answer, no side chosen.
+    for (const c of [ask(), ask("unknown"), ask("other_visa")]) {
+      expect(c.sides.every((s) => s.unknown === true && s.eligible === false)).toBe(true);
+      expect(c.sides[0].why[0]).toMatch(/^May be open to you: .*IRS Publication 519\)\.$/);
+      expect(c.better).toBeNull();
+      expect(c.savesCents).toBe(0);
+    }
+    // An F or J student visa: said plainly, not open.
+    const visa = ask("student_visa");
+    expect(visa.sides.every((s) => !s.unknown && !s.eligible)).toBe(true);
+    expect(visa.sides[0].why[0]).toContain("usually not open to nonresident aliens");
+    expect(visa.better).toBeNull();
+    // The answer brings it back.
+    expect(ask("citizen").better).toBe(0);
   });
 
   it("a 529's state break: state tax with and without the deduction", () => {

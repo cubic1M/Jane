@@ -34,6 +34,7 @@ const review = (over: Partial<Parameters<typeof reviewReturn>[0]> = {}) =>
     tuitionCents: 0,
     careCents: 0,
     children: [],
+    residency: "citizen",
     ...over,
   });
 const keys = (r: ReturnType<typeof review>) => r.findings.map((f) => f.key);

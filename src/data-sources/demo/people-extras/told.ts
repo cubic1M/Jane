@@ -11,12 +11,16 @@ export function demoToldFor(
   today: string,
 ): Partial<Record<FactKey, string | number | boolean>> {
   const year = Number(today.slice(0, 4));
+  // Every sample person is a made-up US citizen. Their status is told so the credits that are for
+  // residents only (src/planning/tax-engine/residency-gate.ts) stay on their pages; a real person is
+  // asked (src/config/questions.ts) and sees them once they answer.
+  const citizen = { tax_residency: "citizen" } as const;
   switch (person as PersonId) {
     // Ruth's sister died ten years ago, so the inherited IRA has to be empty by this December 31.
     case "retiree":
-      return { inherited_ira_death_year: year - 10 };
+      return { ...citizen, inherited_ira_death_year: year - 10 };
     default:
-      return {};
+      return citizen;
   }
 }
 
