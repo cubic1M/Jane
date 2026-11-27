@@ -31,7 +31,7 @@ describe.runIf(url)("what-ifs for a person whose residency is not established", 
   });
 
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
     await client.$disconnect();
   });
 
