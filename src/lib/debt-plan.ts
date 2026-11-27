@@ -171,15 +171,16 @@ export async function startDebtPlan(
     actualCents: null,
     debtIds: summary.cards.map((c) => c.id),
   };
-  // Starting a plan, by the person or by autopilot, lifts an earlier "stop the plan".
-  await scopedFor(userId, client).janePreferences.deleteMany({
-    where: { kind: "never", key: STOPPED_KEY },
-  });
-  const row = await scopedFor(userId, client).debtPlans.upsert({
-    where: { userId },
-    create: { userId, ...data, startedOn: data.checkedOn },
-    update: { ...data, startedOn: data.checkedOn },
-    select: PLAN_SELECT,
+  // Starting a plan, by the person or by autopilot, lifts an earlier "stop the plan": both writes
+  // or neither, so a rejected plan save keeps the stop.
+  const row = await scopedFor(userId, client).transaction(async (tx) => {
+    await tx.janePreferences.deleteMany({ where: { kind: "never", key: STOPPED_KEY } });
+    return tx.debtPlans.upsert({
+      where: { userId },
+      create: { userId, ...data, startedOn: data.checkedOn },
+      update: { ...data, startedOn: data.checkedOn },
+      select: PLAN_SELECT,
+    });
   });
   // The plan is saved and active: a failed analytics write doesn't fail its start.
   await trackQuietly(userId, "debt_plan_started", {
