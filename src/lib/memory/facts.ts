@@ -409,6 +409,11 @@ export async function forgetFact(
   });
   // The chat's stored numbers were worked out with what is now forgotten.
   await (await import("@/lib/jane-agent/primer-store")).markPrimerStale(userId, { client, now });
+  // What they said about taxes goes from the household's tax record too: every row, for good. Before
+  // the audit entry, so a failure there cannot leave the record holding what they took back.
+  // Loaded late: the record reads this file (its told facts).
+  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
+  await forgetToldRecord(userId, row.key, { client, now });
   await logAudit(
     { type: "user", id: userId },
     "memory_fact_deleted",
@@ -417,10 +422,6 @@ export async function forgetFact(
   );
   // What was forgotten may have decided a card: the cards are worked out again after the reply.
   await rescanAfterAnswer(userId, { client, now });
-  // What they said about taxes goes from the household's tax record too: every row, for good.
-  // Loaded late: the record reads this file (its told facts).
-  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
-  await forgetToldRecord(userId, row.key, { client, now });
   return true;
 }
 
@@ -556,6 +557,9 @@ export async function forgetEverything(
     };
   });
   await (await import("@/lib/jane-agent/primer-store")).markPrimerStale(userId, { client });
+  // Everything they told Jane about taxes goes from the household's tax record too, for good.
+  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
+  await forgetToldRecord(userId, "all", { client });
   await logAudit(
     { type: "user", id: userId },
     "memory_deleted_all",
@@ -563,8 +567,5 @@ export async function forgetEverything(
     counts,
   );
   await rescanAfterAnswer(userId, { client });
-  // Everything they told Jane about taxes goes from the household's tax record too, for good.
-  const { forgetToldRecord } = await import("@/lib/tax-facts/through");
-  await forgetToldRecord(userId, "all", { client });
   return counts;
 }
