@@ -201,18 +201,26 @@ export async function confirmPriorReturn(
   const others = (await listPriorReturns(userId, { client, status: "confirmed" })).filter(
     (r) => r.year === year && r.id !== id,
   );
-  for (const o of others)
-    await db.priorReturns.updateMany({ where: { id: o.id }, data: { status: "dismissed" } });
-  await db.priorReturns.updateMany({
-    where: { id, status: "waiting" },
-    data: {
-      status: "confirmed",
-      fields: checked.fields,
-      sources: checked.sources,
-      notes: checked.notes,
-      confirmedAt: now,
-    },
+  // The old one is dismissed and the new one confirmed as one change: a failure leaves the old
+  // return in force, and a new return another tap already answered replaces nothing.
+  const confirmed = await db.transaction(async (tx) => {
+    const { count } = await tx.priorReturns.updateMany({
+      where: { id, status: "waiting" },
+      data: {
+        status: "confirmed",
+        fields: checked.fields,
+        sources: checked.sources,
+        notes: checked.notes,
+        confirmedAt: now,
+      },
+    });
+    if (count === 0) return false;
+    for (const o of others) {
+      await tx.priorReturns.updateMany({ where: { id: o.id }, data: { status: "dismissed" } });
+    }
+    return true;
   });
+  if (!confirmed) throw new PriorReturnError("That one's already been answered.");
   await logAudit(
     { type: "user", id: userId },
     "tax_return_read_confirmed",

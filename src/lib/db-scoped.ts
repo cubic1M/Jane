@@ -167,6 +167,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         // A consent replaced by its successor (src/lib/connectors/consent.ts).
         connectorConsents: typeof inTransaction.connectorConsent;
         askConversations: typeof inTransaction.askConversation;
+        // A confirmed prior return and the one it replaces (src/lib/prior-return).
+        priorReturns: typeof inTransaction.priorReturn;
         // A linked brokerage and what a refresh of it saves (src/lib/robinhood/refresh.ts).
         robinhoodConnections: typeof inTransaction.robinhoodConnection;
         accounts: typeof inTransaction.account;
@@ -193,6 +195,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
           janeMessages: tx.janeMessage,
           connectorConsents: tx.connectorConsent,
           askConversations: tx.askConversation,
+          priorReturns: tx.priorReturn,
           robinhoodConnections: tx.robinhoodConnection,
           accounts: tx.account,
           securities: tx.security,

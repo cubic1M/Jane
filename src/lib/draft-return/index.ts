@@ -11,6 +11,7 @@ import { encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { childrenOrUnknownAges } from "@/lib/family-taxes";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
@@ -94,10 +95,11 @@ async function knownFor(
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Known> {
-  const [estimate, docs, tags] = await Promise.all([
+  const [estimate, docs, tags, family] = await Promise.all([
     loadTaxEstimate(userId, { client, now, year }),
     loadTaxDocuments(userId, year, { client, now }),
     loadTaxTags(userId, year, { client }),
+    scopedFor(userId, client).taxProfiles.findFirst({ select: { familyChildren: true } }),
   ]);
   const usable = docs.forms.filter((f) => f.document && f.usable);
   const of = (key: string) => usable.filter((f) => f.formKey === key);
@@ -136,11 +138,7 @@ async function knownFor(
       .filter((t) => t.tag === "education" && TUITION_PAYEE.test(t.payee))
       .reduce((s, t) => s + t.amountCents, 0),
     careCents: tags.totals.childcare.totalCents,
-    children: Array.from({ length: input.childrenUnder17 }, () => ({
-      ageAtYearEnd: 5,
-      hasSsn: true,
-      monthsLivedWithYou: 12,
-    })),
+    children: childrenOrUnknownAges(family?.familyChildren, input.childrenUnder17),
     from,
   };
 }

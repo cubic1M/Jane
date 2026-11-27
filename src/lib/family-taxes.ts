@@ -1,3 +1,4 @@
+import { FAMILY_RULES } from "@/config/family-taxes";
 import { MOST_CENTS_KEPT } from "@/lib/money";
 import { TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -56,6 +57,18 @@ export function parseChildren(value: unknown): Child[] {
   );
 }
 
+// The children for a review: the ones the person recorded, else one per child counted under 17 with
+// no age (FAMILY_RULES.unknownAge), so nothing that depends on an age is claimed from a guess.
+export function childrenOrUnknownAges(familyChildren: unknown, underSeventeen: number): Child[] {
+  const recorded = parseChildren(familyChildren);
+  if (recorded.length > 0) return recorded;
+  return Array.from({ length: underSeventeen }, () => ({
+    ageAtYearEnd: FAMILY_RULES.unknownAge,
+    hasSsn: true,
+    monthsLivedWithYou: 12,
+  }));
+}
+
 export async function loadFamilyTaxes(
   userId: string,
   {
@@ -98,15 +111,11 @@ export async function loadFamilyTaxes(
     );
   }
   if (children.length === 0 && input.childrenUnder17 > 0) {
-    // Ages unknown: under 13 when there's childcare spending, else under 17.
-    const age = tags.totals.childcare.totalCents > 0 ? 5 : 14;
-    children = Array.from({ length: input.childrenUnder17 }, () => ({
-      ageAtYearEnd: age,
-      hasSsn: true,
-      monthsLivedWithYou: 12,
-    }));
+    // Ages unknown: known only to be under 17, so the child credit stands and no care credit is
+    // worked out from a guessed age.
+    children = childrenOrUnknownAges(null, input.childrenUnder17);
     assumptions.push(
-      "I don't know your children's ages; add them under family details for exact answers.",
+      "I don't know your children's ages, so I can't tell whether childcare counts for the care credit. Add their ages under family details.",
     );
   }
 

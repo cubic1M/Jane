@@ -262,6 +262,10 @@ export async function dismissTaxNotice(
 
 // What Jane knows that bears on a notice: the forms it collected for its year, the income
 // the accounts show from each payer, and payments to the IRS and the state.
+// A line that names a state tax agency: its own name, or a state's code in front ("CA FTB", "NYS DTF").
+const STATE_AGENCY =
+  /\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)[A-Z]{2} (?:TAX|REV|DTF|DOR)\b/i;
+
 async function noticeFacts(
   userId: string,
   fields: Fields,
@@ -285,7 +289,9 @@ async function noticeFacts(
         pending: false,
         amountCents: { gt: 0 },
         pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
-        date: { gte: new Date(Date.UTC(year, 1, 1)), lt: new Date(Date.UTC(year + 2, 0, 1)) },
+        // From the year's start of filing season on, with no end: a notice for an old year is
+        // paid when it is paid, which may be years later.
+        date: { gte: new Date(Date.UTC(year, 1, 1)) },
       },
       select: { date: true, amountCents: true, description: true, merchantName: true },
       orderBy: [{ date: "asc" }, { id: "asc" }],
@@ -308,7 +314,16 @@ async function noticeFacts(
       })),
     incomeByPayer: [...byPayer.entries()].map(([payer, cents]) => ({ payer, cents })),
     payments: payments
-      .filter((t) => federal.test(`${t.description} ${t.merchantName ?? ""}`) !== wantsState)
+      .filter((t) => {
+        const line = `${t.description} ${t.merchantName ?? ""}`;
+        // A payment whose line names another tax year ("USATAXPYMT 2025") is for that year's
+        // balance: it is not counted toward this notice's.
+        const named = [...line.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+        if (named.length > 0 && !named.includes(year)) return false;
+        // A federal notice counts federal payments; a state one counts only lines that name a
+        // state tax agency, never every payment that is not federal.
+        return wantsState ? !federal.test(line) && STATE_AGENCY.test(line) : federal.test(line);
+      })
       .map((t) => ({
         date: t.date.toISOString().slice(0, 10),
         payee: (t.merchantName ?? t.description).trim(),
