@@ -279,6 +279,21 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
     // A 2024 balance paid in 2026, and a county property tax that is not a state agency.
     await pay("2026-10-05", "IRS USATAXPYMT 2024");
     await pay("2026-10-06", "COUNTY ASSESSOR PROPERTY TAX");
+    // The agency only in the merchant name.
+    await client.transaction.create({
+      data: {
+        userId,
+        accountId: checking.id,
+        source: "plaid",
+        date: new Date("2026-10-08T00:00:00Z"),
+        amountCents: 12_000,
+        description: "ACH DEBIT",
+        merchantName: "NY DTF",
+        pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+      },
+    });
+    // Labelled for another year: not this notice's balance.
+    await pay("2026-10-07", "IRS USATAXPYMT 2025");
     const reading = (await readTaxNotice(userId, documentId, { client, now: LINKED }))!;
     const notice = (kind: string) => ({
       kind,
@@ -294,6 +309,7 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
       { client, now: LINKED },
     );
     expect(JSON.stringify(federal)).toContain("IRS USATAXPYMT 2024");
+    expect(JSON.stringify(federal)).not.toContain("USATAXPYMT 2025");
     const state = await checkNoticeFor(
       userId,
       {
@@ -303,6 +319,7 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
       { client, now: LINKED },
     );
     expect(JSON.stringify(state)).not.toContain("PROPERTY TAX");
+    expect(JSON.stringify(state)).toContain("NY DTF");
   });
 
   it("shows no recommendation for real accounts, who still get the deadline and the draft", async () => {
