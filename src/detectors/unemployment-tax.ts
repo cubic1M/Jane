@@ -9,6 +9,7 @@ import {
   filingNoteOf,
   filingStatusOf,
   studentYearOf,
+  ageOf,
 } from "@/planning/student-tax";
 import { rateMonthsOf } from "@/profile/build";
 import { type Detector, type Suggestion, suggestion } from "./contract";
@@ -74,8 +75,8 @@ const unemploymentTax: Detector = {
     // Unemployment is not earned income; a taxable fellowship is (Pub. 501), for a dependent's limit.
     const earned = other.earnedCents + other.stipendCents;
     const tax =
-      federalTaxOf(base + paid, status, dependent, earned, ownLawYear(year)) -
-      federalTaxOf(base, status, dependent, earned, ownLawYear(year));
+      federalTaxOf(base + paid, status, dependent, earned, ownLawYear(year), ageOf(facts)) -
+      federalTaxOf(base, status, dependent, earned, ownLawYear(year), ageOf(facts));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const ca = facts.home_state.value === "CA" ? " California doesn't tax it (FTB)." : "";
     return suggestion("taxes", "unemployment_tax", {

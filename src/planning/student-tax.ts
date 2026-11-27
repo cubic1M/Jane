@@ -60,6 +60,12 @@ export function dependentOf(facts: Facts): "yes" | "no" | null {
 // calendar years: different forms, and none of the credits below.
 export const onStudentVisa = (facts: Facts) => facts.tax_residency?.value === "student_visa";
 
+// The person's told or read age, for the extra standard deduction at 65 (null when not known).
+export const ageOf = (facts: Facts): number | null => {
+  const age = facts.age?.value;
+  return typeof age === "number" && Number.isFinite(age) ? age : null;
+};
+
 // The law year a student card prices with: the calendar year of its day. When Jane has no figures
 // for it this throws NoTaxParamsError and the card is held back (runDetectors), never priced with
 // another year's law.
@@ -74,11 +80,13 @@ export function standardDeductionOf(
   dependent: boolean,
   earnedCents: number,
   year: number = TAX_RATES_YEAR,
+  age: number | null = null,
 ): number {
   return standardDeductionFor(federalParams(year), {
     status,
     claimedAsDependent: dependent,
     earnedCents,
+    age,
   });
 }
 
@@ -89,10 +97,11 @@ export function federalTaxOf(
   dependent: boolean,
   earnedCents = incomeCents,
   year: number = TAX_RATES_YEAR,
+  age: number | null = null,
 ): number {
   const taxable = Math.max(
     0,
-    incomeCents - standardDeductionOf(status, dependent, earnedCents, year),
+    incomeCents - standardDeductionOf(status, dependent, earnedCents, year, age),
   );
   return bracketTax(taxable, federalParams(year).brackets.value[status]);
 }
@@ -216,8 +225,9 @@ export function marginalRateFor(
   dependent: boolean,
   earnedCents: number,
   year: number = TAX_RATES_YEAR,
+  age: number | null = null,
 ) {
-  const taxable = agiCents - standardDeductionOf(status, dependent, earnedCents, year);
+  const taxable = agiCents - standardDeductionOf(status, dependent, earnedCents, year, age);
   return taxable <= 0 ? 0 : marginalRateOf(taxable, federalParams(year).brackets.value[status]);
 }
 

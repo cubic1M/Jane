@@ -18,6 +18,7 @@ import {
   onStudentVisa,
   studentYearOf,
   yearCoverageMonths,
+  ageOf,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
 import { RESIDENCY_NOTE, residentOnlyAllowed } from "@/planning/tax-engine/residency-gate";
@@ -92,6 +93,7 @@ const educationCredit: Detector = {
       dependent,
       year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
+      ageOf(facts),
     );
     // The refundable 40% isn't paid to a full-time student under 24 with a living parent (Form 8863
     // line 7): only someone known to be 24 or older counts on it (the credit has no upper age).
@@ -187,6 +189,7 @@ const studentLoanInterest: Detector = {
       false,
       year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
+      ageOf(facts),
     );
     // The interest part isn't in a payment. The lender's own year to date, paced to the year by its
     // payments (the ones seen here) or the day it was read; else a year's interest from the balance

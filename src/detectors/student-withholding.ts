@@ -23,6 +23,7 @@ import {
   filingStatusOf,
   lawYearOf,
   onStudentVisa,
+  ageOf,
 } from "@/planning/student-tax";
 import { bracketTax } from "@/planning/tax-brackets";
 import { selfEmploymentTax } from "@/planning/tax-estimate";
@@ -110,7 +111,7 @@ const partYearWithholding: Detector = {
     const withheld = withheldPerCheck(check, rhythm.perYear, "single", law) * checks;
     const dependent = dependentOf(facts) === "yes";
     const yearPay = check * checks;
-    const tax = federalTaxOf(yearPay, "single", dependent, yearPay, law);
+    const tax = federalTaxOf(yearPay, "single", dependent, yearPay, law, ageOf(facts));
     const refund = withheld - tax;
     if (refund < TAX_SET_ASIDE.minLeftCents) return null;
     const employer = nice(employerName(money.wages[0].description)) || "your job";
@@ -191,7 +192,7 @@ const twoJobs: Detector = {
     const year = each.reduce((s, j) => s + j.year, 0);
     const withheld = each.reduce((s, j) => s + j.withheld, 0);
     const dependent = dependentOf(facts) === "yes";
-    const tax = federalTaxOf(year, status, dependent, year, lawYearOf(profile.today));
+    const tax = federalTaxOf(year, status, dependent, year, lawYearOf(profile.today), ageOf(facts));
     const short = tax - withheld;
     if (short < TAX_SET_ASIDE.minLeftCents) return null;
     const [a, b] = each;
@@ -264,6 +265,7 @@ const extensionNotToPay: Detector = {
         dependentOf(facts) === "yes",
         received,
         ownLawYear(year),
+        ageOf(facts),
       ) + selfEmploymentTax(sumCents(contract), 0, ownLawYear(year));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const days = daysBetween(today, due);

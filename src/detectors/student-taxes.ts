@@ -18,6 +18,7 @@ import {
   filingStatusOf,
   nextEstimatedDate,
   onStudentVisa,
+  ageOf,
 } from "@/planning/student-tax";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
 import { type Detector, type Suggestion, suggestion } from "./contract";
@@ -89,8 +90,8 @@ const stipendTax: Detector = {
     const dependent = dependentOf(facts) === "yes";
     const earned = yearly + wages;
     const tax =
-      federalTaxOf(earned, status, dependent, earned, lawYearOf(profile.today)) -
-      federalTaxOf(wages, status, dependent, earned, lawYearOf(profile.today));
+      federalTaxOf(earned, status, dependent, earned, lawYearOf(profile.today), ageOf(facts)) -
+      federalTaxOf(wages, status, dependent, earned, lawYearOf(profile.today), ageOf(facts));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const stanford = deposits.some((t) => isStanford(t.description));
     const payer = stanford ? "Stanford's student account" : payerOf(deposits[0].description);
