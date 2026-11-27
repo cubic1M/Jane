@@ -116,6 +116,28 @@ describe.runIf(url)("claims on money that moves have a lease", { timeout: 60_000
     ).toBeNull();
   });
 
+  it("does not clear a claim another run took over while this one was still working", async () => {
+    const row = await transfer("STALE", PAST);
+    const newHolder = new Date(NOW.getTime() + CLAIM_LEASE_MS * 2);
+    const slow: MoneyMovementPartner = {
+      ...partner,
+      async release() {
+        // While this run waits on the partner, another run takes the row over.
+        await client.moneyTransfer.update({
+          where: { id: row.id },
+          data: { claimExpiresAt: newHolder },
+        });
+        throw new Error("partner timed out");
+      },
+    };
+    await expect(settleTransfers(userId, { client, now: NOW, partner: slow })).rejects.toThrow(
+      "partner timed out",
+    );
+    const after = await client.moneyTransfer.findUniqueOrThrow({ where: { id: row.id } });
+    expect(after.status).toBe("releasing");
+    expect(after.claimExpiresAt?.getTime()).toBe(newHolder.getTime());
+  });
+
   it("stops a second tap on a plan a tap is still moving, and finishes one whose tap died", async () => {
     const live = await plan("paycheck:live", AHEAD);
     await expect(movePaycheckPlan(userId, live.id, { client, now: NOW, partner })).rejects.toThrow(

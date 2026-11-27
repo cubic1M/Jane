@@ -24,7 +24,12 @@ import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { payoffOrder } from "@/planning/debt";
 import { paycheckPlan, type PlannedMove } from "@/planning/paycheck-plan";
 import { moneyPartnerFor, type MoneyMovementPartner } from "./partner";
-import { cancelTransfer, scheduleTransfer, TransferError } from "./transfers";
+import {
+  cancelTransfer,
+  scheduleTransfer,
+  TransferError,
+  TransferInFlightError,
+} from "./transfers";
 import { isoDay as iso } from "@/lib/dates";
 
 // Money that moves itself (spec step 144). When a paycheck lands, Jane works out its plan
@@ -331,6 +336,7 @@ export async function movePaycheckPlan(
   ) {
     throw new PaycheckError("That paycheck's plan was already answered.");
   }
+  const leaseEnd = new Date(now.getTime() + CLAIM_LEASE_MS);
   // Claim the answer before scheduling anything: a second Move, or a Skip, now finds the plan
   // taken and stops. The claim is a lease: a second tap while the first still runs stops, and
   // one after the first has gone quiet takes the plan over.
@@ -342,7 +348,7 @@ export async function movePaycheckPlan(
         ? { OR: [{ claimExpiresAt: null }, { claimExpiresAt: { lt: now } }] }
         : {}),
     },
-    data: { status: "moving", claimExpiresAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
+    data: { status: "moving", claimExpiresAt: leaseEnd },
   });
   if (claimed.count === 0) throw new PaycheckError("That paycheck's plan was already answered.");
   const moves = movesOf(row.moves);
@@ -378,25 +384,31 @@ export async function movePaycheckPlan(
         done.push(moved);
         scheduled.push(moved);
       } catch (error) {
-        if (!(error instanceof TransferError)) throw error;
+        // A move still being sent by another run is retried later, never finished as skipped.
+        if (error instanceof TransferInFlightError || !(error instanceof TransferError))
+          throw error;
         const left: PlanMove = { ...move, status: "skipped" };
         done.push(left);
         skipped.push(left);
       }
     }
-    await db.paycheckPlans.updateMany({
-      where: { id: planId },
+    // Only the run that still holds its lease may finish the plan.
+    const finished = await db.paycheckPlans.updateMany({
+      where: { id: planId, status: "moving", claimExpiresAt: leaseEnd },
       data: {
         moves: done as unknown as Prisma.InputJsonArray,
         status: "moved",
         claimExpiresAt: null,
       },
     });
+    if (finished.count === 0) {
+      throw new PaycheckError("That paycheck's plan was taken over by another tap.");
+    }
   } catch (error) {
     // Open the plan again for a retry (also when only the final write failed); a move already
     // saved is found and reused then.
     await db.paycheckPlans.updateMany({
-      where: { id: planId, status: "moving" },
+      where: { id: planId, status: "moving", claimExpiresAt: leaseEnd },
       data: { status: row.status, claimExpiresAt: null },
     });
     throw error;

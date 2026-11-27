@@ -39,6 +39,10 @@ export type NewTransfer = {
 
 export class TransferError extends Error {}
 
+// A move saved ahead of the partner call whose answer has not come yet: asking again is a retry later, not
+// a refusal.
+export class TransferInFlightError extends TransferError {}
+
 type Scheduled = { id: string; runOn: string; awaitingPartner?: boolean };
 const isScheduled = (row: { id: string } | Scheduled): row is Scheduled => "runOn" in row;
 const isUniqueClash = (error: unknown) => (error as { code?: string } | null)?.code === "P2002";
@@ -99,7 +103,7 @@ export async function scheduleTransfer(
     // A move saved ahead of the partner call that has no reference yet is not scheduled: whoever
     // asks again is told it is still being sent, never handed an id that may never go anywhere.
     if (found && found.status === "pending" && !found.partnerRef) {
-      throw new TransferError("That move is still being sent. Try again in a minute.");
+      throw new TransferInFlightError("That move is still being sent. Try again in a minute.");
     }
     // A move the partner never confirmed keeps its key so it cannot be sent a second time.
     if (found && found.status === "failed") {
@@ -289,11 +293,13 @@ export async function settleTransfers(
       data: { status: "failed" },
     });
     if (count > 0) {
-      await logAudit(
-        { type: "user", id: userId },
-        "money_transfer_unconfirmed",
-        { type: "money_transfer", id },
-        {},
+      await recorded(id, () =>
+        logAudit(
+          { type: "user", id: userId },
+          "money_transfer_unconfirmed",
+          { type: "money_transfer", id },
+          {},
+        ),
       );
     }
   }
@@ -319,14 +325,21 @@ export async function settleTransfers(
     },
   });
   let settled = 0;
+  // A lease runs from the moment its claim is written, not from the start of the run: a long run
+  // would otherwise write leases that are already over.
+  const startedMs = Date.now();
+  const at = () => new Date(now.getTime() + (Date.now() - startedMs));
   for (const t of pending) {
     let partnerRef = t.partnerRef;
+    let leaseEnd: Date | null = null;
     // Its day has come: a partner that queues in Jane gets it now, past its undo. Claimed first
     // ("releasing"), so an Undo tap that lands meanwhile finds it no longer undoable instead of
     // cancelling a row whose transfer is being created at the partner.
     if (movement.release && partnerRef) {
       // A claim another run still holds is left to it; one past its end (or with none, as on
       // rows from before the lease) is taken over, and held again from now.
+      const claimedAt = at();
+      const claimUntil = new Date(claimedAt.getTime() + CLAIM_LEASE_MS);
       const claim = await db.moneyTransfers.updateMany({
         where: {
           id: t.id,
@@ -334,13 +347,14 @@ export async function settleTransfers(
             { status: "pending" },
             {
               status: "releasing",
-              OR: [{ claimExpiresAt: null }, { claimExpiresAt: { lt: now } }],
+              OR: [{ claimExpiresAt: null }, { claimExpiresAt: { lt: claimedAt } }],
             },
           ],
         },
-        data: { status: "releasing", claimExpiresAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
+        data: { status: "releasing", claimExpiresAt: claimUntil },
       });
       if (claim.count === 0) continue;
+      leaseEnd = claimUntil;
       try {
         const released = await movement.release(partnerRef, {
           fromAccountId: t.fromAccountId,
@@ -352,22 +366,25 @@ export async function settleTransfers(
         });
         if (released.partnerRef !== partnerRef) {
           await db.moneyTransfers.updateMany({
-            where: { id: t.id, status: "releasing" },
+            where: { id: t.id, status: "releasing", claimExpiresAt: leaseEnd },
             data: { partnerRef: released.partnerRef },
           });
           partnerRef = released.partnerRef;
         }
       } catch (error) {
         await db.moneyTransfers.updateMany({
-          where: { id: t.id, status: "releasing" },
+          where: { id: t.id, status: "releasing", claimExpiresAt: leaseEnd },
           data: { status: "pending", claimExpiresAt: null },
         });
         throw error;
       }
     }
     if (!(await movement.settled({ runOn: today(t.runOn), partnerRef }, today(now)))) {
+      // Only the lease this run took: a run that lost its claim must not clear the new holder's.
       await db.moneyTransfers.updateMany({
-        where: { id: t.id, status: "releasing" },
+        where: leaseEnd
+          ? { id: t.id, status: "releasing", claimExpiresAt: leaseEnd }
+          : { id: t.id, status: "releasing" },
         data: { status: "pending", claimExpiresAt: null },
       });
       continue;
