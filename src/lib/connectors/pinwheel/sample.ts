@@ -32,14 +32,21 @@ const DAY = 86_400_000;
 const move = (day: string | null | undefined, by: number) =>
   day ? new Date(Date.parse(`${day}T00:00:00Z`) + by * DAY).toISOString().slice(0, 10) : day;
 
-// The same stub for a sample-data person, paid five days before `today` (YYYY-MM-DD).
+// The same stub for a sample-data person, paid five days before `today` (YYYY-MM-DD), and the one
+// before it, two weeks earlier. One stub alone is read by its pay period, and a period that
+// happens to start on the 1st or the 16th reads as twice a month: the sample, paid every two
+// weeks, then said "semimonthly" on the 12th and the 27th of every month. Two stubs are read by the
+// gap between their pay dates, so it says biweekly on every day.
 export function samplePaystubs(today: string): PinwheelPaystub[] {
   const by =
     Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse("2020-12-31T00:00:00Z")) / DAY) - 5;
-  return PINWHEEL_DOCS_PAYSTUBS.map((s) => ({
-    ...s,
-    pay_date: move(s.pay_date, by),
-    pay_period_start: move(s.pay_period_start, by),
-    pay_period_end: move(s.pay_period_end, by),
-  }));
+  const moved = (by: number, id: string) =>
+    PINWHEEL_DOCS_PAYSTUBS.map((s) => ({
+      ...s,
+      id,
+      pay_date: move(s.pay_date, by),
+      pay_period_start: move(s.pay_period_start, by),
+      pay_period_end: move(s.pay_period_end, by),
+    }));
+  return [...moved(by, "sandbox-stub-latest"), ...moved(by - 14, "sandbox-stub-before")];
 }

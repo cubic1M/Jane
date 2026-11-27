@@ -62,6 +62,15 @@ describe("Pinwheel's pay stubs as Jane's", () => {
     expect(pinwheelPaystubs({ employer_name: "" }, PINWHEEL_DOCS_PAYSTUBS)).toEqual([]);
   });
 
+  it("reads the sample as paid every two weeks on every day of the month", () => {
+    // One stub alone was read by its pay period, which starts on the 1st or the 16th two days of
+    // every month, and the sample then said "semimonthly".
+    for (let day = 0; day < 62; day += 1) {
+      const today = new Date(Date.UTC(2026, 10, 1 + day)).toISOString().slice(0, 10);
+      expect(payFrequency(samplePaystubs(today)), today).toBe("biweekly");
+    }
+  });
+
   it("dates the sample's stub five days before the person's day", () => {
     const [moved] = samplePaystubs("2026-11-19");
     expect(moved).toMatchObject({
