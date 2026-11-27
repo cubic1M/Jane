@@ -121,17 +121,23 @@ export function withChildIds(
   newId: () => string,
 ): { children: unknown[]; changed: boolean } {
   if (!Array.isArray(value)) return { children: [], changed: false };
-  const seen = new Set<string>();
+  // Every id already on a child is kept for that child (the first to carry it) and never handed out
+  // again, whichever child is looked at first.
+  const taken = new Set<string>();
+  for (const c of value)
+    if (isChild(c) && typeof c.id === "string" && CHILD_ID.test(c.id)) taken.add(c.id);
+  const kept = new Set<string>();
   let changed = false;
   const children = value.map((c) => {
     if (!isChild(c)) return c;
-    if (typeof c.id === "string" && CHILD_ID.test(c.id) && !seen.has(c.id)) {
-      seen.add(c.id);
+    if (typeof c.id === "string" && CHILD_ID.test(c.id) && !kept.has(c.id)) {
+      kept.add(c.id);
       return c;
     }
     let id = newId();
-    while (seen.has(id)) id = newId();
-    seen.add(id);
+    while (taken.has(id)) id = newId();
+    taken.add(id);
+    kept.add(id);
     changed = true;
     return { ...c, id };
   });

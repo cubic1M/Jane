@@ -28,6 +28,11 @@ import { OWN_WORD_ORIGINS, storedFactData, writeFactRow } from "@/lib/tax-facts/
 
 type Options = { client?: PrismaClient; now?: Date };
 
+// `sync`: bring the year in line with the stores even if it was never copied (a writer of a store
+// calls it right after writing, so what the store no longer says goes). Without it, only a year
+// that was copied before is brought in line, and the first copy only adds.
+type RepairOptions = Options & { sync?: boolean };
+
 // The sensitive facts a repair would write that the record does not hold yet, by key and origin
 // (never a value): audited before the write, as every sensitive write is.
 export function sensitiveChanges(
@@ -66,7 +71,7 @@ export async function repairRecord(
   taxYear: number,
   sources: LegacySources,
   stored: readonly { key: string; origin: string; value: unknown }[],
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), sync = false }: RepairOptions = {},
 ): Promise<void> {
   // Written to the audit log first: an entry for a copy that then fails is a harmless extra, a copy
   // with no entry is not.
@@ -108,6 +113,7 @@ export async function repairRecord(
       // (what they no longer say goes). The first copy only adds: a fact the record holds that no
       // store ever had stays.
       const copiedBefore =
+        sync ||
         (await tx.taxFact.count({
           where: { userId, taxYear, key: LEGACY_DONE_KEY, supersededAt: null },
         })) > 0;
@@ -120,7 +126,7 @@ export async function repairRecord(
           continue; // a value outside the fact's kind is left out, not a failed read
         }
         wanted.add(`${data.taxYear}|${data.memberKey}|${data.key}|${data.origin}`);
-        await writeFactRow(tx, userId, data, now);
+        await writeFactRow(tx, userId, data, now, { advance: false });
       }
 
       // What the stores no longer say goes (the person took it back, or the write that would have
@@ -135,11 +141,20 @@ export async function repairRecord(
             { key: { in: [...OLD_STORE_MEMBER_KEYS] } },
           ],
         },
-        select: { id: true, taxYear: true, memberKey: true, key: true, origin: true },
+        select: {
+          id: true,
+          taxYear: true,
+          memberKey: true,
+          key: true,
+          origin: true,
+          recordedAt: true,
+        },
       });
+      // A row recorded after this copy's own moment is a newer answer: it stays.
       const drop = held
         .filter(
           (r) =>
+            r.recordedAt.getTime() <= now.getTime() &&
             (r.memberKey === "self" || isProfileMember(r.memberKey)) &&
             !wanted.has(`${r.taxYear}|${r.memberKey}|${r.key}|${r.origin}`),
         )
@@ -173,6 +188,8 @@ export async function repairRecord(
           where: {
             userId,
             memberKey: { in: gone },
+            // This year's, and the ones that are true in every year (a birth date).
+            taxYear: { in: [taxYear, NOT_YEAR_SCOPED] },
             origin: { in: [...OWN_WORD_ORIGINS] },
           },
         });
@@ -182,18 +199,24 @@ export async function repairRecord(
   );
 }
 
-// A writer could not update the record after the older store had the answer: the marker of every
-// year is set to "not copied" (it stays, so the next copy knows it is a second one), and the next
-// read of the household copies the stores again. Safe to call twice.
+// The older store changed, or a writer could not update the record after it did: the marker of every
+// year (but `exceptYear`, which was just copied) is set to "not copied". The marker stays, so the
+// next copy knows it is a second one, and the next read of that year's household copies the stores
+// again. Safe to call twice.
 export async function markNeedsRepair(
   userId: string,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, exceptYear }: Options & { exceptYear?: number } = {},
 ): Promise<void> {
   await personTransaction(
     userId,
     (tx) =>
       tx.taxFact.updateMany({
-        where: { userId, key: LEGACY_DONE_KEY, supersededAt: null },
+        where: {
+          userId,
+          key: LEGACY_DONE_KEY,
+          supersededAt: null,
+          ...(exceptYear === undefined ? {} : { taxYear: { not: exceptYear } }),
+        },
         data: { value: { v: false } },
       }),
     client,

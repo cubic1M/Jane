@@ -5,6 +5,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { removeOrphans } from "@/lib/evidence/orphans";
 import { loadTaxHousehold } from "@/lib/tax-facts/load";
 import { markNeedsRepair } from "@/lib/tax-facts/repair";
 import { forgetTaxFacts, recordTaxFact } from "@/lib/tax-facts/write";
@@ -90,6 +91,27 @@ describe.runIf(url)("the household record keeps up and lets go", () => {
         { v: "married_joint" },
       ]);
       expect(both).toHaveLength(2);
+    });
+  });
+
+  describe("a repeat of the answer is a newer answer", () => {
+    it("moves the moment forward, so a save from between the two cannot replace it", async () => {
+      const id = await person();
+      const at = (minute: number) => new Date(`2026-11-27T17:0${minute}:00Z`);
+      const save = (value: string, now: Date) =>
+        recordTaxFact(
+          id,
+          { key: "filing.status", value, taxYear: YEAR, origin: "answer" },
+          { client, now },
+        );
+      expect(await save("single", at(1))).toBe("recorded");
+      // The same answer again, later: nothing changes but its moment.
+      expect(await save("single", at(5))).toBe("unchanged");
+      // An answer given between the two arrives last: the later "single" still stands.
+      expect(await save("married_joint", at(3))).toBe("stale");
+      const current = (await rowsOf(id, "filing.status")).filter((r) => r.supersededAt === null);
+      expect(current.map((r) => r.value)).toEqual([{ v: "single" }]);
+      expect(current[0].recordedAt).toEqual(at(5));
     });
   });
 
@@ -248,6 +270,18 @@ describe.runIf(url)("the household record keeps up and lets go", () => {
       expect(await client.taxFact.count({ where: { userId: id, key: "residency.status" } })).toBe(
         0,
       );
+    });
+
+    it("is left alone by Start over, which clears what was worked out from bank data and not what the person said", async () => {
+      const id = await person();
+      await told(id, "tax_residency", "citizen");
+      await load(id);
+      const before = await client.taxFact.count({ where: { userId: id } });
+      expect(before).toBeGreaterThan(0);
+      // No bank and no upload left: everything derived from them is cleared.
+      await removeOrphans(id, { client });
+      expect(await client.taxFact.count({ where: { userId: id } })).toBe(before);
+      expect(fact(await load(id), "residency.status").value).toBe("citizen_or_green_card");
     });
 
     it("goes with the account", async () => {

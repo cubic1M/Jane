@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { TaxFactKey } from "@/config/tax-facts";
 import { withChildIds } from "@/planning/family-taxes";
 import {
@@ -95,10 +95,10 @@ describe("copying the older stores into the household record", () => {
       studentHalfTime: true,
     };
     const rows = legacyRows({ ...base, profile });
-    expect(valueOf(rows, "home.state")[0]).toMatchObject({ value: "NY", origin: "legacy" });
+    expect(valueOf(rows, "home.state")[0]).toMatchObject({ value: "NY", origin: "answer" });
     expect(valueOf(rows, "spouse.earned_income")[0]).toMatchObject({ value: 5_000_000 });
     expect(valueOf(rows, "person.postsecondary_years_before")[0]).toMatchObject({ value: 2 });
-    expect(valueOf(rows, "person.half_time")[0]).toMatchObject({ value: true, origin: "legacy" });
+    expect(valueOf(rows, "person.half_time")[0]).toMatchObject({ value: true, origin: "answer" });
     // Dependants were never answered: the counts in the row are not the person's.
     expect(rows.members).toEqual([]);
     expect(valueOf(rows, "household.dependants_stated")).toEqual([]);
@@ -236,6 +236,27 @@ describe("copying the older stores into the household record", () => {
     expect(valueOf(no, "household.dependants_stated")[0]).toMatchObject({ value: true });
   });
 
+  it("keeps one current answer per fact: a told state wins, the profile's goes in as the older store's copy", () => {
+    const rows = legacyRows({
+      ...base,
+      profile: {
+        answered: ["state"],
+        state: "NY",
+        childrenUnder17: null,
+        otherDependants: null,
+        familyChildren: [],
+        spouseWagesCents: null,
+        studentYearsBefore: null,
+        studentHalfTime: null,
+      },
+      told: { home_state: { value: "CA", day: "2026-09-09" } },
+    });
+    expect(valueOf(rows, "home.state").map((f) => [f.value, f.origin])).toEqual([
+      ["CA", "answer"],
+      ["NY", "legacy"],
+    ]);
+  });
+
   it("copies the investor profile's age as a year range on the day it was given", () => {
     const rows = legacyRows({ ...base, investor: { age: 40, ageOn: "2025-02-01" } });
     expect(valueOf(rows, "person.birth_date")[0]).toMatchObject({
@@ -323,6 +344,9 @@ describe("who a member of the household is", () => {
 describe("an id on each child of the family form", () => {
   let n = 0;
   const make = () => `c_${String(++n).padStart(12, "0")}`;
+  beforeEach(() => {
+    n = 0;
+  });
   const child = { ageAtYearEnd: 9, hasSsn: true, monthsLivedWithYou: 12 };
 
   it("adds an id to a child that has none and leaves every other byte as it was", () => {
@@ -344,6 +368,19 @@ describe("an id on each child of the family form", () => {
     expect((twice.children as { id: string }[]).map((c) => c.id)).toEqual([
       "c_aaaaaaaaaaaa",
       expect.stringMatching(/^c_0+\d$/),
+    ]);
+  });
+
+  it("never hands a child an id another child already has, whichever comes first", () => {
+    // The first child has none and the generator's first guess is the second child's id.
+    const guesses = ["c_aaaaaaaaaaaa", "c_bbbbbbbbbbbb"];
+    const out = withChildIds(
+      [child, { ...child, id: "c_aaaaaaaaaaaa" }],
+      () => guesses.shift() ?? "c_cccccccccccc",
+    );
+    expect((out.children as { id: string }[]).map((c) => c.id)).toEqual([
+      "c_bbbbbbbbbbbb",
+      "c_aaaaaaaaaaaa",
     ]);
   });
 

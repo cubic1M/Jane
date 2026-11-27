@@ -126,14 +126,12 @@ export async function loadTaxHousehold(
   let rows: StoredFact[] = [...facts];
   if (!repaired) {
     const sources = await readLegacySources(userId, taxYear, { client, now });
-    let stored = false;
+    let copied = false;
     if (!sample) {
-      for (let attempt = 1; !stored && attempt <= REPAIR_TRIES; attempt += 1) {
+      for (let attempt = 1; !copied && attempt <= REPAIR_TRIES; attempt += 1) {
         try {
           await repairRecord(userId, taxYear, sources, facts, { client, now });
-          ({ facts, members } = await readRows(userId, taxYear, client));
-          rows = [...facts];
-          stored = true;
+          copied = true;
         } catch (error) {
           // A read that cannot write its copy still answers, from the copy in memory.
           if (attempt === REPAIR_TRIES)
@@ -143,10 +141,19 @@ export async function loadTaxHousehold(
         }
       }
     }
-    if (!stored) {
+    if (copied) {
+      // Read back once the copy is committed: a failed read is not a reason to copy again.
+      ({ facts, members } = await readRows(userId, taxYear, client));
+      rows = [...facts];
+    } else {
       const copy = legacyRows(sources);
-      // The copy says what the older stores say now: it replaces what the record holds of theirs.
-      rows = [...rows.filter((r) => !ownedByOldStores(r)), ...checked(copy.facts, today, now)];
+      // A year that was copied before follows the older stores: the copy replaces what the record
+      // holds of theirs. A first copy only adds, so a fact written to the record alone stays.
+      const copiedBefore = facts.some((f) => f.key === LEGACY_DONE_KEY && f.taxYear === taxYear);
+      rows = [
+        ...(copiedBefore ? rows.filter((r) => !ownedByOldStores(r)) : rows),
+        ...checked(copy.facts, today, now),
+      ];
       const asStore = new Set(copy.members.map((m) => m.memberKey));
       const have = new Set(members.map((m) => m.key));
       members = [

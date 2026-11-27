@@ -125,6 +125,9 @@ export async function writeFactRow(
   userId: string,
   data: Prisma.TaxFactUncheckedCreateInput,
   at: Date,
+  // A repeat of the current answer made later moves the row's moment forward, so an older save that
+  // arrives after it can no longer replace it. A bulk copy leaves the moments alone.
+  { advance = true }: { advance?: boolean } = {},
 ): Promise<RecordOutcome> {
   const current = await tx.taxFact.findFirst({
     where: {
@@ -137,7 +140,14 @@ export async function writeFactRow(
     },
     select: { id: true, value: true, status: true, recordedAt: true },
   });
-  if (current && sameAnswer(current, data)) return "unchanged";
+  if (current && sameAnswer(current, data)) {
+    if (advance && current.recordedAt.getTime() < at.getTime())
+      await tx.taxFact.updateMany({
+        where: { id: current.id, userId, supersededAt: null, recordedAt: { lt: at } },
+        data: { recordedAt: at },
+      });
+    return "unchanged";
+  }
   if (current) {
     if (current.recordedAt.getTime() > at.getTime()) return "stale";
     const { count } = await tx.taxFact.updateMany({

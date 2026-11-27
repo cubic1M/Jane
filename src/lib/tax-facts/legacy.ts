@@ -14,7 +14,9 @@ import type { TaxFactInput, TaxFactValue } from "@/lib/tax-facts/write";
 // Read-repair (tax roadmap 1.3, step T9): what the person has already told Jane in the older stores
 // (the tax profile's row, the told facts the question cards save, the investor profile) as rows of
 // the household record. Nothing is lost and nothing is guessed: only what the person answered is
-// copied (origin "legacy", or "answer" for a told fact). What Jane merely found in the accounts is
+// copied: origin "answer" for what they said on a card or on the tax profile, "legacy" for a copy
+// of an older store that another answer already covers, and for an age worked out from the
+// investor profile. What Jane merely found in the accounts is
 // worked out again on every load (foundRows) and never stored, so it cannot go stale.
 
 const TOLD_PREFIX = "profile:";
@@ -157,7 +159,7 @@ export function householdRows(
     if (!child) continue;
     const m = {
       taxYear,
-      origin: "legacy",
+      origin: "answer",
       member: memberKey,
       asOf: today,
       sourceRef: "tax_profile.family_children",
@@ -184,7 +186,7 @@ export function householdRows(
     key: "household.dependants_stated",
     value: true,
     taxYear,
-    origin: "legacy",
+    origin: "answer",
     asOf: today,
     sourceRef: "tax_profile",
   });
@@ -201,6 +203,20 @@ export function legacyRows(s: LegacySources): LegacyRows {
       origin?: "answer" | "legacy";
     },
   ) => facts.push({ key, value, taxYear: s.taxYear, origin: o.origin ?? "legacy", ...o });
+  // What the person gave on the tax profile is their answer too. Only one answer per fact can be
+  // current, so when a told fact already gave one the profile's goes in as the older store's copy,
+  // and the disagreement, if any, shows as a conflict.
+  const addAnswered = (
+    key: TaxFactKey,
+    value: TaxFactValue,
+    o: Omit<TaxFactInput, "key" | "value" | "taxYear" | "origin">,
+  ) =>
+    add(key, value, {
+      ...o,
+      origin: facts.some((f) => f.key === key && !f.member && f.origin === "answer")
+        ? "legacy"
+        : "answer",
+    });
   const told = (name: string) => s.told[name];
 
   if (s.filing) {
@@ -220,16 +236,23 @@ export function legacyRows(s: LegacySources): LegacyRows {
 
   const p = s.profile;
   const yours = (field: string) => p?.answered.includes(field) ?? false;
-  if (p && yours("state") && p.state) add("home.state", p.state, { asOf: s.today });
+  if (p && yours("state") && p.state)
+    addAnswered("home.state", p.state, { asOf: s.today, sourceRef: "tax_profile" });
   // The family details have no year: they describe the year being worked on, so only that year's
   // record gets them.
   const working = s.taxYear === defaultTaxYear(s.today);
   if (working && p?.spouseWagesCents != null)
-    add("spouse.earned_income", p.spouseWagesCents, { asOf: s.today });
+    addAnswered("spouse.earned_income", p.spouseWagesCents, {
+      asOf: s.today,
+      sourceRef: "tax_profile",
+    });
   if (working && p?.studentYearsBefore != null)
-    add("person.postsecondary_years_before", p.studentYearsBefore, { asOf: s.today });
+    addAnswered("person.postsecondary_years_before", p.studentYearsBefore, {
+      asOf: s.today,
+      sourceRef: "tax_profile",
+    });
   if (working && p?.studentHalfTime != null)
-    add("person.half_time", p.studentHalfTime, { asOf: s.today });
+    addAnswered("person.half_time", p.studentHalfTime, { asOf: s.today, sourceRef: "tax_profile" });
   if (s.investor?.age && s.investor.age > 0) {
     const day = s.investor.ageOn ?? s.today;
     add("person.birth_date", birthYears(s.investor.age, day), {

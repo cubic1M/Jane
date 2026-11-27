@@ -13,23 +13,22 @@ const TRIES = 3;
 
 // The person's stored children with an id on each, writing the ids back to the row in the same
 // transaction. The write only lands on the JSON that was read, so a family form saved a moment
-// earlier is never overwritten with older children: it is read again. Returns the children as
+// earlier is never overwritten with older children: it is read again, and after three lost tries it
+// throws. Returns the children as
 // stored afterwards (null when the person has no tax profile row).
 export async function ensureChildIds(
   tx: PersonTx,
   userId: string,
   make: () => string = newChildId,
 ): Promise<unknown> {
-  let stored: unknown = null;
   for (let attempt = 0; attempt < TRIES; attempt += 1) {
     const row = await tx.taxProfile.findFirst({
       where: { userId },
       select: { id: true, familyChildren: true },
     });
     if (!row) return null;
-    stored = row.familyChildren;
     const { children, changed } = withChildIds(row.familyChildren, make);
-    if (!changed) return stored;
+    if (!changed) return row.familyChildren;
     const { count } = await tx.taxProfile.updateMany({
       where: {
         id: row.id,
@@ -40,5 +39,7 @@ export async function ensureChildIds(
     });
     if (count === 1) return children;
   }
-  return stored;
+  // The family form kept changing under us: the caller's transaction ends here and tries again,
+  // rather than carry on with children that have no id.
+  throw new Error("The family details changed while their ids were being written");
 }
