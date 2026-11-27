@@ -5,7 +5,13 @@ import { onSampleDataOnly } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { siteOrigin } from "@/lib/site-origin";
-import { consentWords, currentScopes, grantConsent, usableConnector } from "./consent";
+import {
+  consentWords,
+  currentScopes,
+  grantConsent,
+  revokeConsent,
+  usableConnector,
+} from "./consent";
 import { readIfReader } from "./read";
 import { connectorById, whyUnavailable } from "./registry";
 import type { Connector, ReadResult } from "./types";
@@ -70,13 +76,21 @@ export async function startConnect(
         ? new URL(process.env.AUTH_URL ?? "").origin
         : null);
     if (!origin) throw new Error("A partner step needs APP_URL or AUTH_URL to come back to");
-    const { redirectUrl } = await connector.connect({
-      userId,
-      client,
-      now,
-      returnUrl: `${origin}${returnUrl}`,
-    });
-    if (!/^https:\/\//.test(redirectUrl)) throw new Error("A partner step must be an https page");
+    let redirectUrl: string;
+    try {
+      ({ redirectUrl } = await connector.connect({
+        userId,
+        client,
+        now,
+        returnUrl: `${origin}${returnUrl}`,
+      }));
+      if (!/^https:\/\//.test(redirectUrl)) throw new Error("A partner step must be an https page");
+    } catch (error) {
+      // The partner's step never opened: the yes just given leads nowhere, so it is taken back and
+      // the card offers the connection again (a consent with no link would hide it).
+      await revokeConsent(userId, connector.id, { client, now });
+      throw error;
+    }
     await logAudit(
       { type: "user", id: userId },
       "connector_connect_started",

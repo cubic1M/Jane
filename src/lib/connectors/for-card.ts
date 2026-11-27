@@ -101,5 +101,17 @@ export async function cancelCardPlan(
     });
     return true;
   }
-  return cancelAction(userId, plan.id, { client, now, beforePartner: { idempotencyKey: freed } });
+  const cancelled = await cancelAction(userId, plan.id, {
+    client,
+    now,
+    beforePartner: { idempotencyKey: freed },
+  });
+  if (cancelled) return true;
+  // Another caller (Connections, stop-all) may have cancelled it between the lookup and here: it
+  // is cancelled and still holds the key, which frees it. A plan that is running stays as it is.
+  const { count } = await db.connectorActions.updateMany({
+    where: { id: plan.id, idempotencyKey: key, status: "cancelled" },
+    data: { idempotencyKey: freed },
+  });
+  return count > 0;
 }

@@ -96,24 +96,33 @@ export async function grantConsent(
   if (shownText === null) throw new ConsentError("needs_text");
   const textVersion = createHash("sha256").update(shownText).digest("hex").slice(0, 16);
   const { ip, user_agent: userAgent } = await currentRequestDetails();
-  // One current consent per connector: the new one replaces the old, which stays as history. Two
-  // grants at once may both stay current; the newest is the one read (currentScopes).
+  // One current consent per connector: the new one replaces the old, which stays as history. Both
+  // writes are one change, so a failed insert leaves the old grant in force. Two grants at once
+  // may both stay current for a moment; the newest is the one read (currentScopes, with the id as
+  // the tie break), and each sweeps the others it can see after its own insert.
   const db = scopedFor(userId, client);
-  await db.connectorConsents.updateMany({
-    where: { connectorId, revokedAt: null },
-    data: { revokedAt: now },
-  });
-  await db.connectorConsents.create({
-    data: {
-      userId,
-      connectorId,
-      scopes: asked,
-      grantedAt: now,
-      shownText,
-      textVersion,
-      ip,
-      userAgent,
-    },
+  await db.transaction(async (tx) => {
+    await tx.connectorConsents.updateMany({
+      where: { connectorId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    const made = await tx.connectorConsents.create({
+      data: {
+        userId,
+        connectorId,
+        scopes: asked,
+        grantedAt: now,
+        shownText,
+        textVersion,
+        ip,
+        userAgent,
+      },
+      select: { id: true },
+    });
+    await tx.connectorConsents.updateMany({
+      where: { connectorId, revokedAt: null, id: { not: made.id }, grantedAt: { lte: now } },
+      data: { revokedAt: now },
+    });
   });
   await logAudit(
     { type: "user", id: userId },
@@ -134,7 +143,18 @@ export async function revokeConsent(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
   const db = scopedFor(userId, client);
-  const { count } = await db.connectorConsents.updateMany({
+  // The record first: if a later step fails, a retry finds no active consent but the revocation
+  // is already on the audit trail (a retry after a failed write may record it twice, never none).
+  const active = await db.connectorConsents.count({ where: { connectorId, revokedAt: null } });
+  if (active > 0) {
+    await logAudit(
+      { type: "user", id: userId },
+      "connector_consent_revoked",
+      { type: "user", id: userId },
+      { connector: connectorId },
+    );
+  }
+  await db.connectorConsents.updateMany({
     where: { connectorId, revokedAt: null },
     data: { revokedAt: now },
   });
@@ -155,13 +175,7 @@ export async function revokeConsent(
     where: { connectorId, status: { in: ["awaiting_yes", "approved"] } },
     data: { status: "cancelled", reason: "consent_revoked", finishedAt: now },
   });
-  if (count === 0) return false;
-  await logAudit(
-    { type: "user", id: userId },
-    "connector_consent_revoked",
-    { type: "user", id: userId },
-    { connector: connectorId },
-  );
+  if (active === 0) return false;
   await track(userId, "connector_consent_revoked", { connector: connectorId });
   return true;
 }
@@ -174,7 +188,7 @@ export async function currentScopes(
 ): Promise<ConsentScope[] | null> {
   const row = await scopedFor(userId, client).connectorConsents.findFirst({
     where: { connectorId, revokedAt: null },
-    orderBy: { grantedAt: "desc" },
+    orderBy: [{ grantedAt: "desc" }, { id: "desc" }],
     select: { scopes: true },
   });
   return row ? row.scopes.filter(isConsentScope) : null;
@@ -188,7 +202,7 @@ export async function currentConsentId(
 ): Promise<string | null> {
   const row = await scopedFor(userId, client).connectorConsents.findFirst({
     where: { connectorId, revokedAt: null },
-    orderBy: { grantedAt: "desc" },
+    orderBy: [{ grantedAt: "desc" }, { id: "desc" }],
     select: { id: true },
   });
   return row?.id ?? null;

@@ -98,8 +98,26 @@ export const manualOpenSavings: Connector = {
     };
   },
   guard: async (details, { userId, client, now, actionId }) => {
-    await freshSavingsOption(details.optionId, now, client);
-    await ownAccount(userId, details.fromAccountId, client);
+    const option = await freshSavingsOption(details.optionId, now, client);
+    // The offer the person approved is the one handed off: a rate, a minimum or a sign-up page a
+    // reviewer changed since the plan means it is planned and approved again.
+    if (
+      option.apyBps !== details.apyBps ||
+      (option.minimumBalanceCents ?? 0) !== (Number(details.minimumCents) || 0) ||
+      option.signUpUrl !== details.signUpUrl
+    ) {
+      throw new BadRequest("the offer changed since it was approved");
+    }
+    const from = await ownAccount(userId, details.fromAccountId, client);
+    // Checked again at the handoff: a balance that has fallen below the deposit stops it.
+    const amountCents = Number(details.amountCents);
+    const held = await scopedFor(userId, client).accounts.findFirst({
+      where: { id: from.id },
+      select: { currentBalanceCents: true },
+    });
+    if (held?.currentBalanceCents != null && amountCents > held.currentBalanceCents) {
+      throw new BadRequest("more than the account holds");
+    }
     await refuseOpenTwin(
       userId,
       "manual_open_savings",
@@ -146,6 +164,9 @@ export const manualOpenSavings: Connector = {
         fromAccountId: words(details, "fromAccountId"),
         today,
         signUpUrl,
+        // Kept with the draft: the handoff checks the offer is still the one that was approved.
+        apyBps,
+        minimumCents,
       },
     };
   },
