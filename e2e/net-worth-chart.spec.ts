@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
-import { STEP_PERSON, seedHistory } from "./chart-people";
+import { STEP_PERSON, seedHistory, type HistoryShape } from "./chart-people";
 import { signInWith } from "./session";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
@@ -357,4 +357,61 @@ test("one big step does not flatten the rest: both sides keep their shape, a bre
   await expect(label).toHaveCount(0);
   await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^ALL/ }).click();
   await expect(label).toBeVisible();
+});
+
+// The same person with the big step two days before today (a walk of main: the break's label was
+// printed over the corner figure, so "$17,522" read ",522" on a computer and "22" on a phone).
+const STEP_NEAR_EDGE_PERSON: HistoryShape = { ...STEP_PERSON, stepDaysAgo: 2 };
+
+test("a big step in the last days: the break's label never covers a scale label", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, STEP_NEAR_EDGE_PERSON);
+  await page.goto("/home");
+
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
+  const label = chart.locator("[data-net-worth-step]");
+  const scales = chart.locator(
+    '[data-net-worth-scale="high"], [data-net-worth-scale="low"], [data-net-worth-scale="high-right"], [data-net-worth-scale="low-right"]',
+  );
+  const chartBox = async () => (await chart.locator("svg").first().boundingBox())!;
+  const boxesOf = async (els: Locator) => {
+    const out = [];
+    for (const el of await els.all()) out.push((await el.boundingBox())!);
+    return out;
+  };
+  const touch = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  // Figures hidden first (its words are longer): the label is inside the chart.
+  await expect(label).toHaveText(/^A big rise on /);
+  await expect
+    .poll(async () => {
+      const [step] = await boxesOf(label);
+      const area = await chartBox();
+      return !!step && step.x >= area.x - 1 && step.x + step.width <= area.x + area.width + 1;
+    })
+    .toBe(true);
+  // Figures shown: the label is never over a scale label, and always inside the chart.
+  await chart.locator("[data-show-value]").click();
+  await expect(label).toHaveText(/^\+\$[45],\d{3} on [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(scales).toHaveCount(4);
+  await expect
+    .poll(async () => {
+      const [step] = await boxesOf(label);
+      const area = await chartBox();
+      if (!step || step.x < area.x - 1 || step.x + step.width > area.x + area.width + 1)
+        return false;
+      return (await boxesOf(scales)).every((s) => !touch(step, s));
+    })
+    .toBe(true);
 });
