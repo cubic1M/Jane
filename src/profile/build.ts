@@ -987,6 +987,7 @@ function toldFacts(b: Builder) {
     "marketplace_aptc_monthly",
     "marketplace_benchmark_monthly",
     "claimed_as_dependent",
+    "spouse_itemizes",
     "enrollment",
     "tax_residency",
     "school_deposit",

@@ -20,6 +20,7 @@ const N2610 = "https://www.irs.gov/pub/irs-drop/n-26-10.pdf";
 const N2648 = "https://www.irs.gov/pub/irs-drop/n-26-48.pdf";
 const RP1313 = "https://www.irs.gov/pub/irs-drop/rp-13-13.pdf";
 const F8880 = "https://www.irs.gov/pub/irs-pdf/f8880.pdf";
+const P936 = "https://www.irs.gov/publications/p936";
 const P505 = "https://www.irs.gov/pub/irs-pdf/p505.pdf";
 const ENFAQ =
   "https://www.irs.gov/newsroom/faqs-for-modification-of-sections-25c-25d-25e-30c-30d-45l-45w-and-179d-under-public-law-119-21-139-stat-72-july-4-2025-commonly-known-as-the-one-big-beautiful-bill-obbb";
@@ -402,24 +403,29 @@ export const US_2026: FederalParams = {
         "26 USC 164(b)(7)(A): $40,400 for 2026; (b)(7)(B): 30 percent over $505,000 (half for separate), never below $10,000; (b)(6)(B) halves for separate returns",
     },
   ),
+  mortgageDebt: cited(
+    { normal: $(750_000), marriedSeparate: $(375_000) },
+    {
+      source: code("163"),
+      alsoSources: [P936],
+      where:
+        '26 USC 163(h)(3)(F)(i)(II): $750,000 ($375,000 married filing separately) for taxable years beginning after December 31, 2017, with no end year since Pub. L. 119-21 section 70108(a)(1)(A) struck "and before January 1, 2026"; Publication 936 is for 2025 returns (page last reviewed 2026-04-30) and gives the same limit. Debt incurred on or before December 15, 2017 keeps $1,000,000 / $500,000 (163(h)(3)(F)(i)(IV)). Read 2026-11-27.',
+    },
+  ),
   charity: cited(
     { floorShare: 0.005, nonItemizer: { normal: $(1_000), marriedJoint: $(2_000) } },
     {
       source: code("170"),
       alsoSources: [P505],
       where:
-        "26 USC 170(b)(1)(I) 0.5 percent floor (read); 170(p) non-itemizer deduction $1,000 / $2,000 (Pub 505, research catalogue row OB-008)",
-      verify:
-        "The non-itemizer $1,000 / $2,000 (170(p)) was read only by the research catalogue; 170(p) was past the end of the page this step could read.",
+        "26 USC 170(b)(1)(I) 0.5 percent floor, and 170(p): for a person who does not itemize, a deduction of cash gifts to a 170(b)(1)(A) charity up to $1,000 ($2,000 on a joint return; none for a donor advised fund or a 509(a)(3) organization), neither amount indexed; 170(p) read in full 2026-11-27 (Pub 505, research catalogue row OB-008, agrees)",
     },
   ),
   medical: cited(
     { floorShare: 0.075 },
     {
       source: code("213"),
-      where: "26 USC 213(a): 7.5 percent of adjusted gross income",
-      status: "unconfirmed",
-      verify: "Not read at the source in T1 (statute, long unchanged); kept as the code had it.",
+      where: "26 USC 213(a): 7.5 percent of adjusted gross income (statute, read 2026-11-27)",
     },
   ),
   contributionLimits: cited(

@@ -142,6 +142,9 @@ export type FederalParams = Readonly<{
     phaseDownRate: number;
     floor: { normal: number; marriedSeparate: number };
   }>;
+  // Home mortgage interest counts on this much acquisition debt (26 USC 163(h)(3)(B)(ii), (F)); a
+  // higher limit ($1,000,000, $500,000 separate) applies to debt incurred before December 16, 2017.
+  mortgageDebt: Cited<{ normal: number; marriedSeparate: number }>;
   charity: Cited<{ floorShare: number; nonItemizer: NormalJoint }>;
   medical: Cited<{ floorShare: number }>;
   contributionLimits: Cited<{

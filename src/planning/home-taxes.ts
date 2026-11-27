@@ -1,7 +1,12 @@
-import { ENERGY_CREDITS_2025, ENERGY_CREDITS_END, ITEMIZED } from "@/config/tax-rates";
-import { HOME_OFFICE_SIMPLIFIED } from "@/config/tax-rates";
-import { HOME_SALE_EXCLUSION, MORTGAGE_DEBT_LIMIT } from "@/config/home-taxes";
+import {
+  ENERGY_CREDITS_2025,
+  ENERGY_CREDITS_END,
+  HOME_OFFICE_SIMPLIFIED,
+  TAX_RATES_YEAR,
+} from "@/config/tax-rates";
+import { HOME_SALE_EXCLUSION } from "@/config/home-taxes";
 import type { FilingStatus } from "@/config/tax";
+import { federalParams, type FederalParams } from "@/config/tax-params";
 import { DAY_MS } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 
@@ -80,19 +85,62 @@ export type HomeTaxes = {
 
 const days = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / DAY_MS;
 
-// The cap on state and local taxes (the same as the estimate's), shrinking above the
-// phase-down income to the floor.
-export function saltCap(agiCents: number, status: FilingStatus): number {
+// The cap on state and local taxes in the year's own law, shrinking above the phase-down income to
+// the floor. The one function: the estimate's itemized deduction calls it too.
+// 26 USC 164(b)(7)(B) cuts the whole-return limit by 30% of the excess over the threshold (halved
+// for a separate return), never below $10,000; (b)(6)(B) then halves the result for a separate
+// return. The halving comes after the cut, so a separate return loses 15 cents of cap per dollar.
+export function saltCap(
+  agiCents: number,
+  status: FilingStatus,
+  year: number = TAX_RATES_YEAR,
+): number {
+  const salt = federalParams(year).salt.value;
   const separate = status === "married_separate";
-  const cap = separate ? ITEMIZED.saltCap.marriedSeparate : ITEMIZED.saltCap.normal;
-  const from = separate
-    ? ITEMIZED.saltPhaseDownFrom.marriedSeparate
-    : ITEMIZED.saltPhaseDownFrom.normal;
-  const floor = separate ? ITEMIZED.saltFloor.marriedSeparate : ITEMIZED.saltFloor.normal;
-  return Math.max(
-    floor,
-    cap - Math.round(Math.max(0, agiCents - from) * ITEMIZED.saltPhaseDownRate),
-  );
+  const cap = separate ? salt.cap.marriedSeparate : salt.cap.normal;
+  const from = separate ? salt.phaseDownFrom.marriedSeparate : salt.phaseDownFrom.normal;
+  const floor = separate ? salt.floor.marriedSeparate : salt.floor.normal;
+  const rate = separate ? salt.phaseDownRate / 2 : salt.phaseDownRate;
+  return Math.max(floor, cap - Math.round(Math.max(0, agiCents - from) * rate));
+}
+
+// Home mortgage interest counts on the first $750,000 of acquisition debt ($375,000 married filing
+// separately; 26 USC 163(h)(3)(B)(ii), (F), Publication 936): when the loans together are larger,
+// the interest counts in the share of the debt under the limit. The one function: the estimate's
+// itemized deduction and the home section both call it, so the two can never differ.
+// What it cannot see: debt incurred on or before December 15, 2017 keeps a $1,000,000 limit
+// ($500,000 separate), the loan's average balance over the year (the balance given stands in for
+// it), and whether the debt bought, built or improved the home. The balance is null when it is not
+// known for the year: all of the interest then counts, as it did before the limit was applied.
+export type MortgageLoan = {
+  status: FilingStatus;
+  // The interest the lender reports for the year, for all the person's mortgages together.
+  interestCents: number;
+  // What the mortgages total (a loan's balance may be signed as a debt: its size is what counts).
+  balanceCents: number | null;
+};
+
+export type DeductibleMortgage = {
+  cents: number;
+  limitCents: number;
+  // The interest was cut to the share of the loan under the limit.
+  limited: boolean;
+};
+
+export function deductibleMortgageInterest(
+  p: FederalParams,
+  loan: MortgageLoan,
+): DeductibleMortgage {
+  const limitCents =
+    loan.status === "married_separate"
+      ? p.mortgageDebt.value.marriedSeparate
+      : p.mortgageDebt.value.normal;
+  const interest = Math.max(0, loan.interestCents);
+  const balance = loan.balanceCents === null ? null : Math.abs(loan.balanceCents);
+  if (balance === null || balance <= limitCents) {
+    return { cents: interest, limitCents, limited: false };
+  }
+  return { cents: Math.round((interest * limitCents) / balance), limitCents, limited: true };
 }
 
 export function homeTaxes(h: HomeInput): HomeTaxes {
@@ -112,19 +160,18 @@ export function homeTaxes(h: HomeInput): HomeTaxes {
         ? { kind: "loan", name: m.name, cents: m.ytdInterestCents }
         : null;
     if (source) {
-      const limit =
-        h.status === "married_separate"
-          ? MORTGAGE_DEBT_LIMIT.marriedSeparate
-          : MORTGAGE_DEBT_LIMIT.normal;
-      const share = m.balanceCents && m.balanceCents > limit ? limit / m.balanceCents : 1;
+      const counted = deductibleMortgageInterest(federalParams(h.year), {
+        status: h.status,
+        interestCents: source.cents,
+        balanceCents: m.balanceCents,
+      });
       mortgageInterest = {
         label: "Mortgage interest",
-        cents: Math.round(source.cents * share),
+        cents: counted.cents,
         sources: [source],
-        note:
-          share < 1
-            ? `Only the interest on the first $${(limit / 100).toLocaleString("en-US")} of the loan counts.`
-            : undefined,
+        note: counted.limited
+          ? `Only the interest on the first $${(counted.limitCents / 100).toLocaleString("en-US")} of the loan counts. A loan taken out before December 16, 2017 has a higher limit.`
+          : undefined,
       };
     }
   }
@@ -145,7 +192,7 @@ export function homeTaxes(h: HomeInput): HomeTaxes {
     sources: [{ kind: "answer", label: "Withheld on your pay stubs and paid to the state" }],
   };
   const totalCents = h.stateIncomeTaxCents + propertyTotal;
-  const capCents = saltCap(h.agiCents, h.status);
+  const capCents = saltCap(h.agiCents, h.status, h.year);
   const allowedCents = Math.min(totalCents, capCents);
 
   const points: Figure | null = h.points

@@ -25,6 +25,7 @@ import { loadTaxSavings } from "@/lib/tax-savings";
 import { checkFrom } from "@/lib/tax-withholding";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
+import { nonItemizerGift } from "@/planning/tax-estimate";
 import { taxPaidText } from "@/planning/tax-estimate-copy";
 import { formatPercent as pct } from "@/lib/percent";
 
@@ -111,10 +112,14 @@ export async function decideTax(
     case "itemize": {
       const d = e.deduction;
       const itemized = d.itemizedCents;
-      const standard = d.standardCents;
+      // Like with like (Tax T6): what someone who does not itemize deducts is the standard deduction
+      // plus the cash gifts they may take beside it (none before 2026), so that is what to compare.
+      const gift =
+        d.standardCents === 0 ? 0 : nonItemizerGift(law, e.filingStatus, est.input.charityCents);
+      const standard = d.standardCents + gift;
       const diff = Math.abs(itemized - standard);
       const worth = Math.round(diff * e.marginalRate);
-      const fact = `Your itemized deductions come to ${formatCents(itemized)} and the standard deduction is ${formatCents(standard)}.`;
+      const fact = `Your itemized deductions come to ${formatCents(itemized)} and the standard deduction${gift > 0 ? `, with ${formatCents(gift)} of gifts,` : ""} is ${formatCents(standard)}.`;
       const gate = recommend(fact, [itemized, standard]);
       if (gate) return gate;
       return itemized > standard
