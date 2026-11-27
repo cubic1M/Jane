@@ -21,7 +21,7 @@ const LINK = "font-medium text-emerald-700 underline";
 async function Content() {
   const user = await requireUser();
   await connection();
-  const [waiting, { advice, reviews }] = await Promise.all([
+  const [waiting, { advice, reviews, noParams }] = await Promise.all([
     listPriorReturns(user.id, { status: "waiting" }),
     loadReturnReviews(user.id),
   ]);
@@ -45,6 +45,12 @@ async function Content() {
         <section key={r.id} aria-label={`Check ${r.fileName}`} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">Check what Jane read from {r.fileName}</h2>
           <ReadingForm id={r.id} fields={r.fields} sources={r.sources} notes={r.notes} />
+        </section>
+      ))}
+      {noParams.map((r) => (
+        <section key={r.returnId} aria-label={`Your ${r.year} return`} className={CARD_ROOMY}>
+          <h2 className="text-xl font-semibold">Your {r.year} return</h2>
+          <p className="text-sm">{r.text}</p>
         </section>
       ))}
       {reviews.map((r) => (
@@ -100,7 +106,7 @@ async function Content() {
           <DemoAdviceLabel />
         </section>
       ))}
-      {waiting.length === 0 && reviews.length === 0 && (
+      {waiting.length === 0 && reviews.length === 0 && noParams.length === 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {advice
             ? "No returns uploaded yet."

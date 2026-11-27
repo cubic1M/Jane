@@ -156,8 +156,10 @@ export type TaxEstimate = {
 const round = (cents: number) => Math.round(cents);
 const clamp0 = (cents: number) => Math.max(0, cents);
 
+// The rate on the next dollar: at exactly a bracket's start that is the bracket that starts there
+// (Pub. 505 Tax Rate Schedules: "over $12,400" is taxed at 12% from the first dollar above it).
 export const marginalRateOf = (incomeCents: number, brackets: readonly Bracket[]) =>
-  [...brackets].reverse().find((b) => incomeCents > b.over)?.rate ?? brackets[0].rate;
+  [...brackets].reverse().find((b) => incomeCents >= b.over)?.rate ?? brackets[0].rate;
 
 // Ordinary tax, with qualified dividends and long-term gains stacked on top at 0/15/20%.
 // `year` is the tax year's law (federalParams throws NoTaxParamsError for a year with none). The
@@ -285,7 +287,11 @@ function stateLocalCap(agiCents: number, status: FilingStatus, year: number): nu
   const cap = separate ? salt.cap.marriedSeparate : salt.cap.normal;
   const from = separate ? salt.phaseDownFrom.marriedSeparate : salt.phaseDownFrom.normal;
   const floor = separate ? salt.floor.marriedSeparate : salt.floor.normal;
-  return Math.max(floor, cap - round(clamp0(agiCents - from) * salt.phaseDownRate));
+  // 26 USC 164(b)(7)(B) cuts the whole-return limit by 30% of the excess over the threshold (halved
+  // for a separate return), never below $10,000; (b)(6)(B) then halves the result for a separate
+  // return. The halving comes after the cut, so a separate return loses 15 cents of cap per dollar.
+  const rate = separate ? salt.phaseDownRate / 2 : salt.phaseDownRate;
+  return Math.max(floor, cap - round(clamp0(agiCents - from) * rate));
 }
 
 // The state (and local) estimate: every state's part, totalled, against what was withheld
@@ -391,7 +397,8 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
           ? P.charity.value.nonItemizer.marriedJoint
           : P.charity.value.nonItemizer.normal,
       );
-  const afterDeduction = clamp0(agi - (itemizes ? itemizedTotal : standard) - nonItemizerCharity);
+  const beforeClamp = agi - (itemizes ? itemizedTotal : standard) - nonItemizerCharity;
+  const afterDeduction = clamp0(beforeClamp);
   // QBI: 20% of self-employment income less half the SE tax, capped at 20% of taxable
   // income before it; only below the threshold, where its limits start.
   const preferential = inc.qualifiedDividendsCents + capital.longTermCents;
@@ -405,6 +412,8 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
         )
       : 0;
   const taxable = clamp0(afterDeduction - qbi);
+  // What AMT starts from keeps a negative: an unused deduction is added back whole (Form 6251 line 1b).
+  const taxableBeforeClamp = beforeClamp - qbi;
 
   const ordinaryTax = incomeTax(taxable, preferential, status, input.year);
   const earned = inc.wagesCents + clamp0(se - halfSe);
@@ -450,10 +459,12 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     (input.amtPreferenceCents ?? 0) > 0
       ? amt({
           status,
-          taxableCents: taxable,
+          taxableCents: taxableBeforeClamp,
           addBackCents: itemizes ? itemized.stateLocalTaxCents : standard,
           preferenceCents: input.amtPreferenceCents!,
           regularTaxCents: ordinaryTax,
+          preferentialCents: Math.min(preferential, taxable),
+          regularOrdinaryCents: taxable - Math.min(preferential, taxable),
           year: input.year,
         })
       : { amtCents: 0 };

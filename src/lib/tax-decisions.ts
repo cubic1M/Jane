@@ -7,11 +7,8 @@ import {
   ROTH_UNTIL_RATE,
   TRADITIONAL_FROM_RATE,
 } from "@/config/tax-decisions";
-import {
-  CONTRIBUTION_LIMITS,
-  HOME_OFFICE_SIMPLIFIED,
-  STANDARD_DEDUCTION,
-} from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
+import { HOME_OFFICE_SIMPLIFIED } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { debtFirst } from "@/lib/debt-first";
 import { adviceMode } from "@/lib/advice-mode";
@@ -63,6 +60,9 @@ export async function decideTax(
     adviceMode(userId, { client }),
   ]);
   const e = est.estimate;
+  // The estimate's own year's limits and deductions (NoTaxParamsError never reaches here: the estimate
+  // was refused first).
+  const law = federalParams(e.year);
   const href = "/taxes";
   const made = (text: string, figures: number[] = [], to = href): Decision => ({
     topic,
@@ -203,8 +203,8 @@ export async function decideTax(
       const s = (
         await loadTaxSavings(userId, { client, now, loaded: { estimate: est, advice } })
       ).savings.find((x) => x.key === "retirement");
-      const limit = CONTRIBUTION_LIMITS.workplace;
-      const gate = recommend(`The 2026 limit for a 401(k) is ${formatCents(limit)}.`, [limit]);
+      const limit = law.contributionLimits.value.workplace;
+      const gate = recommend(`The ${e.year} limit for a 401(k) is ${formatCents(limit)}.`, [limit]);
       if (gate) return gate;
       return s
         ? made(
@@ -218,7 +218,7 @@ export async function decideTax(
     }
     case "ira": {
       const rate = e.marginalRate;
-      const limit = CONTRIBUTION_LIMITS.ira;
+      const limit = law.contributionLimits.value.ira;
       const gate = recommend(
         `You're in the ${pct(rate)} bracket, and the IRA limit is ${formatCents(limit)}.`,
         [limit],
@@ -233,8 +233,8 @@ export async function decideTax(
       return made(`${pick} Income limits can block a direct Roth IRA at higher incomes.`, [limit]);
     }
     case "hsa": {
-      const limit = CONTRIBUTION_LIMITS.hsaSelf;
-      const gate = recommend(`The 2026 HSA limit is ${formatCents(limit)} for one person.`, [
+      const limit = law.contributionLimits.value.hsaSelf;
+      const gate = recommend(`The ${e.year} HSA limit is ${formatCents(limit)} for one person.`, [
         limit,
       ]);
       if (gate) return gate;
@@ -445,7 +445,7 @@ export async function decideTax(
           );
     }
     case "must_file": {
-      const std = STANDARD_DEDUCTION[e.filingStatus];
+      const std = law.standardDeduction.value[e.filingStatus];
       const income = e.totalIncomeCents;
       return made(
         income > std
@@ -455,10 +455,10 @@ export async function decideTax(
       );
     }
     case "k401_limit": {
-      const limit = CONTRIBUTION_LIMITS.workplace;
+      const limit = law.contributionLimits.value.workplace;
       const put = est.pay.projected.retirementCents;
       return made(
-        `The 2026 limit for a 401(k) is ${formatCents(limit)} (more from age 50). ${put > 0 ? `Your pay stubs show a 401(k) deferral that comes to about ${formatWholeDollars(put)} this year (no retirement account is linked, so I can't see the balance), which leaves ${formatWholeDollars(Math.max(0, limit - put))} of room.` : "I don't see a 401(k) deferral on your pay stubs, so all of it is room."}`,
+        `The ${e.year} limit for a 401(k) is ${formatCents(limit)} (more from age 50). ${put > 0 ? `Your pay stubs show a 401(k) deferral that comes to about ${formatWholeDollars(put)} this year (no retirement account is linked, so I can't see the balance), which leaves ${formatWholeDollars(Math.max(0, limit - put))} of room.` : "I don't see a 401(k) deferral on your pay stubs, so I can't tell how much of it is left."}`,
         [limit, put],
       );
     }

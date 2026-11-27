@@ -1,0 +1,32 @@
+[
+  {
+    "id": "t4-salt-mfs-2025-at-phase-down-start",
+    "title": "SALT cap, married filing separately 2025, AGI exactly at the phase-down start ($250,000)",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/164",
+      "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B), read 2026-11-27"
+    },
+    "household": { "filingStatus": "married_separate", "childrenUnder17": 0, "otherDependants": 0, "state": null },
+    "income": { "wagesCents": 25000000 },
+    "extra": { "stateWithheldCents": 3000000 },
+    "expected": { "agi": 25000000, "itemizedStateLocal": 2000000 },
+    "note": "No cut yet: the whole-return limit $40,000 is halved for a separate return: $20,000."
+  },
+  {
+    "id": "t4-salt-mfs-2025-50k-over",
+    "title": "SALT cap, married filing separately 2025, AGI $50,000 over the phase-down start",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/164",
+      "where": "26 USC 164(b)(6)(B) and (b)(7)(A)-(B), read 2026-11-27"
+    },
+    "household": { "filingStatus": "married_separate", "childrenUnder17": 0, "otherDependants": 0, "state": null },
+    "income": { "wagesCents": 30000000 },
+    "extra": { "stateWithheldCents": 3000000 },
+    "expected": { "agi": 30000000, "itemizedStateLocal": 1250000 },
+    "note": "Excess over the halved threshold $250,000 is $50,000. Cut first: $40,000 - 30% x $50,000 = $25,000; halve after: $12,500. The old code gave $20,000 - $15,000 = $5,000."
+  }
+]

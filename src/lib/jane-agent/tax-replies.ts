@@ -276,7 +276,7 @@ export function packReply(pack: TaxPack): Reply {
 // owe?". Always called an estimate.
 export function estimateMessage(view: TaxEstimateView): Reply {
   const e = view.estimate;
-  const state = stateLine(e.state, view.withholdingKnown);
+  const state = stateLine(e.state, view.withholdingKnown, e.year);
   const sofar =
     view.elapsed < 1
       ? ` It's from your income so far (${formatWholeDollars(view.incomeSoFarCents)}), projected to the end of the year.`

@@ -6,7 +6,9 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { childrenOrUnknownAges } from "@/lib/family-taxes";
 import { loadTaxDocuments } from "@/lib/tax-documents";
+import { federalParams, NoTaxParamsError } from "@/config/tax-params";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { noParamsText } from "@/lib/tax-estimate-state";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { listPriorReturns } from "@/lib/prior-return";
 import { reviewReturn, type Fields, type Review } from "@/planning/prior-return";
@@ -42,17 +44,30 @@ export type AmendmentView = {
 export async function loadReturnReviews(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ advice: boolean; reviews: ReturnReview[] }> {
+): Promise<{
+  advice: boolean;
+  reviews: ReturnReview[];
+  // Returns of a year Jane has no IRS figures for: no review figures, the W-N sentence instead.
+  noParams: { returnId: string; year: number; text: string }[];
+}> {
   const advice = await adviceMode(userId, { client });
-  if (!advice) return { advice, reviews: [] };
+  if (!advice) return { advice, reviews: [], noParams: [] };
   const confirmed = (await listPriorReturns(userId, { client, status: "confirmed" })).filter(
     (r) => r.year !== null,
   );
   const db = scopedFor(userId, client);
   const { kind: residency } = await loadToldResidency(userId, { client });
   const reviews: ReturnReview[] = [];
+  const noParams: { returnId: string; year: number; text: string }[] = [];
   for (const r of confirmed) {
     const year = r.year!;
+    try {
+      federalParams(year);
+    } catch (error) {
+      if (!(error instanceof NoTaxParamsError)) throw error;
+      noParams.push({ returnId: r.id, year, text: noParamsText(year) });
+      continue;
+    }
     const [estimate, tags, docs, amendment, family] = await Promise.all([
       loadTaxEstimate(userId, { client, now, year }),
       loadTaxTags(userId, year, { client }),
@@ -122,5 +137,5 @@ export async function loadReturnReviews(
         : null,
     });
   }
-  return { advice, reviews };
+  return { advice, reviews, noParams };
 }

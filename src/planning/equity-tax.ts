@@ -143,19 +143,28 @@ export function rsuVest(
 }
 
 // The alternative minimum tax on top of the regular tax (Form 6251, simplified). AMT income
-// is taxable income plus the standard deduction (or the state and local taxes deducted,
-// neither of which AMT allows) plus the preference. The exemption shrinks by 50 cents for
-// each dollar over the phase-out start; tax is 26% to the threshold and 28% above.
+// is taxable income (as it stands before it is held at zero: Form 6251 line 1b says "if less than
+// zero, enter as a negative amount") plus the standard deduction (or the state and local taxes
+// deducted, neither of which AMT allows) plus the preference. The exemption shrinks by 50 cents
+// for each dollar over the phase-out start; tax is 26% to the threshold and 28% above.
+// Qualified dividends and long-term gains keep their 0/15/20% rates in the AMT (Form 6251 Part III,
+// lines 12 to 40): the tentative tax is the smaller of that and the tax with every dollar at 26/28%.
+// Left out, as in the estimate: unrecaptured section 1250 gain (line 14) and Form 2555.
 export function amt(input: {
   status: FilingStatus;
   taxableCents: number;
   addBackCents: number;
   preferenceCents: number;
   regularTaxCents: number;
+  // Qualified dividends plus net long-term gain (Part III line 13), and the regular-tax ordinary
+  // taxable income they sit on (line 20: taxable income less those).
+  preferentialCents?: number;
+  regularOrdinaryCents?: number;
   // The tax year's law; 2026's when a caller has not been moved to pass its own.
   year?: number;
 }): { amtCents: number; amtIncomeCents: number; tentativeCents: number } {
-  const AMT = federalParams(input.year ?? TAX_RATES_YEAR).amt.value;
+  const params = federalParams(input.year ?? TAX_RATES_YEAR);
+  const AMT = params.amt.value;
   const amtIncome = Math.max(0, input.taxableCents + input.addBackCents + input.preferenceCents);
   const exemption = Math.max(
     0,
@@ -163,8 +172,27 @@ export function amt(input: {
       Math.round(Math.max(0, amtIncome - AMT.phaseOutStart[input.status]) * AMT.phaseOutRate),
   );
   const base = Math.max(0, amtIncome - exemption);
-  const high = Math.max(0, base - AMT.highRateFrom[input.status]);
-  const tentative = Math.round((base - high) * AMT.lowRate + high * AMT.highRate);
+  const ordinary = (x: number) => {
+    const over = Math.max(0, x - AMT.highRateFrom[input.status]);
+    return Math.round((x - over) * AMT.lowRate + over * AMT.highRate);
+  };
+  let tentative = ordinary(base); // line 39
+  const gains = Math.min(Math.max(0, input.preferentialCents ?? 0), base); // lines 13, 16, 22
+  if (gains > 0) {
+    const [zero, fifteen, twenty] = params.capitalGains.value[input.status];
+    const regularOrdinary = Math.max(0, input.regularOrdinaryCents ?? 0); // lines 20 and 27
+    const room0 = Math.max(0, (fifteen?.over ?? 0) - regularOrdinary); // line 21
+    const at0 = Math.min(room0, gains); // line 23
+    const room15 = Math.max(0, (twenty?.over ?? 0) - (room0 + regularOrdinary)); // line 29
+    const at15 = Math.min(gains - at0, room15); // line 30
+    const at20 = gains - at0 - at15; // line 33
+    const part3 =
+      ordinary(base - gains) + // lines 17 and 18
+      Math.round(
+        at0 * (zero?.rate ?? 0) + at15 * (fifteen?.rate ?? 0) + at20 * (twenty?.rate ?? 0),
+      );
+    tentative = Math.min(part3, tentative); // line 40
+  }
   return {
     amtCents: Math.max(0, tentative - input.regularTaxCents),
     amtIncomeCents: amtIncome,

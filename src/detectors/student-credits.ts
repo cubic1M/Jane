@@ -10,6 +10,7 @@ import {
   aotcRefundableAge,
   dependentOf,
   federalTaxOf,
+  lawYearOf,
   filingStatusOf,
   marginalRateFor,
   onStudentVisa,
@@ -82,7 +83,13 @@ const educationCredit: Detector = {
     const llc = Math.round(
       Math.min(paid, EDUCATION_CREDITS.llcCostLimit) * EDUCATION_CREDITS.llcRate * left,
     );
-    const tax = federalTaxOf(year.agiCents, status, dependent, year.earnedCents);
+    const tax = federalTaxOf(
+      year.agiCents,
+      status,
+      dependent,
+      year.earnedCents,
+      lawYearOf(data.today),
+    );
     // The refundable 40% isn't paid to a full-time student under 24 with a living parent (Form 8863
     // line 7): only someone known to be 24 or older counts on it (the credit has no upper age).
     const refundable = aotcRefundableAge(facts) === true;
@@ -171,7 +178,13 @@ const studentLoanInterest: Detector = {
     const paidYear = monthly * 12;
     const year = studentYearOf(data, facts, months);
     const left = share(year.agiCents, range);
-    const rate = marginalRateFor(year.agiCents, status, false, year.earnedCents);
+    const rate = marginalRateFor(
+      year.agiCents,
+      status,
+      false,
+      year.earnedCents,
+      lawYearOf(data.today),
+    );
     // The interest part isn't in a payment. The lender's own year to date, paced to the year by its
     // payments (the ones seen here) or the day it was read; else a year's interest from the balance
     // and rate, at most the whole payment
@@ -292,6 +305,7 @@ const earnedIncomeCreditCard: Detector = {
       agiCents: year.agiCents + interest,
       investmentIncomeCents: interest,
       age: EITC.childlessMinAge,
+      year: lawYearOf(data.today),
     });
     if (credit <= 0) return null;
     const limit =

@@ -10,12 +10,19 @@ import {
   W4,
 } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
-import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
+import { federalParams, lawYearFor } from "@/config/tax-params";
+import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
 import { observedFilingDay } from "@/lib/filing-day";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { studentMoney, sumCents } from "@/planning/student-money";
-import { dependentOf, federalTaxOf, filingStatusOf, onStudentVisa } from "@/planning/student-tax";
+import {
+  dependentOf,
+  federalTaxOf,
+  filingStatusOf,
+  lawYearOf,
+  onStudentVisa,
+} from "@/planning/student-tax";
 import { bracketTax } from "@/planning/tax-brackets";
 import { selfEmploymentTax } from "@/planning/tax-estimate";
 import { employerName } from "@/profile/employer-name";
@@ -55,17 +62,25 @@ const RHYTHM_WORDS: Readonly<Record<number, string>> = {
 };
 
 // Federal withholding on one paycheck of `gross` under the standard single W-4, with `perYear` of them.
-export const withheldPerCheck = (gross: number, perYear: number, status: FilingStatus = "single") =>
-  Math.round(
+// `year` is the wage year's law (the tables are that year's); the default is only for tests.
+export const withheldPerCheck = (
+  gross: number,
+  perYear: number,
+  status: FilingStatus = "single",
+  year: number = TAX_RATES_YEAR,
+) => {
+  const law = federalParams(year);
+  return Math.round(
     bracketTax(
       Math.max(
         0,
         gross * perYear -
-          (status === "single" ? W4.noWithholdingBelowCents : STANDARD_DEDUCTION[status]),
+          (status === "single" ? W4.noWithholdingBelowCents : law.standardDeduction.value[status]),
       ),
-      FEDERAL_BRACKETS[status],
+      law.brackets.value[status],
     ) / perYear,
   );
+};
 
 const gross = (net: number) => Math.round(net * DETECTOR_RATES.tax.netToGross);
 
@@ -90,10 +105,11 @@ const partYearWithholding: Detector = {
     const check = gross(net);
     // Paychecks from the first one to December 31 at its rhythm.
     const checks = Math.floor(daysBetween(first, `${money.year}-12-31`) / rhythm.days) + 1;
-    const withheld = withheldPerCheck(check, rhythm.perYear) * checks;
+    const law = lawYearFor(money.year);
+    const withheld = withheldPerCheck(check, rhythm.perYear, "single", law) * checks;
     const dependent = dependentOf(facts) === "yes";
     const yearPay = check * checks;
-    const tax = federalTaxOf(yearPay, "single", dependent, yearPay);
+    const tax = federalTaxOf(yearPay, "single", dependent, yearPay, law);
     const refund = withheld - tax;
     if (refund < TAX_SET_ASIDE.minLeftCents) return null;
     const employer = nice(employerName(money.wages[0].description)) || "your job";
@@ -166,13 +182,15 @@ const twoJobs: Detector = {
         ...j,
         check,
         year: check * j.rhythm.perYear,
-        withheld: withheldPerCheck(check, j.rhythm.perYear, status) * j.rhythm.perYear,
+        withheld:
+          withheldPerCheck(check, j.rhythm.perYear, status, lawYearOf(profile.today)) *
+          j.rhythm.perYear,
       };
     });
     const year = each.reduce((s, j) => s + j.year, 0);
     const withheld = each.reduce((s, j) => s + j.withheld, 0);
     const dependent = dependentOf(facts) === "yes";
-    const tax = federalTaxOf(year, status, dependent, year);
+    const tax = federalTaxOf(year, status, dependent, year, lawYearOf(profile.today));
     const short = tax - withheld;
     if (short < TAX_SET_ASIDE.minLeftCents) return null;
     const [a, b] = each;
@@ -239,8 +257,13 @@ const extensionNotToPay: Detector = {
     // Income tax on all of it, and self-employment tax on the gig and contract part (no employer
     // paid its share).
     const tax =
-      federalTaxOf(received, filingStatusOf(facts), dependentOf(facts) === "yes", received) +
-      selfEmploymentTax(sumCents(contract), 0);
+      federalTaxOf(
+        received,
+        filingStatusOf(facts),
+        dependentOf(facts) === "yes",
+        received,
+        lawYearFor(year),
+      ) + selfEmploymentTax(sumCents(contract), 0);
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const days = daysBetween(today, due);
     const extended = observedFilingDay(`${due.slice(0, 4)}-${FILING.extendedTo.slice(5)}`);
