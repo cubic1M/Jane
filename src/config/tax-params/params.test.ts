@@ -56,24 +56,29 @@ function walk(v: unknown, path: string, visit: (path: string, n: number) => void
     for (const [k, x] of Object.entries(v)) walk(x, path ? `${path}.${k}` : k, visit);
 }
 
-// The groups that carry a note today, and why: a change to this list is a deliberate one.
-const EXPECTED_NOTES = [
-  "ctc",
-  "eitc",
-  "selfEmployment",
-  "obbba",
-  "savers",
-  "saversMatch",
-  "rothCatchUp",
-  "charity",
-  "medical",
-  "contributionLimits",
-  "dependentCare",
-  "education",
-  "energy",
-  "amt",
-  "mileage",
-];
+// The groups that carry a note today, by year, and why: a change to a list is a deliberate one.
+const EXPECTED_NOTES: Record<number, string[]> = {
+  2025: ["savers", "saversMatch", "rothCatchUp"],
+  2026: [
+    "ctc",
+    "eitc",
+    "selfEmployment",
+    "obbba",
+    "savers",
+    "saversMatch",
+    "rothCatchUp",
+    "charity",
+    "medical",
+    "contributionLimits",
+    "dependentCare",
+    "education",
+    "energy",
+    "amt",
+    "mileage",
+  ],
+};
+// The groups not read at a primary source (D6: a rule needing one shows no figure).
+const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["amt", "medical"] };
 
 describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   const params = federalParams(year);
@@ -198,20 +203,22 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   });
 });
 
-describe("what is still not confirmed at the source (reported)", () => {
-  it("lists exactly these groups, each with its note", () => {
-    const notes = verifyNotes(2026);
-    expect(notes.map((n) => n.key).sort()).toEqual([...EXPECTED_NOTES].sort());
-    // Two groups are unconfirmed outright (a wrong value today, and one not read); the rest are read.
-    expect(
-      notes
-        .filter((n) => n.status === "unconfirmed")
-        .map((n) => n.key)
-        .sort(),
-    ).toEqual(["amt", "medical"]);
-    for (const n of notes) expect(n.note.length, n.key).toBeGreaterThan(20);
-  });
-});
+describe.each(SUPPORTED_TAX_YEARS)(
+  "what is still not confirmed at the source, %i (reported)",
+  (year) => {
+    it("lists exactly these groups, each with its note", () => {
+      const notes = verifyNotes(year);
+      expect(notes.map((n) => n.key).sort()).toEqual([...(EXPECTED_NOTES[year] ?? [])].sort());
+      expect(
+        notes
+          .filter((n) => n.status === "unconfirmed")
+          .map((n) => n.key)
+          .sort(),
+      ).toEqual(EXPECTED_UNCONFIRMED[year]);
+      for (const n of notes) expect(n.note.length, n.key).toBeGreaterThan(20);
+    });
+  },
+);
 
 describe("a caller can't change the shared table", () => {
   it("throws when a figure is assigned", () => {
@@ -224,8 +231,8 @@ describe("a caller can't change the shared table", () => {
 });
 
 describe("a year with no figures is refused, never priced with another year's law", () => {
-  it("throws NoTaxParamsError for 2025 and 2027", () => {
-    for (const year of [2025, 2027]) {
+  it("throws NoTaxParamsError for 2024 and 2027", () => {
+    for (const year of [2024, 2027]) {
       expect(() => federalParams(year)).toThrow(NoTaxParamsError);
     }
     expect(() => federalParams(2027)).toThrow(/2027/);
