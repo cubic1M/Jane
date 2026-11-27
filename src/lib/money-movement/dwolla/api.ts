@@ -40,10 +40,16 @@ export class DwollaError extends Error {
 
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const TRANSFER_ID = new RegExp(`^${UUID}$`);
-const FUNDING_SOURCE = new RegExp(
-  `^${DWOLLA_SANDBOX.base.replace(/[.]/g, "\\.")}/funding-sources/${UUID}$`,
-);
-const LOCATION = new RegExp(`^${DWOLLA_SANDBOX.base.replace(/[.]/g, "\\.")}/transfers/(${UUID})$`);
+// A URL under the Sandbox host with a UUID after its prefix: compared as text, not built into a
+// regular expression, so the host's dots are never a pattern.
+const idAfter = (prefix: string, url: string): string | null => {
+  if (!url.startsWith(prefix)) return null;
+  const id = url.slice(prefix.length);
+  return TRANSFER_ID.test(id) ? id : null;
+};
+const FUNDING_PREFIX = `${DWOLLA_SANDBOX.base}/funding-sources/`;
+const TRANSFER_PREFIX = `${DWOLLA_SANDBOX.base}/transfers/`;
+const isFundingSource = (url: string) => idAfter(FUNDING_PREFIX, url) !== null;
 const STATUSES = new Set<string>(["pending", "processed", "cancelled", "failed"]);
 
 // "1234" cents as Dwolla's "12.34".
@@ -106,7 +112,7 @@ export function dwollaSandboxHttp({
       correlationId,
       idempotencyKey,
     }) {
-      if (!FUNDING_SOURCE.test(sourceHref) || !FUNDING_SOURCE.test(destinationHref)) {
+      if (!isFundingSource(sourceHref) || !isFundingSource(destinationHref)) {
         throw new DwollaError(null, "BAD_FUNDING_SOURCE");
       }
       if (!Number.isInteger(amountCents) || amountCents <= 0) {
@@ -124,7 +130,7 @@ export function dwollaSandboxHttp({
           correlationId,
         }),
       });
-      const id = LOCATION.exec(response.headers.get("location") ?? "")?.[1];
+      const id = idAfter(TRANSFER_PREFIX, response.headers.get("location") ?? "");
       if (response.status !== 201 || !id) throw new DwollaError(response.status, "REFUSED");
       return id;
     },
