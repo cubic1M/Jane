@@ -192,6 +192,7 @@ describe("the other tables against their own arithmetic", () => {
       head_of_household: $(24_925),
     });
     expect(p.additionalStandard.value).toEqual({ unmarried: $(2_100), married: $(1_700) });
+    expect(p.dependentStandard.value).toEqual({ floor: $(1_400), plusEarned: $(500) });
   });
 
   it("the EITC maximum is the rate times the earned income amount, and each completed phase-out is the threshold plus the maximum over the phase-out rate", () => {

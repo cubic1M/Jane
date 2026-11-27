@@ -84,11 +84,12 @@ const educationCredit: Detector = {
     const llc = Math.round(
       Math.min(paid, EDUCATION_CREDITS.llcCostLimit) * EDUCATION_CREDITS.llcRate * left,
     );
+    // A dependent's standard deduction counts a taxable fellowship as earned income (Pub. 501).
     const tax = federalTaxOf(
       year.agiCents,
       status,
       dependent,
-      year.earnedCents,
+      year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
     );
     // The refundable 40% isn't paid to a full-time student under 24 with a living parent (Form 8863
@@ -183,7 +184,7 @@ const studentLoanInterest: Detector = {
       year.agiCents,
       status,
       false,
-      year.earnedCents,
+      year.earnedCents + year.stipendCents,
       lawYearOf(data.today),
     );
     // The interest part isn't in a payment. The lender's own year to date, paced to the year by its

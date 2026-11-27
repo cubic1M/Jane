@@ -1,0 +1,197 @@
+[
+  {
+    "id": "he3d-2025-dependent-floor",
+    "title": "HE-3d: 2025 single dependent, wages $600, interest $2,000: the $1,350 floor",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf",
+      "where": "Rev. Proc. 2024-40 section 2.15(2); Pub. 501 (2025) Table 8"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 19,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 60000,
+      "interestCents": 200000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 135000,
+      "taxable": 125000,
+      "incomeTax": 12500
+    },
+    "note": "max(1,350, 600 + 450 = 1,050) = 1,350. AGI 2,600, taxable 1,250, tax 10% = 125.00."
+  },
+  {
+    "id": "he3d-2025-dependent-earned-plus-450",
+    "title": "HE-3d: 2025 single dependent, wages $5,000, interest $2,000: earned income plus $450",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf",
+      "where": "Rev. Proc. 2024-40 section 2.15(2); Pub. 501 (2025) Table 8"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 19,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 500000,
+      "interestCents": 200000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 545000,
+      "taxable": 155000,
+      "incomeTax": 15500
+    },
+    "note": "max(1,350, 5,000 + 450) = 5,450 (under 15,750). AGI 7,000, taxable 1,550, tax 10% = 155.00."
+  },
+  {
+    "id": "he3d-2025-dependent-scholarship",
+    "title": "2025 single dependent, wages $2,000 and a $3,000 taxable scholarship: the scholarship counts as earned",
+    "taxYear": 2025,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 (2025): earned income also includes any part of a taxable scholarship or fellowship grant"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 20,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 200000,
+      "otherCents": 300000
+    },
+    "extra": {
+      "claimedAsDependent": true,
+      "taxableScholarshipCents": 300000
+    },
+    "expected": {
+      "standardDeduction": 545000,
+      "taxable": 0,
+      "incomeTax": 0
+    },
+    "note": "max(1,350, 2,000 + 3,000 + 450 = 5,450) = 5,450. Income 5,000 is under it: taxable 0, tax 0. (Without the scholarship the deduction would be 2,450.)"
+  },
+  {
+    "id": "he3d-2025-single-65-blind",
+    "title": "2025 single, age 66 and blind, wages $30,000: Pub. 501 chart, two boxes",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 (2025) Table 7: single, 2 boxes $19,750"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 66,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "blind": true
+    },
+    "expected": {
+      "standardDeduction": 1975000,
+      "taxable": 1025000
+    },
+    "note": "15,750 + 2 x 2,000 = 19,750 (Pub. 501 chart). Taxable 30,000 - 19,750 = 10,250."
+  },
+  {
+    "id": "he3d-2025-joint-both-65",
+    "title": "2025 married filing jointly, both 65 or older: Pub. 501 chart, two boxes",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 (2025) Table 7: married filing jointly, 2 boxes $34,700"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 67,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 6000000
+    },
+    "extra": {
+      "spouseAge": 66
+    },
+    "expected": {
+      "standardDeduction": 3470000,
+      "taxable": 2530000
+    },
+    "note": "31,500 + 2 x 1,600 = 34,700. Taxable 60,000 - 34,700 = 25,300."
+  },
+  {
+    "id": "he3d-2025-head-of-household-65",
+    "title": "2025 head of household, age 70: Pub. 501 chart, one box",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 (2025) Table 7: head of household, 1 box $25,625"
+    },
+    "household": {
+      "filingStatus": "head_of_household",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 70,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "expected": {
+      "standardDeduction": 2562500
+    },
+    "note": "23,625 + 2,000 = 25,625 (the unmarried amount)."
+  },
+  {
+    "id": "he3d-2025-separate-65",
+    "title": "2025 married filing separately, age 65: Pub. 501 chart, one box",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 (2025) Table 7: married filing separately, 1 box $17,350"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 65,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "expected": {
+      "standardDeduction": 1735000
+    },
+    "note": "15,750 + 1,600 = 17,350 (the married amount, also on a separate return)."
+  }
+]

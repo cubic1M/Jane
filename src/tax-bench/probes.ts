@@ -198,9 +198,45 @@ export function probePlan(year: number): Record<string, GroupPlan> {
         },
       ]),
     },
+    // The extra amount starts at the year's end age of 65 (points are ages: 64, 65, 66).
     additionalStandard: {
-      exempt: "Not read by estimateTaxes: the 65-and-over and blind amounts are not added.",
-      step: "T5",
+      probes: [
+        {
+          param: "unmarried",
+          points: [64, 65, 66],
+          f: (age: number) =>
+            est("single", { wagesCents: 3_000_000 }, { age }).deduction.standardCents,
+          kind: "step_up" as const,
+        },
+        {
+          param: "married",
+          points: [64, 65, 66],
+          f: (age: number) =>
+            est("married_joint", { wagesCents: 3_000_000 }, { age }).deduction.standardCents,
+          kind: "step_up" as const,
+        },
+      ],
+    },
+    // A dependent's limit: flat at the floor, then rising one for one once earned income plus the
+    // add-on passes it (the same point for both amounts: floor = x + plusEarned).
+    dependentStandard: {
+      probes: [
+        {
+          param: "floor",
+          points: around(p.dependentStandard.value.floor - p.dependentStandard.value.plusEarned),
+          f: (x: number) =>
+            est("single", { wagesCents: x }, { claimedAsDependent: true }).deduction.standardCents,
+          kind: "slope_up" as const,
+        },
+        {
+          param: "plusEarned",
+          points: around(p.dependentStandard.value.floor - p.dependentStandard.value.plusEarned),
+          f: (x: number) =>
+            est("married_separate", { wagesCents: x }, { claimedAsDependent: true }).deduction
+              .standardCents,
+          kind: "slope_up" as const,
+        },
+      ],
     },
     capitalLoss: {
       probes: saltKinds.map(([key, s]) => ({

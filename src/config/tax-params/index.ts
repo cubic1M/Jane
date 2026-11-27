@@ -125,3 +125,6 @@ export function verifyNotes(year: number): { key: string; status: string; note: 
       : [],
   );
 }
+
+// The age (at the year's end) from which the additional standard deduction applies (26 USC 63(f)(1)(A); statute, not indexed).
+export const ADDITIONAL_STANDARD_AGE = 65;

@@ -65,9 +65,11 @@ const unemploymentTax: Detector = {
     const status = filingStatusOf(facts);
     const dependent = dependentOf(facts) === "yes";
     const base = other.agiCents + otherTaxableYear(data, profile.today);
+    // Unemployment is not earned income; a taxable fellowship is (Pub. 501), for a dependent's limit.
+    const earned = other.earnedCents + other.stipendCents;
     const tax =
-      federalTaxOf(base + paid, status, dependent, other.earnedCents, ownLawYear(year)) -
-      federalTaxOf(base, status, dependent, other.earnedCents, ownLawYear(year));
+      federalTaxOf(base + paid, status, dependent, earned, ownLawYear(year)) -
+      federalTaxOf(base, status, dependent, earned, ownLawYear(year));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const ca = facts.home_state.value === "CA" ? " California doesn't tax it (FTB)." : "";
     return suggestion("taxes", "unemployment_tax", {

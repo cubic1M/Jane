@@ -163,6 +163,7 @@ describe("standard deduction and the other 2025-law figures, second reading", ()
       head_of_household: $(23_625),
     });
     expect(p.additionalStandard.value).toEqual({ unmarried: $(2_000), married: $(1_600) });
+    expect(p.dependentStandard.value).toEqual({ floor: $(1_350), plusEarned: $(450) });
   });
   it("capital gains edges: $48,350 / $96,700 / $64,750 and $533,400 / $300,000 / $600,050 / $566,700 (the 1040 worksheet)", () => {
     const edges = (s: FilingStatus) => p.capitalGains.value[s].map((b) => b.over / 100);

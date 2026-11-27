@@ -160,6 +160,15 @@ export const US_2025: FederalParams = {
         "Rev. Proc. 2024-40 section 2.15(3): $1,600 for the aged or blind, $2,000 if also unmarried and not a surviving spouse (not changed by Rev. Proc. 2025-32)",
     },
   ),
+  dependentStandard: cited(
+    { floor: $(1_350), plusEarned: $(450) },
+    {
+      source: RP2440,
+      alsoSources: ["https://www.irs.gov/publications/p501"],
+      where:
+        "Rev. Proc. 2024-40 section 2.15(2): the greater of $1,350 or earned income plus $450 (not changed by Rev. Proc. 2025-32; read 2026-11-27); Pub. 501 (2025) Table 8 and its Examples 1 to 4",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     { source: code("1211"), where: "26 USC 1211(b)(1) (statute, not indexed)" },

@@ -93,6 +93,7 @@ describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
         "capitalGains",
         "standardDeduction",
         "additionalStandard",
+        "dependentStandard",
         "capitalLoss",
         "ctc",
         "eitc",

@@ -50,6 +50,9 @@ export type FederalParams = Readonly<{
   standardDeduction: Cited<ByStatus<number>>;
   // Per person 65 or older (or blind).
   additionalStandard: Cited<{ unmarried: number; married: number }>;
+  // Someone who can be claimed as a dependent: the standard deduction is the greater of `floor` or
+  // earned income plus `plusEarned`, never more than the regular amount (26 USC 63(c)(5)).
+  dependentStandard: Cited<{ floor: number; plusEarned: number }>;
   // A net capital loss comes off other income up to this much a year.
   capitalLoss: Cited<{ normal: number; marriedSeparate: number }>;
   ctc: Cited<{

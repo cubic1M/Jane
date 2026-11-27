@@ -153,6 +153,15 @@ export const US_2027: FederalParams = {
         "section 3.15(3), aged or blind ($1,700, $2,100 if unmarried and not a surviving spouse)",
     },
   ),
+  dependentStandard: cited(
+    { floor: $(1_400), plusEarned: $(500) },
+    {
+      source: RP2635,
+      alsoSources: [IRB48],
+      where:
+        "section 3.15(2), dependent: the greater of $1,400 or earned income plus $500 (read 2026-11-27)",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     {
