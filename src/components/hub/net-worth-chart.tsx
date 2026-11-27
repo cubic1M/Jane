@@ -113,6 +113,8 @@ function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: nu
     const from = now.current;
     if (reduced || (from.lo === target.lo && from.hi === target.hi)) {
       now.current = { lo: target.lo, hi: target.hi };
+      // Keep the eased copy current too, for when reduced motion is turned off again.
+      setShown((s) => (s.lo === target.lo && s.hi === target.hi ? s : now.current));
       return;
     }
     const start = performance.now();
@@ -136,8 +138,11 @@ function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: nu
 // The session's fit choice, in sessionStorage (and in memory where that is not allowed): read
 // without a flash of the other choice on the first paint, kept across a reload.
 let fitInMemory: "focus" | "all" = "focus";
+// Set once a write to the storage fails: from then on the memory copy is the truth.
+let fitStorageFailed = false;
 const fitListeners = new Set<() => void>();
 function readFit(): "focus" | "all" {
+  if (fitStorageFailed) return fitInMemory;
   try {
     return window.sessionStorage.getItem(FIT_KEY) === "all" ? "all" : "focus";
   } catch {
@@ -150,6 +155,7 @@ function saveFit(choice: "focus" | "all") {
     window.sessionStorage.setItem(FIT_KEY, choice);
   } catch {
     // Not kept across a reload.
+    fitStorageFailed = true;
   }
   fitListeners.forEach((listen) => listen());
 }
@@ -981,7 +987,12 @@ export function NetWorthChart({
               <button
                 type="button"
                 data-net-worth-fit=""
-                onClick={() => chooseFocus(!fit.focused)}
+                onClick={() => {
+                  chooseFocus(!fit.focused);
+                  // The dots move with the scale: whatever was open is shut.
+                  setFocusDot(null);
+                  shut();
+                }}
                 className="ml-auto inline-flex min-h-11 items-center px-3 text-sm font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
               >
                 {fitControlWords(fit.focused)}
