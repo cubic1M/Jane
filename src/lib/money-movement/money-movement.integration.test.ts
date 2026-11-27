@@ -87,6 +87,23 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     vi.unstubAllEnvs();
   });
 
+  // CodeRabbit sweep (fin-01): with no forecast for the account the money would leave, "no limit"
+  // is not an answer: no plan is made and nothing moves.
+  it("makes no plan when the checking account has no forecast", async () => {
+    const userId = await demoPerson("money-noforecast");
+    await client.paycheckPlan.deleteMany({ where: { userId } });
+    await client.moneyTransfer.deleteMany({ where: { userId } });
+    const input = await loadDetectionInput(userId, { client, now: LINKED });
+    const blind = {
+      ...input,
+      accounts: input.accounts.map((a) =>
+        a.subtype === "checking" ? { ...a, currentBalanceCents: null } : a,
+      ),
+    };
+    expect(await runPaycheckPlan(userId, { client, now: LINKED, input: blind })).toBeNull();
+    expect(await client.moneyTransfer.count({ where: { userId } })).toBe(0);
+  });
+
   it("moves a goal's share of the paycheck by itself, above the cushion, once", async () => {
     const userId = await demoPerson("money-auto");
     await client.paycheckPlan.deleteMany({ where: { userId } });

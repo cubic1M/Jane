@@ -31,6 +31,8 @@ import { systemDb } from "@/lib/system-db";
 // Balances come from each connection's crypto source and are stored with when they were
 // read; there is deliberately nothing here, or anywhere, that trades crypto.
 
+const CRYPTO_SYNC_PAGE = 500;
+
 type Options = { client?: PrismaClient; now?: Date };
 
 export class CryptoError extends Error {}
@@ -102,19 +104,29 @@ export async function syncAllCrypto({
   client = defaultClient,
   now = new Date(),
   userIds,
-}: Options & OnlyPeople = {}) {
-  const people = await systemDb(
-    "Cron: finds who to run for, across people",
-    client,
-  ).cryptoConnection.findMany({
-    where: ownedBy(userIds),
-    select: { userId: true },
-    distinct: ["userId"],
-    take: 500,
-  });
+  pageSize = CRYPTO_SYNC_PAGE,
+}: Options & OnlyPeople & { pageSize?: number } = {}) {
+  // Everyone, a page at a time in id order: a fixed first page would leave the same people
+  // behind every night once there are more than a page of them (CodeRabbit sweep).
   let synced = 0;
-  for (const { userId } of people) synced += await syncCrypto(userId, { client, now });
-  return { people: people.length, synced };
+  let people = 0;
+  for (let after: string | undefined; ;) {
+    const page = await systemDb(
+      "Cron: finds who to run for, across people",
+      client,
+    ).cryptoConnection.findMany({
+      where: { AND: [ownedBy(userIds), after ? { userId: { gt: after } } : {}] },
+      select: { userId: true },
+      distinct: ["userId"],
+      orderBy: { userId: "asc" },
+      take: pageSize,
+    });
+    for (const { userId } of page) synced += await syncCrypto(userId, { client, now });
+    people += page.length;
+    if (page.length < pageSize) break;
+    after = page[page.length - 1].userId;
+  }
+  return { people, synced };
 }
 
 // The demo exchange or the demo wallet, for demo-bank people.
@@ -234,7 +246,12 @@ export async function cryptoTotal(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<number> {
+  // Sample coins count only while all the person has is the demo bank: once a real account is
+  // added they would be sample money inside real net worth.
+  const sampleOk =
+    (await demoAnchorFor(userId, { client })) !== null && (await onlyDemoBank(userId, client));
   const sum = await scopedFor(userId, client).cryptoHoldings.aggregate({
+    where: sampleOk ? {} : { connection: { partner: { not: DEMO_CRYPTO_PARTNER } } },
     _sum: { valueCents: true },
   });
   return sum._sum.valueCents ?? 0;
