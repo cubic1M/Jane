@@ -51,6 +51,54 @@ export function medicalFigures(
   return { claimedCents, gross: { label, cents: paidCents } };
 }
 
+// Gifts, mortgage interest and property tax count only when the estimate itemizes (cash gifts also
+// count a little under the standard deduction: the estimate's own figure). "Claimed" is what the
+// estimate counts, nothing else: under the standard deduction these lines show what was paid under
+// their own label and say that the standard deduction is larger.
+export type ItemizedLine = "gifts" | "mortgage_interest" | "property_tax";
+const LINE_NOUN: Record<ItemizedLine, string> = {
+  gifts: "gifts",
+  mortgage_interest: "mortgage interest",
+  property_tax: "property tax",
+};
+
+export function itemizedLineFigures(
+  line: ItemizedLine,
+  paidCents: number,
+  deduction: {
+    kind: "standard" | "itemized";
+    nonItemizerCharityCents: number;
+    itemized: { charityCents: number; mortgageInterestCents: number };
+  },
+): Pick<AuditItem, "claimedCents" | "gross"> {
+  const noun = LINE_NOUN[line];
+  if (deduction.kind === "standard") {
+    const claimedCents = line === "gifts" ? deduction.nonItemizerCharityCents : 0;
+    const said =
+      claimedCents > 0
+        ? "the standard deduction is larger, so only the cash gifts it allows are claimed"
+        : "the standard deduction is larger, so none is claimed";
+    return {
+      claimedCents,
+      gross: { label: `All ${noun} paid (${said})`, cents: paidCents },
+    };
+  }
+  // Itemizing: the estimate's own figure where it has one; property tax is counted inside its
+  // state and local tax line, so what was paid stands.
+  const claimedCents =
+    line === "gifts"
+      ? deduction.itemized.charityCents
+      : line === "mortgage_interest"
+        ? deduction.itemized.mortgageInterestCents
+        : paidCents;
+  return claimedCents === paidCents
+    ? { claimedCents }
+    : {
+        claimedCents,
+        gross: { label: `All ${noun} paid, more than the estimate counts`, cents: paidCents },
+      };
+}
+
 export type AuditPack = {
   year: number;
   // Items with at least one source.
