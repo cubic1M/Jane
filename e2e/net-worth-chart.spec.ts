@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { STEP_PERSON, seedHistory } from "./chart-people";
+import { signInWith } from "./session";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
 
@@ -253,4 +255,86 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
   await expect(details).toHaveCount(0);
+});
+
+// The line's vertical extent over the days the scale shows (a vertex off the chart runs off its
+// edge and is not counted), as a share of the chart's height.
+async function lineShare(chart: Locator): Promise<number> {
+  return chart.locator("[data-net-worth-plot]").evaluate((plot) => {
+    const h = plot.getBoundingClientRect().height;
+    const d = plot.querySelector("path.nw-line")?.getAttribute("d") ?? "";
+    const ys = [...d.matchAll(/[ML]([\d.-]+),([\d.-]+)/g)]
+      .map((m) => Number(m[2]))
+      .filter((y) => y >= 0 && y <= h);
+    return ys.length ? (Math.max(...ys) - Math.min(...ys)) / h : 0;
+  });
+}
+
+test("one big step does not flatten the rest: the chart focuses, Fit all brings the step back, zooming out restores", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  // Months of moves of $20 to $300 around $6,000, and one +$5,120 day 60 days ago.
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, STEP_PERSON);
+  await page.goto("/home");
+
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
+  const marker = chart.locator("[data-net-worth-step]");
+  const control = chart.locator("[data-net-worth-fit]");
+
+  // Hidden figures: the marker says what happened and when, with no figure.
+  await expect(marker).toHaveText(/^A big rise on [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(marker).not.toContainText("$");
+  await chart.locator("[data-show-value]").click();
+
+  // Focused: the small moves take at least a third of the chart's height, the marker says the step.
+  await expect(marker).toHaveText(/^\+\$[45],\d{3} on [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(control).toHaveText("Fit all");
+  await expect.poll(() => lineShare(chart)).toBeGreaterThanOrEqual(0.33);
+  // The scale's labels are true values at both ends (the focused days' own).
+  const high = chart.locator('[data-net-worth-scale="high"]');
+  const low = chart.locator('[data-net-worth-scale="low"]');
+  const dollarsOf = async (el: Locator) =>
+    Number(((await el.textContent()) ?? "").replace(/\D/g, ""));
+  expect((await dollarsOf(high)) - (await dollarsOf(low))).toBeLessThan(2_000);
+
+  // Fit all: the whole range, the step back in the line, no marker.
+  await control.click();
+  await expect(control).toHaveText("Focus");
+  await expect(marker).toHaveCount(0);
+  await expect.poll(() => dollarsOf(high)).toBeGreaterThan(10_000);
+  await expect.poll(() => lineShare(chart)).toBeGreaterThanOrEqual(0.9);
+  await control.click();
+  await expect(marker).toBeVisible();
+  await expect(control).toHaveText("Fit all");
+
+  // Zoomed in on today with the brush, the step leaves the view: no marker, and the small moves
+  // still have shape (the scale fits the days in view).
+  const brush = chart.getByRole("slider", { name: "Days in view" });
+  await brush.focus();
+  await page.keyboard.press("+");
+  await page.keyboard.press("+");
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
+  await expect(marker).toHaveCount(0);
+  await expect(control).toHaveCount(0);
+  await expect.poll(() => lineShare(chart)).toBeGreaterThanOrEqual(0.33);
+  expect(await dollarsOf(high)).toBeLessThan(13_000);
+
+  // Zoomed out again: the whole picture, with the same rules.
+  for (let i = 0; i < 4; i++) await page.keyboard.press("-");
+  await expect(marker).toHaveText(/^\+\$[45],\d{3} on /);
+  await expect.poll(() => lineShare(chart)).toBeGreaterThanOrEqual(0.33);
+  // The range chips still work.
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
+  await expect(marker).toHaveCount(0);
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^ALL/ }).click();
+  await expect(marker).toBeVisible();
 });
