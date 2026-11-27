@@ -17,7 +17,9 @@ import { trackQuietly } from "@/lib/track-quietly";
 import {
   buildAuditPack,
   matchReceipts,
+  itemizedLineFigures,
   medicalFigures,
+  type ItemizedLine,
   retentionSchedule,
   type AuditItem,
   type AuditPack,
@@ -153,7 +155,9 @@ export async function loadAuditRecords(
       label: TAX_TAGS[tag].plural.replace(/^./, (c) => c.toUpperCase()),
       ...(tag === "medical"
         ? medicalFigures(paidCents, estimate.estimate.deduction)
-        : { claimedCents: paidCents }),
+        : tag === "donation"
+          ? itemizedLineFigures("gifts", paidCents, estimate.estimate.deduction)
+          : { claimedCents: paidCents }),
       evidence,
       needs,
     });
@@ -164,18 +168,21 @@ export async function loadAuditRecords(
     key: string,
     label: string,
     f: { cents: number; sources: HomeSource[] } | null,
+    line?: ItemizedLine,
   ) => {
     if (!f) return;
     candidates.push({
       key,
       label,
-      claimedCents: f.cents,
+      ...(line
+        ? itemizedLineFigures(line, f.cents, estimate.estimate.deduction)
+        : { claimedCents: f.cents }),
       evidence: f.sources.flatMap(homeEvidence),
       needs: [],
     });
   };
-  fromFigure("mortgage_interest", "Mortgage interest", home.mortgageInterest);
-  fromFigure("property_tax", "Property tax", home.propertyTax);
+  fromFigure("mortgage_interest", "Mortgage interest", home.mortgageInterest, "mortgage_interest");
+  fromFigure("property_tax", "Property tax", home.propertyTax, "property_tax");
   for (const e of home.energy.filter((e) => e.cents > 0)) fromFigure("energy", e.label, e);
 
   // Student loan interest: the lender's 1098-E when collected and usable, else the loan.
