@@ -8,6 +8,15 @@ afterEach(() => {
 
 const printed = (spy: { mock: { calls: unknown[][] } }) => JSON.stringify(spy.mock.calls);
 
+describe("cleanForLog", () => {
+  it("does not throw on an invalid date, and keeps a valid one as ISO", () => {
+    expect(cleanForLog({ when: new Date(Number.NaN) })).toEqual({ when: "[invalid date]" });
+    expect(cleanForLog({ when: new Date("2026-11-26T00:00:00Z") })).toEqual({
+      when: "2026-11-26T00:00:00.000Z",
+    });
+  });
+});
+
 describe("logText", () => {
   it("takes out tokens, emails and account numbers", () => {
     const text = logText(

@@ -145,6 +145,38 @@ describe.runIf(url)("reverse matching", () => {
     expect(scanned).not.toContain(idle);
   });
 
+  it("tries a person again when their rescan failed, and stops once it worked", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const idle = await person([
+      { type: "idle_cash", evidence: { excessCents: 2_000_000, assumedCurrentRateBps: 50 } },
+    ]);
+    await offer(BANK, { valueBps: 610 }, { status: "live" });
+    const scanned: string[] = [];
+    const broken = vi.fn(async (userId: string) => {
+      scanned.push(userId);
+      throw new Error("scan down");
+    });
+    const before = await watchesOf(idle);
+    await matchOffers({ client, now: NOW, scan: broken });
+    expect(scanned).toContain(idle);
+    // Behind the people not tried yet: its place in the queue moved.
+    const after = await watchesOf(idle);
+    expect(after.map((w) => w.updatedAt.getTime())).not.toEqual(
+      before.map((w) => w.updatedAt.getTime()),
+    );
+
+    scanned.length = 0;
+    const fine = vi.fn(async (userId: string) => {
+      scanned.push(userId);
+    });
+    await matchOffers({ client, now: NOW, scan: fine });
+    expect(scanned).toContain(idle);
+
+    scanned.length = 0;
+    await matchOffers({ client, now: NOW, scan: fine });
+    expect(scanned).not.toContain(idle);
+  });
+
   it("runs a real rescan for someone an offer helps, without failing", async () => {
     const idle = await person([
       { type: "idle_cash", evidence: { excessCents: 2_000_000, assumedCurrentRateBps: 50 } },

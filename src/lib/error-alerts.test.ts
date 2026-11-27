@@ -160,6 +160,32 @@ describe("error alert emails", () => {
       alertError(error, { client: fakeClient(), now: NOW, send: failing }),
     ).resolves.toBe(false);
   });
+
+  it("keeps the claim when one admin got the email and another did not", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "a@team.test, b@team.test");
+    const client = fakeClient();
+    const half = vi.fn(async ({ to }: { to: string }) => {
+      if (to === "b@team.test") throw new Error("bounced");
+    });
+    expect(await alertError(error, { client, now: NOW, send: half })).toBe(true);
+    half.mockClear();
+    expect(
+      await alertError(error, { client, now: new Date(NOW.getTime() + MINUTE), send: half }),
+    ).toBe(false);
+    expect(half).not.toHaveBeenCalled();
+  });
+
+  it("gives the claim back when the email fails, so the next error tries again", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "a@team.test");
+    const client = fakeClient();
+    const failing = vi.fn(async () => {
+      throw new Error("Resend down");
+    });
+    expect(await alertError(error, { client, now: NOW, send: failing })).toBe(false);
+    expect(await alertError(error, { client, now: new Date(NOW.getTime() + MINUTE), send })).toBe(
+      true,
+    );
+  });
 });
 
 describe("the daily error digest", () => {

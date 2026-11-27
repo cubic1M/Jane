@@ -9,9 +9,14 @@ const MAX_MESSAGE = 500;
 const MAX_STACK = 2000;
 
 function withoutTyped(text: string): string {
-  return scrub(text)
-    .replace(/(["'`])(?:(?!\1).){1,500}\1/g, "[text]")
-    .replace(/\$?\d[\d,]*\.\d+|\$\d[\d,]*|\b\d{3,}\b/g, "[n]");
+  return (
+    scrub(text)
+      // Whatever sits between two quotes goes, across line breaks and however long; so does text
+      // after a quote that is never closed.
+      .replace(/(["'`])[\s\S]*?\1/g, "[text]")
+      .replace(/["'`][\s\S]*$/, "[text]")
+      .replace(/\$?\d[\d,]*\.\d+|\$\d[\d,]*|\b\d{3,}\b/g, "[n]")
+  );
 }
 
 export type ClientError = { message: string; stack: string | null; path: string | null };

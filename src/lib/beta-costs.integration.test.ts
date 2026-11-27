@@ -91,6 +91,24 @@ describe.runIf(url)("the beta's costs this month", () => {
     expect(after.people.activeThisWeek - before.people.activeThisWeek).toBe(1);
   });
 
+  it("counts last week's visit when the week began in the month before", async () => {
+    // Nov 2: the week began Oct 26, before the month did.
+    const at = new Date("2026-11-02T12:00:00Z");
+    const early = await client.activityEvent.create({
+      data: {
+        userId: ids[0],
+        visitId: `w-${suffix}`,
+        kind: "page_view",
+        path: "/home",
+        createdAt: new Date("2026-10-30T12:00:00Z"),
+      },
+    });
+    const week = await betaCosts({ client, userIds: ids, now: at });
+    await client.activityEvent.delete({ where: { id: early.id } });
+    expect(week.people.activeThisWeek).toBe(1);
+    expect(week.people.activeThisMonth).toBe(0);
+  });
+
   it("shows Claude's month against its cap", () => {
     expect(after.claude.capCents).toBe(monthlyCapCents());
     expect(after.month).toBe(monthStartUtc(new Date()).toISOString().slice(0, 7));

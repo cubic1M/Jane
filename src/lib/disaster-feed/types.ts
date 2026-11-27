@@ -4,5 +4,5 @@ import type { Relief } from "@/config/disasters";
 // (and states that follow it) has announced, by state and county. Read only.
 export type DisasterFeed = {
   name: string;
-  declarations(): Promise<readonly Relief[]>;
+  declarations(): Promise<readonly Readonly<Relief>[]>;
 };

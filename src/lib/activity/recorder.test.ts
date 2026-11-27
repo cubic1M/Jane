@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { rageClickFields, startRecorder } from "./recorder";
+import { fieldName, rageClickFields, startRecorder } from "./recorder";
 
 // Just enough of an element: the recorder only reads these.
 const element = (tagName: string, innerText: string) =>
@@ -24,6 +24,37 @@ describe("a rage click", () => {
   it("names something meant to be clicked", () => {
     const button = element("BUTTON", "Save");
     expect(rageClickFields(button, button)).toEqual({ role: "button", label: "Save" });
+  });
+});
+
+describe("a field's name", () => {
+  vi.stubGlobal("HTMLInputElement", class {});
+  const field = (label: { text: string; private: boolean } | null, markedPrivate = false) =>
+    ({
+      tagName: "INPUT",
+      name: "",
+      id: "",
+      type: "text",
+      closest: () => (markedPrivate ? {} : null),
+      getAttribute: () => null,
+      labels: label
+        ? [
+            {
+              innerText: label.text,
+              closest: () => (label.private ? {} : null),
+              querySelector: () => null,
+            },
+          ]
+        : [],
+    }) as unknown as Element;
+
+  it("takes the label's words when nothing marks them private", () => {
+    expect(fieldName(field({ text: "Nickname", private: false }))).toBe("Nickname");
+  });
+
+  it("never takes a private label's words, or a private field's label", () => {
+    expect(fieldName(field({ text: "Alice Smith", private: true }))).not.toContain("Alice");
+    expect(fieldName(field({ text: "Alice Smith", private: false }, true))).not.toContain("Alice");
   });
 });
 

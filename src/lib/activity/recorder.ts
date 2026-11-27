@@ -68,14 +68,17 @@ function visibleText(el: Element): string {
   return copy.textContent ?? "";
 }
 
-function fieldName(el: Element): string {
+export function fieldName(el: Element): string {
   const input = el as HTMLInputElement;
   return cleanName(
     el.getAttribute("data-track") ||
       input.name ||
       el.id ||
       el.getAttribute("aria-label") ||
-      input.labels?.[0]?.innerText ||
+      // A label marked private (or on a private field) never names the field.
+      (input.labels?.[0] && !isPrivate(input.labels[0]) && !isPrivate(el)
+        ? visibleText(input.labels[0])
+        : "") ||
       roleOf(el),
   );
 }

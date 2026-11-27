@@ -33,6 +33,20 @@ describe.runIf(url)("the job queue against a real database", () => {
     await client.$disconnect();
   });
 
+  it("leaves a job another runner finished alone when this runner, past its lease, fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const id = await queue();
+    const handlers: Handlers = {
+      explain_findings: async () => {
+        // Meanwhile another runner reclaimed the job (a later attempt) and finished it.
+        await client.job.update({ where: { id }, data: { status: "done", attempts: 2 } });
+        throw new Error("too late");
+      },
+    };
+    await runJob(id, { client, now: at(0), handlers });
+    expect(await job(id)).toMatchObject({ status: "done", attempts: 2 });
+  });
+
   it("runs a job and marks it done", async () => {
     const handler = vi.fn(async () => undefined);
     const id = await queue();

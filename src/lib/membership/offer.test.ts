@@ -58,6 +58,13 @@ describe("price and Stripe settings", () => {
     expect(membershipPriceCents()).toBe(2900);
     vi.stubEnv("MEMBERSHIP_TEST_PRICE", "");
     expect(membershipPriceCents()).toBe(4900);
+    // Whole cents only: a dollar amount is not read as cents.
+    vi.stubEnv("MEMBERSHIP_TEST_PRICE", "49.00");
+    expect(membershipPriceCents()).toBe(4900);
+    vi.stubEnv("MEMBERSHIP_TEST_PRICE", "12abc");
+    expect(membershipPriceCents()).toBe(4900);
+    vi.stubEnv("MEMBERSHIP_TEST_PRICE", " 2900 ");
+    expect(membershipPriceCents()).toBe(2900);
     vi.stubEnv("MEMBERSHIP_TEST_PRICE", "abc");
     expect(membershipPriceCents()).toBe(4900);
   });

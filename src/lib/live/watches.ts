@@ -178,7 +178,17 @@ export async function matchOffers({
     try {
       await scan(userId, { client, now });
     } catch (error) {
+      // Not marked as matched: the next run tries this person again, but behind the people not
+      // tried yet (a rewrite of the same value moves updated_at), so a few failing people never
+      // keep everyone after them from being scanned.
       log.error("Rescanning a person for an offer failed", { error: String(error) });
+      for (const { watch } of due.filter((d) => d.watch.userId === userId)) {
+        await scopedFor(userId, client).offerWatches.updateMany({
+          where: { target: watch.target },
+          data: { lastMatch: watch.lastMatch },
+        });
+      }
+      continue;
     }
     for (const { watch, offer } of due.filter((d) => d.watch.userId === userId)) {
       await scopedFor(userId, client).offerWatches.updateMany({

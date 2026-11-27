@@ -138,6 +138,33 @@ describe.runIf(url)("concierge actions against a real database", () => {
       "action_status_changed",
       { type: "action", id: actionId },
       { from: "waiting_on_user", to: "done", user_id: userId },
+      { tx: expect.anything() },
+    );
+  });
+
+  it("changes nothing when its audit record can't be written, so the team can save again", async () => {
+    const { actionId, findingId } = await approvedAction();
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+
+    await expect(
+      changeActionStatus(ADMIN, actionId, { ...base, status: "in_progress" }, { client, notify }),
+    ).rejects.toThrow("audit down");
+
+    expect((await client.action.findUniqueOrThrow({ where: { id: actionId } })).status).toBe(
+      "queued",
+    );
+    expect((await client.finding.findUniqueOrThrow({ where: { id: findingId } })).status).not.toBe(
+      "in_progress",
+    );
+    expect(notify).not.toHaveBeenCalled();
+    await changeActionStatus(
+      ADMIN,
+      actionId,
+      { ...base, status: "in_progress" },
+      { client, notify },
+    );
+    expect((await client.action.findUniqueOrThrow({ where: { id: actionId } })).status).toBe(
+      "in_progress",
     );
   });
 
@@ -276,6 +303,7 @@ describe.runIf(url)("concierge actions against a real database", () => {
         "action_assigned",
         { type: "action", id: actionId },
         { from: null, to: sam.id, user_id: userId },
+        { tx: expect.anything() },
       );
 
       vi.mocked(logAudit).mockClear();
@@ -311,6 +339,7 @@ describe.runIf(url)("concierge actions against a real database", () => {
         "action_assigned",
         { type: "action", id: actionId },
         { from: sam.id, to: NOT_ON_TEAM, user_id: userId },
+        { tx: expect.anything() },
       );
 
       vi.mocked(logAudit).mockClear();
