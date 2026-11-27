@@ -13,6 +13,7 @@ export function StatusForm({
   actionId,
   status,
   assignee,
+  revision,
   notes,
   userTodo,
   team,
@@ -21,6 +22,7 @@ export function StatusForm({
   actionId: string;
   status: ActionStatus;
   assignee: string | null;
+  revision: number;
   notes: string | null;
   userTodo: string | null;
   team: string[];
@@ -32,6 +34,7 @@ export function StatusForm({
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="actionId" value={actionId} />
+      <input type="hidden" name="revision" value={revision} />
       <label className="flex flex-col gap-1 text-sm font-medium">
         Status
         <select name="status" defaultValue={status} className={FIELD}>

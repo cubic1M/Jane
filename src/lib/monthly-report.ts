@@ -1,4 +1,4 @@
-import { MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
+import { MONTHLY_REPORT_CLAIM_MS, MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
@@ -299,10 +299,19 @@ export async function runMonthlyReports({
         run.skipped += 1;
         continue;
       }
-      // Claimed first, so two runs never send it twice.
+      // Claimed first, so two runs never send it twice. The claim is not "sent": emailedAt is only
+      // written after the send, and a claim older than MONTHLY_REPORT_CLAIM_MS (a run that stopped
+      // in between) is taken over.
       const { count } = await db.monthlyReports.updateMany({
-        where: { id: kept.id, emailedAt: null },
-        data: { emailedAt: now },
+        where: {
+          id: kept.id,
+          emailedAt: null,
+          OR: [
+            { claimedAt: null },
+            { claimedAt: { lt: new Date(now.getTime() - MONTHLY_REPORT_CLAIM_MS) } },
+          ],
+        },
+        data: { claimedAt: now },
       });
       if (count === 0) {
         run.skipped += 1;
@@ -322,9 +331,11 @@ export async function runMonthlyReports({
           },
         });
       } catch (error) {
-        await db.monthlyReports.updateMany({ where: { id: kept.id }, data: { emailedAt: null } });
+        // Given back for the next run.
+        await db.monthlyReports.updateMany({ where: { id: kept.id }, data: { claimedAt: null } });
         throw error;
       }
+      await db.monthlyReports.updateMany({ where: { id: kept.id }, data: { emailedAt: now } });
       await track(user.id, "monthly_report_emailed", { month: kept.month });
       run.sent += 1;
     } catch (error) {

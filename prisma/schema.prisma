@@ -1688,6 +1688,8 @@ model Action {
   type                 ActionType
   status               ActionStatus @default(queued)
   assignee             String?
+  // Counts the team's saves of this action: a save made from an older screen is refused.
+  revision             Int          @default(0)
   notes                String?
   // For waiting_on_user: exactly what the person needs to do, shown on /actions.
   userTodo             String?      @map("user_todo")
@@ -4332,6 +4334,9 @@ model MonthlyReport {
   month     String
   figures   Json
   emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  // When a run took this report to email it; set while sending, so a run that stopped before
+  // emailedAt was written is taken over after MONTHLY_REPORT_CLAIM_MS.
+  claimedAt DateTime? @map("claimed_at") @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

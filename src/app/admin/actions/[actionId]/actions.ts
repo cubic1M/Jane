@@ -33,8 +33,17 @@ export async function updateAction(_previous: FormState, formData: FormData): Pr
     return { ok: false, message: "Assign it to someone on the team." };
   }
 
+  // The screen's own count of saves: without it (an old screen) the save is refused too.
+  const revisionText = formData.get("revision");
+  const expectedRevision =
+    typeof revisionText === "string" && revisionText !== "" ? Number(revisionText) : NaN;
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+    return { ok: false, message: "Someone changed this action just now. Open it again to see it." };
+  }
+
   try {
     await changeActionStatus(admin, actionId, {
+      expectedRevision,
       status: status as ActionStatus,
       assignee,
       notes: text(formData.get("notes")),

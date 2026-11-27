@@ -50,6 +50,8 @@ export type StatusChange = {
   minutesSpent: number | null;
   userTodo: string | null;
   failureReason: string | null;
+  // The revision the person saving was looking at: a save made from an older screen is refused.
+  expectedRevision?: number;
 };
 
 export class ConciergeError extends Error {}
@@ -126,12 +128,17 @@ export async function changeActionStatus(
       // Only from the status this change was checked against: a double-click or two of the team at
       // once would otherwise each apply it, with an email each, or reopen what the other closed.
       const { count } = await tx.action.updateMany({
-        where: { id: action.id, status: action.status },
+        where: {
+          id: action.id,
+          status: action.status,
+          ...(change.expectedRevision !== undefined ? { revision: change.expectedRevision } : {}),
+        },
         data: {
           // The team has it now: the agent stops writing to the company.
           ...(moved && action.agentState ? { agentState: "handed_off", agentNextAt: null } : {}),
           status: change.status,
           assignee: change.assignee,
+          revision: { increment: 1 },
           notes: change.notes,
           userTodo: change.status === "waiting_on_user" ? change.userTodo : null,
           failureReason: change.status === "failed" ? change.failureReason : null,

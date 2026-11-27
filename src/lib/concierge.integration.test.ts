@@ -282,6 +282,30 @@ describe.runIf(url)("concierge actions against a real database", () => {
     );
   });
 
+  it("refuses the second of two saves made from the same screen, changing nothing", async () => {
+    const { actionId } = await approvedAction();
+    const seen = (await client.action.findUniqueOrThrow({ where: { id: actionId } })).revision;
+    const same = { ...base, status: "in_progress" as const };
+
+    await changeActionStatus(
+      ADMIN,
+      actionId,
+      { ...same, assignee: "ann", expectedRevision: seen },
+      { client, notify },
+    );
+    await expect(
+      changeActionStatus(
+        ADMIN,
+        actionId,
+        { ...same, assignee: "bob", expectedRevision: seen },
+        { client, notify },
+      ),
+    ).rejects.toThrow("Someone changed this action just now");
+
+    const row = await client.action.findUniqueOrThrow({ where: { id: actionId } });
+    expect(row).toMatchObject({ assignee: "ann", revision: seen + 1 });
+  });
+
   it("assigns actions, logs who moved them, and filters the queue by assignee", async () => {
     // A real team member, so the audit log can name them by id.
     const samEmail = `sam-${crypto.randomUUID()}@example.com`;
