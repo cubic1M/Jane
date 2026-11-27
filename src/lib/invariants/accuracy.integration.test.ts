@@ -299,11 +299,38 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     const [message] = send.mock.calls[0] as unknown as [{ subject: string; text: string }];
     expect(message.subject).toBe("Jane tax figures: warning");
     expect(message.text).toContain("tax figures (warning): No tax figures for 2027");
+    // A fresh run where every check passed does not make a tax-only email an accuracy failure.
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+    const passing = {
+      checked: 3,
+      notChecked: 0,
+      errored: 0,
+      failing: [],
+      checks: [{ name: "no_future_transactions", passed: 3, failed: 0 }],
+    };
+    await client.cronRun.create({
+      data: {
+        name: ACCURACY_JOB,
+        startedAt: new Date("2026-12-03T11:00:00Z"),
+        finishedAt: new Date("2026-12-03T11:05:00Z"),
+        ok: true,
+        summary: passing as never,
+      },
+    });
+    expect(await sendAccuracyEmail({ client, now: when, send, taxReady })).toBe(true);
+    const [fresh] = send.mock.calls[1] as unknown as [{ subject: string; text: string }];
+    expect(fresh.subject).toBe("Jane tax figures: warning");
+    expect(fresh.text).toContain("Jane's nightly checks found something to act on:");
+    expect(fresh.text).not.toContain("accuracy checks on");
+    await client.cronRun.deleteMany({
+      where: { name: ACCURACY_JOB, startedAt: new Date("2026-12-03T11:00:00Z") },
+    });
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
     // Nothing is sent on a day with nothing to say.
     await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
     const calm = () => ({ state: "ok" as const, day: "2026-12-04", messages: [] });
     expect(await sendAccuracyEmail({ client, now: when, send, taxReady: calm })).toBe(false);
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2);
     await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
   });
 });

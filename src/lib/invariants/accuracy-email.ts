@@ -54,14 +54,16 @@ export async function sendAccuracyEmail({
       : []),
   ];
   const link = `${siteOrigin() ?? ""}/admin/accuracy`;
-  const intro = fresh
-    ? `Jane's accuracy checks on ${fresh.summary.checked} real people found something wrong:`
-    : "Jane's nightly checks found something to act on:";
+  const intro =
+    fresh && (failing.length > 0 || unreached > 0)
+      ? `Jane's accuracy checks on ${fresh.summary.checked} real people found something wrong:`
+      : "Jane's nightly checks found something to act on:";
+  const taxMark = tax.state === "red" ? " (and a tax year is red)" : "";
   const subject =
     failing.length > 0
-      ? `Jane accuracy: ${failing.length} ${failing.length === 1 ? "check" : "checks"} failing`
+      ? `Jane accuracy: ${failing.length} ${failing.length === 1 ? "check" : "checks"} failing${taxMark}`
       : unreached > 0
-        ? "Jane accuracy: people not reached"
+        ? `Jane accuracy: people not reached${taxMark}`
         : `Jane tax figures: ${tax.state}`;
   try {
     await Promise.all(
