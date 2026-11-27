@@ -152,6 +152,25 @@ export function parseSignwellEvent(body: unknown): WebhookEvent | null {
   };
 }
 
+// What SignWell's own record of the document says it is, whatever the delivery claimed: only a
+// document SignWell reports as completed is signed. Any other state it reports is news.
+function eventFromDocument(event: WebhookEvent, status: string): WebhookEvent {
+  const state = status.trim().toLowerCase();
+  const outcome =
+    state === "completed"
+      ? "done"
+      : state === "declined" || state === "expired" || state === "canceled" || state === "cancelled"
+        ? "failed"
+        : "info";
+  const note =
+    outcome === "done"
+      ? "You signed the letter."
+      : outcome === "failed"
+        ? "The letter wasn't signed, so Jane won't act on it."
+        : "Waiting for your signature.";
+  return { ...event, outcome, note };
+}
+
 export function signwellConnector(api: SignwellApi = signwellHttp()): Connector {
   return {
     ...permissionBase,
@@ -188,6 +207,8 @@ export function signwellConnector(api: SignwellApi = signwellHttp()): Connector 
     webhook: {
       signing: { kind: "signwell_event_hash", secretEnv: SIGNWELL.webhookIdEnv },
       parse: parseSignwellEvent,
+      // The hash covers the event's type and time, not the document: so the document is read again.
+      confirm: async (event) => eventFromDocument(event, (await api.get(event.externalRef)).status),
     },
   };
 }

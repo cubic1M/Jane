@@ -36,7 +36,7 @@ describe("SnapTrade's holdings as Plaid Investments' shape", () => {
   it("reads a stock and a fund with Plaid's types, value and total cost basis", () => {
     expect(read.holdings).toEqual([
       expect.objectContaining({
-        ref: "snaptrade:AAPL",
+        ref: "snaptrade:1ef3a5d3-4a9b-40b2-b8d1-cc35f74d6324",
         name: "Apple Inc.",
         ticker: "AAPL",
         type: "equity",
@@ -49,7 +49,7 @@ describe("SnapTrade's holdings as Plaid Investments' shape", () => {
         costBasisCents: 124_110,
       }),
       expect.objectContaining({
-        ref: "snaptrade:VFIAX",
+        ref: "snaptrade:7a1f0c2e-5b8d-4e3a-9c64-2d9b1e0f8a37",
         type: "mutual fund",
         subtype: "mutual fund",
         isCashEquivalent: false,

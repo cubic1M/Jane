@@ -3,7 +3,8 @@ import type { SnaptradeAccount, SnaptradePosition, SnaptradePositions } from "./
 // SnapTrade's accounts and positions in the shape Plaid Investments gives Jane (accounts of type
 // "investment"; securities with Plaid's type and subtype; holdings with quantity, price, value and
 // total cost basis in cents), so the investing pages and detectors read them unchanged. Securities
-// carry a "snaptrade:" ref, by ticker, so the same fund in two accounts is one security.
+// carry a "snaptrade:" ref, by SnapTrade's own instrument id (never the ticker alone: two listings can share one),
+// so the same fund in two accounts is one security.
 //
 // Left out, and counted: positions in another currency than USD, and derivatives (options, futures,
 // CFDs, tokenized assets), whose value depends on a contract size Jane doesn't read. The account's
@@ -27,6 +28,8 @@ const KINDS: Readonly<Record<string, { type: string; subtype: string }>> = {
 
 export type SnaptradeHolding = {
   ref: string;
+  // The ref this security had when it was keyed by ticker: a row under it is re-keyed on a refresh.
+  tickerRef: string;
   name: string;
   ticker: string | null;
   type: string;
@@ -75,10 +78,13 @@ function holdingOf(position: SnaptradePosition): SnaptradeHolding | null {
   const units = decimal(position.units);
   const price = decimal(position.price);
   const ticker = position.instrument?.symbol?.trim() || null;
-  if (!kind || currency !== "USD" || units === null || price === null || !ticker) return null;
+  const instrumentId = position.instrument?.id?.trim() || null;
+  if (!kind || currency !== "USD" || units === null || price === null || !ticker || !instrumentId)
+    return null;
   const basis = decimal(position.cost_basis);
   return {
-    ref: `${SNAPTRADE_REF}${ticker}`,
+    ref: `${SNAPTRADE_REF}${instrumentId}`,
+    tickerRef: `${SNAPTRADE_REF}${ticker}`,
     name: position.instrument.description?.trim() || ticker,
     ticker,
     ...kind,
@@ -96,6 +102,8 @@ export function snaptradeRead(
   positions: SnaptradePositions,
 ): SnaptradeRead {
   const holdings: SnaptradeHolding[] = [];
+  // Each merged line's price times units, unrounded: the price is rounded once, after the last.
+  const priced = new Map<string, number>();
   let leftOut = 0;
   for (const position of positions.results) {
     const holding = holdingOf(position);
@@ -108,17 +116,15 @@ export function snaptradeRead(
     const same = holdings.find((h) => h.ref === holding.ref);
     if (!same) {
       holdings.push(holding);
+      priced.set(holding.ref, (decimal(position.price) ?? 0) * holding.quantity);
       continue;
     }
     // The unit price is the units-weighted average of the lines' own prices, not the rounded
     // values divided back (fractions of a cent in each line's value would skew it).
     const units = same.quantity + holding.quantity;
-    same.priceCents =
-      units > 0
-        ? Math.round(
-            (same.priceCents * same.quantity + holding.priceCents * holding.quantity) / units,
-          )
-        : same.priceCents;
+    const total = (priced.get(same.ref) ?? 0) + (decimal(position.price) ?? 0) * holding.quantity;
+    priced.set(same.ref, total);
+    same.priceCents = units > 0 ? cents(total / units) : same.priceCents;
     same.quantity = units;
     same.valueCents += holding.valueCents;
     same.costBasisCents =

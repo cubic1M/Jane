@@ -96,6 +96,25 @@ describe.runIf(url)("SnapTrade's holdings, sandbox", () => {
     expect(await fromSnaptrade(sample)).toHaveLength(1);
   });
 
+  it("re-keys a security saved under its ticker to SnapTrade's instrument id on the next read", async () => {
+    const admin = systemDb("Test: reads what SnapTrade saved", db);
+    const id = "snaptrade:1ef3a5d3-4a9b-40b2-b8d1-cc35f74d6324";
+    const before = await admin.security.findFirstOrThrow({
+      where: { userId: sample, plaidSecurityId: id },
+      select: { id: true },
+    });
+    await admin.security.update({
+      where: { id: before.id },
+      data: { plaidSecurityId: "snaptrade:AAPL" },
+    });
+    await readConnector(sample, "sandbox_snaptrade_holdings", { client: db, now: NOW });
+    const after = await admin.security.findMany({
+      where: { userId: sample, ticker: "AAPL" },
+      select: { id: true, plaidSecurityId: true },
+    });
+    expect(after).toEqual([{ id: before.id, plaidSecurityId: id }]);
+  });
+
   it("takes them back when the person revokes the connection", async () => {
     session.userId = sample;
     await revokeConnector(form({ connectorId: "sandbox_snaptrade_holdings" }));

@@ -37,7 +37,7 @@ export const SNAPTRADE_DOCS_POSITIONS: SnaptradePositions = {
     {
       instrument: {
         kind: "mutualfund",
-        id: "1ef3a5d3-4a9b-40b2-b8d1-cc35f74d6324",
+        id: "7a1f0c2e-5b8d-4e3a-9c64-2d9b1e0f8a37",
         symbol: "VFIAX",
         raw_symbol: "VFIAX",
         description: "Vanguard 500 Index Fund Admiral Shares",
