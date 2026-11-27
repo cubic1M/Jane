@@ -132,6 +132,35 @@ describe("readOfx", () => {
   // merchant cut mid-word, and the line said twice.
   // Debugger 11-04: a credit union's one file with checking and savings read as one account: 187
   // rows in checking, savings' balance lost, and no word of it.
+  describe("account identity, currency and balances (CodeRabbit sweep)", () => {
+    const stmt = (extra: string, fitid = "1") => `<CCSTMTTRNRS><CCSTMTRS><CURDEF>USD
+<CCACCTFROM><ACCTID>4111</CCACCTFROM>
+<BANKTRANLIST><STMTTRN><TRNTYPE>POS<DTPOSTED>20261001<TRNAMT>-5.00<FITID>${fitid}<NAME>SHOP
+${extra}</STMTTRN></BANKTRANLIST></CCSTMTRS></CCSTMTTRNRS>`;
+    const card = (extra: string) =>
+      `<OFX><CREDITCARDMSGSRSV1>${stmt(extra)}</CREDITCARDMSGSRSV1></OFX>`;
+
+    it("does not take a transfer's bank id for a card's", () => {
+      // Two statements of one card; a transfer row follows the account tag in one of them.
+      const text = `<OFX>${stmt("")}${stmt("<BANKACCTTO><BANKID>999<ACCTID>5</BANKACCTTO>", "2")}</OFX>`;
+      expect(readOfx({ name: "c.ofx", text }).ok).toBe(true);
+    });
+
+    it("refuses a transaction that names its own currency", () => {
+      const eur = card("<CURRENCY><CURRATE>1.1<CURSYM>EUR</CURRENCY>");
+      const result = readOfx({ name: "c.ofx", text: eur });
+      expect(!result.ok && result.error).toMatch(/EUR/);
+      const original = card("<ORIGCURRENCY><CURRATE>1.1<CURSYM>EUR</ORIGCURRENCY>");
+      expect(readOfx({ name: "c.ofx", text: original }).ok).toBe(true);
+    });
+
+    it("keeps a closing balance with a long run of spaces before its closing tag", () => {
+      const text = `<OFX><STMTRS><CURDEF>USD<BANKACCTFROM><BANKID>1<ACCTID>2</BANKACCTFROM><BANKTRANLIST><STMTTRN><TRNTYPE>POS<DTPOSTED>20261001<TRNAMT>-5.00<FITID>1<NAME>SHOP</STMTTRN></BANKTRANLIST><LEDGERBAL><BALAMT>10.00<DTASOF>20261015${" ".repeat(900)}</LEDGERBAL></STMTRS></OFX>`;
+      const result = readOfx({ name: "b.ofx", text });
+      expect(result.ok && result.balances).toEqual([{ date: "2026-10-15", balanceCents: 1000 }]);
+    });
+  });
+
   describe("a file with more than one account", () => {
     const statement = (acct: string, from = "BANKACCTFROM", fitid = acct) => `<STMTTRNRS><STMTRS>
 <${from}><BANKID>253177049<ACCTID>${acct}<ACCTTYPE>CHECKING</${from}>

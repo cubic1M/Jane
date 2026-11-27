@@ -47,6 +47,15 @@ describe("Plaid Investments, normalized", () => {
     expect(
       normalizeHolding({ ...base, institution_price: 10, institution_value: null } as never),
     ).toMatchObject({ valueCents: 2000, priceCents: 1000 });
+    // A sub-cent price: the total comes from the dollar price, not the price rounded to cents.
+    expect(
+      normalizeHolding({
+        ...base,
+        quantity: 100000,
+        institution_price: 0.004,
+        institution_value: null,
+      } as never),
+    ).toMatchObject({ valueCents: 40000 });
     expect(
       normalizeHolding({ ...base, institution_price: null, institution_value: 30 } as never),
     ).toMatchObject({ valueCents: 3000, priceCents: 1500 });

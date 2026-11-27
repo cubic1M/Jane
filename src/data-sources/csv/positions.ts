@@ -265,8 +265,12 @@ const CASH_TICKERS = new Set([
 // Whole words: "FIRSTCASH HOLDINGS" is a company, not cash (CodeRabbit sweep).
 const CASH_WORDS = /\b(?:money market|cash|sweeps?|settlement fund|fdic-insured deposit)\b/i;
 
+// A row with a ticker of its own that is not a known cash fund is a company or a fund unless its
+// name says money market, sweep or the like: "CASH AMERICA INTERNATIONAL" (CSH) is a stock.
+const CASH_FUND_WORDS = /\b(?:money market|sweeps?|settlement fund|fdic-insured deposit)\b/i;
 const isCashPosition = (ticker: string | null, name: string) =>
-  (ticker !== null && CASH_TICKERS.has(ticker)) || CASH_WORDS.test(name);
+  (ticker !== null && CASH_TICKERS.has(ticker)) ||
+  (ticker === null ? CASH_WORDS : CASH_FUND_WORDS).test(name);
 
 // Cash that isn't a fund: Fidelity's FCASH and CORE stand-ins and a bank deposit sweep. Kept with
 // no ticker, like Schwab's "Cash & Cash Investments", so the investing checks can tell it from a
@@ -571,11 +575,11 @@ const readRobinhood: Reader = (records, at) => {
       "This report starts after some of your trades (it sells shares it never bought), so the counts may be off. Download it again from the day you opened the account.",
     );
   }
-  // Shares that came in by transfer with no trade of the ticker in this report have no price here.
+  // Shares with no priced buy or sell of the ticker in this report (a transfer in, or a trade row with a blank price) have no price here.
   const unpriced = account.positions.filter((p) => !p.isCash && p.priceCents === 0);
   if (unpriced.length > 0) {
     notes.push(
-      `${unpriced.map((p) => p.ticker ?? p.name).join(", ")} came into the account without a trade in this report, so Jane has no price for ${unpriced.length === 1 ? "it" : "them"} and counts ${unpriced.length === 1 ? "it" : "them"} at $0. A report from the day you opened the account would include its price.`,
+      `${unpriced.map((p) => p.ticker ?? p.name).join(", ")} has no trade price in this report, so Jane counts ${unpriced.length === 1 ? "it" : "them"} at $0.`,
     );
   }
   // More cash went out than came in: the report starts after the deposits that paid for it, so the

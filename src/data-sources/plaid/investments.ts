@@ -74,7 +74,7 @@ export function normalizeHolding(h: Holding): NormalizedHolding | null {
   // (CodeRabbit sweep).
   let price = toCents(h.institution_price);
   let value = toCents(h.institution_value);
-  if (value === null && price !== null) value = Math.round(h.quantity * price);
+  if (value === null && price !== null) value = toCents(h.quantity * h.institution_price);
   if (price === null && value !== null && h.quantity > 0) price = Math.round(value / h.quantity);
   if (value === null) return null;
   return {

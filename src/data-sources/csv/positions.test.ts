@@ -162,6 +162,17 @@ describe("positions that are not what their words suggest", () => {
     expect(first?.isCash).toBe(false);
   });
 
+  it("does not read a company named Cash as cash, but keeps a money market fund", () => {
+    const vanguard = text("vanguard.csv").replace(
+      "VANGUARD TOTAL INTL STOCK INDEX FUND ADMIRAL CL,VTIAX",
+      "CASH AMERICA INTERNATIONAL INC,CSH",
+    );
+    const result = readPositionsFile(vanguard);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.accounts[0].positions.find((p) => p.ticker === "CSH")?.isCash).toBe(false);
+    expect(result.accounts[0].cashCents).toBe(125075);
+  });
+
   it("says when Robinhood shares came in by transfer with no price in the report", () => {
     const withTransfer = text("robinhood.csv").replace(
       '"08/01/2026","08/01/2026","08/01/2026","","ACH Deposit"',
@@ -169,7 +180,7 @@ describe("positions that are not what their words suggest", () => {
     );
     const result = readPositionsFile(withTransfer);
     if ("error" in result) throw new Error(result.error);
-    expect(result.notes.join(" ")).toMatch(/ZZZ came into the account without a trade/);
+    expect(result.notes.join(" ")).toMatch(/ZZZ has no trade price in this report/);
   });
 
   it("leaves the cash out and says so when the report shows more going out than in", () => {
