@@ -51,6 +51,7 @@ import type { ExpectedForm } from "@/planning/tax-documents";
 import type { TaxProfileView } from "@/planning/tax-profile";
 import type { TagCheck } from "@/planning/tax-tags";
 import { chatToday } from "@/lib/today";
+import { lastEstimatePostedCents } from "./estimate-key";
 
 // What Jane's brain looks at for taxes (spec steps 118–127), loaded with the same code as
 // /taxes. Optional on the snapshot, so a test's snapshot can leave it out.
@@ -69,6 +70,8 @@ export type TaxSnapshot = {
     formsDue?: { year: number; forms: ExpectedForm[] };
     // Spec step 120: the estimate, worked out fresh after every sync.
     estimate?: TaxEstimateView;
+    // The amount the estimate card was last posted at this year (estimate-key.ts), null if never.
+    estimatePostedCents?: number | null;
     // Spec step 121: the withholding checkup, and whether the W-4 suggestion may be shown.
     withholding?: WithholdingCheck;
     advice?: boolean;
@@ -191,6 +194,7 @@ export async function loadTaxSnapshot(
         }),
       },
       estimate,
+      estimatePostedCents: await lastEstimatePostedCents(userId, estimate.year, client),
       withholding: checkFrom(estimate),
       savings: savings.savings,
       selfEmployed,
