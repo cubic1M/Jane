@@ -116,6 +116,10 @@ export async function changeActionStatus(
   const moved = change.status !== action.status;
   const closing = CLOSED.includes(change.status);
   const why = "Concierge: the team's queue works across people";
+  const assigneeChanged = (change.assignee ?? null) !== (action.assignee ?? null);
+  const ids = assigneeChanged
+    ? await adminIdsByEmail([action.assignee, change.assignee], client)
+    : null;
   await systemTransaction(
     why,
     async (tx) => {
@@ -141,29 +145,31 @@ export async function changeActionStatus(
         where: { id: action.decision.findingId, userId: action.userId },
         data: { status: FINDING_STATUS[change.status] },
       });
+      // The records commit with the change or not at all: a failed audit write leaves the action
+      // as it was, so the team can save again.
+      await logAudit(
+        { type: "admin", id: admin.id },
+        "action_status_changed",
+        { type: "action", id: action.id },
+        { from: action.status, to: change.status, user_id: action.userId },
+        { tx },
+      );
+      if (assigneeChanged && ids) {
+        await logAudit(
+          { type: "admin", id: admin.id },
+          "action_assigned",
+          { type: "action", id: action.id },
+          {
+            from: assigneeForAudit(action.assignee, ids),
+            to: assigneeForAudit(change.assignee, ids),
+            user_id: action.userId,
+          },
+          { tx },
+        );
+      }
     },
     client,
   );
-
-  await logAudit(
-    { type: "admin", id: admin.id },
-    "action_status_changed",
-    { type: "action", id: action.id },
-    { from: action.status, to: change.status, user_id: action.userId },
-  );
-  if ((change.assignee ?? null) !== (action.assignee ?? null)) {
-    const ids = await adminIdsByEmail([action.assignee, change.assignee], client);
-    await logAudit(
-      { type: "admin", id: admin.id },
-      "action_assigned",
-      { type: "action", id: action.id },
-      {
-        from: assigneeForAudit(action.assignee, ids),
-        to: assigneeForAudit(change.assignee, ids),
-        user_id: action.userId,
-      },
-    );
-  }
   if (!moved) return;
 
   const event = EVENT[change.status];

@@ -18,6 +18,13 @@ export function heartbeatUrl(
   const key = env.HEALTHCHECKS_PING_KEY?.trim();
   if (!key) return null;
   const base = (env.HEALTHCHECKS_URL?.trim() || "https://hc-ping.com").replace(/\/$/, "");
+  // The ping key is in the address: never over plain http.
+  if (
+    !base.startsWith("https://") &&
+    !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(base)
+  ) {
+    return null;
+  }
   const suffix = signal === "success" ? "" : `/${signal}`;
   return `${base}/${key}/jane-${job}${suffix}?create=1`;
 }
@@ -30,7 +37,10 @@ export async function heartbeat(
   const url = heartbeatUrl(job, signal, env);
   if (!url) return;
   try {
-    const response = await fetcher(url, { signal: AbortSignal.timeout(HEARTBEAT_TIMEOUT_MS) });
+    const response = await fetcher(url, {
+      signal: AbortSignal.timeout(HEARTBEAT_TIMEOUT_MS),
+      redirect: "error",
+    });
     if (!response.ok) log.warn("Heartbeat refused", { job, signal, status: response.status });
   } catch (error) {
     log.warn("Heartbeat failed", {

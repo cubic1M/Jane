@@ -20,10 +20,16 @@ export type SentryError = {
 
 export function parseDsn(dsn: string | undefined): { url: string; key: string } | null {
   try {
-    const { protocol, host, username, pathname } = new URL(dsn?.trim() ?? "");
-    const project = pathname.replace(/^\//, "");
+    const { protocol, hostname, host, username, pathname } = new URL(dsn?.trim() ?? "");
+    // The key and the event only travel encrypted (a local test server may use http).
+    const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+    if (protocol !== "https:" && !(protocol === "http:" && local)) return null;
+    // A path before the project id is allowed: https://key@host/prefix/42 posts to /prefix/api/42/.
+    const parts = pathname.split("/").filter(Boolean);
+    const project = parts.pop() ?? "";
     if (!username || !/^\d+$/.test(project)) return null;
-    return { url: `${protocol}//${host}/api/${project}/envelope/`, key: username };
+    const prefix = parts.length > 0 ? `/${parts.join("/")}` : "";
+    return { url: `${protocol}//${host}${prefix}/api/${project}/envelope/`, key: username };
   } catch {
     return null;
   }
@@ -47,7 +53,9 @@ const withoutIds = (text: string) => text.replace(/\b[a-z0-9_]{20,}\b/gi, "[id]"
 
 export function sentryEvent(error: SentryError, env: Options["env"] = process.env) {
   const kind = errorKind(error.message);
-  const value = withoutIds(logText(error.message.slice(kind.length).replace(/^:\s*/, "")));
+  // The kind is taken off only when the message starts with it ("fetch failed" has no "Error:").
+  const rest = error.message.startsWith(kind) ? error.message.slice(kind.length) : error.message;
+  const value = withoutIds(logText(rest.replace(/^:\s*/, "")));
   return {
     event_id: randomBytes(16).toString("hex"),
     timestamp: Date.now() / 1000,
@@ -87,6 +95,7 @@ export async function reportToSentry(
       },
       body,
       signal: AbortSignal.timeout(SENTRY_TIMEOUT_MS),
+      redirect: "error",
     });
     if (!response.ok) log.warn("Sentry refused an event", { status: response.status });
   } catch (failure) {

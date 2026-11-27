@@ -152,6 +152,14 @@ describe("sign-in emails that failed", () => {
     expect(launchReady([signInEmailCheck(1)])).toBe(false);
   });
 
+  it("needs an https address with a host, not just the prefix", () => {
+    expect(failing({ ...READY, APP_URL: "https://" })).toEqual(
+      expect.arrayContaining(["App address", "Plaid webhook"]),
+    );
+    expect(failing({ ...READY, APP_URL: "http://app.example.com" })).toContain("App address");
+    expect(failing(READY)).not.toContain("App address");
+  });
+
   // Sign-in links go out on APP_URL: wrong, they lead somewhere else.
   it("flags an APP_URL that isn't Vercel's production domain, without requiring it", () => {
     const addressCheck = (env: Record<string, string>) =>

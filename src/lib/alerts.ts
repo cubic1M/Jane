@@ -162,18 +162,22 @@ async function emailUrgentAlerts(
   for (const alert of due) {
     // Claim the alert first, so two scans running at once can't both email it.
     const { count } = await db.alerts.updateMany({
-      where: { id: alert.id, emailedAt: null },
+      where: { id: alert.id, emailedAt: null, readAt: null },
       data: { emailedAt: now },
     });
     if (count === 0) continue;
     if (usePush) {
       const label = ALERT_LABELS[alert.type].label;
+      // A push that throws is a push nobody got: the email below goes instead.
       const pushed = await push(
         userId,
         // Shows on a lock screen: an amount and a clinic's name stay inside the app.
         { title: `Jane: ${label}`, body: "Open Jane to see it.", url: "/jane#alerts" },
         { client },
-      );
+      ).catch((failure) => {
+        log.error("Alert push failed", { userId, alertId: alert.id, error: String(failure) });
+        return 0;
+      });
       if (pushed > 0) {
         await track(userId, "alert_pushed", { type: alert.type });
         emailed += 1;

@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
 import { dismissOffer, offerFor, recordPaidMembership, reserveMembership } from "./service";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
@@ -84,6 +85,20 @@ describe.runIf(url)("membership against a real database", () => {
       expect.objectContaining({ stripeSessionId: session.id, amountCents: 4900 }),
     ]);
     expect(vi.mocked(track).mock.calls.filter((c) => c[1] === "membership_paid")).toHaveLength(1);
+  });
+
+  it("keeps no paid intent when its audit entry fails, so Stripe's retry records both", async () => {
+    const session = { id: `cs_test_${crypto.randomUUID()}`, userId, amountCents: 4900 };
+    vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+
+    await expect(recordPaidMembership(session, { client })).rejects.toThrow("audit down");
+    expect(await client.membershipIntent.count({ where: { stripeSessionId: session.id } })).toBe(0);
+
+    expect(await recordPaidMembership(session, { client })).toBe(true);
+    expect(await client.membershipIntent.count({ where: { stripeSessionId: session.id } })).toBe(1);
+    expect(
+      vi.mocked(logAudit).mock.calls.filter((c) => c[1] === "membership_paid").length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("ignores a payment for an unknown user", async () => {

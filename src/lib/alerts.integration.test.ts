@@ -370,6 +370,17 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
       expect(send).not.toHaveBeenCalled();
     });
 
+    it("emails instead when the push itself throws, and still marks it sent", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      push.mockRejectedValue(new Error("subscription lookup failed"));
+      const user = await subscribed();
+      expect(await raiseAlerts(user.id, [alert()], { client, now: NOW, send, push })).toEqual({
+        raised: 1,
+        emailed: 1,
+      });
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
     it("emails when no device takes it, and when the person has no device", async () => {
       push.mockResolvedValue(0);
       const user = await subscribed();

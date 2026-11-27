@@ -37,6 +37,16 @@ function hostOf(url: string | undefined): string | null {
   }
 }
 
+// An https address that has a host ("https://" alone is not one).
+function isHttpsWithHost(url: string | undefined): boolean {
+  try {
+    const parsed = url ? new URL(url) : null;
+    return parsed !== null && parsed.protocol === "https:" && parsed.hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Resend's shared test domain: mail from it only reaches the address that owns the Resend account.
 const RESEND_TEST_DOMAIN = "resend.dev";
 
@@ -104,7 +114,7 @@ export function launchChecks(env: Env, connections?: BankConnections): Check[] {
     ),
     check(
       "App address",
-      (appUrl ?? "").startsWith("https://"),
+      isHttpsWithHost(appUrl),
       "APP_URL (or the Vercel production domain) is https",
     ),
     // Sign-in links go out on this address (src/lib/site-origin.ts), so a wrong one breaks sign-in:
@@ -130,7 +140,7 @@ export function launchChecks(env: Env, connections?: BankConnections): Check[] {
     ),
     check(
       "Plaid webhook",
-      (appUrl ?? "").startsWith("https://"),
+      isHttpsWithHost(appUrl),
       "Plaid webhooks go to an https /api/plaid/webhook",
     ),
     check(

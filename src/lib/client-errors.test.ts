@@ -17,6 +17,17 @@ describe("describeClientError", () => {
     });
   });
 
+  it("takes out quoted text across lines, past 500 characters, or never closed", () => {
+    const long = "x".repeat(600);
+    const out = describeClientError({
+      message: `Bad "lunch\nwith Alice" then '${long}' then "never closed with Bob`,
+      stack: `at a (b.js:1:2)\n"two\nlines Carol"`,
+    });
+    for (const text of [out?.message, out?.stack]) {
+      expect(text).not.toMatch(/Alice|Bob|Carol|xxxx/);
+    }
+  });
+
   it("gives an odd name a plain one, and ignores what isn't an error", () => {
     expect(describeClientError({ name: "<script>", message: "boom" })?.message).toBe("Error: boom");
     expect(describeClientError({ message: "" })).toBeNull();

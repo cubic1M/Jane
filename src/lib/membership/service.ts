@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { personTransaction, scopedFor } from "@/lib/db-scoped";
 import { membershipOffer, type Offer } from "./offer";
-import { systemDb } from "@/lib/system-db";
+import { systemDb, systemTransaction } from "@/lib/system-db";
 
 // Reads and records the membership offer for one person.
 
@@ -86,27 +86,36 @@ export async function recordPaidMembership(
     select: { id: true },
   });
   if (!user) return false;
-  const { count } = await scopedFor(user.id, client).membershipIntents.createMany({
-    data: [
-      {
-        userId: user.id,
-        kind: "paid",
-        stripeSessionId: session.id,
-        amountCents: session.amountCents,
-      },
-    ],
-    skipDuplicates: true,
-  });
-  if (count === 0) return true;
-  await logAudit(
-    { type: "system", id: null },
-    "membership_paid",
-    { type: "user", id: user.id },
-    {
-      stripe_session_id: session.id,
-      amount_cents: session.amountCents,
+  // The intent and its audit entry commit together: if the audit write fails the intent is not
+  // kept, so Stripe's retry of the webhook records both (the session id is unique, so a repeat
+  // after the commit finds the row and does nothing).
+  const fresh = await systemTransaction(
+    "Stripe's webhook: nobody is signed in",
+    async (tx) => {
+      const { count } = await tx.membershipIntent.createMany({
+        data: [
+          {
+            userId: user.id,
+            kind: "paid",
+            stripeSessionId: session.id,
+            amountCents: session.amountCents,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      if (count === 0) return false;
+      await logAudit(
+        { type: "system", id: null },
+        "membership_paid",
+        { type: "user", id: user.id },
+        { stripe_session_id: session.id, amount_cents: session.amountCents },
+        { tx },
+      );
+      return true;
     },
+    client,
   );
+  if (!fresh) return true;
   await track(user.id, "membership_paid", { amount_cents: session.amountCents });
   return true;
 }

@@ -178,7 +178,9 @@ export async function matchOffers({
     try {
       await scan(userId, { client, now });
     } catch (error) {
+      // Not marked as matched: the next run tries this person again.
       log.error("Rescanning a person for an offer failed", { error: String(error) });
+      continue;
     }
     for (const { watch, offer } of due.filter((d) => d.watch.userId === userId)) {
       await scopedFor(userId, client).offerWatches.updateMany({

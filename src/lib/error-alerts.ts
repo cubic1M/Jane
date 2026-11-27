@@ -74,7 +74,13 @@ export async function alertError(
       ].join("\n\n"),
       html: `<p>A server error (<b>${escape(kind)}</b>) happened on <code>${escape(where)}</code> at ${at}.</p><p>Details, scrubbed: <a href="${escape(adminLink("/admin/errors"))}">/admin/errors</a></p><p>You'll get at most one email for this kind of error, in this place, each ${ERROR_ALERT_MINUTES} minutes.</p>`,
     };
-    await Promise.all(to.map((address) => send({ ...message, to: address })));
+    try {
+      await Promise.all(to.map((address) => send({ ...message, to: address })));
+    } catch (failure) {
+      // Unclaim, so the next one tries again once email works (as in ops-alerts.ts).
+      await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
+      throw failure;
+    }
     return true;
   } catch (failure) {
     log.error("Error alert failed", { error: String(failure) });

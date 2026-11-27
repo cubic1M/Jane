@@ -28,11 +28,13 @@ export function membershipOffer(state: OfferState, now: Date): Offer {
 
 // The founding-member price in cents, from MEMBERSHIP_TEST_PRICE.
 export function membershipPriceCents(): number {
-  const parsed = Number.parseInt(process.env.MEMBERSHIP_TEST_PRICE ?? "", 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_PRICE_CENTS;
+  // The whole value must be whole cents: "49.00" is not 49 cents.
+  const text = (process.env.MEMBERSHIP_TEST_PRICE ?? "").trim();
+  const parsed = /^\d+$/.test(text) ? Number(text) : NaN;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_PRICE_CENTS;
 }
 
 // The paid option appears only once Stripe is set up; Reserve always works.
 export function stripeEnabled(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
 }

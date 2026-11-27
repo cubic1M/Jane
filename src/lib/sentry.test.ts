@@ -18,6 +18,14 @@ describe("parseDsn", () => {
     });
   });
 
+  it("keeps a path before the project id, and refuses plain http away from this machine", () => {
+    expect(parseDsn("https://k@sentry.example.com/sentry/42")?.url).toBe(
+      "https://sentry.example.com/sentry/api/42/envelope/",
+    );
+    expect(parseDsn("http://k@sentry.example.com/42")).toBeNull();
+    expect(parseDsn("http://k@127.0.0.1:9/42")?.url).toBe("http://127.0.0.1:9/api/42/envelope/");
+  });
+
   it("is off for nothing or for something else", () => {
     for (const dsn of [undefined, "", "  ", "not a url", "https://o1.ingest.sentry.io/42"]) {
       expect(parseDsn(dsn)).toBeNull();
@@ -87,6 +95,14 @@ describe("reportToSentry", () => {
     expect(event.request).toBeUndefined();
     expect(event.exception.values[0].type).toBe("TypeError");
     expect(event.exception.values[0].stacktrace.frames.length).toBeGreaterThan(0);
+  });
+});
+
+describe("sentryEvent's message", () => {
+  it("drops the kind only when the message starts with it", () => {
+    const value = (message: string) => sentryEvent({ message }, {}).exception.values[0].value;
+    expect(value("fetch failed")).toBe("fetch failed");
+    expect(value("TypeError: x is not a function")).toBe("x is not a function");
   });
 });
 

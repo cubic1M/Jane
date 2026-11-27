@@ -151,6 +151,15 @@ function withinTime(work: Promise<unknown>, ms: number): Promise<unknown> {
   return Promise.race([work, out]).finally(() => clearTimeout(timer));
 }
 
+// Every claim bumps `attempts`, so a runner's own claim is the row still running at the attempt it was
+// given. A runner past its lease (another one reclaimed the job) changes nothing: it must not put a
+// job the other finished back in the queue.
+const ownClaim = (job: Claimed) => ({
+  id: job.id,
+  status: "running" as const,
+  attempts: job.attempts,
+});
+
 const PERSON_GONE = "The person is gone";
 // Prisma's code for a foreign key failure.
 const FOREIGN_KEY_ERROR = "P2003";
@@ -177,8 +186,8 @@ async function execute(
     if (!handler) throw new Error(`Unknown job kind: ${job.kind}`);
     const work = handler(job.payload as JobPayload);
     await (timeLeftMs === undefined ? work : withinTime(work, timeLeftMs));
-    await systemDb(WHY, client).job.update({
-      where: { id: job.id },
+    await systemDb(WHY, client).job.updateMany({
+      where: ownClaim(job),
       data: { status: "done", lastError: null },
     });
     return "done" as const;
@@ -186,8 +195,8 @@ async function execute(
     // Their person was deleted with the job still queued (a trial person's day ending): it can
     // never work, and retrying spends the cron's time (debugger 11-02).
     if (await personGone(error, job.payload as JobPayload, client)) {
-      await systemDb(WHY, client).job.update({
-        where: { id: job.id },
+      await systemDb(WHY, client).job.updateMany({
+        where: ownClaim(job),
         data: { status: "done", lastError: PERSON_GONE },
       });
       return "done" as const;
@@ -208,8 +217,8 @@ async function execute(
       error instanceof Error && error.message === OUT_OF_TIME
         ? (timeLeftMs ?? 0) + Math.max(backoffMs(job.attempts), JOB_STUCK_MINUTES * MINUTE)
         : backoffMs(job.attempts);
-    await systemDb(WHY, client).job.update({
-      where: { id: job.id },
+    await systemDb(WHY, client).job.updateMany({
+      where: ownClaim(job),
       data: failed
         ? { status: "failed", lastError }
         : { status: "queued", lastError, runAt: new Date(now.getTime() + wait) },

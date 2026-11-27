@@ -34,6 +34,15 @@ describe("heartbeatUrl", () => {
       heartbeatUrl("digest", "fail", { ...KEY, HEALTHCHECKS_URL: "http://localhost:9/" }),
     ).toBe("http://localhost:9/pingkey123/jane-digest/fail?create=1");
   });
+
+  it("never sends the key over plain http to anywhere but this machine", () => {
+    expect(
+      heartbeatUrl("digest", "start", { ...KEY, HEALTHCHECKS_URL: "http://pings.example" }),
+    ).toBeNull();
+    expect(
+      heartbeatUrl("digest", "start", { ...KEY, HEALTHCHECKS_URL: "http://localhost.evil.test" }),
+    ).toBeNull();
+  });
 });
 
 describe("heartbeat", () => {

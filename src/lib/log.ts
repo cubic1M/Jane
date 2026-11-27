@@ -72,7 +72,8 @@ export function cleanForLog(value: unknown, depth = 0): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "string") return logText(value);
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? "[invalid date]" : value.toISOString();
   if (value instanceof Error) return cleanError(value);
   if (typeof value !== "object" || depth >= MAX_DEPTH) return REMOVED;
   if (Array.isArray(value)) {
