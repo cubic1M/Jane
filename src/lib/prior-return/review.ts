@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { childrenOrUnknownAges } from "@/lib/family-taxes";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
@@ -50,7 +51,12 @@ export async function loadReturnReviews(
       loadTaxDocuments(userId, year, { client, now }),
       db.taxAmendments.findFirst({ where: { year } }),
       db.taxProfiles.findFirst({
-        select: { spouseWagesCents: true, studentYearsBefore: true, studentHalfTime: true },
+        select: {
+          spouseWagesCents: true,
+          studentYearsBefore: true,
+          studentHalfTime: true,
+          familyChildren: true,
+        },
       }),
     ]);
     // What the person told Jane about the household; left out when they haven't, so the credits
@@ -88,11 +94,7 @@ export async function loadReturnReviews(
       careCents: tags.totals.childcare.totalCents,
       bothWork,
       student: studentFacts,
-      children: Array.from({ length: estimate.input.childrenUnder17 }, () => ({
-        ageAtYearEnd: 5,
-        hasSsn: true,
-        monthsLivedWithYou: 12,
-      })),
+      children: childrenOrUnknownAges(family?.familyChildren, estimate.input.childrenUnder17),
     });
     reviews.push({
       ...review,

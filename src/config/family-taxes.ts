@@ -10,6 +10,9 @@ export const FAMILY_RULES = {
   childCreditUnderAge: 17,
   // Care for a child under 13 counts for the dependent care credit and FSA.
   careUnderAge: 13,
+  // A child known only to be under 17 (a count, no recorded age): never counted as under 13, so
+  // no care credit is worked out from a guessed age. The age is asked for.
+  unknownAge: 16,
   halfYearMonths: 6,
   // American Opportunity Credit: the first four years of college, at least half-time.
   aotcYears: 4,
