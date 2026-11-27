@@ -10,6 +10,7 @@ import { FILING_STATUSES } from "@/config/tax";
 import { parseMoneyToCents, centsToInput, formatWholeDollars } from "@/lib/money";
 import { reviewReturn, type Fields as PriorFields } from "@/planning/prior-return";
 import type { Child } from "@/planning/family-taxes";
+import type { ResidencyKind } from "@/planning/tax-engine/residency-gate";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 
 // The return, checked before you file (spec step 272). Pure. Three parts:
@@ -91,6 +92,8 @@ export type Known = {
   tuitionCents: number;
   careCents: number;
   children: Child[];
+  // What they told Jane about their status for US tax (the education credits are for residents).
+  residency?: ResidencyKind;
   // Where each figure came from, in words ("your W-2 from ACME CORP PAYROLL").
   from: Partial<Record<DraftFieldKey, string>>;
 };
@@ -241,6 +244,7 @@ export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
     tuitionCents: known.tuitionCents,
     careCents: known.careCents,
     children: known.children,
+    residency: known.residency,
   });
   const KEY_LINE: Record<string, DraftFieldKey> = {
     itemize: "deductionKind",
@@ -335,6 +339,7 @@ export function demoDraft(known: Known): { fields: DraftFields; planted: string[
     tuitionCents: known.tuitionCents,
     careCents: known.careCents,
     children: known.children,
+    residency: known.residency,
   }).findings;
   const credit = (key: string) => centsToInput(credits.find((f) => f.key === key)?.savesCents ?? 0);
   return {

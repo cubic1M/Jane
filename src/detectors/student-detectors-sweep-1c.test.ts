@@ -29,7 +29,7 @@ const person = (rows: ReturnType<typeof row>[], told: Told = {}): ProfileInput =
   transactions: rows,
   accounts: [{ id: "checking", type: "depository", subtype: "checking", balanceCents: 300_000 }],
   liabilities: [],
-  told: { home_state: "CA", ...told },
+  told: { home_state: "CA", tax_residency: "citizen", ...told },
 });
 const groceries = ["2026-08-18", "2026-09-18", "2026-10-18", "2026-11-13"].map((d) =>
   row(d, 6_000, "SAFEWAY #1234 MOUNTAIN VIEW CA", "FOOD_AND_DRINK_GROCERIES"),

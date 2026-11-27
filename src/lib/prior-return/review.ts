@@ -1,3 +1,4 @@
+import { loadToldResidency } from "@/lib/tax-residency";
 import { TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -48,6 +49,7 @@ export async function loadReturnReviews(
     (r) => r.year !== null,
   );
   const db = scopedFor(userId, client);
+  const { kind: residency } = await loadToldResidency(userId, { client });
   const reviews: ReturnReview[] = [];
   for (const r of confirmed) {
     const year = r.year!;
@@ -100,6 +102,7 @@ export async function loadReturnReviews(
       careCents: tags.totals.childcare.totalCents,
       bothWork,
       student: studentFacts,
+      residency,
       children: childrenOrUnknownAges(family?.familyChildren, estimate.input.childrenUnder17),
     });
     reviews.push({

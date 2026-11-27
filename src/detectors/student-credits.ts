@@ -17,6 +17,7 @@ import {
   yearCoverageMonths,
 } from "@/planning/student-tax";
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
+import { RESIDENCY_NOTE, residentOnlyAllowed } from "@/planning/tax-engine/residency-gate";
 import { yearInterest } from "@/planning/lender-interest";
 import { rateMonthsOf, type Profile } from "@/profile/build";
 import { stateMove } from "@/profile/home-state";
@@ -50,7 +51,9 @@ const educationCredit: Detector = {
   needs: ["enrollment", "claimed_as_dependent", "tax_residency", "age_25_plus"],
   detect({ profile, data }): Suggestion | null {
     const { facts } = profile;
-    if (onStudentVisa(facts)) return null;
+    // For residents only (IRS Pub. 519): held back until they've said they're a citizen or green
+    // card holder. The question that settles it lists this card among what it decides.
+    if (!residentOnlyAllowed(facts)) return null;
     const status = filingStatusOf(facts);
     if (status === "married_separate") return null;
     const money = studentMoney(data);
@@ -135,7 +138,7 @@ const educationCredit: Detector = {
           : []),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(paid)} in tuition to ${nameOf(money.tuition[0]).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately or a nonresident alien (IRS Pub. 970); tuition a scholarship paid isn't in the figure. The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}`,
+      why: `You paid ${formatCents(paid)} in tuition to ${nameOf(money.tuition[0]).replace(/\s+Tuition.*$/i, "")} in ${span(profile)}. The lifetime learning credit is ${pct(EDUCATION_CREDITS.llcRate)} of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)} paid: ${formatCents(llc)} on yours.${aotcLine} ${where} Both shrink from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income and aren't for a married person who files separately (IRS Pub. 970); tuition a scholarship paid isn't in the figure. ${RESIDENCY_NOTE} The school's Form 1098-T shows what was paid; the IRS's Form 8863 instructions have the rest.${profile.today.slice(5) >= TUITION_TIMING_FROM ? ` Tuition paid by December 31 for a term that starts by the end of March counts toward ${profile.today.slice(0, 4)}'s credits; paid in January, toward the next year's (Form 8863 instructions).` : ""}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS: Form 8863 instructions", href: SOURCES.form8863.url }],
     });
@@ -150,6 +153,10 @@ const studentLoanInterest: Detector = {
   needs: ["claimed_as_dependent"],
   detect({ profile, data }): Suggestion | null {
     const { facts } = profile;
+    // IRS Pub. 519 says a nonresident alien can take this deduction, so it is not held for an
+    // unknown or another status. A told student visa stays out until its figure is worked out for a
+    // nonresident, who has no standard deduction (Pub. 519, Standard deduction): the rate below
+    // would be a resident's (CodeRabbit on #2367; belongs to T15).
     if (dependentOf(facts) === "yes" || onStudentVisa(facts)) return null;
     const status = filingStatusOf(facts);
     const range = STUDENT_LOAN_INTEREST.phaseOut[status];
@@ -256,7 +263,7 @@ const earnedIncomeCreditCard: Detector = {
   needs: ["age_25_plus", "claimed_as_dependent", "tax_residency"],
   detect({ profile, data }): Suggestion | null {
     const { facts } = profile;
-    if (onStudentVisa(facts) || facts.tax_residency.value === "other_visa") return null;
+    if (!residentOnlyAllowed(facts)) return null;
     if (dependentOf(facts) === "yes" || facts.has_children.value === true) return null;
     if (age25to64(facts) !== true) return null;
     const status = filingStatusOf(facts);
@@ -322,6 +329,9 @@ const caRentersCredit: Detector = {
   needs: ["home_state", "claimed_as_dependent"],
   detect({ profile, data }): Suggestion | null {
     const { facts } = profile;
+    // Not tied to a visa: the FTB's conditions (rent in California for half the year, income, not
+    // tax-exempt, not someone's dependent) name none, and a part-year resident files a Form 540NR
+    // with a line for it (checked 2026-11-27). A federal nonresident can be a California resident.
     if (facts.home_state.value !== "CA") return null;
     const money = studentMoney(data);
     // Rent paid before a move into California was paid somewhere else: only the months from the

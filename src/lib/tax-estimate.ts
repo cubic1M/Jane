@@ -35,6 +35,11 @@ import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
 import { CHILD_TAX_CREDIT, EITC } from "@/config/tax-rates";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
+import { loadToldResidency } from "@/lib/tax-residency";
+import {
+  earnedIncomeHeldLine,
+  withoutEarnedIncomeCredit,
+} from "@/planning/tax-engine/residency-gate";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
   NO_PAY,
@@ -741,10 +746,24 @@ async function loadTaxEstimateFrom(
     stateWithheldCents: pay.projected.stateWithheldCents,
     stateEstimatedPaidCents: payments.stateCents,
   };
-  const base = estimateTaxes(input);
+  // The Earned Income Credit is for US citizens and residents (IRS Pub. 519): counted only for
+  // someone who told Jane they are a citizen or green card holder, and said when it would have
+  // counted (src/planning/tax-engine/residency-gate.ts).
+  const toldStatus = await loadToldResidency(userId, { client });
+  const withCredit = estimateTaxes(input);
+  const base = toldStatus.allowed ? withCredit : withoutEarnedIncomeCredit(withCredit);
+  if (!toldStatus.allowed) {
+    // With an unknown age and no children the credit is left out for that too: what it would be at
+    // an eligible age is what is held.
+    const heldCents =
+      age === null && input.childrenUnder17 === 0
+        ? estimateTaxes({ ...input, age: EITC.childlessMinAge }).credits.earnedIncomeCreditCents
+        : withCredit.credits.earnedIncomeCreditCents;
+    if (heldCents > 0) assumptions.push(earnedIncomeHeldLine(toldStatus.kind, heldCents));
+  }
   // The Earned Income Credit without children needs an age of 25 to 64: unknown, it's left out,
   // and said when it would have counted.
-  if (age === null && input.childrenUnder17 === 0) {
+  if (toldStatus.allowed && age === null && input.childrenUnder17 === 0) {
     const atEligibleAge = estimateTaxes({ ...input, age: EITC.childlessMinAge });
     if (atEligibleAge.credits.earnedIncomeCreditCents > 0) {
       assumptions.push(

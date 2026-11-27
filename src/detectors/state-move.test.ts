@@ -112,7 +112,7 @@ describe("tuition paid in December", () => {
       ],
       accounts: [],
       liabilities: [],
-      told: { claimed_as_dependent: "yes", enrollment: "undergrad" },
+      told: { claimed_as_dependent: "yes", enrollment: "undergrad", tax_residency: "citizen" },
     });
     const card = (today: string) =>
       runDetectors(

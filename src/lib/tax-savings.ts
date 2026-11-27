@@ -8,6 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { loadToldResidency } from "@/lib/tax-residency";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { parseChildren } from "@/planning/family-taxes";
 import { findTaxSavings, type SavingKey, type TaxSaving } from "@/planning/tax-savings";
@@ -105,6 +106,7 @@ export async function loadTaxSavings(
     medicalCents: pace(tags.totals.medical.totalCents),
     childcareCents: pace(tags.totals.childcare.totalCents),
     childAgesKnown: parseChildren(profile?.familyChildren).length > 0,
+    residentOnlyAllowed: (await loadToldResidency(userId, { client })).allowed,
     tuition: [...tuitionByPayee.entries()].map(([payee, cents]) => ({ payee, cents })),
     energyLastYear: [...energyByPayee.entries()].map(([payee, cents]) => ({
       payee,

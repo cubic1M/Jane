@@ -10,6 +10,7 @@ import {
 } from "@/config/tax-rates";
 import { formatWholeDollars } from "@/lib/money";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "./tax-estimate";
+import { withoutEarnedIncomeCredit } from "./tax-engine/residency-gate";
 import { addDays } from "@/lib/dates";
 
 // The tax savings finder (spec step 122): every way Jane can see for the person to pay less,
@@ -66,6 +67,9 @@ export type SavingsInput = {
   // False: the children's ages are not recorded, so whether childcare counts (a child under 13)
   // is unknown and the FSA-or-credit comparison is held back. Absent: not asked.
   childAgesKnown?: boolean;
+  // The person told Jane they are a US citizen or green card holder: the education credits are for
+  // residents only (IRS Pub. 519), so without it the tuition saving is held back.
+  residentOnlyAllowed?: boolean;
   // Tuition paid this year, by payee; home energy work paid last year, by payee.
   tuition: { payee: string; cents: number }[];
   energyLastYear: { payee: string; cents: number; uncapped: boolean }[];
@@ -97,9 +101,14 @@ export function careShare(agiCents: number, jointly: boolean): number {
 
 export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   const base = s.input;
-  const before = total(s.estimate);
+  // Every estimate here is worked out the way the Taxes page shows it: without the earned income
+  // credit until the person says they are a citizen or green card holder (IRS Pub. 519), or a
+  // saving would be the credit the page leaves out (CodeRabbit on #2367).
+  const gated = (e: TaxEstimate) =>
+    s.residentOnlyAllowed === true ? e : withoutEarnedIncomeCredit(e);
+  const before = total(gated(s.estimate));
   const saved = (change: (i: EstimateInput) => EstimateInput) =>
-    before - total(estimateTaxes(change(base)));
+    before - total(gated(estimateTaxes(change(base))));
   // Payroll tax saved on pre-tax payroll deductions, under the Social Security wage base.
   // Only on wages that exist: a $3,000 FSA on $2,000 of pay saves payroll tax on $2,000.
   const payroll = (cents: number) =>
@@ -304,7 +313,8 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   }
 
   const tuition = s.tuition.reduce((sum, t) => sum + t.cents, 0);
-  if (tuition > 0) {
+  // Married filing separately can't take either education credit (Form 8863 instructions).
+  if (tuition > 0 && s.residentOnlyAllowed === true && base.filingStatus !== "married_separate") {
     const range = jointly
       ? EDUCATION_CREDITS.phaseOut.married_joint
       : EDUCATION_CREDITS.phaseOut.single;
