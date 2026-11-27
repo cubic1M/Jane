@@ -56,9 +56,10 @@ export async function hasCredential(
 ): Promise<boolean> {
   const row = await scopedFor(userId, client).connectorCredentials.findUnique({
     where: whereOf(userId, connectorId),
-    select: { expiresAt: true },
+    select: { expiresAt: true, status: true },
   });
-  return Boolean(row && (!row.expiresAt || row.expiresAt > now));
+  // A broken link (needs_relink) holds nothing usable until the person connects again.
+  return Boolean(row && row.status === "active" && (!row.expiresAt || row.expiresAt > now));
 }
 
 // Opens the credential for `withSecret` only. An expired or missing one is NoCredential, so a
@@ -71,9 +72,11 @@ export async function withCredential<T>(
 ): Promise<T> {
   const row = await scopedFor(userId, client).connectorCredentials.findUnique({
     where: whereOf(userId, connectorId),
-    select: { secretEncrypted: true, expiresAt: true },
+    select: { secretEncrypted: true, expiresAt: true, status: true },
   });
-  if (!row || (row.expiresAt && row.expiresAt <= now)) throw new NoCredential(connectorId);
+  if (!row || row.status !== "active" || (row.expiresAt && row.expiresAt <= now)) {
+    throw new NoCredential(connectorId);
+  }
   let secret: string;
   try {
     secret = decrypt(row.secretEncrypted);

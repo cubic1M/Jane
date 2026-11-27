@@ -141,6 +141,10 @@ describe.runIf(url)("the connector action pipeline", () => {
       ]);
       expect(both1.id).toBe(both2.id);
       await expect(plan(userId, 9999, "bill-oct")).rejects.toMatchObject({ reason: "key_reused" });
+      // A dry run asking with a live plan's key is not handed that plan.
+      await expect(plan(userId, 8412, "bill-oct", true)).rejects.toMatchObject({
+        reason: "key_reused",
+      });
       expect(first.steps).toEqual([
         { label: "Pay to", value: "Con Edison" },
         { label: "Amount", value: "$84.12" },

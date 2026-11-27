@@ -13,6 +13,7 @@ import { onSampleDataOnly } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { enqueueJob } from "@/lib/jobs";
+import { log } from "@/lib/log";
 import { consentCovers, currentConsentId } from "./consent";
 import { withGrant } from "./gate";
 import { connectorById, mayMoveRealMoney, whyUnavailable, type Unavailable } from "./registry";
@@ -258,10 +259,16 @@ export async function planAction(
   const db = scopedFor(userId, client);
   const existing = await db.connectorActions.findFirst({
     where: { idempotencyKey },
-    select: PLANNED_SELECT,
+    select: { ...PLANNED_SELECT, dryRun: true },
   });
   if (existing) {
-    if (existing.fingerprint !== fingerprint || existing.connectorId !== connector.id) {
+    // A dry run and a live plan never share a key: asking for one with the other's key must not
+    // hand back an action that, once approved, runs in the other mode.
+    if (
+      existing.fingerprint !== fingerprint ||
+      existing.connectorId !== connector.id ||
+      existing.dryRun !== dryRun
+    ) {
       throw new ConnectorRefused("key_reused");
     }
     return asPlanned(existing);
@@ -484,20 +491,30 @@ export async function executeAction(
     data: { status: "running" },
   });
   if (claim.count === 0) return "skipped";
-  const action = await db.connectorActions.findFirstOrThrow({
-    where: { id: actionId },
-    select: {
-      connectorId: true,
-      kind: true,
-      amountCents: true,
-      approvedCents: true,
-      fingerprint: true,
-      summary: true,
-      steps: true,
-      details: true,
-      dryRun: true,
-    },
-  });
+  let action;
+  try {
+    action = await db.connectorActions.findFirstOrThrow({
+      where: { id: actionId },
+      select: {
+        connectorId: true,
+        kind: true,
+        amountCents: true,
+        approvedCents: true,
+        fingerprint: true,
+        summary: true,
+        steps: true,
+        details: true,
+        dryRun: true,
+      },
+    });
+  } catch (error) {
+    // Claimed but never read: nothing reached a partner, so the claim goes back for the retry.
+    await db.connectorActions.updateMany({
+      where: { id: actionId, status: "running" },
+      data: { status: "approved" },
+    });
+    throw error;
+  }
   const draft: ActionDraft = {
     kind: action.kind,
     amountCents: action.amountCents,
@@ -562,26 +579,49 @@ export async function executeAction(
   }
 
   const act = connector.act!;
+  let result: Awaited<ReturnType<NonNullable<Connector["act"]>>>;
   try {
-    const result = await withGrant({ connectorId: connector.id, actionId, userId }, () =>
+    result = await withGrant({ connectorId: connector.id, actionId, userId }, () =>
       act(draft, contextFor(userId, connector.id, actionId, now)),
     );
-    const status: ConnectorStatus =
-      result.state === "done"
-        ? "succeeded"
-        : result.state === "handed_off"
-          ? "handed_off"
-          : "partner_pending";
-    await db.connectorActions.updateMany({
-      where: { id: actionId, status: "running" },
-      data: {
-        status,
-        externalRef: result.externalRef,
-        cancelUntil: result.cancelUntil,
-        note: result.note.slice(0, 500),
-        ...(status === "succeeded" && { finishedAt: now }),
-      },
-    });
+  } catch (error) {
+    // Not retried: the partner may have acted. Its webhook, or the team, settles it.
+    return failAction(userId, connector.id, actionId, error, undefined, { client, now });
+  }
+  const status: ConnectorStatus =
+    result.state === "done"
+      ? "succeeded"
+      : result.state === "handed_off"
+        ? "handed_off"
+        : "partner_pending";
+  try {
+    // The partner has answered: saving what it said is tried again before giving up, and act is
+    // never run a second time.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await db.connectorActions.updateMany({
+          where: { id: actionId, status: "running" },
+          data: {
+            status,
+            externalRef: result.externalRef,
+            cancelUntil: result.cancelUntil,
+            note: result.note.slice(0, 500),
+            ...(status === "succeeded" && { finishedAt: now }),
+          },
+        });
+        break;
+      } catch (error) {
+        if (attempt >= RESULT_SAVE_ATTEMPTS) throw error;
+      }
+    }
+  } catch (error) {
+    // Failed, but with the partner's own reference kept, so the team and the reconciliation can
+    // find what it did.
+    return failAction(userId, connector.id, actionId, error, result.externalRef, { client, now });
+  }
+  // Saved: the partner's answer is the result. A failed audit or analytics write after it is
+  // reported, not turned into a failure of the action.
+  try {
     await auditStep(SYSTEM_ACTOR, "connector_action_executed", userId, {
       connector: connector.id,
       action: actionId,
@@ -589,27 +629,44 @@ export async function executeAction(
       simulated: connector.sandbox,
     });
     await track(userId, `connector_action_${status}`, { connector: connector.id });
-    return status;
   } catch (error) {
-    // Not retried: the partner may have acted. Its webhook, or the team, settles it.
-    const reason = error instanceof NoCredential ? "no_credential" : "act_failed";
-    await db.connectorActions.updateMany({
-      where: { id: actionId, status: "running" },
-      data: {
-        status: "failed",
-        reason,
-        note: reason === "no_credential" ? "Connect it again, then ask again." : null,
-        finishedAt: now,
-      },
-    });
-    await auditStep(SYSTEM_ACTOR, "connector_action_failed", userId, {
-      connector: connector.id,
+    log.error("connector action saved, its record failed", {
       action: actionId,
-      reason,
+      status,
+      error: error instanceof Error ? error.name : "unknown",
     });
-    await track(userId, "connector_action_failed", { connector: connector.id, reason });
-    return "failed";
   }
+  return status;
+}
+
+const RESULT_SAVE_ATTEMPTS = 3;
+
+async function failAction(
+  userId: string,
+  connectorId: string,
+  actionId: string,
+  error: unknown,
+  externalRef: string | undefined,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<ExecuteResult> {
+  const reason = error instanceof NoCredential ? "no_credential" : "act_failed";
+  await scopedFor(userId, client).connectorActions.updateMany({
+    where: { id: actionId, status: "running" },
+    data: {
+      status: "failed",
+      reason,
+      note: reason === "no_credential" ? "Connect it again, then ask again." : null,
+      finishedAt: now,
+      ...(externalRef && { externalRef }),
+    },
+  });
+  await auditStep(SYSTEM_ACTOR, "connector_action_failed", userId, {
+    connector: connectorId,
+    action: actionId,
+    reason,
+  });
+  await track(userId, "connector_action_failed", { connector: connectorId, reason });
+  return "failed";
 }
 
 // What a partner's verified webhook says happened to an action (./webhooks.ts). Moves it on only

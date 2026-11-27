@@ -13,7 +13,7 @@ import { canonicalJson } from "./canonical-json";
 import { applyLinkEvent } from "./link-events";
 import { applyPartnerEvent } from "./pipeline";
 import { connectorById } from "./registry";
-import { isLinkEvent, type WebhookSigning } from "./types";
+import { isLinkEvent, type LinkEvent, type WebhookEvent, type WebhookSigning } from "./types";
 
 // Webhook intake for every connector (docs/connectors.md): one route, /api/connectors/<id>/webhook.
 // Nothing is read or believed until the provider's signature checks out with its own secret; a
@@ -163,30 +163,40 @@ export async function receiveWebhook(
   if (!(await firstDelivery(connector.id, eventId, client, now))) {
     return answer(200, { received: true, repeat: true });
   }
+  // Marked as seen: from here, anything that goes wrong before the event is applied takes the
+  // mark off again, so the provider's retry is not taken for a repeat of an event never applied.
+  try {
+    return await applyDelivery(connector.id, event, eventId, { client, now });
+  } catch (error) {
+    await forgetDelivery(connector.id, eventId, client);
+    throw error;
+  }
+}
+
+// Applies one event already recorded as received. A "not ready" answer takes the record off too.
+async function applyDelivery(
+  connectorId: string,
+  event: WebhookEvent | LinkEvent,
+  eventId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<WebhookAnswer> {
   // About a link, not an action: the person whose link the partner names, by its id for it.
   if (isLinkEvent(event)) {
     const link = await systemDb(WHY, client).connectorCredential.findUnique({
-      where: { connectorId_linkRef: { connectorId: connector.id, linkRef: event.linkRef } },
+      where: { connectorId_linkRef: { connectorId, linkRef: event.linkRef } },
       select: { userId: true },
     });
     // A link not stored yet (the partner answered before Jane saved its id): sent again later.
     if (!link) {
-      await forgetDelivery(connector.id, eventId, client);
+      await forgetDelivery(connectorId, eventId, client);
       return answer(409, { error: "Not ready, send it again later" });
     }
-    try {
-      await applyLinkEvent(link.userId, connector.id, event.change, { client, now });
-    } catch (error) {
-      await forgetDelivery(connector.id, eventId, client);
-      throw error;
-    }
+    await applyLinkEvent(link.userId, connectorId, event.change, { client, now });
     return answer(200, { received: true });
   }
   // Whose it is: the action the partner names, found by its own id. Everything after is scoped.
   const action = await systemDb(WHY, client).connectorAction.findUnique({
-    where: {
-      connectorId_externalRef: { connectorId: connector.id, externalRef: event.externalRef },
-    },
+    where: { connectorId_externalRef: { connectorId, externalRef: event.externalRef } },
     select: { id: true, userId: true, status: true },
   });
   // Not ours yet: a fast partner can answer while act is still returning, before its id is stored
@@ -194,15 +204,9 @@ export async function receiveWebhook(
   // a 200 here would lose a failed payment for good. A ref that's never ours is retried until the
   // provider gives up, which costs nothing.
   if (!action || action.status === "running") {
-    await forgetDelivery(connector.id, eventId, client);
+    await forgetDelivery(connectorId, eventId, client);
     return answer(409, { error: "Not ready, send it again later" });
   }
-  try {
-    await applyPartnerEvent(action.userId, action.id, event, { client, now });
-  } catch (error) {
-    // The 500 makes the provider send it again, and that one must not look like a repeat.
-    await forgetDelivery(connector.id, eventId, client);
-    throw error;
-  }
+  await applyPartnerEvent(action.userId, action.id, event, { client, now });
   return answer(200, { received: true });
 }
