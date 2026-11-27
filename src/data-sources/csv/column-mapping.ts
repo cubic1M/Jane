@@ -133,11 +133,12 @@ function descriptionColumn(headers: string[], rows: string[][], varies: (i: numb
 
 // A currency code written in an amount's own cell ("12.50 EUR"): not US dollars, whatever the
 // file's other columns say. parseAmount strips it, so it is looked for first.
-const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b/i;
+const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b|([€£¥])/i;
+const SYMBOL_CODE: Record<string, string> = { "€": "EUR", "£": "GBP", "¥": "JPY" };
 export function foreignCurrencyIn(...texts: string[]): string | null {
   for (const text of texts) {
     const found = FOREIGN_CODE.exec(text);
-    if (found) return found[1].toUpperCase();
+    if (found) return found[1] ? found[1].toUpperCase() : SYMBOL_CODE[found[2]];
   }
   return null;
 }
