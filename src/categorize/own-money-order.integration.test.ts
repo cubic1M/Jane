@@ -127,4 +127,51 @@ describe.runIf(url)("a move between the person's own accounts, in either upload 
     await me.night();
     expect(await me.incomeCents()).toBe(-25_000);
   });
+
+  // CodeRabbit on this PR: one outgoing row explains one incoming row, across runs, and the rows
+  // moved with an ordinary transfer in the same pass are all moved.
+  it("lets one outgoing row explain one incoming row only, and moves it with the other transfers", async () => {
+    const me = await person();
+    const [checking, savings] = await client.account.findMany({
+      where: { userId: me.user.id },
+      orderBy: { name: "asc" },
+    });
+    const row = (accountId: string, key: string, day: string, cents: number, over = {}) =>
+      client.transaction.create({
+        data: {
+          userId: me.user.id,
+          accountId,
+          source: "csv",
+          dedupeKey: key,
+          date: new Date(day),
+          amountCents: cents,
+          description: "ZELLE FROM DANA LEE",
+          merchantName: "Dana Lee",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+          categorySource: "rule",
+          ...over,
+        },
+      });
+    const first = await row(checking.id, "a", "2026-08-01", -25_000);
+    const second = await row(checking.id, "b", "2026-08-02", -25_000);
+    // An ordinary transfer in the same pass, not income.
+    const plain = await row(checking.id, "c", "2026-08-20", -9_900, {
+      pfcPrimary: null,
+      pfcDetailed: null,
+      categorySource: null,
+    });
+    await row(savings.id, "d", "2026-08-01", 25_000, {
+      pfcPrimary: "TRANSFER_OUT",
+      pfcDetailed: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    });
+    await reapplyRules(me.user.id, { client });
+    await reapplyRules(me.user.id, { client });
+    const detailed = async (id: string) =>
+      (await client.transaction.findUniqueOrThrow({ where: { id } })).pfcDetailed;
+    const moved = [await detailed(first.id), await detailed(second.id)];
+    expect(moved.filter((d) => d === "TRANSFER_IN_ACCOUNT_TRANSFER")).toHaveLength(1);
+    expect(moved.filter((d) => d === "INCOME_OTHER")).toHaveLength(1);
+    expect(await detailed(plain.id)).toBe("TRANSFER_IN_ACCOUNT_TRANSFER");
+  });
 });

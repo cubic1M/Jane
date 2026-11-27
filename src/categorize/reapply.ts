@@ -67,7 +67,9 @@ export async function reapplyRules(
   }
   const own = await ownMoney(db, ownMoneyIn);
   if (own.length > 0) {
-    moves.set("TRANSFER_IN_ACCOUNT_TRANSFER", { primary: "TRANSFER_IN", ids: own });
+    const group = moves.get("TRANSFER_IN_ACCOUNT_TRANSFER") ?? { primary: "TRANSFER_IN", ids: [] };
+    group.ids.push(...own);
+    moves.set("TRANSFER_IN_ACCOUNT_TRANSFER", group);
   }
   let changed = 0;
   for (const [detailed, { primary, ids }] of moves) {
@@ -81,29 +83,46 @@ export async function reapplyRules(
 }
 
 // The income rows that are a move between the person's own accounts: the same amount left another
-// account within REGULAR_PAYER_OWN_MONEY_DAYS. Each outgoing row explains one incoming row.
+// account within REGULAR_PAYER_OWN_MONEY_DAYS. Each outgoing row explains one incoming row, across
+// runs too: money in already placed as a transfer has its outgoing row first, so an earlier run's
+// conversion is never paired with that same outgoing row again.
 async function ownMoney(
   db: ReturnType<typeof scopedFor>,
   incoming: readonly { id: string; accountId: string; date: string; amountCents: number }[],
 ): Promise<string[]> {
   if (incoming.length === 0) return [];
-  const out = await db.transactions.findMany({
-    where: {
-      pending: false,
-      amountCents: { in: [...new Set(incoming.map((r) => -r.amountCents))] },
-    },
-    select: { id: true, accountId: true, date: true, amountCents: true },
-  });
+  const amounts = [...new Set(incoming.map((r) => -r.amountCents))];
+  const [out, placed] = await Promise.all([
+    db.transactions.findMany({
+      where: { pending: false, amountCents: { in: amounts } },
+      select: { id: true, accountId: true, date: true, amountCents: true },
+    }),
+    db.transactions.findMany({
+      where: {
+        pending: false,
+        pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+        amountCents: { in: incoming.map((r) => r.amountCents) },
+        id: { notIn: incoming.map((r) => r.id) },
+      },
+      select: { accountId: true, date: true, amountCents: true },
+    }),
+  ]);
   const used = new Set<string>();
+  const explains = (
+    row: { accountId: string; date: string; amountCents: number },
+    o: (typeof out)[number],
+  ) =>
+    !used.has(o.id) &&
+    o.accountId !== row.accountId &&
+    o.amountCents === -row.amountCents &&
+    Math.abs(dayNumber(isoDay(o.date)) - dayNumber(row.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS;
+  for (const row of placed) {
+    const taken = out.find((o) => explains({ ...row, date: isoDay(row.date) }, o));
+    if (taken) used.add(taken.id);
+  }
   const ids: string[] = [];
   for (const row of incoming) {
-    const match = out.find(
-      (o) =>
-        !used.has(o.id) &&
-        o.accountId !== row.accountId &&
-        o.amountCents === -row.amountCents &&
-        Math.abs(dayNumber(isoDay(o.date)) - dayNumber(row.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS,
-    );
+    const match = out.find((o) => explains(row, o));
     if (!match) continue;
     used.add(match.id);
     ids.push(row.id);

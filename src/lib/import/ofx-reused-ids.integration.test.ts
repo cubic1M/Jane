@@ -139,6 +139,47 @@ describe.runIf(url)("two accounts whose OFX row ids overlap", () => {
     expect(await client.transaction.count({ where: { accountId: account } })).toBe(12);
   });
 
+  // CodeRabbit on this PR: rows are tallied by id, day and amount, not by the bare id.
+  it("is not 'already there' when one id stands for several transactions and only one is stored", async () => {
+    const other = await client.user.create({ data: { email: "ofx-reused-ids-3@example.com" } });
+    try {
+      const db = scopedFor(other.id, client);
+      const account = (
+        await client.account.create({
+          data: {
+            userId: other.id,
+            source: "csv",
+            name: "Held",
+            type: "depository",
+            subtype: "checking",
+          },
+        })
+      ).id;
+      const variant = (day: string, amount: string, name: string) =>
+        ofx("3333333333", [["0001", day, amount, name]]);
+      await importCsvFiles(db, account, [
+        { name: "a.ofx", text: variant("20261001", "-10.00", "ONE") },
+      ]);
+      // Four files of one upload, one id for four different transactions.
+      const data = new FormData();
+      data.set("accountId", "new");
+      data.set("new.name", "Fresh");
+      data.set("new.kind", "checking");
+      [
+        ["20261001", "-10.00", "ONE"],
+        ["20261002", "-20.00", "TWO"],
+        ["20261003", "-30.00", "THREE"],
+        ["20261004", "-40.00", "FOUR"],
+      ].forEach(([day, amount, name], i) =>
+        data.append("files", new File([variant(day, amount, name)], `m${i}.ofx`)),
+      );
+      const made = await saveUpload(db, data);
+      expect(made.ok).toBe(true);
+    } finally {
+      await client.user.deleteMany({ where: { id: other.id } });
+    }
+  });
+
   // CodeRabbit on this PR: rows stored under the key a reused id gets must be recognised later.
   it("recognises rows kept under a reused id's own key, and keeps two files' rows in one upload", async () => {
     const other = await client.user.create({ data: { email: "ofx-reused-ids-2@example.com" } });

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { MAX_FILE_NAME_LENGTH } from "@/config/documents";
-import { isStoredCopy, storedKeysOf } from "@/lib/import/ofx-keys";
+import { identityOf, isStoredCopy, storedKeysOf } from "@/lib/import/ofx-keys";
 import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
@@ -194,7 +194,7 @@ async function accountHoldingRows(
     },
     files,
   ).load();
-  const keys = [...new Set(batch.transactions.map((t) => t.externalId))];
+  const keys = [...new Set(batch.transactions.map(identityOf))];
   if (keys.length === 0) return null;
   const there = await db.transactions.findMany({
     where: {
@@ -214,7 +214,7 @@ async function accountHoldingRows(
     for (const sent of sentBy.get(row.dedupeKey ?? "") ?? []) {
       if (!isStoredCopy(row, sent)) continue;
       const set = byAccount.get(row.accountId) ?? new Set<string>();
-      set.add(sent.externalId);
+      set.add(identityOf(sent));
       byAccount.set(row.accountId, set);
     }
   }

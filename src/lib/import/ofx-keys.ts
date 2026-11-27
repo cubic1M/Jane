@@ -27,3 +27,8 @@ export function isStoredCopy(
       stored.amountCents === row.amountCents)
   );
 }
+
+// What counts as one transaction when rows are tallied: an OFX row is its id, day and amount (the
+// same id can stand for several transactions), any other row its key.
+export const identityOf = (row: KeyedRow) =>
+  isOfxKey(row.externalId) ? reusedIdKey(row) : row.externalId;
