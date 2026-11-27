@@ -10,7 +10,7 @@ import {
   indexFactor,
   type PlannedEventKind,
 } from "@/config/tax-years";
-import { federalParams, lawYearFor } from "@/config/tax-params";
+import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 import { formatWholeDollars } from "@/lib/money";
 
@@ -180,7 +180,9 @@ export function taxFor(plan: Plan, year: number, adj: Adjust = {}): YearTax {
             ]),
           ) as EstimateInput["income"],
         };
-  const lawYear = lawYearFor(plan.startYear);
+  // The start year is the estimate's own year (a year without figures has no estimate), so its law
+  // is its own; later years hold it fixed (stated in the plan's assumptions).
+  const lawYear = plan.startYear;
   const e = estimateTaxes({ ...deflated, year: lawYear });
   const status = input.filingStatus;
   const law = federalParams(lawYear);

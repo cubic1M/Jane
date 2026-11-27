@@ -1,3 +1,4 @@
+import { NoTaxParamsError } from "@/config/tax-params";
 import { DEBT_DETECTORS } from "./debt";
 import { EFTPS_DETECTORS } from "./eftps";
 import { SAVERS_CREDIT_DETECTORS } from "./savers-credit";
@@ -116,6 +117,8 @@ export function runDetectors(
       const s = d.detect(ctx);
       if (s) out.push(s);
     } catch (error) {
+      // A card priced for a year Jane has no IRS figures for is held back, not reported as a bug.
+      if (error instanceof NoTaxParamsError) continue;
       onError(d, error);
     }
   }

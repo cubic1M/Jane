@@ -125,15 +125,32 @@ describe("a lender's interest so far, paced by payments", () => {
     // the month number (src/planning/lender-interest.test.ts).
   });
 
+  // January 2027 has no IRS figures yet (a card priced for a year without them is held back), so the
+  // January case runs one year earlier, in January 2026.
+  it("is held back in a year with no IRS figures yet (January 2027)", () => {
+    expect(
+      card(
+        person({
+          today: "2027-01-20",
+          pay: payroll("2026-07-24", "2027-01-15", 250_000),
+          payments: ["2026-11-05", "2026-12-05", "2027-01-08"],
+          ytd: 7_400,
+          lastPayment: "2027-01-08",
+          readOn: "2027-01-19",
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   it("in January, one payment's interest is the balance and rate", () => {
     const s = card(
       person({
-        today: "2027-01-20",
-        pay: payroll("2026-07-24", "2027-01-15", 250_000),
-        payments: ["2026-11-05", "2026-12-05", "2027-01-08"],
+        today: "2026-01-20",
+        pay: payroll("2025-07-24", "2026-01-15", 250_000),
+        payments: ["2025-11-05", "2025-12-05", "2026-01-08"],
         ytd: 7_400,
-        lastPayment: "2027-01-08",
-        readOn: "2027-01-19",
+        lastPayment: "2026-01-08",
+        readOn: "2026-01-19",
       }),
     );
     expect(s.why).toContain("On $16,053.74 owed at 5.50%, a year's interest is about $882.96");

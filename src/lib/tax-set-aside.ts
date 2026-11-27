@@ -1,6 +1,7 @@
 import { DAY_MS, isoDay } from "@/lib/dates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { TAX_KEPT_NAME, TAX_SET_ASIDE } from "@/config/tax-set-aside";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -29,9 +30,25 @@ export async function loadTaxSetAside(
   );
 }
 
-// What the card needs, for the detectors (src/detectors/tax-set-aside.ts).
+// The same, or null when the year has no IRS figures (the "no_params" state): the set-aside figure
+// is a figure of the year's own tax, so it is never worked out with another year's law.
+export async function loadTaxSetAsideIfPriced(
+  userId: string,
+  options: Options = {},
+): Promise<TaxSetAsideView | null> {
+  try {
+    return await loadTaxSetAside(userId, options);
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return null;
+    throw error;
+  }
+}
+
+// What the card needs, for the detectors (src/detectors/tax-set-aside.ts); null with no figures.
 export async function taxSetAsideForDetector(userId: string, options: Options = {}) {
-  const { estimateView: _view, lines: _lines, ...figure } = await loadTaxSetAside(userId, options);
+  const view = await loadTaxSetAsideIfPriced(userId, options);
+  if (!view) return null;
+  const { estimateView: _view, lines: _lines, ...figure } = view;
   return figure;
 }
 

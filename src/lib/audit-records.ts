@@ -1,3 +1,4 @@
+import { NoTaxParamsError } from "@/config/tax-params";
 import { GIVING } from "@/config/giving";
 import { RECEIPT_MATCH_DAYS, RETENTION_YEARS_BACK } from "@/config/records";
 import { TAX_TAGS, type TaxTagKind } from "@/config/tax";
@@ -330,7 +331,14 @@ export async function remindDueRecords(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
-  const view = await loadAuditRecords(userId, now.getUTCFullYear(), { client, now });
+  let view: Awaited<ReturnType<typeof loadAuditRecords>>;
+  try {
+    view = await loadAuditRecords(userId, now.getUTCFullYear(), { client, now });
+  } catch (error) {
+    // A year Jane has no IRS figures for has no estimate to read the records from: no reminder yet.
+    if (error instanceof NoTaxParamsError) return 0;
+    throw error;
+  }
   for (const r of view.due)
     await remindRetention(userId, r.year, { client, now, via: "autopilot" });
   return view.due.length;

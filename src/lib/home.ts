@@ -21,7 +21,7 @@ import { db as defaultClient } from "@/lib/db";
 import { listGoals } from "@/lib/goals";
 import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
-import { loadTaxSetAside } from "@/lib/tax-set-aside";
+import { loadTaxSetAsideIfPriced } from "@/lib/tax-set-aside";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedItems } from "@/lib/membership/service";
 import { verifiedSavings } from "@/lib/savings-proof";
@@ -106,7 +106,9 @@ export async function homeSummary(
     // What the person's transactions confirm (the verified savings record), for the Saved tile.
     verifiedSavings(userId, { client, now, input }),
     // The tax left to cover: one figure for this, the card, the chat and the Taxes page.
-    loadTaxSetAside(userId, { client, now }),
+    // Null for a year with no IRS figures: Safe to spend then holds nothing back for tax and says
+    // the tax is not counted (status unknown), never a figure from another year's law.
+    loadTaxSetAsideIfPriced(userId, { client, now }),
   ]);
   const budget = budgetRows === null ? null : budgetSummary(budgetRows, budgets, asOf);
 
@@ -175,12 +177,14 @@ export async function homeSummary(
           ),
           goalsCents,
           setAsideCents,
-          tax: {
-            holdCents: taxAside.holdCents,
-            status: taxAside.status,
-            keptApartCents: taxAside.keptApartCents,
-            confidencePercent: taxAside.confidence.percent,
-          },
+          tax: taxAside
+            ? {
+                holdCents: taxAside.holdCents,
+                status: taxAside.status,
+                keptApartCents: taxAside.keptApartCents,
+                confidencePercent: taxAside.confidence.percent,
+              }
+            : { holdCents: 0, status: "unknown", keptApartCents: 0, confidencePercent: 0 },
         })
       : null,
     waitingOnYou: waiting.map((a) => ({

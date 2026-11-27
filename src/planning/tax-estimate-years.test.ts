@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lawYearFor, NoTaxParamsError } from "@/config/tax-params";
+import { lawYearFor, NoTaxParamsError, ownLawYear } from "@/config/tax-params";
 import { estimateNote } from "@/planning/tax-estimate-copy";
 import { estimateTaxes, NO_INCOME, type EstimateInput } from "@/planning/tax-estimate";
 import { federalTaxOf, lawYearOf, standardDeductionOf } from "@/planning/student-tax";
@@ -97,7 +97,14 @@ describe("a year with no IRS figures", () => {
   });
 });
 
-describe("planning cards hold the law fixed in a year with no figures yet", () => {
+describe("only a forward projection holds the law fixed; a year's own figure never does", () => {
+  it("ownLawYear is the year itself or a refusal, never another year's law", () => {
+    expect(ownLawYear(2025)).toBe(2025);
+    expect(ownLawYear(2026)).toBe(2026);
+    expect(() => ownLawYear(2027)).toThrow(NoTaxParamsError);
+    expect(() => ownLawYear(2024)).toThrow(NoTaxParamsError);
+  });
+
   it("lawYearFor gives the newest year with figures at or before the year, and refuses an earlier one", () => {
     expect(lawYearFor(2025)).toBe(2025);
     expect(lawYearFor(2026)).toBe(2026);
@@ -118,7 +125,7 @@ describe("the student-tax helpers take the year too", () => {
 
   it("the note and the rough-state line name the estimate's own year", () => {
     expect(estimateNote(2025)).toContain("Tax figures for 2025 are from the IRS");
-    expect(lawYearOf("2027-05-02")).toBe(2026);
+    expect(() => lawYearOf("2027-05-02")).toThrow(NoTaxParamsError);
     expect(lawYearOf("2025-03-01")).toBe(2025);
   });
 });

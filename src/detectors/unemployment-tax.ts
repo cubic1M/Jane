@@ -1,5 +1,5 @@
 import { SOURCES, UNEMPLOYMENT_W4V_RATE } from "@/config/student-taxes";
-import { lawYearFor } from "@/config/tax-params";
+import { ownLawYear } from "@/config/tax-params";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
 import { formatCents } from "@/lib/money";
 import { sumCents } from "@/planning/student-money";
@@ -66,8 +66,8 @@ const unemploymentTax: Detector = {
     const dependent = dependentOf(facts) === "yes";
     const base = other.agiCents + otherTaxableYear(data, profile.today);
     const tax =
-      federalTaxOf(base + paid, status, dependent, other.earnedCents, lawYearFor(year)) -
-      federalTaxOf(base, status, dependent, other.earnedCents, lawYearFor(year));
+      federalTaxOf(base + paid, status, dependent, other.earnedCents, ownLawYear(year)) -
+      federalTaxOf(base, status, dependent, other.earnedCents, ownLawYear(year));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const ca = facts.home_state.value === "CA" ? " California doesn't tax it (FTB)." : "";
     return suggestion("taxes", "unemployment_tax", {

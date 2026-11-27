@@ -626,6 +626,14 @@ function soleInput(profit: number, facts: Facts, year: number): EstimateInput {
     stateEstimatedPaidCents: 0,
   };
 }
+// A projection priced with the newest law because the year's own figures are not out yet says so
+// where it shows (a forward projection holds today's law fixed; never a year's own figure).
+const heldFixed = (year: number) => {
+  const law = lawYearFor(year);
+  return law === year
+    ? ""
+    : ` These figures use ${law} tax law held fixed, because the IRS figures for ${year} are not out yet.`;
+};
 // What a deduction saves a sole proprietor: income tax at their bracket plus the 15.3% on 92.35%
 // of it that self-employment tax takes.
 const deductionRate = (profit: number, facts: Facts) => {
@@ -678,7 +686,7 @@ const sCorpElection: Detector = {
       ]),
       // The election for this year is due March 15; after that it starts next year.
       urgency: md >= T.sCorpElectionFrom && md <= T.sCorpElectionBy ? "soon" : "later",
-      why: `At a profit of about ${formatCents(profit)}, an S corporation (a salary of about ${formatCents(result.sCorp.salaryCents)}, the rest as profit) could cost you about ${formatCents(result.sCorp.totalCents)} in tax and costs against ${formatCents(result.sole.taxCents)} as you are: roughly ${formatCents(result.sCorp.savesCents)} less. The election (Form 2553) is due March 15 to count for the year.`,
+      why: `At a profit of about ${formatCents(profit)}, an S corporation (a salary of about ${formatCents(result.sCorp.salaryCents)}, the rest as profit) could cost you about ${formatCents(result.sCorp.totalCents)} in tax and costs against ${formatCents(result.sole.taxCents)} as you are: roughly ${formatCents(result.sCorp.savesCents)} less. The election (Form 2553) is due March 15 to count for the year.${heldFixed(electionYear)}`,
       action: { label: "See the numbers", href: "/taxes/business" },
     });
   },
@@ -880,7 +888,7 @@ const inheritedIraSpread: Detector = {
       ]),
       urgency:
         emptyBy === null ? "later" : yearsLeft <= 1 ? "now" : yearsLeft <= 3 ? "soon" : "later",
-      why: `You have ${formatCents(balance)} in an inherited IRA. ${emptyBy !== null ? `Most heirs must empty it by December 31, ${emptyBy}.` : "Most heirs must empty it within 10 years of the owner's death."} Taking about ${formatCents(spread.perYearCents)} a year instead of all at the end would save roughly ${formatCents(spread.savesCents)} in tax. A tax professional should confirm the rules that apply to you.`,
+      why: `You have ${formatCents(balance)} in an inherited IRA. ${emptyBy !== null ? `Most heirs must empty it by December 31, ${emptyBy}.` : "Most heirs must empty it within 10 years of the owner's death."} Taking about ${formatCents(spread.perYearCents)} a year instead of all at the end would save roughly ${formatCents(spread.savesCents)} in tax. A tax professional should confirm the rules that apply to you.${heldFixed(Number(input.profile.today.slice(0, 4)))}`,
       action: { label: "Tell Jane when they died", href: "/profile" },
     });
   },

@@ -1,7 +1,7 @@
 import { DAY_MS } from "@/lib/dates";
 import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
-import { federalParams, lawYearFor } from "@/config/tax-params";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { DETECTOR_RATES } from "@/config/detectors";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
@@ -44,9 +44,10 @@ export function dependentOf(facts: Facts): "yes" | "no" | null {
 // calendar years: different forms, and none of the credits below.
 export const onStudentVisa = (facts: Facts) => facts.tax_residency?.value === "student_visa";
 
-// The law year a student card prices with: the calendar year of its day, or the newest year Jane has
-// figures for when that year's are not out (lawYearFor).
-export const lawYearOf = (today: string) => lawYearFor(Number(today.slice(0, 4)));
+// The law year a student card prices with: the calendar year of its day. When Jane has no figures
+// for it this throws NoTaxParamsError and the card is held back (runDetectors), never priced with
+// another year's law.
+export const lawYearOf = (today: string) => ownLawYear(Number(today.slice(0, 4)));
 
 // The standard deduction: the regular one, or a dependent's (the greater of $1,350 or earned
 // income plus $450, never more than the regular one). A taxable fellowship counts as earned.

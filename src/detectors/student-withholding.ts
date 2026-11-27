@@ -10,7 +10,7 @@ import {
   W4,
 } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
-import { federalParams, lawYearFor } from "@/config/tax-params";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
 import { observedFilingDay } from "@/lib/filing-day";
@@ -105,7 +105,7 @@ const partYearWithholding: Detector = {
     const check = gross(net);
     // Paychecks from the first one to December 31 at its rhythm.
     const checks = Math.floor(daysBetween(first, `${money.year}-12-31`) / rhythm.days) + 1;
-    const law = lawYearFor(money.year);
+    const law = ownLawYear(money.year);
     const withheld = withheldPerCheck(check, rhythm.perYear, "single", law) * checks;
     const dependent = dependentOf(facts) === "yes";
     const yearPay = check * checks;
@@ -262,8 +262,8 @@ const extensionNotToPay: Detector = {
         filingStatusOf(facts),
         dependentOf(facts) === "yes",
         received,
-        lawYearFor(year),
-      ) + selfEmploymentTax(sumCents(contract), 0, lawYearFor(year));
+        ownLawYear(year),
+      ) + selfEmploymentTax(sumCents(contract), 0, ownLawYear(year));
     if (tax < TAX_SET_ASIDE.minLeftCents) return null;
     const days = daysBetween(today, due);
     const extended = observedFilingDay(`${due.slice(0, 4)}-${FILING.extendedTo.slice(5)}`);

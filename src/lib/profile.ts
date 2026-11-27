@@ -450,7 +450,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date, to
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
-    taxSetAside: taxAside,
+    taxSetAside: taxAside ?? undefined,
     subscriptions,
     // A card whose balance or rate isn't known goes by its interest charges seen, as the report
     // does (debugger 10-30: a statement-file card charging interest read $0 a year, so the dock

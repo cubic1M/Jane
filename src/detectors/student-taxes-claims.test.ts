@@ -63,7 +63,7 @@ describe("the safe-harbour and California cutoffs (findings 4 and 10)", () => {
 });
 
 describe("the income year's schedule (finding 5)", () => {
-  it("attaches no 2026 deadlines to a 2027 estimate", () => {
+  it("holds a 2027 estimate back instead of pricing it with 2026 law", () => {
     const data = student(
       [stipend("2027-10-01"), stipend("2027-11-02")],
       { home_state: "CA" },
@@ -75,11 +75,10 @@ describe("the income year's schedule (finding 5)", () => {
       ),
       ...data.transactions.filter((t) => t.amountCents < 0),
     ];
-    const s = run(data)!;
-    expect(s.title).toContain("2027");
-    expect(s.why).not.toContain("2026");
-    expect(s.why).not.toContain("estimated payment date is");
-    expect(s.why).toContain("2027 estimated-payment dates and penalty rule aren't loaded");
+    // Jane has no IRS figures for 2027, so a card that prices its tax is held back, never priced
+    // with 2026 law and labelled 2027 (and so never carries 2026's deadlines either).
+    expect(run(data)).toBeNull();
+    expect(run(data, "withholding_two_jobs")).toBeNull();
   });
 });
 
