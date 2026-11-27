@@ -111,7 +111,8 @@ describe("the bench as a whole", () => {
     expect(all.every((c) => c.source.url.startsWith("https://"))).toBe(true);
   });
 
-  it("has IRS examples", () => {
+  it("has IRS examples as well as hand cases", () => {
     expect(all.filter((c) => c.source.kind === "irs_example").length).toBeGreaterThanOrEqual(8);
+    expect(all.filter((c) => c.source.kind === "hand").length).toBeGreaterThanOrEqual(8);
   });
 });
