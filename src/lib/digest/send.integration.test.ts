@@ -440,23 +440,43 @@ describe.runIf(url)("runDigests against a real database", () => {
     it("keeps the row when the provider may have accepted the email, and retries with the same key", async () => {
       vi.spyOn(console, "error").mockImplementation(() => {});
       await client.digest.deleteMany({ where: { userId: ids.news } });
-      send.mockRejectedValueOnce(new EmailSendError("Resend did not answer", true));
+      // No answer, twice in the run (the run itself asks once more, with the same key).
+      send.mockRejectedValue(new EmailSendError("Resend did not answer", true));
 
       const first = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
       expect(first.failed).toBe(1);
+      expect(send).toHaveBeenCalledTimes(2);
       const rows = await digestsOf("news");
       expect(rows).toHaveLength(1);
       expect(rows[0].sentAt).toBeNull();
 
-      send.mockResolvedValue({ id: "re_retry" });
+      // A later run resumes the same row, with the same key, and a refusal then does not release it.
+      send
+        .mockReset()
+        .mockRejectedValue(new EmailSendError("Resend rejected the email (422)", false));
+      await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      expect(await digestsOf("news")).toHaveLength(1);
+
+      send.mockReset().mockResolvedValue({ id: "re_retry" });
       const second = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
       expect(second.sent).toBe(1);
-      expect(send).toHaveBeenCalledTimes(2);
-      const keys = send.mock.calls.map(([mail]) => mail.idempotencyKey);
-      expect(keys[0]).toBe(`digest-${rows[0].id}`);
-      expect(keys[1]).toBe(keys[0]);
+      expect(send.mock.calls[0][0].idempotencyKey).toBe(`digest-${rows[0].id}`);
       expect(await digestsOf("news")).toHaveLength(1);
       expect((await digestsOf("news"))[0].sentAt).not.toBeNull();
+    });
+
+    it("sends once when only the first answer was lost: the run asks again with the same key", async () => {
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send
+        .mockRejectedValueOnce(new EmailSendError("Resend did not answer", true))
+        .mockResolvedValueOnce({ id: "re_second" });
+
+      const run = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(run).toMatchObject({ sent: 1, failed: 0 });
+      const keys = send.mock.calls.map(([mail]) => mail.idempotencyKey);
+      expect(keys).toHaveLength(2);
+      expect(keys[1]).toBe(keys[0]);
     });
 
     it("lets go of the row when the provider refused the email outright", async () => {

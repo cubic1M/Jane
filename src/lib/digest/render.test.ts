@@ -213,6 +213,14 @@ describe("renderDigest", () => {
     );
   });
 
+  it("says how many alerts it leaves out, and 'at least' when reading stopped early", () => {
+    const more = { ...payload, alerts: [{ title: "A fee.", percent: 90 }], alertsMore: 5 };
+    expect(renderDigest(more, LINKS).text).toContain("And 5 more alerts in Jane.");
+    expect(renderDigest({ ...more, alertsMoreAtLeast: true }, LINKS).text).toContain(
+      "And at least 5 more alerts in Jane.",
+    );
+  });
+
   it("keeps money that came back once apart from the yearly saved-so-far figure", () => {
     const text = renderDigest({ ...payload, savedToDateOnceCents: 12_000 }, LINKS).text;
     expect(text).toContain("about $359.76 a year");

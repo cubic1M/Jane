@@ -87,7 +87,9 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       items: [
         ...(p.alerts ?? []).map((a) => `${fact(a.title)}${sure(a.percent)}`),
         ...(p.changes ?? []).map((c) => `${fact(c.title)}${sure(c.percent)}`),
-        ...(p.alertsMore ? [`And ${p.alertsMore} more alerts in Jane.`] : []),
+        ...(p.alertsMore
+          ? [`And ${p.alertsMoreAtLeast ? "at least " : ""}${p.alertsMore} more alerts in Jane.`]
+          : []),
       ],
       link: { label: "See it in Jane", url: links.alerts },
     });

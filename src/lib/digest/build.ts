@@ -53,6 +53,8 @@ export type DigestInput = {
     emailedAt: Date | null;
     confidencePercent?: number | null;
   }[];
+  // The alerts were cut off by the reading bound: the number left out is "at least".
+  alertsCapped?: boolean;
   // Changes Jane noticed (src/insights/changes.ts, DIGEST_CHANGE_KINDS), minus the ones the
   // person said were expected. `date` is YYYY-MM-DD.
   changes?: { title: string; date: string; merchant: string | null; confidencePercent: number }[];
@@ -103,6 +105,8 @@ export type DigestPayload = {
   alerts: { title: string; percent?: number | null }[];
   // How many more alerts there were than the email lists (none when all are listed).
   alertsMore?: number;
+  // The count is a lower bound: more alerts were left unread.
+  alertsMoreAtLeast?: true;
   changes?: { title: string; percent: number }[];
   checkup?: DigestCheckup | null;
   membershipOffer: boolean;
@@ -240,6 +244,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       percent: confidencePercent ?? null,
     })),
     ...(alerts.length > ALERTS_PAGE_LIMIT ? { alertsMore: alerts.length - ALERTS_PAGE_LIMIT } : {}),
+    ...(input.alertsCapped ? { alertsMoreAtLeast: true as const } : {}),
     changes,
     checkup: checkupCounts(input.checkup ?? []),
     membershipOffer: input.membershipOffer,

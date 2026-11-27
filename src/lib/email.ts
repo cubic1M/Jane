@@ -139,7 +139,10 @@ export async function sendEmail({
     throw new EmailSendError(`Resend did not answer: ${safeDetail(String(error))}`, true);
   }
   if (!response.ok) {
-    const detail = safeDetail(await response.text());
+    // A body that cannot be read still has a status: the failure is classified by that.
+    const detail = safeDetail(
+      await response.text().catch((error: unknown) => `response body unreadable: ${String(error)}`),
+    );
     // The key was used before: the first request was accepted, so the email is on its way.
     if (
       response.status === 409 &&

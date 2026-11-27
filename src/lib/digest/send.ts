@@ -142,6 +142,9 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   // Read in pages by a cursor until none is left: the email shows at most ALERTS_PAGE_LIMIT and
   // says how many more (build.ts), so an alert past the first page is never left behind sentAt.
   let cursor: string | undefined;
+  // Set when the safety bound stopped the reading with alerts still unread: the count of the
+  // ones left out is then a lower bound, and the email says "at least".
+  let alertsCapped = false;
   for (let page = 0; page < DIGEST_ALERT_MAX_PAGES; page += 1) {
     const raised: AlertRow[] = await db.alerts.findMany({
       where: {
@@ -164,6 +167,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     });
     alerts.push(...(await alertsThatHold(userId, raised, { client, now })));
     if (raised.length < ALERTS_PAGE_LIMIT) break;
+    if (page === DIGEST_ALERT_MAX_PAGES - 1) alertsCapped = true;
     cursor = raised[raised.length - 1].id;
   }
   const [plans, concierge] = await Promise.all([
@@ -197,6 +201,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     })),
     findings,
     alerts,
+    alertsCapped,
     changes,
     checkup,
     plans,
@@ -403,11 +408,12 @@ export async function runDigests({
           select: { id: true },
         });
         if (!still) {
-          await db.digests.deleteMany({ where: { id: digest.id } });
+          // A row an earlier attempt may have sent is kept; only one made in this run goes.
+          if (!existing) await db.digests.deleteMany({ where: { id: digest.id, sentAt: null } });
           run.skipped += 1;
           continue;
         }
-        sent = await send({
+        const mail = {
           to: user.email,
           ...email,
           // The row's id: a retry of this same digest is one email.
@@ -417,7 +423,16 @@ export async function runDigests({
             "List-Unsubscribe": `<${appBase()}/api/unsubscribe?token=${unsubscribeToken(user.id)}>`,
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
           },
-        });
+        };
+        try {
+          sent = await send(mail);
+        } catch (error) {
+          // No answer is not "not sent". The daily run cannot come back inside the provider's
+          // 24-hour key, so the one retry is made now, with the same key: it cannot make a second
+          // email. Anything else (a refusal) is not retried.
+          if (!(error instanceof EmailSendError && error.maybeSent)) throw error;
+          sent = await send(mail);
+        }
       } catch (error) {
         log.error("Digest email failed", { userId: user.id, error: String(error) });
         run.failed += 1;
@@ -425,8 +440,10 @@ export async function runDigests({
         // with the same key. Anything else was never delivered, so the row goes and the next run
         // starts fresh (also when the email could not even be prepared, e.g. a missing signing
         // secret).
-        if (!(error instanceof EmailSendError && error.maybeSent)) {
-          await db.digests.deleteMany({ where: { id: digest.id } });
+        // A row an earlier attempt may have sent is never released, and never one another run has
+        // since marked sent.
+        if (!existing && !(error instanceof EmailSendError && error.maybeSent)) {
+          await db.digests.deleteMany({ where: { id: digest.id, sentAt: null } });
         }
         continue;
       }

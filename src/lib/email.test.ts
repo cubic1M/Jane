@@ -32,6 +32,19 @@ describe("sendEmail idempotency key", () => {
     });
   });
 
+  it("still classifies a failure whose body cannot be read, by its status", async () => {
+    const unreadable = (status: number) =>
+      ({
+        ok: false,
+        status,
+        text: () => Promise.reject(new Error("reset")),
+      }) as unknown as Response;
+    fetchMock.mockResolvedValueOnce(unreadable(503));
+    await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: true });
+    fetchMock.mockResolvedValueOnce(unreadable(422));
+    await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: false });
+  });
+
   it("marks a lost answer and a server error as maybe sent, a refusal as not", async () => {
     fetchMock.mockRejectedValueOnce(new Error("timeout"));
     await expect(sendEmail(mail)).rejects.toMatchObject({ maybeSent: true });
