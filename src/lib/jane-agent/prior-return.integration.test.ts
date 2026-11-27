@@ -229,6 +229,43 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
     });
   });
 
+  it("a newer confirmed return for the year replaces the older one, and one already answered replaces nothing", async () => {
+    const { userId, documentId } = await person("prior-replace");
+    const fields = {
+      taxYear: "2025",
+      filingStatus: "single",
+      deductionKind: "itemized",
+      agi: "60000",
+      totalTax: "6000",
+      refund: "200",
+    };
+    const first = (await readPriorReturn(userId, documentId, { client, now: LINKED }))!;
+    await confirmPriorReturn(userId, first.id, { client, now: LINKED, fields });
+    const other = await client.document.create({
+      data: {
+        userId,
+        kind: "tax_return",
+        fileName: SAMPLE_DRAFT_NAME,
+        contentType: "application/pdf",
+        sizeBytes: 3,
+        encryptedBytes: Buffer.from("abc"),
+      },
+    });
+    const second = await client.priorReturn.create({
+      data: { userId, documentId: other.id, status: "waiting", fields: {}, sources: {}, notes: {} },
+    });
+    await confirmPriorReturn(userId, second.id, { client, now: LINKED, fields });
+    const status = async (id: string) =>
+      (await client.priorReturn.findUniqueOrThrow({ where: { id } })).status;
+    expect(await status(first.id)).toBe("dismissed");
+    expect(await status(second.id)).toBe("confirmed");
+    // Answered already: nothing is replaced a second time.
+    await expect(
+      confirmPriorReturn(userId, second.id, { client, now: LINKED, fields }),
+    ).rejects.toBeInstanceOf(PriorReturnError);
+    expect(await status(second.id)).toBe("confirmed");
+  });
+
   it("is not offered to real accounts", async () => {
     const real = await client.user.create({
       data: { email: `prior-real-${crypto.randomUUID()}@example.com` },
