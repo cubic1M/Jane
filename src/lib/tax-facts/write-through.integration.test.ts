@@ -47,7 +47,12 @@ describe.runIf(url)("the household record follows the older stores", () => {
       })
     )?.value;
   const rows = (id: string, key: string) => client.taxFact.count({ where: { userId: id, key } });
-  const options = { client, now: NOW };
+  const options = {
+    get client() {
+      return client;
+    },
+    now: NOW,
+  };
 
   beforeAll(async () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
