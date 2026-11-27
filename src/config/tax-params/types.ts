@@ -55,6 +55,10 @@ export type FederalParams = Readonly<{
   // Someone who can be claimed as a dependent: the standard deduction is the greater of `floor` or
   // earned income plus `plusEarned`, never more than the regular amount (26 USC 63(c)(5)).
   dependentStandard: Cited<{ floor: number; plusEarned: number }>;
+  // Income tax withholding for a single person on the default Form W-4 (Pub. 15-T, the annual percentage
+  // method): the year's pay less `adjustment` (Worksheet 1A, line 1g) has nothing withheld on its first
+  // `zeroBand`, then the brackets. The two together equal the standard deduction for a single person.
+  withholding: Cited<{ adjustment: number; zeroBand: number }>;
   // A net capital loss comes off other income up to this much a year.
   capitalLoss: Cited<{ normal: number; marriedSeparate: number }>;
   ctc: Cited<{

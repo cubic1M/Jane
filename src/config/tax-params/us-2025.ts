@@ -169,6 +169,17 @@ export const US_2025: FederalParams = {
         "Rev. Proc. 2024-40 section 2.15(2): the greater of $1,350 or earned income plus $450 (not changed by Rev. Proc. 2025-32; read 2026-11-27); Pub. 501 (2025) Table 8 and its Examples 1 to 4",
     },
   ),
+  withholding: cited(
+    { adjustment: $(8_600), zeroBand: $(6_400) },
+    {
+      source: "https://www.irs.gov/pub/irs-prior/p15t--2025.pdf",
+      where:
+        "Pub. 15-T (2025), Worksheet 1A line 1g and the 2025 Percentage Method Tables, standard withholding rate schedule for single",
+      status: "unconfirmed",
+      verify:
+        "Not read at the source on 2026-11-27: the 2025 edition's PDF has no readable text for the tables. The 2026 edition was read ($8,600 and a $7,500 band, together the 2026 standard deduction of $16,100). For 2025 the band is $6,400 so that the two equal the 2025 standard deduction in Rev. Proc. 2024-40 ($15,000). Read the 2025 tables and set the status to verified.",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     { source: code("1211"), where: "26 USC 1211(b)(1) (statute, not indexed)" },

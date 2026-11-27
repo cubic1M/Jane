@@ -50,20 +50,23 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
     expect(Object.keys(p).sort()).toEqual(Object.keys(federalParams(2026)).sort());
   });
 
-  it("has exactly one group not final: the mileage rate, awaited, never copied from 2026", () => {
+  it("has exactly two groups not final: the mileage rate and the withholding amounts, awaited, never copied from 2026", () => {
     expect(
       pendingGroups()
         .filter((g) => g.year === 2027)
         .map((g) => g.key),
-    ).toEqual(["mileage"]);
-    expect(p.mileage.status).toBe("awaited");
-    // It holds no value at all: any read throws, naming the year and the group (awaited.ts).
-    expect(() => p.mileage.value).toThrow(
-      expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group: "mileage" }),
-    );
+    ).toEqual(["withholding", "mileage"]);
+    // They hold no value at all: any read throws, naming the year and the group (awaited.ts).
+    for (const group of ["mileage", "withholding"] as const) {
+      expect(p[group].status).toBe("awaited");
+      expect(() => p[group].value).toThrow(
+        expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group }),
+      );
+    }
     expect(p.mileage.verify).toMatch(/AWAITED/);
+    expect(p.withholding.verify).toMatch(/AWAITED/);
     for (const [key, group] of Object.entries(p)) {
-      if (key === "year" || key === "mileage") continue;
+      if (key === "year" || key === "mileage" || key === "withholding") continue;
       expect((group as Cited<unknown>).status, key).toBe("verified");
     }
   });
@@ -82,6 +85,7 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
         "savers",
         "saversMatch",
         "selfEmployment",
+        "withholding",
       ].sort(),
     );
   });
@@ -90,7 +94,7 @@ describe("2027 is a draft year, refused by the estimator's lookup", () => {
     const r = taxYearReady("2026-12-01");
     expect(r.state).toBe("warning");
     expect(r.messages[0]).toBe(
-      "No tax figures for 2027 yet; 2027 starts soon (a draft file exists; not final: mileage)",
+      "No tax figures for 2027 yet; 2027 starts soon (a draft file exists; not final: withholding, mileage)",
     );
     expect(taxYearReady("2027-01-01").state).toBe("red");
   });

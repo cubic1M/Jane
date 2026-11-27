@@ -238,6 +238,11 @@ export function probePlan(year: number): Record<string, GroupPlan> {
         },
       ],
     },
+    withholding: {
+      exempt:
+        "Not read by estimateTaxes: only the paycheck withholding card (withheldPerCheck in src/detectors/student-withholding.ts), tested in student-withholding.test.ts.",
+      step: "none",
+    },
     capitalLoss: {
       probes: saltKinds.map(([key, s]) => ({
         param: key,

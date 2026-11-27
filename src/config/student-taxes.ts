@@ -262,10 +262,10 @@ export const EITC_FORM = {
 // --- Withholding ----------------------------------------------------------------------------------
 
 export const W4 = {
-  // Pub. 15-T's standard annual table for a single W-4 takes $8,600 off the year's pay and withholds
-  // nothing on the first $7,500 after it, then the brackets: withholding on a paycheck is the year's
-  // tax on its pay times the paychecks in a year, less the standard deduction, over those paychecks.
-  noWithholdingBelowCents: 1_610_000,
+  // Pub. 15-T's standard annual table for a single W-4 takes an amount off the year's pay and withholds
+  // nothing on the band after it, then the brackets (both amounts are the year's, in the tax-params
+  // `withholding` group): withholding on a paycheck is the year's tax on its pay times the paychecks
+  // in a year, less that, over those paychecks.
   // A job seen starting when the data shows no pay for this many pay intervals from its first day.
   startGapIntervals: 1.15,
   // Paychecks this many days apart, at most, make a pay interval; and the paychecks a year for each.

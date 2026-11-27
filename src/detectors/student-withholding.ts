@@ -11,7 +11,6 @@ import {
 } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
 import { federalParams, ownLawYear } from "@/config/tax-params";
-import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
 import { observedFilingDay } from "@/lib/filing-day";
 import { formatCents, formatWholeDollars } from "@/lib/money";
@@ -64,20 +63,21 @@ const RHYTHM_WORDS: Readonly<Record<number, string>> = {
 };
 
 // Federal withholding on one paycheck of `gross` under the standard single W-4, with `perYear` of them.
-// `year` is the wage year's law (the tables are that year's); the default is only for tests.
+// `year` is the wage year's law (the tables are that year's), always given.
 export const withheldPerCheck = (
   gross: number,
   perYear: number,
-  status: FilingStatus = "single",
-  year: number = TAX_RATES_YEAR,
+  status: FilingStatus,
+  year: number,
 ) => {
   const law = federalParams(year);
+  const w4 = law.withholding.value;
   return Math.round(
     bracketTax(
       Math.max(
         0,
         gross * perYear -
-          (status === "single" ? W4.noWithholdingBelowCents : law.standardDeduction.value[status]),
+          (status === "single" ? w4.adjustment + w4.zeroBand : law.standardDeduction.value[status]),
       ),
       law.brackets.value[status],
     ) / perYear,
@@ -135,7 +135,7 @@ const partYearWithholding: Detector = {
         },
       ]),
       urgency: "soon",
-      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year and your W-4 is the default one (I see your take-home deposits, not what was withheld; a pay stub shows the federal tax taken). It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}${filingNoteOf(facts)}`,
+      why: `Your pay from ${employer} starts ${long(first)}, about ${formatCents(net)} ${RHYTHM_WORDS[rhythm.perYear]}. Withholding tables (IRS Pub. 15-T) treat each paycheck as if it came all year: about ${formatCents(check)} before anything is taken out is ${formatCents(check * rhythm.perYear)} a year, withheld about ${formatCents(withheldPerCheck(check, rhythm.perYear, "single", law))} a paycheck. Your ${checks} paychecks to December 31 come to about ${formatCents(yearPay)}, which carries ${formatCents(tax)} of federal income tax, so about ${formatCents(refund)} more is withheld than the year's tax, if this is your only pay this year and your W-4 is the default one (I see your take-home deposits, not what was withheld; a pay stub shows the federal tax taken). It comes back after you file. IRS Pub. 15-T has a part-year method for someone working no more than ${W4.partYearMaxDays} days in the year: withholding figured on what the year's pay really is, when the employee asks the employer for it in writing. Asking for it is yours to decide.${exempt}${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 15-T", href: SOURCES.pub15t.url }],
     });

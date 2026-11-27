@@ -31,6 +31,7 @@ export const TAX_YEAR_SOURCES = [
       "standardDeduction",
       "additionalStandard",
       "dependentStandard",
+      "withholding",
       "ctc",
       "eitc",
       "qbi",

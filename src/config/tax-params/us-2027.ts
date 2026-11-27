@@ -8,9 +8,9 @@ import type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 // limits, IR-2026-136), Rev. Proc. 2026-24 (Health Savings Accounts, IRB 2026-25), the Social
 // Security Administration's Federal Register notice of the 2027 wage base, and the Code.
 //
-// THIS YEAR IS A DRAFT. One group is not published yet: the business standard mileage rate for 2027
-// (the IRS usually announces it in December). It is marked "unconfirmed" with a zero value, not
-// guessed and not copied from 2026. Until it is published and the file is complete, 2027 stays out
+// THIS YEAR IS A DRAFT. Two groups are not published yet: the business standard mileage rate for 2027
+// and the withholding amounts of Publication 15-T (the IRS usually publishes both in December).
+// Both are AWAITED (awaited.ts): no value, a read throws, nothing is guessed or copied from 2026. Until it is published and the file is complete, 2027 stays out
 // of SUPPORTED_TAX_YEARS: `federalParams(2027)` refuses it, and the nightly check keeps warning
 // (docs/tax/law-change.md). All money is in cents; rates are fractions.
 //
@@ -163,6 +163,20 @@ export const US_2027: FederalParams = {
         "section 3.15(2), dependent: the greater of $1,400 or earned income plus $500 (read 2026-11-27)",
     },
   ),
+  // AWAITED, not published. Publication 15-T for 2027 is usually out in December. The IRS page
+  // (irs.gov/publications/p15t) was titled "Publication 15-T (2026)" and its PDF last modified
+  // 2025-12-11 when read on 2026-11-27. An early IRS draft (p15t--dft.pdf, "For use in 2027") still
+  // carries 2026's $8,600 and $7,500, not 2027's $16,600 standard deduction (Rev. Proc. 2026-35,
+  // 3.15(1)), so it is not used. The group holds no value: reading it throws
+  // NoTaxParamsError(2027, "withholding") (awaited.ts).
+  withholding: awaited<FederalParams["withholding"]["value"]>(2027, "withholding", {
+    source: "https://www.irs.gov/publications/p15t",
+    where:
+      "IRS Publication 15-T page and PDF, read 2026-11-27: the newest edition is 2026 (PDF last modified 2025-12-11); no final 2027 edition is published",
+    checkedOn: READ,
+    verify:
+      "AWAITED: Publication 15-T for 2027 (usually December 2026). Do not copy 2026's $8,600 and $7,500, and do not use the early draft p15t--dft.pdf. When it is out, fill both amounts (Worksheet 1A line 1g; the 0% band of the standard single schedule) with cited(...) and status verified, and delete this note.",
+  }),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     {
