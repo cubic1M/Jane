@@ -1,0 +1,686 @@
+[
+  {
+    "id": "he1-single-50k",
+    "title": "HE-1: single, wages $50,000",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 (single brackets) and 4.14(1) (standard deduction)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "expected": {
+      "agi": 5000000,
+      "standardDeduction": 1610000,
+      "taxable": 3390000,
+      "incomeTax": 382000,
+      "totalTax": 382000
+    },
+    "note": "Taxable 50,000 - 16,100 = 33,900. Tax 10% x 12,400 = 1,240 plus 12% x (33,900 - 12,400 = 21,500) = 2,580, total 3,820.00."
+  },
+  {
+    "id": "he-w2-single-refund",
+    "title": "HE-W2: single, W-2 box 1 $40,000, box 2 $3,000",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 and 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "extra": {
+      "federalWithheldCents": 300000
+    },
+    "expected": {
+      "taxable": 2390000,
+      "incomeTax": 262000,
+      "paid": 300000,
+      "refund": 38000
+    },
+    "note": "Taxable 40,000 - 16,100 = 23,900. Tax 1,240 + 12% x (23,900 - 12,400 = 11,500) = 1,240 + 1,380 = 2,620.00. Refund 3,000 - 2,620 = 380.00."
+  },
+  {
+    "id": "single-85632-wages",
+    "title": "Single, wages $85,632, $13,573.68 withheld (from tax-estimate.test.ts)",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 and 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 8563200,
+      "socialSecurityWagesCents": 9132000
+    },
+    "extra": {
+      "federalWithheldCents": 1357368
+    },
+    "expected": {
+      "taxable": 6953200,
+      "incomeTax": 1000904,
+      "totalTax": 1000904,
+      "refund": 356464
+    },
+    "note": "Taxable 85,632 - 16,100 = 69,532. Tax 5,800 + 22% x (69,532 - 50,400 = 19,132) = 5,800 + 4,209.04 = 10,009.04. Refund 13,573.68 - 10,009.04 = 3,564.64."
+  },
+  {
+    "id": "joint-two-children",
+    "title": "Married filing jointly, two children, wages $85,632",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 (joint brackets), 4.14(1), 4.05 (child tax credit $2,200)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 2,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 8563200
+    },
+    "expected": {
+      "taxable": 5343200,
+      "incomeTax": 591584,
+      "childTaxCredit": 440000,
+      "totalTax": 151584
+    },
+    "note": "Taxable 85,632 - 32,200 = 53,432. Tax 2,480 + 12% x (53,432 - 24,800 = 28,632) = 2,480 + 3,435.84 = 5,915.84. Credit 2 x 2,200 = 4,400. Total 1,515.84."
+  },
+  {
+    "id": "itemizer-salt-floors",
+    "title": "Single, itemizes: SALT, mortgage interest, gifts above 0.5% of AGI, medical under 7.5%",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "26 USC 164(b)(7), 170(b)(1)(I), 213(a); standard deduction Rev. Proc. 2025-32 section 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 8563200
+    },
+    "extra": {
+      "mortgageInterestCents": 1023040,
+      "charityCents": 100000,
+      "stateWithheldCents": 504000,
+      "otherStateLocalTaxCents": 600000,
+      "medicalCents": 100000
+    },
+    "expected": {
+      "itemizedStateLocal": 1104000,
+      "itemizedMortgage": 1023040,
+      "itemizedCharity": 57184,
+      "itemizedMedical": 0,
+      "taxable": 6378976,
+      "incomeTax": 874575
+    },
+    "note": "SALT 5,040 + 6,000 = 11,040, under the 40,400 cap. Gifts 1,000 - 0.5% x 85,632 (428.16) = 571.84. Medical 1,000 under 7.5% x 85,632 = 6,422.40, so 0. Itemized 11,040 + 10,230.40 + 571.84 = 21,842.24, over 16,100. Taxable 85,632 - 21,842.24 = 63,789.76. Tax 5,800 + 22% x 13,389.76 = 8,745.7472, rounded 8,745.75."
+  },
+  {
+    "id": "gifts-nonitemizer-single",
+    "title": "Single, standard deduction, $1,500 of cash gifts: $1,000 deductible",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p): $1,000 ($2,000 joint) for tax years after 2025"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "extra": {
+      "charityCents": 150000
+    },
+    "expected": {
+      "nonItemizerCharity": 100000
+    },
+    "note": "Gifts 1,500 are capped at 1,000 for a single filer."
+  },
+  {
+    "id": "gifts-nonitemizer-joint",
+    "title": "Married filing jointly, standard deduction, $1,500 of cash gifts: all deductible",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p): $1,000 ($2,000 joint) for tax years after 2025"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "extra": {
+      "charityCents": 150000
+    },
+    "expected": {
+      "nonItemizerCharity": 150000
+    },
+    "note": "Gifts 1,500 are under the 2,000 joint cap."
+  },
+  {
+    "id": "se-60k-qbi",
+    "title": "Single, $60,000 of self-employment income: SE tax, half deducted, QBI",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Schedule SE (92.35%, 12.4% + 2.9%); 26 USC 199A(a) (20%); Rev. Proc. 2025-32 sections 4.01, 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "selfEmploymentCents": 6000000
+    },
+    "expected": {
+      "selfEmploymentTax": 847773,
+      "halfSelfEmploymentTax": 423887,
+      "agi": 5576113,
+      "qbi": 793223,
+      "taxable": 3172890,
+      "incomeTax": 355947,
+      "totalTax": 1203720
+    },
+    "note": "Earnings 60,000 x 0.9235 = 55,410. SE tax 55,410 x 15.3% = 8,477.73; half 4,238.865 rounds to 4,238.87. AGI 55,761.13. After the standard deduction 39,661.13. QBI the smaller of 20% x (60,000 - 4,238.87) = 11,152.23 and 20% x 39,661.13 = 7,932.23, so 7,932.23. Taxable 31,728.90. Tax 1,240 + 12% x 19,328.90 = 3,559.47. Total 3,559.47 + 8,477.73 = 12,037.20."
+  },
+  {
+    "id": "student-loan-interest-phase-out",
+    "title": "Single, $86,500 of wages: student loan interest 10% of the way through the phase-out",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.29: phase-out $85,000 to $100,000"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 8650000
+    },
+    "extra": {
+      "studentLoanInterestCents": 80550
+    },
+    "expected": {
+      "studentLoanInterest": 72495
+    },
+    "note": "86,500 is 1,500 into the 15,000 range, a tenth. 805.50 x 0.9 = 724.95."
+  },
+  {
+    "id": "hoh-two-children-credits",
+    "title": "Head of household, two children, wages $30,000: child tax credit, refundable part, earned income credit",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 sections 4.05 (child tax credit), 4.06 (earned income credit); 26 USC 24(d), 32(a)"
+    },
+    "household": {
+      "filingStatus": "head_of_household",
+      "childrenUnder17": 2,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "expected": {
+      "taxable": 585000,
+      "incomeTax": 58500,
+      "childTaxCredit": 58500,
+      "additionalChildTaxCredit": 340000,
+      "earnedIncomeCredit": 602923,
+      "totalTax": -942923
+    },
+    "note": "Taxable 30,000 - 24,150 = 5,850; tax 10% = 585. Credit 4,400 allowed, 585 used against tax. Refundable: the smallest of 4,400 - 585 = 3,815, 2 x 1,700 = 3,400 and 15% x (30,000 - 2,500) = 4,125, so 3,400. Earned income credit, two children: the smaller of 7,316 and 40% x 30,000, less 21.06% x (30,000 - 23,890 = 6,110) = 1,286.766, so 6,029.23 (head of household uses the single thresholds). Total 585 - 585 - 3,400 - 6,029.23 = -9,429.23."
+  },
+  {
+    "id": "other-dependant-credit",
+    "title": "Single, one other dependant, wages $40,000: $500 credit",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/24",
+      "where": "26 USC 24(h)(4): $500 credit for other dependants"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 1,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000
+    },
+    "expected": {
+      "otherDependantCredit": 50000,
+      "totalTax": 212000
+    },
+    "note": "Tax 2,620.00 as in HE-W2, less the 500 credit (nonrefundable, within the tax): 2,120.00."
+  },
+  {
+    "id": "eitc-childless-plateau",
+    "title": "Single, age 30, wages $9,000: childless earned income credit at its maximum",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.06(1): maximum credit $664 with no children"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 30,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 900000
+    },
+    "expected": {
+      "earnedIncomeCredit": 66400,
+      "incomeTax": 0,
+      "totalTax": -66400,
+      "refund": 66400
+    },
+    "note": "7.65% x 9,000 = 688.50, over the 664 maximum, so 664. Wages are under the 16,100 standard deduction, so no income tax."
+  },
+  {
+    "id": "niit-single",
+    "title": "Single, wages $150,000 and $100,000 of interest: net investment income tax",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/1411",
+      "where": "26 USC 1411(a)(1), (b)(1): 3.8% of the smaller of net investment income and the excess over $200,000"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 15000000,
+      "interestCents": 10000000
+    },
+    "expected": {
+      "agi": 25000000,
+      "netInvestmentIncomeTax": 190000,
+      "additionalMedicare": 0
+    },
+    "note": "AGI 250,000, 50,000 over 200,000, smaller than the 100,000 of interest: 3.8% x 50,000 = 1,900. Wages 150,000 are under 200,000, so no Additional Medicare tax."
+  },
+  {
+    "id": "additional-medicare-single",
+    "title": "Single, wages $250,000: Additional Medicare tax",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/3101",
+      "where": "26 USC 3101(b)(2): 0.9% of wages over $200,000 (single)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 25000000
+    },
+    "expected": {
+      "additionalMedicare": 45000
+    },
+    "note": "0.9% x (250,000 - 200,000) = 450.00."
+  },
+  {
+    "id": "capital-gains-stacked",
+    "title": "Single, wages $60,000 and $20,000 of long-term gains: 0% and 15% bands",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 sections 4.01 and 4.03 (0% up to $49,450 single)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 6000000,
+      "longTermGainsCents": 2000000
+    },
+    "expected": {
+      "totalIncome": 8000000,
+      "taxable": 6390000,
+      "incomeTax": 718750
+    },
+    "note": "Taxable 80,000 - 16,100 = 63,900; ordinary 43,900 taxed 1,240 + 12% x 31,500 = 5,020. The gains sit from 43,900 to 63,900: 0% up to 49,450 (5,550), 15% on 14,450 = 2,167.50. Total 7,187.50."
+  },
+  {
+    "id": "amt-iso-no-phase-out",
+    "title": "Single, wages $200,000 and $300,000 of ISO preference: alternative minimum tax",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.10 (exemption $90,100, 28% over $244,500, phase-out from $500,000)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 20000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "incomeTax": 3673400,
+      "amt": 7314800,
+      "totalTax": 10988200
+    },
+    "note": "Taxable 183,900; regular tax 17,966 + 24% x 78,200 = 36,734. AMT income 183,900 + 16,100 + 300,000 = 500,000, exactly at the phase-out start, so the full 90,100 exemption: base 409,900; 26% x 244,500 = 63,570 plus 28% x 165,400 = 46,312, tentative 109,882. AMT 109,882 - 36,734 = 73,148."
+  },
+  {
+    "id": "amt-exemption-phase-out-50-percent",
+    "title": "Single, wages $400,000 and $300,000 of ISO preference: the exemption phases out at 50%",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/55",
+      "where": "26 USC 55(d)(4)(A)(ii)(IV): 50 percent for 25 percent, tax years after 2025 (Pub. L. 119-21 section 70107)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 40000000
+    },
+    "extra": {
+      "amtPreferenceCents": 30000000
+    },
+    "expected": {
+      "amt": 8797575
+    },
+    "expectedFailure": {
+      "steps": ["unowned"],
+      "figures": ["amt"],
+      "reason": "us-2026.ts amt.phaseOutRate is 0.25 and the estimate uses it; the statute says 0.5 from 2026 (flagged WRONG TODAY in Tax T1). No roadmap step owns the correction."
+    },
+    "note": "Taxable 383,900; regular tax 58,448 + 35% x 127,675 = 103,134.25. AMT income 383,900 + 16,100 + 300,000 = 700,000. Exemption 90,100 - 50% x (700,000 - 500,000) = 0 (not below zero). Base 700,000: 26% x 244,500 = 63,570 plus 28% x 455,500 = 127,540, tentative 191,110. AMT 191,110 - 103,134.25 = 87,975.75. With the code's 25% the exemption is 40,100 and the AMT 76,747.75."
+  },
+  {
+    "id": "he3a-dependent-standard-deduction",
+    "title": "HE-3a: single, claimed as a dependent, wages $6,000: standard deduction $6,450",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(2): the greater of $1,350 or $450 plus earned income, up to the regular amount"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 19,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 600000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 645000
+    },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate gives everyone the full standard deduction (audit 4.5.7); T5 adds the dependent's limit."
+    },
+    "note": "min(16,100, max(1,350, 6,000 + 450 = 6,450)) = 6,450."
+  },
+  {
+    "id": "he3b-dependent-standard-deduction-capped",
+    "title": "HE-3b: single, claimed as a dependent, wages $20,000: the regular amount caps it",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(2)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 19,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 2000000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 1610000,
+      "taxable": 390000,
+      "incomeTax": 39000
+    },
+    "note": "min(16,100, 20,450) = 16,100. Taxable 3,900, tax 390.00. Passes today by sameness; kept so T5 cannot cap it wrongly."
+  },
+  {
+    "id": "he3c-age-67-standard-deduction",
+    "title": "HE-3c: single, age 67, wages $30,000: standard deduction $18,150",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(1) and (3): $16,100 plus $2,050 for an unmarried person 65 or older"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 67,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "expected": {
+      "standardDeduction": 1815000
+    },
+    "expectedFailure": {
+      "steps": ["T5"],
+      "figures": ["standardDeduction"],
+      "reason": "The estimate never adds the 65-and-over amount (audit 4.5.2); T5 adds it. The senior deduction (T19) is not asserted."
+    },
+    "note": "16,100 + 2,050 = 18,150."
+  },
+  {
+    "id": "he4-itemize-or-standard-plus-gifts",
+    "title": "HE-4: single, itemized $16,400 against standard $16,100 plus $1,000 of gifts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p) with Rev. Proc. 2025-32 section 4.14(1): the standard deduction plus up to $1,000 of gifts"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "mortgageInterestCents": 1590000,
+      "charityCents": 100000
+    },
+    "expected": {
+      "taxable": 8290000,
+      "nonItemizerCharity": 100000
+    },
+    "expectedFailure": {
+      "steps": ["T6"],
+      "figures": ["taxable", "nonItemizerCharity"],
+      "reason": "The estimate compares itemized with the standard deduction alone (audit 4.5.3), so it itemizes at 16,400 where standard plus gifts is 17,100; T6 fixes the comparison."
+    },
+    "note": "Itemized 15,900 + (1,000 - 0.5% x 100,000 = 500) = 16,400. Standard path 16,100 + 1,000 = 17,100 is larger. Taxable 100,000 - 17,100 = 82,900 (today 83,600)."
+  },
+  {
+    "id": "additional-medicare-box-5",
+    "title": "Single, W-2 box 1 $190,000 and box 5 $215,000: Additional Medicare tax on the Medicare wages",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/3101",
+      "where": "26 USC 3101(b)(2): 0.9% of wages (Medicare wages, W-2 box 5, Form 8959 line 1) over $200,000"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 19000000
+    },
+    "extra": {
+      "medicareWagesCents": 21500000
+    },
+    "expected": {
+      "additionalMedicare": 13500
+    },
+    "expectedFailure": {
+      "steps": ["T28"],
+      "figures": ["additionalMedicare"],
+      "reason": "The estimate uses box 1 wages for the Additional Medicare tax, where Form 8959 uses Medicare wages (box 5); T28 feeds confirmed W-2 boxes into the estimate. Found by CodeRabbit."
+    },
+    "note": "0.9% x (215,000 - 200,000) = 135.00. Box 1 wages alone (190,000) are under the threshold, so the estimate gives 0."
+  },
+  {
+    "id": "eitc-17-year-old-qualifying-child",
+    "title": "Single, age 40, wages $15,000, a 17-year-old qualifying child: one-child earned income credit",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.06(1): $4,427 with one child; Publication 596 (2025) Rule 8: a qualifying child is under 19 at the end of the year"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 1,
+      "age": 40,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 1500000
+    },
+    "extra": {
+      "qualifyingChildren": 1
+    },
+    "expected": {
+      "earnedIncomeCredit": 442700
+    },
+    "expectedFailure": {
+      "steps": ["T16"],
+      "figures": ["earnedIncomeCredit"],
+      "reason": "The estimate counts only children under 17 for the earned income credit (audit 4.5.4), so a 17-year-old makes it the childless table (age 40 is in range, wages 15,000 are past its end: 0); T16 counts qualifying children under 19. Found by CodeRabbit."
+    },
+    "note": "Credit for one child: the smaller of 4,427 and 34% x 15,000 = 5,100, so 4,427; wages are under the 23,890 phase-out start. The child is 17, so the child tax credit does not apply (the 500 other-dependant credit does)."
+  },
+  {
+    "id": "age-67-senior-deduction",
+    "title": "Single, age 67, wages $30,000: standard deduction $18,150 and the $6,000 senior deduction",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/151",
+      "where": "26 USC 151(d)(5)(C): $6,000 for a person 65 or older, reduced 6% of modified AGI over $75,000; Rev. Proc. 2025-32 section 4.14"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 67,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "expected": {
+      "standardDeduction": 1815000,
+      "taxable": 585000,
+      "incomeTax": 58500
+    },
+    "expectedFailure": {
+      "steps": ["T5", "T19"],
+      "figures": ["standardDeduction", "taxable", "incomeTax"],
+      "reason": "The estimate adds neither the 65-and-over standard deduction (T5) nor the senior deduction (T19). Found by CodeRabbit."
+    },
+    "note": "Standard 16,100 + 2,050 = 18,150. Taxable 30,000 - 18,150 - 6,000 = 5,850 (AGI 30,000 is under 75,000, no reduction). Tax 10% x 5,850 = 585.00."
+  }
+]
