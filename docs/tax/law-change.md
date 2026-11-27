@@ -13,9 +13,9 @@ the first person's day reaches the date.
 
 | Day | Figures for that year | Result |
 |---|---|---|
-| any day | the current year is missing | red: the invariant is broken, the team is alerted, and the line is in the daily accuracy email |
-| from `TAX_PARAMS_LEAD_DAYS` (31) days before January 1, so December 1 | the coming year is missing | warning, in the daily accuracy email |
-| any day | a draft year, or a figure read from an IRS draft, was last read more than `TAX_DRAFT_MAX_DAYS` (60) days ago | warning, in the daily accuracy email |
+| any day | the current year is missing | red: the invariant is broken, the team is alerted, and the line is in the accuracy email every day |
+| from `TAX_PARAMS_LEAD_DAYS` (31) days before January 1, so December 1 | the coming year is missing | warning: in the accuracy email on Mondays only (every day if the email goes out anyway for an accuracy reason) |
+| any day | a draft year, or a figure read from an IRS draft, was last read more than `TAX_DRAFT_MAX_DAYS` (60) days ago | warning: in the accuracy email on Mondays only (every day if the email goes out anyway for an accuracy reason) |
 
 Only years and group names are written: nothing about a person. Sample (trial) people and analytics
 are not touched. Both limits are in `src/config/invariants.ts`.

@@ -288,11 +288,11 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
 
   it("emails a missing tax year with no accuracy run to go with it (names and years only)", async () => {
     const send = vi.fn(async () => undefined);
-    // Two days after December 1, the day the check starts to warn about 2027.
-    const when = new Date("2026-12-03T12:00:00Z");
+    // A Monday after December 1, when the check starts to warn about 2027.
+    const when = new Date("2026-12-07T00:00:00Z");
     const taxReady = () => ({
       state: "warning" as const,
-      day: "2026-12-04",
+      day: "2026-12-08",
       messages: ["No tax figures for 2027 yet; 2027 starts soon"],
     });
     expect(await sendAccuracyEmail({ client, now: when, send, taxReady })).toBe(true);
@@ -300,7 +300,7 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     expect(message.subject).toBe("Jane tax figures: warning");
     expect(message.text).toContain("tax figures (warning): No tax figures for 2027");
     // A fresh run where every check passed does not make a tax-only email an accuracy failure.
-    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-07" } });
     const passing = {
       checked: 3,
       notChecked: 0,
@@ -311,8 +311,8 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     await client.cronRun.create({
       data: {
         name: ACCURACY_JOB,
-        startedAt: new Date("2026-12-03T11:00:00Z"),
-        finishedAt: new Date("2026-12-03T11:05:00Z"),
+        startedAt: new Date("2026-12-06T22:00:00Z"),
+        finishedAt: new Date("2026-12-06T22:05:00Z"),
         ok: true,
         summary: passing as never,
       },
@@ -323,14 +323,43 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     expect(fresh.text).toContain("Jane's nightly checks found something to act on:");
     expect(fresh.text).not.toContain("accuracy checks on");
     await client.cronRun.deleteMany({
-      where: { name: ACCURACY_JOB, startedAt: new Date("2026-12-03T11:00:00Z") },
+      where: { name: ACCURACY_JOB, startedAt: new Date("2026-12-06T22:00:00Z") },
     });
-    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-07" } });
     // Nothing is sent on a day with nothing to say.
-    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
-    const calm = () => ({ state: "ok" as const, day: "2026-12-04", messages: [] });
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-07" } });
+    const calm = () => ({ state: "ok" as const, day: "2026-12-08", messages: [] });
     expect(await sendAccuracyEmail({ client, now: when, send, taxReady: calm })).toBe(false);
     expect(send).toHaveBeenCalledTimes(2);
-    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-07" } });
+  });
+
+  describe("a tax-year warning is emailed once a week, red every day (Tax T32)", () => {
+    const warning = () => ({
+      state: "warning" as const,
+      day: "",
+      messages: ["No tax figures for 2027 yet"],
+    });
+    const red = () => ({ state: "red" as const, day: "", messages: ["No tax figures for 2027"] });
+    // 2026-12-06 is a Sunday; the check's clock is UTC+14, so noon UTC is the same date there.
+    const at = (day: string) => new Date(`${day}T00:00:00Z`);
+    const attempt = async (day: string, taxReady: () => never) => {
+      const send = vi.fn(async () => undefined);
+      const sent = await sendAccuracyEmail({ client, now: at(day), send, taxReady });
+      await client.healthNotice.deleteMany({ where: { key: { startsWith: "accuracy:" } } });
+      return sent;
+    };
+
+    it("warning alone: Sunday no, Monday yes, Tuesday no", async () => {
+      // 00:00 UTC is 14:00 the same date on the UTC+14 clock, so these are the check's own days.
+      expect(await attempt("2026-12-06", warning as never)).toBe(false);
+      expect(await attempt("2026-12-07", warning as never)).toBe(true);
+      expect(await attempt("2026-12-08", warning as never)).toBe(false);
+    });
+
+    it("red alone: every day, Tuesday too", async () => {
+      expect(await attempt("2026-12-08", red as never)).toBe(true);
+      expect(await attempt("2026-12-06", red as never)).toBe(true);
+    });
   });
 });
