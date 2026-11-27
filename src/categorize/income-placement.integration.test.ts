@@ -90,6 +90,32 @@ describe.runIf(url)("who placed a deposit", { timeout: 60_000 }, () => {
     expect(new Set(rows.map((t) => t.pfcDetailed))).toEqual(new Set(["INCOME_OTHER"]));
   });
 
+  it("leaves a deposit the person gave the plain-deposit category by hand as they set it", async () => {
+    const who = await person();
+    const cash = { description: "MOBILE DEPOSIT", merchantName: null, cents: 8_000, step: 7 };
+    for (let i = 0; i < 6; i += 1) {
+      const row = await credit(who, i, cash);
+      await client.transaction.update({
+        where: { id: row.id },
+        data: {
+          pfcPrimary: "TRANSFER_IN",
+          pfcDetailed: "TRANSFER_IN_DEPOSIT",
+          categorySource: "rule",
+        },
+      });
+    }
+    const db = scopedFor(who.userId, client);
+    const [one] = await client.transaction.findMany({ where: { userId: who.userId } });
+    await correctCategory(who.userId, one!.id, "TRANSFER_IN_DEPOSIT", { client });
+    await markCashIncome(db);
+    const kept = await client.transaction.findUniqueOrThrow({ where: { id: one!.id } });
+    expect([kept.categorySource, kept.pfcDetailed, kept.incomePlacement]).toEqual([
+      "user",
+      "TRANSFER_IN_DEPOSIT",
+      "edited",
+    ]);
+  });
+
   it("marks a declined cash-income question, and a category set by hand is not that answer", async () => {
     const who = await person();
     const cash = { description: "MOBILE DEPOSIT", merchantName: null, cents: 8_000, step: 7 };

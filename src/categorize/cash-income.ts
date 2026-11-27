@@ -141,7 +141,11 @@ export async function markCashIncome(db: Pick<ScopedDb, "transactions">): Promis
   const { rows, months } = await loadDeposits(db);
   const found = saidNotIncome(rows) ? null : regularCashDeposits(rows, months);
   const income = new Set(found?.ids ?? []);
-  const toIncome = rows.filter((r) => income.has(r.id) && r.categorySource !== "cash_income");
+  // A deposit the person gave a category by hand stays as they set it, whatever the pass finds.
+  const byHand = (r: DepositRow) => r.categorySource === "user" && r.incomePlacement === "edited";
+  const toIncome = rows.filter(
+    (r) => income.has(r.id) && r.categorySource !== "cash_income" && !byHand(r),
+  );
   const toDeposit = rows.filter((r) => !income.has(r.id) && r.categorySource === "cash_income");
   const [a, b] = await Promise.all([
     toIncome.length
