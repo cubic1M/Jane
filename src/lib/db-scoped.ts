@@ -154,6 +154,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // An interactive transaction over the same scoped tables.
     transaction: <T>(
       run: (tx: {
+        // A record reminder and the list of years it covers (src/lib/audit-records.ts).
+        taxProfiles: typeof inTransaction.taxProfile;
+        deadlines: typeof inTransaction.deadline;
         findings: typeof inTransaction.finding;
         decisions: typeof inTransaction.decision;
         actions: typeof inTransaction.action;
@@ -172,6 +175,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     ) =>
       asUserTransaction(inTransaction, userId, (tx) =>
         run({
+          taxProfiles: tx.taxProfile,
+          deadlines: tx.deadline,
           findings: tx.finding,
           decisions: tx.decision,
           actions: tx.action,
