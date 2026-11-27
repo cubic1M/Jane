@@ -331,8 +331,12 @@ export async function runMonthlyReports({
           },
         });
       } catch (error) {
-        // Given back for the next run.
-        await db.monthlyReports.updateMany({ where: { id: kept.id }, data: { claimedAt: null } });
+        // Given back for the next run, but only while this run still holds it: a claim another run
+        // took over meanwhile is theirs.
+        await db.monthlyReports.updateMany({
+          where: { id: kept.id, claimedAt: now, emailedAt: null },
+          data: { claimedAt: null },
+        });
         throw error;
       }
       await db.monthlyReports.updateMany({ where: { id: kept.id }, data: { emailedAt: now } });

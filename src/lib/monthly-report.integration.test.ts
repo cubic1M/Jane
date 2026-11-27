@@ -226,6 +226,15 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     send.mockRejectedValueOnce(new Error("Resend rejected the email (422)"));
     await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     expect(await row()).toMatchObject({ emailedAt: null, claimedAt: null });
+
+    // A refused send does not clear a claim another run took over while it was sending.
+    const theirs = new Date(NOW.getTime() + 3_600_000);
+    send.mockImplementationOnce(async () => {
+      await client.monthlyReport.updateMany({ where: { userId }, data: { claimedAt: theirs } });
+      throw new Error("Resend rejected the email (422)");
+    });
+    await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
+    expect(await row()).toMatchObject({ emailedAt: null, claimedAt: theirs });
     await client.monthlyReport.updateMany({ where: { userId }, data: { emailedAt: NOW } });
     await client.account.delete({ where: { id: own.id } });
   });
