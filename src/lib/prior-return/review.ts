@@ -70,14 +70,18 @@ export async function loadReturnReviews(
             yearsOfCollegeBefore: family.studentYearsBefore,
             halfTime: family.studentHalfTime,
           };
-    const student = docs.forms.find((f) => f.formKey === "student" && f.document && f.usable);
+    // Every usable student-loan form, not the first: two loans are two forms (CodeRabbit sweep).
+    const studentForms = docs.forms.filter(
+      (f) => f.formKey === "student" && f.document && f.usable,
+    );
     const review = reviewReturn({
       year,
       today: await todayOf(userId, { client, now }),
       filed: r.fields,
       input: estimate.input,
-      studentLoanInterestCents:
-        student?.document?.boxes.interest ?? estimate.input.studentLoanInterestCents,
+      studentLoanInterestCents: studentForms.length
+        ? studentForms.reduce((sum, f) => sum + (f.document?.boxes.interest ?? 0), 0)
+        : estimate.input.studentLoanInterestCents,
       tuitionCents: tags.tagged
         .filter((t) => t.tag === "education" && TUITION_PAYEE.test(t.payee))
         .reduce((s, t) => s + t.amountCents, 0),

@@ -213,7 +213,7 @@ export async function confirmTaxNotice(
   if (!checked.fields.kind || !checked.fields.noticeDate) {
     throw new NoticeError("Say which notice it is and the date on it.");
   }
-  await db.taxNotices.updateMany({
+  const claimed = await db.taxNotices.updateMany({
     where: { id, status: "waiting" },
     data: {
       status: "confirmed",
@@ -222,6 +222,9 @@ export async function confirmTaxNotice(
       notes: checked.notes,
     },
   });
+  // Someone else answered it between the read and the write: nothing here was saved, and no
+  // deadline is made for it (CodeRabbit sweep).
+  if (claimed.count === 0) throw new NoticeError("That one's already been answered.");
   const view = (await getTaxNotice(userId, id, { client }))!;
   if (view.dueOn && view.dueOn >= (await todayOf(userId, { client, now }))) {
     await addDeadline(
@@ -348,10 +351,13 @@ export async function chooseResponse(
     ...facts.payments.slice(0, 4).map((p) => `Proof of payment: ${p.payee}, ${p.date}`),
   ];
   const draft = draftResponse(response, notice.fields, attachments);
-  await scopedFor(userId, client).taxNotices.updateMany({
-    where: { id },
+  // Only while it is still confirmed and unhandled: a letter sent while the draft was being made
+  // keeps the response it was sent with (CodeRabbit sweep).
+  const saved = await scopedFor(userId, client).taxNotices.updateMany({
+    where: { id, status: "confirmed", handledBy: null },
     data: { response, draft: draft.body },
   });
+  if (saved.count === 0) throw new NoticeError("This one's already been sent.");
   await track(userId, "tax_notice_response_drafted", { response });
   return (await getTaxNotice(userId, id, { client }))!;
 }
