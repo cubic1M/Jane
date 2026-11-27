@@ -47,7 +47,7 @@ describe.runIf(url)("taking back the only upload of an account", () => {
     userId = (await client.user.create({ data: { email: "remove-last-notice@example.com" } })).id;
   });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
+    if (userId) await client.user.deleteMany({ where: { id: userId } });
     await client.$disconnect();
   });
 

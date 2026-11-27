@@ -367,6 +367,7 @@ export function SuggestionCards({
         // Already answered (in another tab, or the step after the last): nothing is left to tap, so
         // the card goes, with no button to try again, and the page catches up.
         if (!refusalKeepsCard(result.error)) {
+          markGone(id);
           setAway((now) => (now?.item.id === id ? null : now));
           router.refresh();
           onAnswered?.();

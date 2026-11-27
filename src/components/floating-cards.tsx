@@ -321,6 +321,8 @@ export function FloatingCards({
       setSlide(null);
     }
   }
+  // A card held on screen that the caller no longer has (answered elsewhere) is not held.
+  if (held && !cards.some((c) => c.id === held.card.id)) setHeld(null);
   const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && expanded;

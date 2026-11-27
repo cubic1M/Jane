@@ -31,7 +31,7 @@ describe.runIf(url)("the same link at 3pm and at 7pm Pacific on one calendar day
     ).id;
   });
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
+    if (userId) await client.user.deleteMany({ where: { id: userId } });
     await client.$disconnect();
   });
 

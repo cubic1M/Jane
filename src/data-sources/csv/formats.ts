@@ -79,7 +79,8 @@ export function parseIsoDate(value: string): string | null {
 
 // A currency code written in an amount's own cell ("12.50 EUR"): not US dollars, whatever the
 // file's other columns say. parseAmount strips it, so it is looked for first.
-const FOREIGN_CODE = /\b(EUR|GBP|CAD)\b|([€£¥])/i;
+// A code may touch its digits ("EUR35.00", "35.00EUR"), but is not part of a word.
+const FOREIGN_CODE = /(?<![A-Za-z])(EUR|GBP|CAD)(?![A-Za-z])|([€£¥])/i;
 const SYMBOL_CODE: Record<string, string> = { "€": "EUR", "£": "GBP", "¥": "JPY" };
 export function foreignCurrencyIn(...texts: string[]): string | null {
   for (const text of texts) {
