@@ -63,7 +63,7 @@ const WHOLE_MONTH: Expect = { intent: "whole_picture", list: true, maxChars: 900
 // The employer and when the next pay lands: a date or a day word, not only the name.
 const PAYROLL: Expect = {
   mentions:
-    /(?=[\s\S]*acme)(?=[\s\S]*\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?|(?:mon|tues|wednes|thurs|fri|satur|sun)day|\d{4}-\d{2}-\d{2}|today|tomorrow)\b)/i,
+    /(?=[\s\S]*acme)(?=[\s\S]*\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?|(?:mon|tues|wednes|thurs|fri|satur|sun)day|\d{4}-\d{2}-\d{2}|today|tomorrow|(?:on|the) \d{1,2}(?:st|nd|rd|th))\b)/i,
   avoid: /interest|\$1\.02/i,
 };
 const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
@@ -393,13 +393,25 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "two-1",
     text: "how much can I spend and when is payday",
     needs: "rules",
-    expect: { figures: safe, mentions: /acme|payday/i, list: true, maxChars: 900 },
+    // Both answers: the safe-to-spend figure, and the payday with its date (as pay-1 asks).
+    expect: {
+      figures: safe,
+      mentions: PAYROLL.mentions,
+      avoid: PAYROLL.avoid,
+      list: true,
+      maxChars: 900,
+    },
   },
   {
     id: "two-2",
     text: "what subscriptions do I have and what's due this week",
     needs: "rules",
-    expect: { list: true, maxChars: 1_400 },
+    // Both answers: a subscription named, and what is due (or that nothing is).
+    expect: {
+      mentions: /(?=[\s\S]*netflix)(?=[\s\S]*\b(?:due|nothing)\b)/i,
+      list: true,
+      maxChars: 1_400,
+    },
   },
 
   // Where the balance is heading, a budget for a category, a sector follow-up, saving more and
@@ -1815,7 +1827,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "ins-14",
     text: "should I raise my deductible",
     needs: "rules",
-    expect: { intent: "decision", mentions: /deductible/i },
+    expect: { intent: "decision", mentions: /deductible/i, maxSentences: 3 },
   },
 
   // Insurance questions only Claude answers.
