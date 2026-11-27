@@ -135,6 +135,23 @@ describe("the bank's patterns (CodeRabbit sweep)", () => {
     expect(mentions.test("Your next pay from Acme lands on December 5th.")).toBe(true);
   });
 
+  it("a bare ordinal payday date counts, the employer alone still does not", () => {
+    const mentions = QUESTIONS.find((q) => q.id === "pay-1")!.expect.mentions!;
+    expect(mentions.test("Acme pays you on the 5th.")).toBe(true);
+    expect(mentions.test("Your employer is Acme.")).toBe(false);
+  });
+
+  it("the insurance decision row is a straight answer, and the two-question rows check both answers", () => {
+    expect(QUESTIONS.find((q) => q.id === "ins-14")!.expect.maxSentences).toBe(3);
+    const two1 = QUESTIONS.find((q) => q.id === "two-1")!.expect.mentions!;
+    expect(two1.test("You can spend $40.00. Payday is next.")).toBe(false);
+    expect(two1.test("You can spend $40.00. Acme pays you on Dec 5.")).toBe(true);
+    const two2 = QUESTIONS.find((q) => q.id === "two-2")!.expect.mentions!;
+    expect(two2.test("You pay for Netflix.")).toBe(false);
+    expect(two2.test("Nothing is due this week.")).toBe(false);
+    expect(two2.test("You pay for Netflix, and Hulu is due Friday.")).toBe(true);
+  });
+
   it("the August follow-up must say August, and a mixed ask must offer its confirmation", () => {
     const august = QUESTIONS.find((q) => q.id === "follow-4b")!.expect.mentions!;
     expect(august.test("You spent $40.00 at Target.")).toBe(false);
