@@ -998,6 +998,9 @@ model DebtPlan {
   // The ids of the debts the plan covers (a JSON array of strings); null for a plan made before
   // this was recorded.
   debtIds               Json?    @map("debt_ids")
+  // The ids of the debts the last check left out of what it measured, because they came after the
+  // plan was made; null before the first check.
+  checkExcludedIds      Json?    @map("check_excluded_ids")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

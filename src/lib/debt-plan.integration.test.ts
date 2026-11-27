@@ -256,6 +256,7 @@ describe.runIf(url)("payoff plans against a real database", () => {
     );
     expect(message.body).toContain("$1,200.00 left");
     expect(message.body).not.toContain("$3,200.00");
+    expect(message.body).toContain("Not in this plan: Travel Card.");
     // The plan now covers both, laid out from today.
     expect(
       ((await client.debtPlan.findUniqueOrThrow({ where: { userId: id } })).debtIds as string[])

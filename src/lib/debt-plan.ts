@@ -45,6 +45,8 @@ export type StoredPlan = {
   actualCents: number | null;
   // The debts the plan covers (their ids); absent on a plan made before this was recorded.
   debtIds?: string[] | null;
+  // The debts the last check left out of what it measured (they came after the plan was made).
+  checkExcludedIds?: string[] | null;
 };
 
 export type Payoff = {
@@ -69,8 +71,12 @@ const PLAN_SELECT = {
   expectedCents: true,
   actualCents: true,
   debtIds: true,
+  checkExcludedIds: true,
   expected: true,
 } as const;
+
+const idsOf = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.every((id) => typeof id === "string") ? (value as string[]) : null;
 
 function toStored(row: {
   strategy: string;
@@ -83,6 +89,7 @@ function toStored(row: {
   expectedCents: number | null;
   actualCents: number | null;
   debtIds?: unknown;
+  checkExcludedIds?: unknown;
 }): StoredPlan {
   return {
     strategy: isStrategy(row.strategy) ? row.strategy : "avalanche",
@@ -94,10 +101,8 @@ function toStored(row: {
     status: row.status === "on_track" || row.status === "off_track" ? row.status : null,
     expectedCents: row.expectedCents,
     actualCents: row.actualCents,
-    debtIds:
-      Array.isArray(row.debtIds) && row.debtIds.every((id) => typeof id === "string")
-        ? (row.debtIds as string[])
-        : null,
+    debtIds: idsOf(row.debtIds),
+    checkExcludedIds: idsOf(row.checkExcludedIds),
   };
 }
 
@@ -259,6 +264,8 @@ export async function refreshDebtPlan(
       actualCents: check?.actualCents ?? null,
       // The debts the plan is laid out over from now on, which the next check measures.
       debtIds: summary.cards.map((c) => c.id),
+      // What this check left out, named in its message.
+      checkExcludedIds: covered ? cards.filter((c) => !covered.has(c.id)).map((c) => c.id) : [],
     },
   });
   if (written.count === 0 || !check) return null;
