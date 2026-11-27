@@ -1,0 +1,110 @@
+[
+  {
+    "id": "t5-2027-single-65",
+    "title": "2027 single, age 66, wages $60,000: one extra amount for age",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.15(1) and (3): $16,600 plus $2,100 (unmarried)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 66,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 6000000
+    },
+    "expected": {
+      "standardDeduction": 1870000
+    },
+    "note": "16,600 + 2,100 = 18,700. Only the standard deduction is asserted: the 2025 law's deduction for seniors is a later step (T19), so taxable income and income tax are not."
+  },
+  {
+    "id": "t5-2027-joint-both-65-one-blind",
+    "title": "2027 married filing jointly, both 65 or older, one blind: three extra amounts",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.15(1) and (3): $33,200 plus 3 x $1,700 (married)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 67,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 9000000
+    },
+    "extra": {
+      "spouseAge": 66,
+      "spouseBlind": true
+    },
+    "expected": {
+      "standardDeduction": 3830000
+    },
+    "note": "33,200 + 3 x 1,700 = 38,300: his age, her age, her blindness."
+  },
+  {
+    "id": "t5-2027-dependent-small-wages",
+    "title": "2027 single dependent, age 18, wages $4,000: earned income plus $500",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.15(2): the greater of $1,400 or $500 plus earned income, never more than $16,600"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 18,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 400000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 450000,
+      "taxable": 0
+    },
+    "note": "max(1,400, 4,000 + 500 = 4,500) = 4,500. Income 4,000 is under it: taxable 0."
+  },
+  {
+    "id": "t5-2027-dependent-large-wages",
+    "title": "2027 single dependent, age 18, wages $30,000: capped at the regular amount",
+    "taxYear": 2027,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf",
+      "where": "Rev. Proc. 2026-35 section 3.15(1) and (2)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 18,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 1660000,
+      "taxable": 1340000
+    },
+    "note": "30,000 + 500 = 30,500, over the regular 16,600, so 16,600. Taxable 30,000 - 16,600 = 13,400."
+  }
+]
