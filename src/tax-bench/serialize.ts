@@ -18,6 +18,8 @@ import type { BenchCase } from "./types";
 export const FUTURE_INPUTS: Readonly<Record<string, string>> = {
   claimedAsDependent: "T5",
   blind: "T5",
+  qualifyingChildren: "T16",
+  medicareWagesCents: "T28",
   livedWithSpouse: "unowned",
 };
 
@@ -105,6 +107,10 @@ export const CASE_YEARS = readdirSync(CASES_DIR)
   .filter((d) => /^\d{4}$/.test(d))
   .map(Number)
   .sort();
+
+// The years the estimator prices from tables for that year: 2026 today. T4 makes it read the year,
+// and adds 2025 here with the cases T3 writes.
+export const ESTIMATOR_YEARS = [2026] as const;
 
 export function loadCases(year: number): BenchCase[] {
   const dir = join(CASES_DIR, String(year));
