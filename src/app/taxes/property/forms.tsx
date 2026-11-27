@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { propertyAction, type PropertyState } from "./actions";
 import { FormStatus } from "@/components/form-status";
+import { useKeepOnError } from "@/components/keep-on-error";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -56,8 +57,9 @@ function Choice({ name, label, value }: { name: string; label: string; value: st
 
 export function AnswersForm({ facts }: { facts: Facts }) {
   const [state, action, pending] = useActionState<PropertyState, FormData>(propertyAction, null);
+  const keep = useKeepOnError(action, state);
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form {...keep} className="flex flex-col gap-3">
       <input type="hidden" name="intent" value="answers" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field name="market" label="What your home would sell for ($)" value={facts.market} />

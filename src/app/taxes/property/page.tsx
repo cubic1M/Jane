@@ -78,7 +78,9 @@ async function Content() {
               </li>
             ))}
           </ul>
-          {!v.appeal && v.suggested && <IntentButton intent="draft" label="Draft the appeal" />}
+          {(!v.appeal || v.appeal.status === "dropped") && v.suggested && (
+            <IntentButton intent="draft" label="Draft the appeal" />
+          )}
           <DemoAdviceLabel />
         </section>
       )}
@@ -158,7 +160,7 @@ async function Content() {
             market: v.figuresFrom === "you" ? centsToInput(v.marketCents) : "",
             assessed: v.figuresFrom === "you" ? centsToInput(v.assessedCents) : "",
             assessedYear: v.figuresFrom === "you" && v.assessedYear ? String(v.assessedYear) : "",
-            noticeOn: "",
+            noticeOn: v.noticeOn ?? "",
             age: v.facts.age == null ? "" : String(v.facts.age),
             veteran: v.facts.veteran == null ? "" : v.facts.veteran ? "yes" : "no",
             disabled: v.facts.disabled == null ? "" : v.facts.disabled ? "yes" : "no",

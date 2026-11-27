@@ -150,6 +150,8 @@ export async function loadPropertyTax(
     gap,
     comps,
     window,
+    // The date the person gave for the assessment notice: shown back so a save keeps it.
+    noticeOn: profile?.homeNoticeOn ? iso(profile.homeNoticeOn) : null,
     suggested: Boolean(
       advice &&
       gap?.worthAppealing &&

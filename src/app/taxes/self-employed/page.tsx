@@ -24,6 +24,11 @@ async function Content() {
   const now = new Date();
   const today = await todayOf(user.id, { now });
   const v = await loadSelfEmployed(user.id, { now });
+  // Every date a federal or a state payment is due (the state plan can have one when the federal
+  // plan has none).
+  const dueDates = [
+    ...new Set([...v.federal.payments, ...(v.state?.payments ?? [])].map((p) => p.date)),
+  ].sort();
   return (
     <>
       <AppHeader user={user} />
@@ -102,9 +107,9 @@ async function Content() {
                 Set aside about {Math.round(v.setAsideRate * 100)}% of each freelance payment.{" "}
                 {v.federal.needed
                   ? `By my estimate you still owe about ${formatWholeDollars(v.federal.owedCents)} federal for ${v.year}.`
-                  : `By my estimate you'll owe under $1,000 for ${v.year}, so estimated payments aren't needed.`}
+                  : `By my estimate you'll owe under $1,000 for ${v.year}, so federal estimated payments aren't needed.`}
               </p>
-              {v.federal.payments.length > 0 && (
+              {dueDates.length > 0 && (
                 <table className="w-full text-sm">
                   <caption className="sr-only">Estimated payments left</caption>
                   <thead>
@@ -123,15 +128,15 @@ async function Content() {
                     </tr>
                   </thead>
                   <tbody>
-                    {v.federal.payments.map((p) => (
-                      <tr key={p.date} className="border-t border-zinc-200 dark:border-zinc-800">
-                        <td className="py-1">{dayLabel(p.date, { year: true })}</td>
-                        <td className="py-1 text-right">{formatCents(p.cents)}</td>
+                    {dueDates.map((date) => (
+                      <tr key={date} className="border-t border-zinc-200 dark:border-zinc-800">
+                        <td className="py-1">{dayLabel(date, { year: true })}</td>
+                        <td className="py-1 text-right">
+                          {formatCents(v.federal.payments.find((f) => f.date === date)?.cents ?? 0)}
+                        </td>
                         {v.state && (
                           <td className="py-1 text-right">
-                            {formatCents(
-                              v.state.payments.find((s) => s.date === p.date)?.cents ?? 0,
-                            )}
+                            {formatCents(v.state.payments.find((s) => s.date === date)?.cents ?? 0)}
                           </td>
                         )}
                       </tr>

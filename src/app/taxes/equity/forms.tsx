@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useKeepOnError } from "@/components/keep-on-error";
 import { EQUITY_EVENT_KINDS } from "@/config/equity-tax";
 import { equityAction, type EquityState } from "./actions";
 import { FormStatus } from "@/components/form-status";
@@ -37,8 +38,9 @@ function Field({
 
 export function EventForm() {
   const [state, action, pending] = useActionState<EquityState, FormData>(equityAction, null);
+  const keep = useKeepOnError(action, state, { resetOnOk: true });
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form {...keep} className="flex flex-col gap-3">
       <input type="hidden" name="intent" value="add" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
