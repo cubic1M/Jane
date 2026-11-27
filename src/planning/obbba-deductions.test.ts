@@ -97,9 +97,11 @@ describe("the senior deduction", () => {
 });
 
 describe("the Roth catch-up rule", () => {
-  it("applies from 2027 to anyone over $150,000 of FICA wages the year before", () => {
-    expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 15_000_001, taxYear: 2027 })).toBe(true);
-    expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 15_000_000, taxYear: 2027 })).toBe(false);
+  it("applies from 2027 to anyone over $155,000 of FICA wages the year before (Notice 2026-66)", () => {
+    expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 15_500_001, taxYear: 2027 })).toBe(true);
+    expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 15_500_000, taxYear: 2027 })).toBe(false);
+    // $150,000 is the threshold for 2026 catch-ups, not 2027's.
+    expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 15_000_001, taxYear: 2027 })).toBe(false);
     expect(catchUpMustBeRoth({ priorYearFicaWagesCents: 30_000_000, taxYear: 2026 })).toBe(false);
   });
 });

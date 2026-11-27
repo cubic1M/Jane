@@ -142,7 +142,7 @@ export function rsuVest(
 
 // The alternative minimum tax on top of the regular tax (Form 6251, simplified). AMT income
 // is taxable income plus the standard deduction (or the state and local taxes deducted,
-// neither of which AMT allows) plus the preference. The exemption shrinks by 25 cents for
+// neither of which AMT allows) plus the preference. The exemption shrinks by 50 cents for
 // each dollar over the phase-out start; tax is 26% to the threshold and 28% above.
 export function amt(input: {
   status: FilingStatus;

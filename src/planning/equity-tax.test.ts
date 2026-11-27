@@ -138,13 +138,33 @@ describe("the alternative minimum tax", () => {
       preferenceCents: 0,
       regularTaxCents: 0,
     });
-    // Over $500,000 of AMT income the exemption shrinks 25 cents a dollar: 90,100 - 25,000.
-    const exemption =
-      AMT.exemption.single - Math.round((60_000_000 - AMT.phaseOutStart.single) * 0.25);
-    const base = 60_000_000 - exemption;
-    expect(r.tentativeCents).toBe(
-      Math.round(AMT.highRateFrom.single * 0.26 + (base - AMT.highRateFrom.single) * 0.28),
-    );
+    // Over $500,000 of AMT income the exemption shrinks 50 cents a dollar (26 USC 55(d)(4)(A)(ii)(IV),
+    // from 2026): $90,100 - $50,000 = $40,100. Base $559,900; tax $244,500 x 26% + $315,400 x 28%
+    // = $63,570 + $88,312 = $151,882.
+    expect(r.tentativeCents).toBe(15_188_200);
+  });
+
+  it("phases the exemption out completely at the IRS's published amounts (Rev. Proc. 2025-32 4.10)", () => {
+    const tentative = (status: "single" | "married_joint" | "married_separate", amti: number) =>
+      amt({
+        status,
+        taxableCents: amti,
+        addBackCents: 0,
+        preferenceCents: 0,
+        regularTaxCents: 0,
+      }).tentativeCents;
+    // At the complete-phase-out amount the exemption is nil, so the tax is on all of the income.
+    for (const [status, from, full] of [
+      ["single", 500_000, 680_200],
+      ["married_joint", 1_000_000, 1_280_400],
+      ["married_separate", 500_000, 640_200],
+    ] as const) {
+      const high = AMT.highRateFrom[status];
+      const all = (amti: number) =>
+        Math.round(Math.min(amti, high) * 0.26 + Math.max(0, amti - high) * 0.28);
+      expect(tentative(status, full * 100), status).toBe(all(full * 100));
+      expect(tentative(status, from * 100), status).toBe(all(from * 100 - AMT.exemption[status]));
+    }
   });
 
   it("is in the estimate: ISOs held past year-end raise the total tax", () => {

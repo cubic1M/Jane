@@ -93,14 +93,15 @@ export const SAVERS_CREDIT = US.savers.value;
 export const SAVERS_MATCH = US.saversMatch.value;
 
 // Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over this
-// (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026). The figure is
-// marked WRONG TODAY in us-2026.ts: $150,000 is the threshold for 2026 catch-ups, the one for 2027
-// ones is $155,000 (Notice 2026-66; us-2026.ts holds both). Nothing in the app reads this yet
-// (catchUpMustBeRoth is tested only), and an existing test pins $150,000, so it is left.
+// (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026). The threshold
+// is set by the year the catch-up is made: $150,000 for 2026 catch-ups, $155,000 for 2027 ones
+// (Notice 2026-66). priorYearFicaWagesOver is the first required year's (2027); a later year's is
+// indexed upward and not yet published.
 export const ROTH_CATCH_UP = {
   priorYearFicaWagesOver: US.rothCatchUp.value.priorYearFicaWagesOver,
   requiredFrom: US.rothCatchUp.value.requiredFrom,
   rule: US.rothCatchUp.value.rule,
+  overByCatchUpYear: US.rothCatchUp.value.overByCatchUpYear,
 } as const;
 
 // Student loan interest: up to $2,500, phased out over the range of modified AGI; not for married
@@ -150,13 +151,37 @@ export const ENERGY_CREDITS_END = {
   vehicle: US.energy.value.vehicleEnds,
 } as const;
 
-// Standard mileage rate for business driving in 2026: 72.5 cents (IRS Notice 2026-10).
+// Standard mileage rate for business driving in 2026: 72.5 cents to June 30 and 76 cents from
+// July 1 (IRS standard mileage rates page; Notice 2026-10 for the first period).
+export const MILEAGE_PERIODS = US.mileage.value.businessByPeriod;
+
+// The rate for a trip on this day (YYYY-MM-DD, the trip's own date). Throws for a day the table
+// does not cover, so a trip is never priced with another year's rate.
+export function businessMileageCentsOn(isoDate: string): number {
+  const year = Number(isoDate.slice(0, 4));
+  const periods = federalParams(year).mileage.value.businessByPeriod;
+  const period = periods.find((p) => p.from <= isoDate && isoDate <= p.to);
+  if (!period) throw new Error(`No business mileage rate covers ${isoDate}`);
+  return period.centsPerMile;
+}
+
+// The rate for miles with no date: the first period's, so a year's total is never overstated.
 export const MILEAGE_RATE_CENTS = US.mileage.value.businessCentsPerMile;
-// The miles Jane holds are a year's total with no dates, so it can't split them: the IRS rate is 72.5
-// cents to June 30 and 76 cents from July 1, 2026 (us-2026.ts holds both and marks this WRONG TODAY
-// for July to December). Every mile is counted at 72.5, and this says so wherever the figure shows.
+
+const dayName = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+const rateName = (cents: number) => `${cents} cents`;
+const [FIRST_PERIOD, ...LATER_PERIODS] = MILEAGE_PERIODS;
+// Says which rate undated miles use and what the IRS rate is for the rest of the year.
 export const MILEAGE_RATE_NOTE =
-  "Every mile is counted at one rate; if the IRS changes its rate partway through the year, miles after the change are worth a little more than this shows.";
+  `Miles with no date are counted at ${rateName(FIRST_PERIOD.centsPerMile)}, the IRS rate for ${dayName(FIRST_PERIOD.from)} to ${dayName(FIRST_PERIOD.to)}.` +
+  (LATER_PERIODS.length
+    ? ` The IRS rate is ${LATER_PERIODS.map((p) => `${rateName(p.centsPerMile)} for ${dayName(p.from)} to ${dayName(p.to)}`).join(" and ")}, so miles driven then are worth a little more than this shows.`
+    : "");
 
 // Home office, simplified method: $5 a square foot, up to 300 square feet.
 export const HOME_OFFICE_SIMPLIFIED = US.homeOffice.value;

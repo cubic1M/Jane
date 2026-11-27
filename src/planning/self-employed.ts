@@ -1,5 +1,9 @@
 import { MAX_HOME_OFFICE_SQFT, QUARTERLY } from "@/config/tax";
-import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS } from "@/config/tax-rates";
+import {
+  HOME_OFFICE_SIMPLIFIED,
+  MILEAGE_RATE_CENTS,
+  businessMileageCentsOn,
+} from "@/config/tax-rates";
 
 // Freelancers' taxes (spec step 123). Pure. Estimated tax is paid in four parts during the
 // year (src/config/tax-pack.ts ESTIMATED_TAX_DATES); what's still owed for the year, by the
@@ -56,6 +60,9 @@ export const homeOfficeDeduction = (sqft: number | null) =>
       HOME_OFFICE_SIMPLIFIED.perSquareFoot
     : 0;
 
-// Business miles at the standard mileage rate.
-export const mileageDeduction = (miles: number | null) =>
-  miles ? Math.round(miles * MILEAGE_RATE_CENTS) : 0;
+// Business miles at the standard mileage rate: the rate on the trip's own day (YYYY-MM-DD) when
+// there is one, else the rate for miles with no date (MILEAGE_RATE_NOTE says which).
+export const mileageDeduction = (miles: number | null, tripDate?: string) =>
+  miles
+    ? Math.round(miles * (tripDate ? businessMileageCentsOn(tripDate) : MILEAGE_RATE_CENTS))
+    : 0;

@@ -330,8 +330,20 @@
    }
   },
   "LONG_TERM_DAYS": 365,
+  "MILEAGE_PERIODS": [
+   {
+    "from": "2026-01-01",
+    "to": "2026-06-30",
+    "centsPerMile": 72.5
+   },
+   {
+    "from": "2026-07-01",
+    "to": "2026-12-31",
+    "centsPerMile": 76
+   }
+  ],
   "MILEAGE_RATE_CENTS": 72.5,
-  "MILEAGE_RATE_NOTE": "Every mile is counted at one rate; if the IRS changes its rate partway through the year, miles after the change are worth a little more than this shows.",
+  "MILEAGE_RATE_NOTE": "Miles with no date are counted at 72.5 cents, the IRS rate for January 1 to June 30. The IRS rate is 76 cents for July 1 to December 31, so miles driven then are worth a little more than this shows.",
   "NET_INVESTMENT_INCOME_TAX": {
    "rate": 0.038,
    "threshold": {
@@ -409,9 +421,13 @@
    }
   },
   "ROTH_CATCH_UP": {
-   "priorYearFicaWagesOver": 15000000,
+   "priorYearFicaWagesOver": 15500000,
    "requiredFrom": 2027,
-   "rule": "26 USC 414(v)(7); T.D. 10033"
+   "rule": "26 USC 414(v)(7); T.D. 10033",
+   "overByCatchUpYear": {
+    "2026": 15000000,
+    "2027": 15500000
+   }
   },
   "SAVERS_CREDIT": {
    "taxYear": 2026,
@@ -1118,7 +1134,7 @@
     "married_separate": 50000000,
     "head_of_household": 50000000
    },
-   "phaseOutRate": 0.25,
+   "phaseOutRate": 0.5,
    "lowRate": 0.26,
    "highRate": 0.28,
    "highRateFrom": {

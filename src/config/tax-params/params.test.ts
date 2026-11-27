@@ -73,12 +73,10 @@ const EXPECTED_NOTES: Record<number, string[]> = {
     "dependentCare",
     "education",
     "energy",
-    "amt",
-    "mileage",
   ],
 };
 // The groups not read at a primary source (D6: a rule needing one shows no figure).
-const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["amt", "medical"] };
+const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["medical"] };
 
 describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   const params = federalParams(year);
@@ -224,9 +222,9 @@ describe("a caller can't change the shared table", () => {
   it("throws when a figure is assigned", () => {
     const params = federalParams(2026);
     expect(() => {
-      (params.amt.value as { phaseOutRate: number }).phaseOutRate = 0.5;
+      (params.amt.value as { phaseOutRate: number }).phaseOutRate = 0.25;
     }).toThrow(TypeError);
-    expect(federalParams(2026).amt.value.phaseOutRate).toBe(0.25);
+    expect(federalParams(2026).amt.value.phaseOutRate).toBe(0.5);
   });
 });
 
@@ -262,21 +260,35 @@ describe("the figures the roadmap named for T1, read at the source", () => {
     expect(p.mileage.source).toContain("n-26-10");
     expect(p.mileage.value.businessCentsPerMile).toBe(72.5);
   });
-  it("the AMT phase-out rate is kept at 0.25 and flagged as wrong today (statute says 0.5)", () => {
-    // Tax T1 moves figures without changing any. When the correction is made, change this on purpose.
-    expect(p.amt.value.phaseOutRate).toBe(0.25);
-    expect(p.amt.status).toBe("unconfirmed");
-    expect(p.amt.verify).toContain("WRONG TODAY");
+  it("the AMT phase-out rate is 50 percent from 2026 (26 USC 55(d)(4)(A)(ii)(IV)) and the exemptions run out where the IRS says", () => {
+    expect(p.amt.value.phaseOutRate).toBe(0.5);
+    expect(p.amt.status).toBe("verified");
+    expect(p.amt.verify).toBeUndefined();
+    // Rev. Proc. 2025-32 4.10: complete phase-out at start + exemption / 0.5.
+    for (const [s, full] of [
+      ["married_joint", $(1_280_400)],
+      ["single", $(680_200)],
+      ["married_separate", $(640_200)],
+    ] as const) {
+      expect(
+        p.amt.value.phaseOutStart[s] + p.amt.value.exemption[s] / p.amt.value.phaseOutRate,
+      ).toBe(full);
+    }
+    // 2025 law still has 25 percent.
+    expect(federalParams(2025).amt.value.phaseOutRate).toBe(0.25);
   });
-  it("the Roth catch-up threshold is $150,000 for 2026 and $155,000 for 2027; the legacy field is flagged", () => {
+  it("the Roth catch-up threshold for 2027 catch-ups is $155,000 (Notice 2026-66); 2026's was $150,000", () => {
     expect(p.rothCatchUp.value.overByCatchUpYear).toEqual({ 2026: $(150_000), 2027: $(155_000) });
-    expect(p.rothCatchUp.value.priorYearFicaWagesOver).toBe($(150_000));
-    expect(p.rothCatchUp.verify).toContain("WRONG TODAY");
+    expect(p.rothCatchUp.value.priorYearFicaWagesOver).toBe($(155_000));
+    expect(p.rothCatchUp.source).toContain("n-26-66");
   });
-  it("the mileage rate is 72.5 before July and 76 after; the single legacy rate is flagged", () => {
-    expect(p.mileage.value.businessByPeriod.map((r) => r.centsPerMile)).toEqual([72.5, 76]);
+  it("the mileage rate is 72.5 cents to June 30 and 76 from July 1; undated miles use the first", () => {
+    expect(p.mileage.value.businessByPeriod).toEqual([
+      { from: "2026-01-01", to: "2026-06-30", centsPerMile: 72.5 },
+      { from: "2026-07-01", to: "2026-12-31", centsPerMile: 76 },
+    ]);
     expect(p.mileage.value.businessCentsPerMile).toBe(72.5);
-    expect(p.mileage.verify).toContain("WRONG TODAY");
+    expect(p.mileage.verify).toBeUndefined();
   });
 });
 
