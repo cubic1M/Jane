@@ -20,6 +20,8 @@ const charge = (over: Partial<RecurringCharge>): RecurringCharge => ({
   merchant: "Netflix",
   accountId: "a1",
   transactionIds: ["n1", "n2", "n3"],
+  firstChargeDate: "2026-08-14",
+  lastChargeDate: "2026-10-14",
   frequency: "MONTHLY",
   lastAmountCents: 1549,
   lastDate: "2026-10-14",
@@ -36,6 +38,8 @@ const rent = charge({
   merchantKey: "essex",
   merchant: "Essex Property Trust",
   transactionIds: ["r1", "r2", "r3"],
+  firstChargeDate: "2026-08-01",
+  lastChargeDate: "2026-10-01",
   lastAmountCents: 240000,
   annualCostCents: 2880000,
   subscription: false,
@@ -63,13 +67,108 @@ describe("recurring marks", () => {
     expect(marks.forTransaction(row("r1", "Essex Property Trust"))?.kind).toBe("bill");
     // A coffee, and a Netflix gift card bought once: same merchant, not in the stream.
     expect(marks.forTransaction(row("c1", "Blue Bottle Coffee"))).toBeNull();
-    expect(marks.forTransaction(row("n9", "Netflix"))).toBeNull();
+    expect(marks.forTransaction({ ...row("n9", "Netflix"), date: "2026-09-20" })).toBeNull();
+  });
+
+  it("marks a payment of a current charge from before or after the days the stream was read", () => {
+    const marks = recurringMarks([netflix]);
+    const row = (id: string, date: string, accountId = "a1", amountCents = 1549) => ({
+      id,
+      accountId,
+      merchantName: "Netflix",
+      description: "Netflix",
+      date,
+      amountCents,
+    });
+    // A year older than the lookback, and tomorrow in the person's own day.
+    expect(marks.forTransaction(row("old", "2025-10-14"))?.kind).toBe("subscription");
+    expect(marks.forTransaction(row("next", "2026-11-14"))?.kind).toBe("subscription");
+    // A year-old payment at the old price, within the detection's tolerance (10%), is marked; at a
+    // clearly different old price it is not.
+    expect(marks.forTransaction(row("oldp", "2025-10-14", "a1", 1449))?.kind).toBe("subscription");
+    expect(marks.forTransaction(row("oldq", "2025-10-14", "a1", 1099))).toBeNull();
+    // Inside the days of another plan's run on the same card: a one-off.
+    const other = charge({
+      key: "merchant:netflix@2000",
+      transactionIds: ["m1"],
+      firstChargeDate: "2026-09-14",
+      lastChargeDate: "2026-11-14",
+    });
+    const two = recurringMarks([netflix, other]);
+    expect(two.forTransaction(row("gone", "2026-09-20"))).toBeNull();
+    // Another account's Netflix is not this charge.
+    expect(marks.forTransaction(row("old2", "2025-10-14", "a2"))).toBeNull();
+  });
+
+  it("leaves a big purchase at the merchant of a small plan alone, before or after it", () => {
+    const icloud = charge({
+      key: "merchant:apple",
+      merchantKey: "apple",
+      merchant: "Apple",
+      transactionIds: ["i1", "i2", "i3"],
+      firstChargeDate: "2026-08-10",
+      lastChargeDate: "2026-10-10",
+      lastAmountCents: 299,
+    });
+    const marks = recurringMarks([icloud]);
+    const buy = (date: string, amountCents: number) =>
+      marks.forTransaction({
+        id: `p${date}`,
+        accountId: "a1",
+        merchantName: "Apple",
+        description: "Apple",
+        date,
+        amountCents,
+      });
+    expect(buy("2026-11-20", 134900)).toBeNull();
+    expect(buy("2026-06-01", 109900)).toBeNull();
+    // The same plan's payment tomorrow, at its amount, is still marked.
+    expect(buy("2026-11-10", 299)?.kind).toBe("subscription");
+    // Without an amount it can't look like the charge.
+    expect(
+      marks.forTransaction({
+        id: "z",
+        accountId: "a1",
+        merchantName: "Apple",
+        description: "Apple",
+        date: "2026-11-10",
+      }),
+    ).toBeNull();
+  });
+
+  it("says a merchant with two charges has two, with their sum, and links to the first", () => {
+    const second = charge({
+      key: "merchant:aaa@12100",
+      merchantKey: "aaa",
+      merchant: "AAA",
+      lastAmountCents: 12100,
+      subscription: false,
+    });
+    const first = charge({
+      key: "merchant:aaa",
+      merchantKey: "aaa",
+      merchant: "AAA",
+      lastAmountCents: 16400,
+      subscription: false,
+      transactionIds: ["x1"],
+    });
+    const mark = recurringMarks([first, { ...second, transactionIds: ["x2"] }]).forMerchant("AAA")!;
+    expect(mark.label).toBe("2 repeating charges");
+    expect(mark.amountCents).toBe(28500);
+    expect(mark.per).toBe("a month");
+    expect(mark.href).toBe(markOf(first).href);
+    const html = renderToStaticMarkup(<RepeatMark mark={mark} withAmount />);
+    expect(html).toContain("2 repeating charges");
+    expect(html).toContain("$285.00 a month");
+    // Different rhythms: no sum.
+    const mixed = recurringMarks([first, { ...second, frequency: "ANNUALLY" }]).forMerchant("AAA")!;
+    expect(mixed.amountCents).toBeNull();
   });
 
   it("finds a stream with no transactions of ours by merchant and account, and only then", () => {
-    const plaid = charge({ transactionIds: [] });
+    const plaid = charge({ transactionIds: [], firstChargeDate: null, lastChargeDate: null });
     const marks = recurringMarks([plaid]);
-    const row = { id: "x", merchantName: "Netflix", description: "NETFLIX.COM" };
+    const row = { id: "x", merchantName: "Netflix", description: "NETFLIX.COM", amountCents: 1549 };
     expect(marks.forTransaction({ ...row, accountId: "a1" })?.kind).toBe("subscription");
     expect(marks.forTransaction({ ...row, accountId: "a2" })).toBeNull();
   });

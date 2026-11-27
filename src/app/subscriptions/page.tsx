@@ -6,6 +6,7 @@ import { cheaperPlansOf } from "@/detectors/cover-facts";
 import { loadProfileInput } from "@/lib/profile";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import { Rows } from "./rows";
+import { ScrollToCharge } from "./scroll-to-charge";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -124,6 +125,8 @@ async function Subscriptions() {
           <Rows rows={other} cards={cards} />
         </section>
       )}
+      {/* After the rows: the page streams in, so the browser's own jump to #charge-… comes early. */}
+      <ScrollToCharge />
     </>
   );
 }

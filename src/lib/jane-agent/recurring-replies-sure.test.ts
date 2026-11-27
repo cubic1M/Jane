@@ -13,6 +13,8 @@ const charge = (merchant: string, cents: number, openFindingId: string | null = 
   merchant,
   accountId: null,
   transactionIds: [],
+  firstChargeDate: null,
+  lastChargeDate: null,
   frequency: "MONTHLY",
   lastAmountCents: cents,
   lastDate: "2026-10-14",

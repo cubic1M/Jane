@@ -1,3 +1,4 @@
+import { FALLBACK_AMOUNT_TOLERANCE } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -14,11 +15,15 @@ import { frequencyWords } from "@/lib/explain-input";
 
 export type RepeatMark = {
   kind: "subscription" | "bill";
-  // "Subscription · monthly" or "Repeats monthly": plain facts, no advice.
+  // "Subscription · monthly", "Repeats monthly" or, for a merchant with several, "2 repeating
+  // charges": plain facts, no advice.
   label: string;
-  // The charge's last amount, for a merchant row whose own figure is a total.
-  amountCents: number;
-  // The charge's row on /subscriptions.
+  // The charge's last amount (the sum for a merchant with several charges at one rhythm), for a
+  // merchant row whose own figure is a total. Null when the charges' rhythms differ.
+  amountCents: number | null;
+  // "a month" after the sum of several charges.
+  per?: string;
+  // The charge's row on /subscriptions (the first, for a merchant with several).
   href: string;
 };
 
@@ -28,12 +33,25 @@ export type RecurringMarks = {
     accountId?: string;
     merchantName: string | null;
     description: string;
+    // The person's day of the payment (YYYY-MM-DD) and its amount (positive is money out).
+    date?: string;
+    amountCents?: number;
   }) => RepeatMark | null;
   forMerchant: (merchant: string) => RepeatMark | null;
 };
 
 // The id of a charge's row on /subscriptions (the page sets it; the mark links to it).
 export const chargeAnchor = (key: string): string => `charge-${key}`;
+
+const PER: Partial<Record<RecurringCharge["frequency"], string>> = {
+  WEEKLY: "a week",
+  BIWEEKLY: "every two weeks",
+  SEMI_MONTHLY: "twice a month",
+  MONTHLY: "a month",
+  QUARTERLY: "a quarter",
+  SEMIANNUALLY: "every six months",
+  ANNUALLY: "a year",
+};
 
 export function markOf(charge: RecurringCharge): RepeatMark {
   const rhythm = frequencyWords(charge.frequency);
@@ -45,31 +63,78 @@ export function markOf(charge: RecurringCharge): RepeatMark {
   };
 }
 
+// One mark for a merchant: its charge's, or with several the count and their sum.
+function merchantMarkOf(list: readonly RecurringCharge[]): RepeatMark {
+  const [first] = list;
+  if (list.length === 1) return markOf(first!);
+  const sameRhythm = list.every((c) => c.frequency === first!.frequency);
+  const per = PER[first!.frequency];
+  return {
+    kind: list.some((c) => c.subscription) ? "subscription" : "bill",
+    label: `${list.length} repeating charges`,
+    amountCents: sameRhythm && per ? list.reduce((n, c) => n + c.lastAmountCents, 0) : null,
+    ...(per ? { per } : {}),
+    href: markOf(first!).href,
+  };
+}
+
+// Whether an amount looks like the charge: within the tolerance the recurring detection itself
+// uses to put a payment in a stream, of its last amount or, for a bill that varies, of the
+// range of its own transactions' amounts.
+function looksLike(c: RecurringCharge, amountCents: number | undefined): boolean {
+  if (amountCents === undefined) return false;
+  const low = c.varies?.lowCents ?? c.lastAmountCents;
+  const high = c.varies?.highCents ?? c.lastAmountCents;
+  return (
+    amountCents >= low * (1 - FALLBACK_AMOUNT_TOLERANCE) &&
+    amountCents <= high * (1 + FALLBACK_AMOUNT_TOLERANCE)
+  );
+}
+
 const merchantKeyOf = (name: string): string | null => normalizeMerchant(name)?.key ?? null;
 
 export function recurringMarks(charges: readonly RecurringCharge[]): RecurringMarks {
   // Biggest yearly cost first (recurringCharges' order): the first mark wins a shared key.
   const byTransaction = new Map<string, RepeatMark>();
-  const byMerchant = new Map<string, RepeatMark>();
-  const byMerchantAccount = new Map<string, RepeatMark>();
+  const byMerchant = new Map<string, RecurringCharge[]>();
+  const byMerchantAccount = new Map<string, RecurringCharge[]>();
   for (const c of charges) {
     const mark = markOf(c);
     for (const id of c.transactionIds) if (!byTransaction.has(id)) byTransaction.set(id, mark);
-    if (!byMerchant.has(c.merchantKey)) byMerchant.set(c.merchantKey, mark);
-    if (c.transactionIds.length === 0 && c.accountId) {
+    byMerchant.set(c.merchantKey, [...(byMerchant.get(c.merchantKey) ?? []), c]);
+    if (c.accountId) {
       const k = `${c.merchantKey}|${c.accountId}`;
-      if (!byMerchantAccount.has(k)) byMerchantAccount.set(k, mark);
+      byMerchantAccount.set(k, [...(byMerchantAccount.get(k) ?? []), c]);
     }
   }
+  const merchantMarks = new Map([...byMerchant].map(([k, list]) => [k, merchantMarkOf(list)]));
   return {
     forTransaction: (t) => {
       if (t.id && byTransaction.has(t.id)) return byTransaction.get(t.id)!;
+      // Not one of the stream's own transactions. The same merchant on the same account is
+      // still the charge's when the payment is from outside the days the stream was read from
+      // (older than the lookback, or dated after the last one read), or when there are no
+      // transactions of ours behind the stream at all.
       const key = merchantKeyOf(t.merchantName ?? t.description);
-      return key && t.accountId ? (byMerchantAccount.get(`${key}|${t.accountId}`) ?? null) : null;
+      if (!key || !t.accountId) return null;
+      const same = byMerchantAccount.get(`${key}|${t.accountId}`) ?? [];
+      const spans = (c: RecurringCharge) =>
+        c.firstChargeDate !== null && c.lastChargeDate !== null && t.date !== undefined;
+      const inside = (c: RecurringCharge) =>
+        spans(c) && t.date! >= c.firstChargeDate! && t.date! <= c.lastChargeDate!;
+      // Inside any stream's own days of this merchant and account, a payment that isn't one of
+      // its transactions is a one-off (a second plan's run covers the days of the first's).
+      if (same.some(inside)) return null;
+      // Not the charge's own transaction, so it must also look like it: a laptop bought at the
+      // merchant that bills a small monthly plan is a purchase, whenever it is dated.
+      const own = same.find(
+        (c) => (c.transactionIds.length === 0 || spans(c)) && looksLike(c, t.amountCents),
+      );
+      return own ? markOf(own) : null;
     },
     forMerchant: (merchant) => {
       const key = merchantKeyOf(merchant);
-      return key ? (byMerchant.get(key) ?? null) : null;
+      return key ? (merchantMarks.get(key) ?? null) : null;
     },
   };
 }

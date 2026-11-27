@@ -27,6 +27,11 @@ export type RecurringCharge = {
   // (src/lib/recurring-marks.ts).
   accountId: string | null;
   transactionIds: string[];
+  // The first and last day among those transactions (null with none): a payment of the same
+  // merchant and account outside this span is the same charge's, from before or after the window
+  // the stream was read from.
+  firstChargeDate: string | null;
+  lastChargeDate: string | null;
   frequency: Frequency;
   lastAmountCents: number;
   lastDate: string | null;
@@ -76,6 +81,8 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
           merchant: billName(s, input.accounts),
           accountId: s.accountId,
           transactionIds: s.charges.map((c) => c.id),
+          firstChargeDate: s.charges[0]?.date ?? null,
+          lastChargeDate: s.charges.at(-1)?.date ?? null,
           frequency: s.frequency as Frequency,
           lastAmountCents: s.lastAmountCents,
           lastDate: s.lastDate,

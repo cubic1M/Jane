@@ -14,7 +14,7 @@ export function Rows({ rows, cards }: { rows: RecurringCharge[]; cards: Map<stri
         <li
           key={r.key}
           id={chargeAnchor(r.key)}
-          className="flex scroll-mt-24 flex-wrap items-start justify-between gap-2 px-4 py-3 target:bg-zinc-50 dark:target:bg-zinc-900 [overflow-wrap:anywhere]"
+          className="flex scroll-mt-24 flex-wrap items-start justify-between gap-2 px-4 py-3 transition-colors duration-700 data-[flash]:bg-zinc-100 dark:data-[flash]:bg-zinc-800 [overflow-wrap:anywhere]"
         >
           <span className="flex flex-col">
             <span className="font-medium">{r.merchant}</span>
