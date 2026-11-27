@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PEOPLE, SUGGESTION_TOPICS } from "@/config/people";
 import { demoAccounts, demoLiabilities, demoTransactions } from "./demo-bank";
 import { demoHoldings, demoInvestmentTransactions } from "./demo-holdings";
+import { personPositions } from "./demo-people";
 import { addDays } from "@/lib/dates";
 
 // Spec step 252: eight sample people, each a full demo bank. Built from the same code as the
@@ -97,5 +98,23 @@ describe("the eight sample people", () => {
     const original = { seed: "abc123", anchor: ANCHOR };
     expect(demoAccounts(original)).toHaveLength(8);
     expect(demoTransactions(original, null, THROUGH).length).toBeGreaterThan(400);
+  });
+});
+
+describe("a fund declared by two lanes", () => {
+  it("is one holding that adds up, never one lane's lots overwriting the other's", () => {
+    // The taxes lane holds 1,500 KTBIX at $19,000 basis and the investing lane 1,500 at $14,500.
+    const lots = personPositions(seedOf("equity")).filter(
+      (p) => p.key === "KTBIX" && p.account.length > 0,
+    );
+    expect(lots).toHaveLength(1);
+    expect(lots[0]).toMatchObject({ quantity: 3000, basis: 33_500 });
+  });
+
+  it("has no two rows for one account and fund on any sample person", () => {
+    for (const p of PEOPLE) {
+      const keys = personPositions(seedOf(p.id)).map((x) => `${x.account}|${x.key}`);
+      expect(new Set(keys).size, p.id).toBe(keys.length);
+    }
   });
 });

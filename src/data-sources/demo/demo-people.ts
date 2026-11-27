@@ -1300,6 +1300,30 @@ export type PersonExtra = Partial<
   Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions" | "student">
 >;
 
+// Two lanes may each declare lots of the same fund in one account; the database holds one
+// holding per account and fund, so they add up here (sample people must sum, not overwrite).
+function oneHoldingEach(positions: Def["positions"]): Def["positions"] {
+  const byKey = new Map<string, Def["positions"][number]>();
+  for (const p of positions) {
+    const key = `${p.account}|${p.key}`;
+    const have = byKey.get(key);
+    byKey.set(
+      key,
+      have
+        ? {
+            ...have,
+            quantity: have.quantity + p.quantity,
+            basis: have.basis + p.basis,
+            ...(have.cash !== undefined || p.cash !== undefined
+              ? { cash: (have.cash ?? 0) + (p.cash ?? 0) }
+              : {}),
+          }
+        : p,
+    );
+  }
+  return [...byKey.values()];
+}
+
 const merged = (id: PersonId): Def => {
   const base = DEFS[id];
   const extras = PEOPLE_EXTRAS.flatMap((lane) => lane[id] ?? []);
@@ -1309,7 +1333,7 @@ const merged = (id: PersonId): Def => {
     monthly: [...base.monthly, ...extras.flatMap((e) => e.monthly ?? [])],
     once: [...base.once, ...extras.flatMap((e) => e.once ?? [])],
     cards: [...base.cards, ...extras.flatMap((e) => e.cards ?? [])],
-    positions: [...base.positions, ...extras.flatMap((e) => e.positions ?? [])],
+    positions: oneHoldingEach([...base.positions, ...extras.flatMap((e) => e.positions ?? [])]),
     student: base.student ?? extras.find((e) => e.student)?.student,
   };
 };
