@@ -1,12 +1,13 @@
 import versions from "./params-version.json";
 import type { FederalParams } from "./types";
+import { US_2025 } from "./us-2025";
 import { US_2026 } from "./us-2026";
 
 export type { Bracket, Cited, FederalParams, ParamStatus } from "./types";
 export { ALLOWED_SOURCE_HOSTS } from "./types";
 
-// The tax years Jane has complete, cited figures for. 2026 alone after T1; 2025 is added by T3.
-export const SUPPORTED_TAX_YEARS = [2026] as const;
+// The tax years Jane has complete, cited figures for: 2026 (Tax T1) and 2025 (Tax T3).
+export const SUPPORTED_TAX_YEARS = [2025, 2026] as const;
 
 // A year with no figures is refused, never priced with another year's law.
 export class NoTaxParamsError extends Error {
@@ -28,7 +29,10 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-const FEDERAL: Readonly<Record<number, FederalParams>> = { 2026: deepFreeze(US_2026) };
+const FEDERAL: Readonly<Record<number, FederalParams>> = {
+  2025: deepFreeze(US_2025),
+  2026: deepFreeze(US_2026),
+};
 
 export function federalParams(year: number): FederalParams {
   const params = FEDERAL[year];
