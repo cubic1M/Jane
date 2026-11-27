@@ -114,10 +114,9 @@ export async function syncAllCrypto({
     const page = await systemDb(
       "Cron: finds who to run for, across people",
       client,
-    ).cryptoConnection.findMany({
+    ).cryptoConnection.groupBy({
+      by: ["userId"],
       where: { AND: [ownedBy(userIds), after ? { userId: { gt: after } } : {}] },
-      select: { userId: true },
-      distinct: ["userId"],
       orderBy: { userId: "asc" },
       take: pageSize,
     });
