@@ -217,6 +217,25 @@ describe.runIf(url)("family taxes against a real database", { timeout: 120_000 }
     expect(care === undefined || care.sides.every((s) => !s.eligible)).toBe(true);
   });
 
+  it("asks for the other children's ages when only one child has a college plan", async () => {
+    const userId = await family("family-ages-plan", 4_000_000);
+    await client.taxProfile.update({ where: { userId }, data: { familyChildren: [] } });
+    const before = await loadFamilyTaxes(userId, { client, now: LINKED });
+    expect(before.agesMissing).toBe(true);
+    await client.collegePlan.create({
+      data: {
+        userId,
+        childName: "Sam",
+        childAge: 5,
+        ageOn: new Date("2026-10-01T00:00:00Z"),
+        collegeType: "public",
+      },
+    });
+    const view = await loadFamilyTaxes(userId, { client, now: LINKED });
+    expect(view.agesMissing).toBe(true);
+    expect(view.assumptions.join(" ")).toContain("ages of your other children");
+  });
+
   it("checks the family details, and shows nothing for real accounts", async () => {
     const userId = await family("family-check", 0);
     await expect(

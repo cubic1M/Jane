@@ -143,7 +143,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       label: "Children's ages",
       value: "—",
       status: "missing",
-      note: "Tell Jane how old each child is, so it can check whether childcare counts for the care credit.",
+      note: "Tell Jane in the chat how old each child is, so it can check whether childcare counts for the care credit.",
     });
   }
   const newIncome = view.newIncome.map((i) => INCOME_KINDS[i.kind].label.toLowerCase());

@@ -112,6 +112,16 @@ export async function loadFamilyTaxes(
     assumptions.push(
       "Your children's ages come from your college plans; I've assumed each has a Social Security number and lives with you.",
     );
+    // College plans are not the whole household: each other child under 17 has no known age.
+    const knownUnder17 = children.filter((c) => c.ageAtYearEnd < 17).length;
+    const others = input.childrenUnder17 - knownUnder17;
+    if (others > 0) {
+      children = [...children, ...childrenOrUnknownAges(null, others)];
+      agesMissing = true;
+      assumptions.push(
+        "I don't know the ages of your other children, so I can't tell whether childcare counts for the care credit. Add their ages under family details.",
+      );
+    }
   }
   if (children.length === 0 && input.childrenUnder17 > 0) {
     // Ages unknown: known only to be under 17, so the child credit stands and no care credit is

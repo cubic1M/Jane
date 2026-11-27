@@ -264,7 +264,7 @@ export async function dismissTaxNotice(
 // the accounts show from each payer, and payments to the IRS and the state.
 // A line that names a state tax agency: its own name, or a state's code in front ("CA FTB", "NYS DTF").
 const STATE_AGENCY =
-  /\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)[A-Z]{2} (?:TAX|REV|DTF|DOR)\b/i;
+  /\b(?:FRANCHISE TAX|FTB|DEPT\.? OF REVENUE|DEPARTMENT OF REVENUE|DEPT\.? OF TAXATION|DEPARTMENT OF TAXATION|TAX BOARD|NYS DTF|STATE TAX|COMPTROLLER|DOR)\b|(?:^|\s)[A-Z]{2} (?:TAX|REV|DTF|DOR)\b/i;
 
 async function noticeFacts(
   userId: string,
@@ -322,7 +322,7 @@ async function noticeFacts(
         // not which year it is for.
         const named = [
           ...line
-            .replace(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ")
+            .replace(/\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ")
             .matchAll(/\b(20\d{2})\b/g),
         ].map((m) => Number(m[1]));
         if (named.length > 0 && !named.includes(year)) return false;
