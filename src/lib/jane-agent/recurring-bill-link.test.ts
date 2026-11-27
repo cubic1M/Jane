@@ -10,6 +10,8 @@ const charge = (over: Partial<Charge>): Charge => ({
   key: "merchant:sunset villas rent",
   merchantKey: "sunset villas rent",
   merchant: "Sunset Villas Rent",
+  accountId: null,
+  transactionIds: [],
   frequency: "MONTHLY",
   lastAmountCents: 72_500,
   lastDate: "2026-11-01",

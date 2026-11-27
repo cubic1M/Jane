@@ -13,6 +13,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
 import { todayOf } from "@/lib/today";
+import { loadRecurringMarks } from "@/lib/recurring-marks";
 import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { CashIncomeNote } from "./cash-income";
 import { SpendingExplorer } from "./explorer";
@@ -27,10 +28,12 @@ async function Insights() {
 
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const toUnseenCards = await unseenCardPaymentsMonthly(db, asOf);
-  const [budgets, accounts, cash] = await Promise.all([
+  const [budgets, accounts, cash, marks] = await Promise.all([
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     db.accounts.findMany({ select: { id: true, name: true, mask: true, createdAt: true } }),
     cashIncomeStatus(db),
+    // The Subscriptions page's charges, read once and matched to the rows in memory.
+    loadRecurringMarks(user.id),
   ]);
   const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   // The latest month that has any spending.
@@ -41,7 +44,15 @@ async function Insights() {
     asOf,
     monthCount: INSIGHT_MONTHS,
     accountNames: accountLabels(accounts),
+    repeatOf: (t) => marks.forTransaction(t),
   });
+  // A merchant row marks the merchant's recurring charge, if it has one.
+  const merchantMarks = Object.fromEntries(
+    insights.topMerchants.flatMap((m) => {
+      const mark = marks.forMerchant(m.merchant);
+      return mark ? [[m.merchant, mark]] : [];
+    }),
+  );
 
   return (
     <>
@@ -86,6 +97,7 @@ async function Insights() {
         changeMonths={insights.changeMonths}
         topMerchants={insights.topMerchants}
         lines={lines}
+        merchantMarks={merchantMarks}
         incomeNote={cash && <CashIncomeNote status={cash} />}
       />
     </>

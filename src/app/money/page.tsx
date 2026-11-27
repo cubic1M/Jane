@@ -9,6 +9,8 @@ import { SUGGESTION_NODES, billsByWeek, itemId, moneyTree } from "@/lib/area-pag
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { RepeatMark as RepeatMarkTag } from "@/components/repeat-mark";
+import type { RepeatMark } from "@/lib/recurring-marks";
 import { ProgressBar } from "@/components/progress-bar";
 import { PageShell } from "@/components/page-shell";
 import { dayLabel } from "@/lib/day-label";
@@ -30,12 +32,19 @@ function Go({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-function Rows({ rows }: { rows: { key: string; name: string; value: string }[] }) {
+function Rows({
+  rows,
+}: {
+  rows: { key: string; name: string; value: string; repeat?: RepeatMark | null }[];
+}) {
   return (
     <ul className="flex flex-col divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
       {rows.map((r) => (
         <li key={r.key} className="flex justify-between gap-4 py-1.5 [overflow-wrap:anywhere]">
-          <span>{r.name}</span>
+          <span className="flex min-w-0 flex-col gap-1">
+            <span>{r.name}</span>
+            {r.repeat && <RepeatMarkTag mark={r.repeat} withAmount />}
+          </span>
           <span className="shrink-0 font-medium tabular-nums">{r.value}</span>
         </li>
       ))}
@@ -174,6 +183,7 @@ async function MoneyContent({
               key: m.merchant,
               name: m.merchant,
               value: formatCents(m.cents),
+              repeat: m.repeat,
             }))}
           />
         </>

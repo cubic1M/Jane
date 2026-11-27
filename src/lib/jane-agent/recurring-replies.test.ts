@@ -12,6 +12,8 @@ const charge = (over: Partial<Charge>): Charge => ({
   key: over.merchant ?? "x",
   merchantKey: (over.merchant ?? "netflix").toLowerCase(),
   merchant: "Netflix",
+  accountId: null,
+  transactionIds: [],
   frequency: "MONTHLY",
   lastAmountCents: 1_799,
   lastDate: "2026-10-14",
