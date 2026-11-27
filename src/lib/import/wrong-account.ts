@@ -22,11 +22,14 @@ export function namesBank(accountName: string, bank: string): boolean {
 const isCard = (kind: string) => kind === "credit_card";
 
 // What a previewed file says about its account: its bank (a layout Jane knows) and its kind.
-export type FileFacts = { file: string; bank?: string; kind?: string };
+export type FileFacts = { file: string; bank?: string; kind?: string; mask?: string | null };
 
 // Two files that can't be one account: different banks, or a card's and a bank account's.
 function twoAccounts(a: FileFacts, b: FileFacts): boolean {
   if (a.bank && b.bank && a.bank !== b.bank) return true;
+  // The same bank's two accounts (ending 1234 and 5678): one account's last digits are never the
+  // other's.
+  if (a.mask && b.mask && !endsAlike(a.mask, b.mask, 2)) return true;
   return !!a.kind && !!b.kind && isCard(a.kind) !== isCard(b.kind);
 }
 
@@ -92,11 +95,15 @@ export type LinkedAccount = {
   kind: string | null;
 };
 
-const masksAgree = (a: string, b: string) => {
+function endsAlike(a: string, b: string, min: number): boolean {
   const x = a.replace(/\W/g, "");
   const y = b.replace(/\W/g, "");
-  return x.length >= 2 && y.length >= 2 && (x.endsWith(y) || y.endsWith(x));
-};
+  return x.length >= min && y.length >= min && (x.endsWith(y) || y.endsWith(x));
+}
+
+// The last four agree: a shorter mask (Plaid allows two to four characters) proves nothing, since
+// "12" ends many numbers.
+const masksAgree = (a: string, b: string) => endsAlike(a, b, 4);
 
 // A file from an account Jane already gets from a linked bank, whose transactions come in by
 // themselves. Sure when the bank and the last four agree, and then the import waits. Otherwise the

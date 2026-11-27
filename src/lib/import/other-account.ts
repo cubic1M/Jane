@@ -67,7 +67,7 @@ export async function alreadyInAnotherAccount(
             description: t.description,
           })),
         incoming,
-        { anyFormat: true },
+        { anyFormat: true, storedOnly: true },
       ).size,
     }))
     .sort((a, b) => b.rows - a.rows)[0];

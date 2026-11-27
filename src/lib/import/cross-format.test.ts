@@ -14,6 +14,14 @@ const ofx = (date: string, amountCents: number, description: string, id = date):
   description,
 });
 
+describe("crossFormatTwins with stored rows alone", () => {
+  it("doesn't pair two rows of the same file with each other", () => {
+    const incoming = [csv("2026-10-01", 1549, "NETFLIX", 1), csv("2026-10-02", 1549, "NETFLIX", 2)];
+    expect([...crossFormatTwins([], incoming, { anyFormat: true })]).toEqual([1]);
+    expect([...crossFormatTwins([], incoming, { anyFormat: true, storedOnly: true })]).toEqual([]);
+  });
+});
+
 describe("crossFormatTwins", () => {
   it("drops a QFX row whose CSV twin is already there, its name cut at 32 letters", () => {
     const existing = [csv("2026-10-01", 1549, "NETFLIX.COM 866-579-7172 CA RECURRING PAYMENT")];

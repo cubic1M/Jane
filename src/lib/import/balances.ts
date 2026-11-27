@@ -83,7 +83,15 @@ export async function keepFileBalances(
     select: { date: true, source: true },
   });
   const dates = balances.map((b) => dayDate(b.date));
-  await db.balanceSnapshots.deleteMany({ where: { accountId, date: { in: dates } } });
+  // A day the person typed a balance for keeps it in the history: the statement's own for that
+  // day is skipped below, so the history and the balance shown agree.
+  await db.balanceSnapshots.deleteMany({
+    where: {
+      accountId,
+      date: { in: dates },
+      OR: [{ source: null }, { source: { not: GIVEN_SOURCE } }],
+    },
+  });
   const { count } = await db.balanceSnapshots.createMany({
     data: balances.map((b) => ({
       userId: db.userId,

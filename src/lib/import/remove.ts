@@ -6,6 +6,7 @@ import { FILE_SOURCE, GIVEN_SOURCE } from "@/lib/import/balances";
 import { forgetSince } from "@/lib/evidence/orphans";
 import { markFreshStartIfEmpty } from "@/lib/jane-agent/fresh-start";
 import { enqueueJob } from "@/lib/jobs";
+import { log } from "@/lib/log";
 
 // Taking uploads back (founder: old and new statements shouldn't mix): one upload's rows, an
 // uploaded account with everything in it, or every uploaded account at once ("Start over").
@@ -134,10 +135,17 @@ async function record(
   event: "upload_removed" | "uploaded_account_removed" | "uploads_reset",
   counts: { rows: number; accounts: number },
 ) {
-  await Promise.all([
+  // The rows are already gone: a record or event that fails must not stop the numbers being worked
+  // out again (a retry finds nothing to remove, so nothing else would).
+  const noted = await Promise.allSettled([
     logAudit({ type: "user", id: userId }, event, null, counts),
     track(userId, event, counts),
   ]);
+  for (const result of noted) {
+    if (result.status === "rejected") {
+      log.error("Couldn't record an upload removal", { error: String(result.reason) });
+    }
+  }
 }
 
 type RemoveDb = ScopedDb;
@@ -168,7 +176,7 @@ async function forgetFileBalances(
     },
     select: { fromDate: true, toDate: true },
   });
-  await db.balanceSnapshots.deleteMany({
+  const { count: gone } = await db.balanceSnapshots.deleteMany({
     where: {
       accountId,
       source: FILE_SOURCE,
@@ -188,6 +196,10 @@ async function forgetFileBalances(
       where: { id: accountId },
       data: { currentBalanceCents: newest.balanceCents },
     });
+  } else if (!newest && gone > 0) {
+    // Its balances were the only ones: the account's balance came from the removed file, so it is
+    // asked for again (src/lib/import/account-balance.ts) rather than kept from a file that's gone.
+    await db.accounts.updateMany({ where: { id: accountId }, data: { currentBalanceCents: null } });
   }
 }
 
