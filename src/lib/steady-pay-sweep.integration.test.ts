@@ -140,6 +140,22 @@ describe.runIf(url)("the steady paycheck: sweep 1c fixes", { timeout: 120_000 },
     expect(after.length).toBe(1);
   });
 
+  it("still counts a failed part that kept its key (never confirmed rejected) as moved", async () => {
+    const userId = await freelancer("steady-unconfirmed");
+    await runSteadyPay(userId, { client, now: NOW });
+    const tax = (
+      await client.moneyTransfer.findMany({
+        where: { userId, planKey: { startsWith: "deposit:" } },
+      })
+    ).find((t) => t.planKey!.endsWith(":tax"))!;
+    await client.moneyTransfer.update({ where: { id: tax.id }, data: { status: "failed" } });
+    await runSteadyPay(userId, { client, now: NOW });
+    const rows = await client.moneyTransfer.findMany({
+      where: { userId, planKey: tax.planKey },
+    });
+    expect(rows.length).toBe(1);
+  });
+
   it("moves only what is left of the deposit when the estimate changed between the two parts (#2261)", async () => {
     const userId = await freelancer("steady-split", 100_000);
     await runSteadyPay(userId, { client, now: NOW });
