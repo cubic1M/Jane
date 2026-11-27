@@ -1,6 +1,6 @@
 import { socialSecurityTax } from "./retirement-taxes";
 import type { FilingStatus } from "@/config/tax";
-import { federalParams } from "@/config/tax-params";
+import { ADDITIONAL_STANDARD_AGE, federalParams, type FederalParams } from "@/config/tax-params";
 import { TAX_RATES_YEAR, type Bracket } from "@/config/tax-rates";
 import { amt } from "@/planning/equity-tax";
 import { bracketTax, bracketTaxExact } from "@/planning/tax-brackets";
@@ -64,6 +64,18 @@ export type EstimateInput = {
   otherDependants: number;
   // Age at the end of the year, when the person has told it; null or absent: unknown.
   age?: number | null;
+  // The standard deduction's other inputs (standardDeductionFor). Absent or null: not known, and the
+  // estimate then takes the regular deduction with no extra amount.
+  // A spouse's age and blindness count only on a joint return.
+  spouseAge?: number | null;
+  blind?: boolean;
+  spouseBlind?: boolean;
+  // Someone else can claim the person as a dependent: their standard deduction is then limited to
+  // their earned income plus a little (26 USC 63(c)(5)). Absent: not said, so the full amount.
+  claimedAsDependent?: boolean;
+  // A taxable scholarship or fellowship, already inside the income lines (otherCents); it counts as
+  // earned income for the dependent's limit only (IRS Pub. 501), nothing is added to income here.
+  taxableScholarshipCents?: number;
   // Two-letter state, or null when it isn't known: where the person lives at the year's end.
   state: string | null;
   // Spec step 165: moves in the year, remote work for an employer in another state, and a
@@ -351,6 +363,50 @@ function netCapital(stCents: number, ltCents: number, status: FilingStatus, year
   return { incomeCents: net, longTermCents: Math.max(0, Math.min(ltCents, net)) };
 }
 
+// The standard deduction for a person's situation, in the year's own figures (Rev. Proc. 2024-40 for
+// 2025, 2025-32 for 2026; IRS Pub. 501 (2025), read 2026-11-27, Tables 7 and 8):
+//  - the regular amount for the filing status;
+//  - for someone who can be claimed as a dependent, the greater of the year's floor or earned income
+//    plus the year's add-on, never more than the regular amount (a taxable scholarship counts as earned);
+//  - plus one additional amount for each of the person's age 65 or older, the person's blindness and,
+//    on a joint return, the spouse's age and blindness. The amount is higher for an unmarried person.
+// Age is the age at the year's end. A person turns 65 "on the day before" the birthday (Pub. 501), so
+// someone born on January 1 counts for the year they turn 65 although their age at December 31 still
+// reads 64: an age alone cannot show that, and the estimate does not count it.
+export function standardDeductionFor(
+  p: FederalParams,
+  s: {
+    status: FilingStatus;
+    age?: number | null;
+    spouseAge?: number | null;
+    blind?: boolean;
+    spouseBlind?: boolean;
+    claimedAsDependent?: boolean;
+    earnedCents: number;
+    taxableScholarshipCents?: number;
+  },
+): number {
+  const regular = p.standardDeduction.value[s.status];
+  const dep = p.dependentStandard.value;
+  const base = s.claimedAsDependent
+    ? Math.min(
+        regular,
+        Math.max(
+          dep.floor,
+          // A loss and a scholarship are combined before the floor (Pub. 501 Table 8, line 1).
+          clamp0(s.earnedCents + (s.taxableScholarshipCents ?? 0)) + dep.plusEarned,
+        ),
+      )
+    : regular;
+  const married = s.status === "married_joint" || s.status === "married_separate";
+  const senior = (age?: number | null) => (age != null && age >= ADDITIONAL_STANDARD_AGE ? 1 : 0);
+  const joint = s.status === "married_joint";
+  const boxes =
+    senior(s.age) + (s.blind ? 1 : 0) + (joint ? senior(s.spouseAge) + (s.spouseBlind ? 1 : 0) : 0);
+  const per = p.additionalStandard.value[married ? "married" : "unmarried"];
+  return base + boxes * per;
+}
+
 // Prices the year in input.year with that year's law; throws NoTaxParamsError for a year Jane has no
 // figures for (never another year's figures).
 export function estimateTaxes(input: EstimateInput): TaxEstimate {
@@ -397,7 +453,18 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     medicalCents: clamp0(input.medicalCents - round(clamp0(agi) * P.medical.value.floorShare)),
   };
   const itemizedTotal = Object.values(itemized).reduce((a, b) => a + b, 0);
-  const standard = P.standardDeduction.value[status];
+  // Earned income for a dependent's limit: pay plus net self-employment (a loss comes off) less half the
+  // self-employment tax (Pub. 501 Table 8; the scholarship is added inside standardDeductionFor).
+  const standard = standardDeductionFor(P, {
+    status,
+    age: input.age,
+    spouseAge: input.spouseAge,
+    blind: input.blind,
+    spouseBlind: input.spouseBlind,
+    claimedAsDependent: input.claimedAsDependent,
+    earnedCents: inc.wagesCents + inc.selfEmploymentCents - halfSe,
+    taxableScholarshipCents: input.taxableScholarshipCents,
+  });
   const itemizes = itemizedTotal > standard;
   const nonItemizerCharity = itemizes
     ? 0

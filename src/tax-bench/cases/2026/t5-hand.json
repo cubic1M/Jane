@@ -1,0 +1,163 @@
+[
+  {
+    "id": "t5-2026-joint-one-blind",
+    "title": "2026 married filing jointly, spouse blind, wages $90,000: one extra amount",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(1) and (3): $32,200 plus $1,650 (married)"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 40,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 9000000
+    },
+    "extra": {
+      "spouseBlind": true
+    },
+    "expected": {
+      "standardDeduction": 3385000
+    },
+    "note": "32,200 + 1,650 = 33,850."
+  },
+  {
+    "id": "t5-2026-joint-both-65-both-blind",
+    "title": "2026 married filing jointly, both 65 or older and both blind: four extra amounts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(1) and (3): $32,200 plus 4 x $1,650"
+    },
+    "household": {
+      "filingStatus": "married_joint",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 66,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 9000000
+    },
+    "extra": {
+      "spouseAge": 65,
+      "blind": true,
+      "spouseBlind": true
+    },
+    "expected": {
+      "standardDeduction": 3880000
+    },
+    "note": "32,200 + 4 x 1,650 = 38,800."
+  },
+  {
+    "id": "t5-2026-head-of-household-65",
+    "title": "2026 head of household, age 65: the unmarried amount",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(1) and (3): $24,150 plus $2,050"
+    },
+    "household": {
+      "filingStatus": "head_of_household",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 65,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "expected": {
+      "standardDeduction": 2620000
+    },
+    "note": "24,150 + 2,050 = 26,200."
+  },
+  {
+    "id": "t5-2026-separate-70",
+    "title": "2026 married filing separately, age 70: the married amount",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.14(1) and (3): $16,100 plus $1,650"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 70,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 5000000
+    },
+    "expected": {
+      "standardDeduction": 1775000
+    },
+    "note": "16,100 + 1,650 = 17,750."
+  },
+  {
+    "id": "t5-2026-dependent-blind-65",
+    "title": "2026 single dependent, age 66 and blind, wages $4,000: the limited amount plus two extra amounts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 Table 8 (line 7c adds lines 7a and 7b); Rev. Proc. 2025-32 section 4.14"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 66,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 400000
+    },
+    "extra": {
+      "claimedAsDependent": true,
+      "blind": true
+    },
+    "expected": {
+      "standardDeduction": 855000,
+      "taxable": 0
+    },
+    "note": "max(1,350, 4,000 + 450 = 4,450) = 4,450; plus 2 x 2,050 = 4,100: 8,550. Income 4,000: taxable 0."
+  },
+  {
+    "id": "t5-2026-dependent-business-loss",
+    "title": "2026 single dependent, wages $7,000 and a $3,000 business loss: earned income is the net",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Pub. 501 Table 8, Example 4 (earned income is wages less the business loss)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 18,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 700000,
+      "selfEmploymentCents": -300000
+    },
+    "extra": {
+      "claimedAsDependent": true
+    },
+    "expected": {
+      "standardDeduction": 445000
+    },
+    "note": "7,000 - 3,000 = 4,000; 4,000 + 450 = 4,450."
+  }
+]

@@ -197,15 +197,6 @@ export const FILING = {
 
 // --- Fellowships and student money --------------------------------------------------------------
 
-// A dependent's standard deduction for 2026: the greater of $1,350 or earned income plus $450, never
-// more than the regular one (Rev. Proc. 2025-32 §4.14(2)). A taxable fellowship counts as earned
-// income here (Pub. 501), so it is added.
-export const DEPENDENT_STANDARD_DEDUCTION = {
-  floorCents: 135_000,
-  plusEarnedCents: 45_000,
-  sources: ["revProc2025_32", "pub501"],
-} as const;
-
 // Money from a school that isn't pay for work: a stipend or fellowship (taxable, nothing withheld
 // for a US student), or a refund from the student account (a fellowship's stipend at Stanford, or
 // aid and loan money: which, only the person knows). Pay for work comes through payroll.

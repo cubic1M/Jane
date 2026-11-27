@@ -1,5 +1,5 @@
 import { DAY_MS } from "@/lib/dates";
-import { DEPENDENT_STANDARD_DEDUCTION, ESTIMATED_TAX } from "@/config/student-taxes";
+import { ESTIMATED_TAX } from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
 import { federalParams, ownLawYear } from "@/config/tax-params";
 import { TAX_RATES_YEAR } from "@/config/tax-rates";
@@ -9,7 +9,7 @@ import { payForYear, payInYearData } from "@/profile/pay-on-schedule";
 import { monthsBetweenLines } from "@/detection/units";
 import { studentMoney, sumCents } from "./student-money";
 import { bracketTax } from "./tax-brackets";
-import { marginalRateOf } from "./tax-estimate";
+import { marginalRateOf, standardDeductionFor } from "./tax-estimate";
 import { filingStatusFor } from "./tax-profile";
 
 // The arithmetic the student tax cards share (suggest-taxes, 11-18), from the published rules in
@@ -49,22 +49,21 @@ export const onStudentVisa = (facts: Facts) => facts.tax_residency?.value === "s
 // another year's law.
 export const lawYearOf = (today: string) => ownLawYear(Number(today.slice(0, 4)));
 
-// The standard deduction: the regular one, or a dependent's (the greater of $1,350 or earned
-// income plus $450, never more than the regular one). A taxable fellowship counts as earned.
-// `year` is the law year (lawYearOf); the default is only for callers not yet moved (tests).
+// The standard deduction for a student's year: the shared rule (standardDeductionFor in
+// ./tax-estimate), so a card and the estimate cannot differ. `earnedCents` is earned income with any
+// taxable fellowship added, as a dependent's limit counts it. `year` is the law year (lawYearOf); the
+// default is only for callers not yet moved (tests).
 export function standardDeductionOf(
   status: FilingStatus,
   dependent: boolean,
   earnedCents: number,
   year: number = TAX_RATES_YEAR,
 ): number {
-  const regular = federalParams(year).standardDeduction.value[status];
-  if (!dependent) return regular;
-  const own = Math.max(
-    DEPENDENT_STANDARD_DEDUCTION.floorCents,
-    earnedCents + DEPENDENT_STANDARD_DEDUCTION.plusEarnedCents,
-  );
-  return Math.min(regular, own);
+  return standardDeductionFor(federalParams(year), {
+    status,
+    claimedAsDependent: dependent,
+    earnedCents,
+  });
 }
 
 // Federal income tax on a year's income (ordinary rates, the standard deduction), before credits.

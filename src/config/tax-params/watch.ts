@@ -30,6 +30,7 @@ export const TAX_YEAR_SOURCES = [
       "capitalGains",
       "standardDeduction",
       "additionalStandard",
+      "dependentStandard",
       "ctc",
       "eitc",
       "qbi",

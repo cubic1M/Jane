@@ -36,6 +36,7 @@ import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
+import { loadToldDependency } from "@/lib/tax-dependency";
 import { earnedIncomeHeldLine } from "@/planning/tax-engine/residency-gate";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -224,9 +225,18 @@ function profileAssumptions({
   return out;
 }
 
-// An age told on a day, at the tax year's last day.
+// The age under which someone could be another person's dependent often enough to say what the
+// estimate assumed (a qualifying child is under 19, or under 24 and a full-time student).
+const DEPENDENT_QUESTION_BELOW_AGE = 24;
+export const DEPENDENCY_UNKNOWN_LINE =
+  "Jane counted the full standard deduction because you haven't said whether someone can claim you as a dependent.";
+
+// An age told on a day, at the tax year's last day: older for a later year, and younger for an earlier
+// one (a person told 65 in November 2026 was 64 at the end of 2025: the 65-and-over amounts and the
+// childless earned income credit's ages read the year's own age).
+// The year's last day counts to its end, so an age told on December 31 itself is not made a year younger.
 const ageAtYearEnd = (age: number, on: Date, year: number) =>
-  age + Math.max(0, Math.floor((Date.UTC(year, 11, 31) - on.getTime()) / (365.25 * DAY_MS)));
+  age + Math.floor((Date.UTC(year, 11, 31, 23, 59, 59, 999) - on.getTime()) / (365.25 * DAY_MS));
 
 async function loadTaxEstimateFrom(
   userId: string,
@@ -718,12 +728,16 @@ async function loadTaxEstimateFrom(
   // The age they told Jane (on the investor profile), at the year's end.
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
   const age = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
+  // Whether someone else can claim them as a dependent: it limits the standard deduction. Not said (or
+  // "not sure") is the full deduction, and said so when it could matter (someone under 24).
+  const dependent = await loadToldDependency(userId, { client });
   const input: EstimateInput = {
     year,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
     otherDependants: profile.otherDependants,
     age,
+    ...(dependent === null ? {} : { claimedAsDependent: dependent }),
     state,
     residency: residencyFor(
       residency,
@@ -785,6 +799,9 @@ async function loadTaxEstimateFrom(
         `I haven't counted the Earned Income Credit (up to ${formatCents(atEligibleAge.credits.earnedIncomeCreditCents)}): without children it's for people 25 to 64. Tell me your age and I'll check it.`,
       );
     }
+  }
+  if (dependent === null && age !== null && age < DEPENDENT_QUESTION_BELOW_AGE) {
+    assumptions.push(DEPENDENCY_UNKNOWN_LINE);
   }
   // Spec step 219: crypto, ESPP and ISO income, said plainly.
   if (equity.ordinaryCents > 0) {

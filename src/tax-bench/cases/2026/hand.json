@@ -484,14 +484,11 @@
       "claimedAsDependent": true
     },
     "expected": {
-      "standardDeduction": 645000
+      "standardDeduction": 645000,
+      "taxable": 0,
+      "incomeTax": 0
     },
-    "expectedFailure": {
-      "steps": ["T5"],
-      "figures": ["standardDeduction"],
-      "reason": "The estimate gives everyone the full standard deduction (audit 4.5.7); T5 adds the dependent's limit."
-    },
-    "note": "min(16,100, max(1,350, 6,000 + 450 = 6,450)) = 6,450."
+    "note": "min(16,100, max(1,350, 6,000 + 450 = 6,450)) = 6,450. Taxable 0 (6,000 - 6,450 clamps at 0); tax 0."
   },
   {
     "id": "he3b-dependent-standard-deduction-capped",
@@ -544,12 +541,7 @@
     "expected": {
       "standardDeduction": 1815000
     },
-    "expectedFailure": {
-      "steps": ["T5"],
-      "figures": ["standardDeduction"],
-      "reason": "The estimate never adds the 65-and-over amount (audit 4.5.2); T5 adds it. The senior deduction (T19) is not asserted."
-    },
-    "note": "16,100 + 2,050 = 18,150."
+    "note": "16,100 + 2,050 = 18,150. (Before the senior deduction, tax would be 10% x (30,000 - 18,150) = 1,185.00; the full result is the age-67 senior case below, which T19 completes.)"
   },
   {
     "id": "he4-itemize-or-standard-plus-gifts",
@@ -672,9 +664,9 @@
       "incomeTax": 58500
     },
     "expectedFailure": {
-      "steps": ["T5", "T19"],
-      "figures": ["standardDeduction", "taxable", "incomeTax"],
-      "reason": "The estimate adds neither the 65-and-over standard deduction (T5) nor the senior deduction (T19). Found by CodeRabbit."
+      "steps": ["T19"],
+      "figures": ["taxable", "incomeTax"],
+      "reason": "The estimate does not add the senior deduction (T19); the 65-and-over standard deduction is T5's and now passes."
     },
     "note": "Standard 16,100 + 2,050 = 18,150. Taxable 30,000 - 18,150 - 6,000 = 5,850 (AGI 30,000 is under 75,000, no reduction). Tax 10% x 5,850 = 585.00."
   }

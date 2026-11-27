@@ -133,6 +133,15 @@ export const US_2026: FederalParams = {
     { unmarried: $(2_050), married: $(1_650) },
     { source: RP2532, where: "section 4.14(3), aged or blind" },
   ),
+  dependentStandard: cited(
+    { floor: $(1_350), plusEarned: $(450) },
+    {
+      source: RP2532,
+      alsoSources: ["https://www.irs.gov/publications/p501"],
+      where:
+        "section 4.14(2), dependent: the greater of $1,350 or earned income plus $450 (read 2026-11-27; Pub. 501 (2025) says earned income includes a taxable scholarship or fellowship)",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     { source: code("1211"), where: "26 USC 1211(b)(1) (statute, not indexed)" },

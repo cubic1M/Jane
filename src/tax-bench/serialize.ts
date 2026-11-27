@@ -16,8 +16,6 @@ import type { BenchCase } from "./types";
 // each. The estimator ignores them until then; the test fails when a key listed here is a real
 // input by now, so the entry is removed in the step that adds the field.
 export const FUTURE_INPUTS: Readonly<Record<string, string>> = {
-  claimedAsDependent: "T5",
-  blind: "T5",
   qualifyingChildren: "T16",
   medicareWagesCents: "T28",
   livedWithSpouse: "unowned",
@@ -66,6 +64,11 @@ const INPUT_KEY_FLAGS: Record<keyof EstimateInput, true> = {
   childrenUnder17: true,
   otherDependants: true,
   age: true,
+  spouseAge: true,
+  blind: true,
+  spouseBlind: true,
+  claimedAsDependent: true,
+  taxableScholarshipCents: true,
   state: true,
   residency: true,
   income: true,
