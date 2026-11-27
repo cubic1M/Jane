@@ -99,8 +99,25 @@ export function snaptradeRead(
   let leftOut = 0;
   for (const position of positions.results) {
     const holding = holdingOf(position);
-    if (!holding) leftOut += 1;
-    else holdings.push(holding);
+    if (!holding) {
+      leftOut += 1;
+      continue;
+    }
+    // One holding per security in an account: two lines under one ticker (two lots, or two
+    // listings the symbol cannot tell apart) are added together, never one over the other.
+    const same = holdings.find((h) => h.ref === holding.ref);
+    if (!same) {
+      holdings.push(holding);
+      continue;
+    }
+    same.quantity += holding.quantity;
+    same.valueCents += holding.valueCents;
+    same.costBasisCents =
+      same.costBasisCents === null || holding.costBasisCents === null
+        ? null
+        : same.costBasisCents + holding.costBasisCents;
+    same.priceCents =
+      same.quantity > 0 ? Math.round(same.valueCents / same.quantity) : same.priceCents;
   }
   const net = account.net_value;
   const mask = (account.masked_account_number ?? "").replace(/\D/g, "").slice(-4);
