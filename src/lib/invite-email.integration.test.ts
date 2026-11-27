@@ -72,11 +72,27 @@ describe.runIf(url)("emailing an invite", () => {
     ).toBeNull();
   });
 
+  it("still says sent when only the note of it fails, and never counts a try's address as sent", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const c = await code({ email: "d@example.edu" });
+    // The code is deleted while the email goes out, so writing "emailed at" afterwards fails.
+    send.mockImplementationOnce(async () => {
+      await client.inviteCode.delete({ where: { code: c } });
+    });
+    expect((await emailInvite(c, { client, send })).result).toBe("sent");
+    send.mockClear();
+    const trial = await code({ email: "someone@try.jane.invalid" });
+    expect((await emailInvite(trial, { client, send })).result).toBe("failed");
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it("says when the code stops working", () => {
     const now = new Date("2026-11-12T10:00:00Z");
     const text = (at: string) => renderInviteEmail("ABCD-EFGH-JKMN", new Date(at), now).text;
     expect(text("2026-11-26T10:00:00Z")).toContain("It works for 14 more days.");
-    expect(text("2026-11-12T20:00:00Z")).toContain("It works for 1 more day.");
+    expect(text("2026-11-13T11:00:00Z")).toContain("It works for 1 more day.");
+    expect(text("2026-11-12T12:00:00Z")).toContain("It works for less than a day.");
+    expect(text("2026-11-12T12:00:00Z")).not.toContain("1 more day");
     expect(renderInviteEmail("ABCD-EFGH-JKMN", null, now).text).not.toContain("It works for");
   });
 });

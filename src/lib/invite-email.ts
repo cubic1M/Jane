@@ -4,6 +4,7 @@ import { escapeHtml } from "@/lib/escape-html";
 import { sendEmail } from "@/lib/email";
 import { inviteStatus } from "@/lib/invites";
 import { log } from "@/lib/log";
+import { isTrialEmail } from "@/lib/trial-ids";
 import { siteOrigin } from "@/lib/site-origin";
 import { systemDb } from "@/lib/system-db";
 
@@ -22,7 +23,9 @@ export const signUpLink = (code: string) =>
 // How long the code still works, in whole days: the student's timezone isn't known yet.
 function daysLeft(expiresAt: Date | null, now: Date): string {
   if (!expiresAt) return "";
-  const days = Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000));
+  // Rounded down, never up: with two hours left it must not promise a day.
+  const days = Math.floor((expiresAt.getTime() - now.getTime()) / 86_400_000);
+  if (days < 1) return " It works for less than a day.";
   return ` It works for ${days === 1 ? "1 more day" : `${days} more days`}.`;
 }
 
@@ -73,6 +76,8 @@ export async function emailInvite(
   if (!invite || invite.sharedById) return { result: "not_found" };
   if (!invite.email) return { result: "not_locked", id: invite.id };
   if (inviteStatus(invite, now) !== "active") return { result: "not_active", id: invite.id };
+  // A try's address never gets mail (sendEmail skips it quietly): not "sent".
+  if (isTrialEmail(invite.email)) return { result: "failed", id: invite.id };
   try {
     await send({
       to: invite.email,
@@ -83,9 +88,10 @@ export async function emailInvite(
     log.error("Invite email failed", { error: String(error) });
     return { result: "failed", id: invite.id };
   }
-  await systemDb(WHY, client).inviteCode.update({
-    where: { id: invite.id },
-    data: { emailedAt: now },
-  });
+  // The email is out: a failed note of it must not turn that into an error (a retry would send a
+  // second copy).
+  await systemDb(WHY, client)
+    .inviteCode.update({ where: { id: invite.id }, data: { emailedAt: now } })
+    .catch((error) => log.error("Invite email sent, but not recorded", { error: String(error) }));
   return { result: "sent", id: invite.id };
 }

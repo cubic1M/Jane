@@ -48,6 +48,34 @@ describe.runIf(url)("invite codes against a real database", () => {
     await client.$disconnect();
   });
 
+  it("refuses a code taken back between the check and the redemption", async () => {
+    const c = await code(2);
+    const a = email("race");
+    // Another connection takes the code back just as the redemption starts.
+    const other = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+    const racing = new Proxy(client, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "$transaction") return value;
+        return async (...args: unknown[]) => {
+          // Reads go through as a batch; only the redemption passes a function.
+          if (typeof args[0] !== "function") {
+            return (value as (...a: unknown[]) => unknown).apply(target, args);
+          }
+          await other.inviteCode.update({ where: { code: c }, data: { revokedAt: new Date() } });
+          return (value as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+    try {
+      expect(await redeemInvite(c, a, { client: racing })).toBe("revoked");
+    } finally {
+      await other.$disconnect();
+    }
+    expect((await client.inviteCode.findUniqueOrThrow({ where: { code: c } })).uses).toBe(0);
+    expect(await mayCreateAccount(a, { client })).toBe(false);
+  });
+
   it("lets an email in once redeemed, without spending a second use on it", async () => {
     const c = await code(2);
     const a = email("a");

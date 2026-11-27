@@ -275,6 +275,14 @@ describe("what changed", () => {
     expect(kept[0]).toEqual({ title: "Bill 11", percent: 61 });
   });
 
+  it("leaves out changes a finding already says before the cap, so the next one fits", () => {
+    const many = Array.from({ length: 10 }, (_, i) =>
+      change({ title: `Bill ${i}`, merchant: `M${i}`, confidencePercent: 90 - i }),
+    );
+    const kept = changesSince(many, [], daysAgo(7), (title) => /Bill [0-7]$/.test(title));
+    expect(kept.map((c) => c.title)).toEqual(["Bill 8", "Bill 9"]);
+  });
+
   it("carries read-only mode to the plan", () => {
     const findings = [{ title: "Fees", annualSavingsCents: 100, createdAt: daysAgo(1) }];
     expect(buildDigest(input({ findings, readOnly: true }))?.plan).toEqual({

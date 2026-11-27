@@ -108,6 +108,7 @@ export async function redeemInvite(
   const check = await checkCode(input, { client, now, email: address });
   if (check !== "ok" || access) return check;
   let inviteId: string | undefined;
+  type Redeemed = "ok" | "used_up" | "revoked";
   const why = "Invite codes are checked before sign-up, and aren't anyone's own";
   const result = await systemTransaction(
     why,
@@ -117,12 +118,20 @@ export async function redeemInvite(
         select: { id: true },
       });
       inviteId = invite.id;
-      // Only takes a use if one is left, even with two people redeeming at once.
+      // Only takes a use if one is left and the code is still on, even with two people
+      // redeeming at once or a code taken back after the check above.
       const taken = await tx.$executeRaw`
-      UPDATE invite_codes SET uses = uses + 1 WHERE id = ${invite.id} AND uses < max_uses`;
-      if (taken === 0) return "used_up" as const;
+      UPDATE invite_codes SET uses = uses + 1
+      WHERE id = ${invite.id} AND uses < max_uses AND revoked_at IS NULL`;
+      if (taken === 0) {
+        const now = await tx.inviteCode.findUnique({
+          where: { id: invite.id },
+          select: { revokedAt: true },
+        });
+        return (now?.revokedAt ? "revoked" : "used_up") as Redeemed;
+      }
       await tx.betaAccess.create({ data: { email: address, inviteCodeId: invite.id } });
-      return "ok" as const;
+      return "ok" as Redeemed;
     },
     client,
   );

@@ -270,6 +270,14 @@ export async function runMonthlyReports({
       deletedAt: null,
       accounts: { some: {} },
       NOT: { id: { startsWith: TRIAL_ID_PREFIX } },
+      // Not someone whose report already went out this cycle (a report is emailed only in the first
+      // MONTHLY_REPORT_DAYS days): on a short budget, those would use it up in the same order every
+      // day and the people after them would never be reached.
+      monthlyReports: {
+        none: {
+          emailedAt: { gte: new Date(now.getTime() - (MONTHLY_REPORT_DAYS + 1) * 86_400_000) },
+        },
+      },
       ...(userIds ? { id: { in: [...userIds] } } : {}),
     },
     select: { id: true, email: true },

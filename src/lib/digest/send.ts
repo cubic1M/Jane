@@ -16,6 +16,7 @@ import { loadCheckup } from "@/lib/checkup";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 import { offerFor, savedToDate } from "@/lib/membership/service";
 import { findingSure } from "@/lib/report-state";
 import { sendEmail } from "@/lib/email";
@@ -38,7 +39,6 @@ import type { NoDigestReason } from "./recipients";
 import { unsubscribeToken } from "./unsubscribe";
 import { weekStart } from "./week";
 import type { OnlyPeople } from "@/lib/only-people";
-import { systemDb } from "@/lib/system-db";
 
 const WHY = "Cron: the digest goes out across people";
 
@@ -349,13 +349,28 @@ export async function runDigests({
       // A one-tap link for this week's no-risk items. Its token only goes in the email
       // (and the notification), never in the stored digest.
       // The one-tap go-ahead page (/plan/go) is hidden in the read-only beta.
-      const goAhead = isHiddenPage("/plan/go")
-        ? null
-        : await createPlanLink(user.id, { client, now }).catch(() => null);
-      const links = { ...linksFor(digest.id, user.id), ...(goAhead ? { goAhead } : {}) };
-      const email = renderDigest(payload, links);
+      let goAhead: Awaited<ReturnType<typeof createPlanLink>> | null = null;
       let sent: Awaited<ReturnType<typeof send>>;
       try {
+        goAhead = isHiddenPage("/plan/go")
+          ? null
+          : await createPlanLink(user.id, { client, now }).catch(() => null);
+        const links = { ...linksFor(digest.id, user.id), ...(goAhead ? { goAhead } : {}) };
+        const email = renderDigest(payload, links);
+        // A complaint may have turned the email off since the list was read: ask again right
+        // before handing it over.
+        const still = await systemDb(
+          "Cron: checks the weekly email is still wanted",
+          client,
+        ).user.findFirst({
+          where: { id: user.id, digestEnabled: true, deletedAt: null },
+          select: { id: true },
+        });
+        if (!still) {
+          await db.digests.deleteMany({ where: { id: digest.id } });
+          run.skipped += 1;
+          continue;
+        }
         sent = await send({
           to: user.email,
           ...email,
@@ -366,7 +381,8 @@ export async function runDigests({
           },
         });
       } catch (error) {
-        // Remove the row so tomorrow's run tries again.
+        // Remove the row so tomorrow's run tries again (also when the email could not even be
+        // prepared, e.g. a missing signing secret: it was never attempted).
         await db.digests.deleteMany({ where: { id: digest.id } });
         log.error("Digest email failed", { userId: user.id, error: String(error) });
         run.failed += 1;
@@ -376,6 +392,9 @@ export async function runDigests({
         where: { id: digest.id },
         data: { sentAt: now, resendId: sent?.id ?? null },
       });
+      // Counted as sent once the send is recorded: a failed audit or analytics write below does
+      // not make a delivered email look failed (the next run sees it as sent).
+      run.sent += 1;
       // A phone notification too, for people who turned them on.
       if (payload.plan && payload.plan.items > 0) {
         const n = payload.plan.items;
@@ -400,14 +419,20 @@ export async function runDigests({
         alerts: payload.alerts.length,
         changes: payload.changes?.length ?? 0,
       };
-      await logAudit(
-        { type: "system", id: null },
-        "digest_sent",
-        { type: "digest", id: digest.id },
-        { user_id: user.id, ...counts },
-      );
-      await track(user.id, "digest_sent", { digest_id: digest.id, ...counts });
-      run.sent += 1;
+      try {
+        await logAudit(
+          { type: "system", id: null },
+          "digest_sent",
+          { type: "digest", id: digest.id },
+          { user_id: user.id, ...counts },
+        );
+        await track(user.id, "digest_sent", { digest_id: digest.id, ...counts });
+      } catch (error) {
+        log.error("Digest sent, but its record was not written", {
+          userId: user.id,
+          error: String(error),
+        });
+      }
     } catch (error) {
       log.error("Digest failed", { userId: user.id, error: String(error) });
       run.failed += 1;

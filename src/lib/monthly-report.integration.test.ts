@@ -296,6 +296,34 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(await client.monthlyReport.count({ where: { userId: sample.id } })).toBe(0);
   });
 
+  it("doesn't spend its budget on people already sent this month's report", async () => {
+    const person = async (name: string) => {
+      const user = await client.user.create({
+        data: { email: `report-${name}-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      await client.account.create({
+        data: { userId: user.id, source: "csv", name: "Card", type: "credit" },
+      });
+      return user;
+    };
+    const done = await person("done");
+    const waiting = await person("waiting");
+    await client.monthlyReport.create({
+      data: { userId: done.id, month: "2026-09", figures: {}, emailedAt: NOW },
+    });
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    // No time at all: only the person still waiting is left over for tomorrow.
+    const run = await runMonthlyReports({
+      client,
+      now: new Date(NOW.getTime() + 86_400_000),
+      send,
+      userIds: [done.id, waiting.id],
+      budgetMs: 0,
+    });
+    expect(run.deferred).toBe(1);
+  });
+
   it("isn't made after the first days of the month, or for an empty month", async () => {
     expect(
       await monthlyReportFor(userId, { client, now: new Date("2026-10-12T15:00:00Z") }),

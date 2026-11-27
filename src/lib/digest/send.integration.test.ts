@@ -389,4 +389,62 @@ describe.runIf(url)("runDigests against a real database", () => {
       expect.objectContaining({ digest_id: digest.id }),
     );
   });
+
+  describe("a week with something to say (Nov 2)", () => {
+    const NOV_MONDAY = new Date("2026-11-02T22:00:00Z");
+    beforeEach(async () => {
+      await client.finding.updateMany({
+        where: { userId: ids.news },
+        data: { createdAt: new Date("2026-10-31T00:00:00Z") },
+      });
+    });
+
+    it("releases the week when the email cannot be prepared, so the next run tries again", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.stubEnv("AUTH_SECRET", "");
+      const run = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      vi.stubEnv("AUTH_SECRET", "test-secret");
+
+      expect(run.failed).toBe(1);
+      expect(send).not.toHaveBeenCalled();
+      const weeks = (await digestsOf("news")).map((d) => d.weekStart.toISOString().slice(0, 10));
+      expect(weeks).not.toContain("2026-11-02");
+      const again = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+      expect(again.sent).toBe(1);
+    });
+
+    it("sends nothing to someone who opted out while the batch was running", async () => {
+      await person("late", { finding: true });
+      await client.finding.updateMany({
+        where: { userId: ids.late },
+        data: { createdAt: new Date("2026-10-31T00:00:00Z") },
+      });
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      // Whoever is sent to first files a spam complaint from the other one, mid-batch.
+      send.mockImplementation(async (mail: { to: string }) => {
+        const other = mail.to.startsWith("news-") ? ids.late : ids.news;
+        await client.user.update({ where: { id: other }, data: { digestEnabled: false } });
+        return { id: null };
+      });
+
+      await runDigests({ client, userIds: [ids.news, ids.late], now: NOV_MONDAY, send });
+
+      expect(sentTo().filter((to) => to.includes(suffix))).toHaveLength(1);
+      await client.user.delete({ where: { id: ids.late } });
+      delete ids.late;
+      await client.user.update({ where: { id: ids.news }, data: { digestEnabled: true } });
+    });
+
+    it("counts a delivered email as sent when only its audit entry fails", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await client.digest.deleteMany({ where: { userId: ids.news } });
+      send.mockResolvedValue({ id: "re_x" });
+      vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit down"));
+
+      const run = await runDigests({ client, userIds: [ids.news], now: NOV_MONDAY, send });
+
+      expect(run.sent).toBe(1);
+      expect(run.failed).toBe(0);
+    });
+  });
 });

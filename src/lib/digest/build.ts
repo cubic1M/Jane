@@ -132,12 +132,15 @@ export function changesSince(
   changes: NonNullable<DigestInput["changes"]>,
   alerts: readonly { title: string }[],
   since: Date,
+  // Titles already said under a new finding (sameWords): left out before the limit is applied.
+  skip: (title: string) => boolean = () => false,
 ): { title: string; percent: number }[] {
   const alerted = alerts.map((a) => a.title.toLowerCase());
   return changes
     .filter(
       (c) =>
         c.date > day(since) &&
+        !skip(c.title) &&
         !alerted.some((t) => c.merchant && t.includes(c.merchant.toLowerCase())),
     )
     .sort((a, b) => b.confidencePercent - a.confidencePercent || b.date.localeCompare(a.date))
@@ -173,8 +176,8 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   const alerts = input.alerts.filter(
     (a) => a.createdAt > since && a.emailedAt === null && !found.has(sameWords(a.title)),
   );
-  const changes = changesSince(input.changes ?? [], alerts, input.lastSentAt ?? weekAgo).filter(
-    (c) => !found.has(sameWords(c.title)),
+  const changes = changesSince(input.changes ?? [], alerts, input.lastSentAt ?? weekAgo, (title) =>
+    found.has(sameWords(title)),
   );
   // Budgets close to or over their limit; goals; net worth when last week is known.
   const budgets = (input.plans?.budgets ?? [])

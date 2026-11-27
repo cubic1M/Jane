@@ -51,7 +51,11 @@ export async function sendStatusEmail(to: string, email: StatusEmail): Promise<v
   const link = appUrl("/actions");
   const text = [...email.lines, "", `See all your actions: ${link}`].join("\n");
   // Local dev without Resend: print instead of sending.
-  if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
+  if (
+    !process.env.RESEND_API_KEY &&
+    process.env.EMAIL_PROVIDER !== "agentmail" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     log.dev(`[dev] Email to ${to}: ${email.subject}\n${text}`);
     return;
   }
