@@ -55,7 +55,8 @@ async function takeBackFiling(tx: ScopedTx, was: string): Promise<void> {
 }
 
 // The mirror wrote 1 (yes, at least one child) or 0 (no) and marked "dependants" answered; a count
-// the person gave on the tax profile form (two children, or other dependants) is not the mirror's.
+// the person gave on the tax profile form (two children, or any other dependants) is not the mirror's
+// and stays: a form answer with other dependants is theirs whole, and can't be told from the mirror's.
 async function takeBackChildren(tx: ScopedTx, was: boolean): Promise<void> {
   await retry(async () => {
     const row = await tx.taxProfiles.findFirst({
@@ -65,7 +66,11 @@ async function takeBackChildren(tx: ScopedTx, was: boolean): Promise<void> {
     const mirrored = row.childrenUnder17 === (was ? 1 : 0) && !row.otherDependants;
     if (!mirrored) return true;
     const cleared = await tx.taxProfiles.updateMany({
-      where: { childrenUnder17: row.childrenUnder17, answered: { equals: row.answered } },
+      where: {
+        childrenUnder17: row.childrenUnder17,
+        otherDependants: row.otherDependants,
+        answered: { equals: row.answered },
+      },
       data: {
         childrenUnder17: null,
         otherDependants: null,
