@@ -1,20 +1,7 @@
 import { socialSecurityTax } from "./retirement-taxes";
 import type { FilingStatus } from "@/config/tax";
-import {
-  ADDITIONAL_MEDICARE,
-  CAPITAL_LOSS_LIMIT,
-  CAPITAL_GAINS_BRACKETS,
-  CHILD_TAX_CREDIT,
-  EITC,
-  FEDERAL_BRACKETS,
-  ITEMIZED,
-  NET_INVESTMENT_INCOME_TAX,
-  QBI,
-  SELF_EMPLOYMENT_TAX,
-  STANDARD_DEDUCTION,
-  STUDENT_LOAN_INTEREST,
-  type Bracket,
-} from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
+import { TAX_RATES_YEAR, type Bracket } from "@/config/tax-rates";
 import { amt } from "@/planning/equity-tax";
 import { bracketTax } from "@/planning/tax-brackets";
 import {
@@ -173,25 +160,34 @@ export const marginalRateOf = (incomeCents: number, brackets: readonly Bracket[]
   [...brackets].reverse().find((b) => incomeCents > b.over)?.rate ?? brackets[0].rate;
 
 // Ordinary tax, with qualified dividends and long-term gains stacked on top at 0/15/20%.
+// `year` is the tax year's law (federalParams throws NoTaxParamsError for a year with none). The
+// default is only for callers that have not been moved to pass their own year.
 export function incomeTax(
   taxableCents: number,
   preferentialCents: number,
   status: FilingStatus,
+  year: number = TAX_RATES_YEAR,
 ): number {
+  const p = federalParams(year);
   const preferential = Math.min(clamp0(preferentialCents), clamp0(taxableCents));
   const ordinary = clamp0(taxableCents) - preferential;
-  const ordinaryTax = bracketTax(ordinary, FEDERAL_BRACKETS[status]);
+  const ordinaryTax = bracketTax(ordinary, p.brackets.value[status]);
   if (preferential === 0) return ordinaryTax;
-  const gains = CAPITAL_GAINS_BRACKETS[status];
+  const gains = p.capitalGains.value[status];
   const stacked = bracketTax(ordinary + preferential, gains) - bracketTax(ordinary, gains);
   // Never more than taxing it all as ordinary income.
   return Math.min(
     ordinaryTax + stacked,
-    bracketTax(clamp0(taxableCents), FEDERAL_BRACKETS[status]),
+    bracketTax(clamp0(taxableCents), p.brackets.value[status]),
   );
 }
 
-export function selfEmploymentTax(netCents: number, socialSecurityWagesCents: number): number {
+export function selfEmploymentTax(
+  netCents: number,
+  socialSecurityWagesCents: number,
+  year: number = TAX_RATES_YEAR,
+): number {
+  const SELF_EMPLOYMENT_TAX = federalParams(year).selfEmployment.value;
   const earnings = netCents * SELF_EMPLOYMENT_TAX.netEarningsShare;
   if (earnings < SELF_EMPLOYMENT_TAX.minimumNetEarnings) return 0;
   const ssBase = clamp0(
@@ -211,7 +207,9 @@ export function childCredits(input: {
   agiCents: number;
   earnedCents: number;
   taxBeforeCreditsCents: number;
+  year?: number;
 }) {
+  const CHILD_TAX_CREDIT = federalParams(input.year ?? TAX_RATES_YEAR).ctc.value;
   const full =
     input.children * CHILD_TAX_CREDIT.perChild + input.others * CHILD_TAX_CREDIT.otherDependant;
   const over = clamp0(input.agiCents - CHILD_TAX_CREDIT.phaseOutFrom[input.status]);
@@ -242,7 +240,9 @@ export function earnedIncomeCredit(input: {
   // Age at the end of the year; without children the credit is only for 25 to 64, so an
   // unknown age counts none.
   age?: number | null;
+  year?: number;
 }): number {
+  const EITC = federalParams(input.year ?? TAX_RATES_YEAR).eitc.value;
   if (input.status === "married_separate") return 0;
   if (
     input.children === 0 &&
@@ -263,7 +263,13 @@ export function earnedIncomeCredit(input: {
   return clamp0(round(credit));
 }
 
-function studentLoanDeduction(paidCents: number, magiCents: number, status: FilingStatus): number {
+function studentLoanDeduction(
+  paidCents: number,
+  magiCents: number,
+  status: FilingStatus,
+  year: number,
+): number {
+  const STUDENT_LOAN_INTEREST = federalParams(year).studentLoanInterest.value;
   const range = STUDENT_LOAN_INTEREST.phaseOut[status];
   if (!range) return 0;
   const base = Math.min(paidCents, STUDENT_LOAN_INTEREST.max);
@@ -273,14 +279,13 @@ function studentLoanDeduction(paidCents: number, magiCents: number, status: Fili
   return round(base * (1 - (magiCents - from) / (to - from)));
 }
 
-function stateLocalCap(agiCents: number, status: FilingStatus): number {
+function stateLocalCap(agiCents: number, status: FilingStatus, year: number): number {
+  const salt = federalParams(year).salt.value;
   const separate = status === "married_separate";
-  const cap = separate ? ITEMIZED.saltCap.marriedSeparate : ITEMIZED.saltCap.normal;
-  const from = separate
-    ? ITEMIZED.saltPhaseDownFrom.marriedSeparate
-    : ITEMIZED.saltPhaseDownFrom.normal;
-  const floor = separate ? ITEMIZED.saltFloor.marriedSeparate : ITEMIZED.saltFloor.normal;
-  return Math.max(floor, cap - round(clamp0(agiCents - from) * ITEMIZED.saltPhaseDownRate));
+  const cap = separate ? salt.cap.marriedSeparate : salt.cap.normal;
+  const from = separate ? salt.phaseDownFrom.marriedSeparate : salt.phaseDownFrom.normal;
+  const floor = separate ? salt.floor.marriedSeparate : salt.floor.normal;
+  return Math.max(floor, cap - round(clamp0(agiCents - from) * salt.phaseDownRate));
 }
 
 // The state (and local) estimate: every state's part, totalled, against what was withheld
@@ -317,7 +322,8 @@ function stateEstimate(input: EstimateInput, agiCents: number): StateEstimate | 
 // Spec step 124: short- and long-term gains netted. A net gain counts as income, its long-
 // term part (up to the net) at the capital gains rates; a net loss comes off income only up
 // to the limit.
-function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
+function netCapital(stCents: number, ltCents: number, status: FilingStatus, year: number) {
+  const CAPITAL_LOSS_LIMIT = federalParams(year).capitalLoss.value;
   const net = stCents + ltCents;
   if (net < 0) {
     const limit =
@@ -329,12 +335,15 @@ function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
   return { incomeCents: net, longTermCents: Math.max(0, Math.min(ltCents, net)) };
 }
 
+// Prices the year in input.year with that year's law; throws NoTaxParamsError for a year Jane has no
+// figures for (never another year's figures).
 export function estimateTaxes(input: EstimateInput): TaxEstimate {
+  const P = federalParams(input.year);
   const status = input.filingStatus;
   const inc = input.income;
-  const capital = netCapital(inc.shortTermGainsCents, inc.longTermGainsCents, status);
+  const capital = netCapital(inc.shortTermGainsCents, inc.longTermGainsCents, status, input.year);
   const se = clamp0(inc.selfEmploymentCents);
-  const seTax = selfEmploymentTax(se, inc.socialSecurityWagesCents);
+  const seTax = selfEmploymentTax(se, inc.socialSecurityWagesCents, input.year);
   const halfSe = round(seTax / 2);
   const totalIncome =
     inc.wagesCents +
@@ -355,57 +364,64 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
       }).taxableCents
     : 0;
   const beforeStudent = totalIncome + ssTaxable - halfSe;
-  const studentLoan = studentLoanDeduction(input.studentLoanInterestCents, beforeStudent, status);
+  const studentLoan = studentLoanDeduction(
+    input.studentLoanInterestCents,
+    beforeStudent,
+    status,
+    input.year,
+  );
   const agi = beforeStudent - studentLoan - (input.otherAdjustmentsCents ?? 0);
 
   const stateTaxSeen =
     input.stateWithheldCents + input.stateEstimatedPaidCents + input.otherStateLocalTaxCents;
   const itemized = {
-    stateLocalTaxCents: Math.min(stateTaxSeen, stateLocalCap(agi, status)),
+    stateLocalTaxCents: Math.min(stateTaxSeen, stateLocalCap(agi, status, input.year)),
     mortgageInterestCents: input.mortgageInterestCents,
-    charityCents: clamp0(input.charityCents - round(clamp0(agi) * ITEMIZED.charityFloorShare)),
-    medicalCents: clamp0(input.medicalCents - round(clamp0(agi) * ITEMIZED.medicalFloorShare)),
+    charityCents: clamp0(input.charityCents - round(clamp0(agi) * P.charity.value.floorShare)),
+    medicalCents: clamp0(input.medicalCents - round(clamp0(agi) * P.medical.value.floorShare)),
   };
   const itemizedTotal = Object.values(itemized).reduce((a, b) => a + b, 0);
-  const standard = STANDARD_DEDUCTION[status];
+  const standard = P.standardDeduction.value[status];
   const itemizes = itemizedTotal > standard;
   const nonItemizerCharity = itemizes
     ? 0
     : Math.min(
         input.charityCents,
         status === "married_joint"
-          ? ITEMIZED.nonItemizerCharity.marriedJoint
-          : ITEMIZED.nonItemizerCharity.normal,
+          ? P.charity.value.nonItemizer.marriedJoint
+          : P.charity.value.nonItemizer.normal,
       );
   const afterDeduction = clamp0(agi - (itemizes ? itemizedTotal : standard) - nonItemizerCharity);
   // QBI: 20% of self-employment income less half the SE tax, capped at 20% of taxable
   // income before it; only below the threshold, where its limits start.
   const preferential = inc.qualifiedDividendsCents + capital.longTermCents;
   const qbi =
-    afterDeduction <= QBI.threshold[status]
+    afterDeduction <= P.qbi.value.threshold[status]
       ? round(
           Math.min(
-            clamp0(se - halfSe) * QBI.rate,
-            clamp0(afterDeduction - preferential) * QBI.rate,
+            clamp0(se - halfSe) * P.qbi.value.rate,
+            clamp0(afterDeduction - preferential) * P.qbi.value.rate,
           ),
         )
       : 0;
   const taxable = clamp0(afterDeduction - qbi);
 
-  const ordinaryTax = incomeTax(taxable, preferential, status);
+  const ordinaryTax = incomeTax(taxable, preferential, status, input.year);
   const earned = inc.wagesCents + clamp0(se - halfSe);
   const addlMedicare = round(
     clamp0(
       inc.wagesCents +
-        se * SELF_EMPLOYMENT_TAX.netEarningsShare -
-        ADDITIONAL_MEDICARE.threshold[status],
-    ) * ADDITIONAL_MEDICARE.rate,
+        se * P.selfEmployment.value.netEarningsShare -
+        P.additionalMedicare.value.threshold[status],
+    ) * P.additionalMedicare.value.rate,
   );
   const investmentIncome =
     inc.interestCents + inc.dividendsCents + clamp0(capital.incomeCents) + inc.rentalCents;
   const niit = round(
-    Math.min(clamp0(investmentIncome), clamp0(agi - NET_INVESTMENT_INCOME_TAX.threshold[status])) *
-      NET_INVESTMENT_INCOME_TAX.rate,
+    Math.min(
+      clamp0(investmentIncome),
+      clamp0(agi - P.netInvestmentIncomeTax.value.threshold[status]),
+    ) * P.netInvestmentIncomeTax.value.rate,
   );
   const child = childCredits({
     status,
@@ -414,6 +430,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     agiCents: agi,
     earnedCents: earned,
     taxBeforeCreditsCents: ordinaryTax,
+    year: input.year,
   });
   const eitc = earnedIncomeCredit({
     status,
@@ -422,6 +439,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     agiCents: agi,
     investmentIncomeCents: investmentIncome,
     age: input.age,
+    year: input.year,
   });
   const otherCredits = Math.min(
     input.otherCreditsCents ?? 0,
@@ -436,6 +454,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
           addBackCents: itemizes ? itemized.stateLocalTaxCents : standard,
           preferenceCents: input.amtPreferenceCents!,
           regularTaxCents: ordinaryTax,
+          year: input.year,
         })
       : { amtCents: 0 };
   const totalTax =
@@ -469,7 +488,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     taxableCents: taxable,
     marginalRate: marginalRateOf(
       taxable - Math.min(preferential, taxable),
-      FEDERAL_BRACKETS[status],
+      P.brackets.value[status],
     ),
     incomeTaxCents: ordinaryTax,
     selfEmploymentTaxCents: seTax,

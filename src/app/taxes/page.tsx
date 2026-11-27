@@ -16,6 +16,8 @@ import { requireUser } from "@/lib/session";
 import { loadTaxesArea, type ProfileField } from "@/lib/area-pages/taxes-load";
 import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { type FieldStatus } from "@/planning/tax-profile";
+import { NoTaxParamsError } from "@/config/tax-params";
+import { NoParamsPage } from "./no-params";
 import { EstimateSection } from "./estimate-section";
 import { SetAsideSection } from "./set-aside-section";
 import { SavingActions } from "./savings-section";
@@ -194,6 +196,14 @@ async function TaxesContent({
   const params = await searchParams;
   const focus = typeof params.focus === "string" ? params.focus : undefined;
   const now = new Date();
+  // A year Jane has no IRS figures for: the page says so and shows no figure (W-N).
+  let loaded: Awaited<ReturnType<typeof loadTaxesArea>>;
+  try {
+    loaded = await loadTaxesArea(user.id, { now });
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return <NoParamsPage user={user} year={error.year} />;
+    throw error;
+  }
   const {
     today,
     year,
@@ -219,7 +229,7 @@ async function TaxesContent({
     newIncome,
     suggestions,
     area,
-  } = await loadTaxesArea(user.id, { now });
+  } = loaded;
   // Debugger 11-01: a real account read that Jane starts its return and acts within caps.
   const actsForYou = await conciergeMode(user.id);
   const doesTitle = actsForYou ? "What Jane does on its own" : READ_ONLY_TAXES.title;

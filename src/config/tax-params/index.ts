@@ -84,6 +84,19 @@ export function pendingGroups(): PendingGroup[] {
   ];
 }
 
+// The year whose law a PLANNING card uses for `year`: the newest year with figures at or before it,
+// so "your income as it stands" is priced with today's law held fixed when the year's own figures are
+// not out yet (a card in 2027 before 2027's figures exist). It is never for an estimate shown as a
+// year's own: those call federalParams(year) and throw NoTaxParamsError. A year before the first
+// supported one has no law to hold fixed and throws.
+export function lawYearFor(year: number): number {
+  const known = Object.keys(FEDERAL)
+    .map(Number)
+    .filter((y) => y <= year);
+  if (known.length === 0) throw new NoTaxParamsError(year, "US");
+  return Math.max(...known);
+}
+
 // A fingerprint of each year's figures (sha256 of the canonical JSON, kept in params-version.json).
 // Changing a figure changes it, so a figure moves only with a deliberate update in the same PR.
 export const PARAMS_VERSION: Readonly<Record<string, string>> = versions;

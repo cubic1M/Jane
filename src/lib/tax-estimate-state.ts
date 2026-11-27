@@ -6,14 +6,22 @@
 // - "tax": there's tax; what's withheld isn't known.
 // - "no_tax": income under what's taxed, nothing withheld seen (a student with a part-time job).
 // - "unknown": nothing to estimate from yet.
-export type EstimateState = "refund" | "owed" | "tax" | "no_tax" | "unknown";
+// - "no_params": Jane has no IRS figures for the year (NoTaxParamsError), so it estimates nothing
+//   and shows no figure; the page says so with noParamsText.
+export type EstimateState = "refund" | "owed" | "tax" | "no_tax" | "unknown" | "no_params";
+
+// W-N (tax engine roadmap 1.12): said in place of every figure for a year with no parameters.
+export const noParamsText = (year: number) =>
+  `Jane doesn't have the IRS figures for ${year} yet, so it isn't estimating that year.`;
 
 export function estimateState(t: {
+  noParams?: boolean;
   totalTaxCents: number;
   incomeCents?: number | null;
   withholdingKnown: boolean;
   refundCents: number;
 }): EstimateState {
+  if (t.noParams) return "no_params";
   if (t.totalTaxCents > 0) {
     if (!t.withholdingKnown) return "tax";
     return t.refundCents >= 0 ? "refund" : "owed";

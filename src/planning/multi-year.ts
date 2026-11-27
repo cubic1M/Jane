@@ -10,7 +10,7 @@ import {
   indexFactor,
   type PlannedEventKind,
 } from "@/config/tax-years";
-import { CAPITAL_GAINS_BRACKETS, FEDERAL_BRACKETS } from "@/config/tax-rates";
+import { federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 import { formatWholeDollars } from "@/lib/money";
 
@@ -155,8 +155,9 @@ export type YearTax = {
   headroom0LtcgCents: number;
 };
 
-// A year's federal tax: deflate to 2026 dollars, tax with the 2026 engine, inflate back.
-// The start year is the estimate as it stands.
+// A year's federal tax: deflate to the start year's dollars, tax with the start year's law (a later
+// year's law is not known, so today's is held fixed and says so), inflate back. The start year is
+// the estimate as it stands.
 export function taxFor(plan: Plan, year: number, adj: Adjust = {}): YearTax {
   const input = inputFor(plan, year, adj);
   const f = year === plan.startYear ? 1 : indexFactor(year) / indexFactor(plan.startYear);
@@ -179,10 +180,11 @@ export function taxFor(plan: Plan, year: number, adj: Adjust = {}): YearTax {
             ]),
           ) as EstimateInput["income"],
         };
-  const e = estimateTaxes(deflated);
+  const e = estimateTaxes({ ...deflated, year: plan.startYear });
   const status = input.filingStatus;
-  const top12 = FEDERAL_BRACKETS[status].find((b) => b.rate === 0.22)?.over ?? 0;
-  const zeroLtcg = CAPITAL_GAINS_BRACKETS[status][1]?.over ?? 0;
+  const law = federalParams(plan.startYear);
+  const top12 = law.brackets.value[status].find((b) => b.rate === 0.22)?.over ?? 0;
+  const zeroLtcg = law.capitalGains.value[status][1]?.over ?? 0;
   // Start-year figures are in the estimate's own dollars (factor 1 against the scale).
   const unit = year === plan.startYear ? 1 : f;
   return {

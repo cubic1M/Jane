@@ -1,5 +1,7 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { AMT, EQUITY_SET_ASIDE_MIN_CENTS, ESPP_RULES, RSU_WITHHOLDING } from "@/config/equity-tax";
+import { EQUITY_SET_ASIDE_MIN_CENTS, ESPP_RULES, RSU_WITHHOLDING } from "@/config/equity-tax";
+import { federalParams } from "@/config/tax-params";
+import { TAX_RATES_YEAR } from "@/config/tax-rates";
 import type { FilingStatus } from "@/config/tax";
 
 // Equity pay, taxed right (spec step 219). Pure.
@@ -150,7 +152,10 @@ export function amt(input: {
   addBackCents: number;
   preferenceCents: number;
   regularTaxCents: number;
+  // The tax year's law; 2026's when a caller has not been moved to pass its own.
+  year?: number;
 }): { amtCents: number; amtIncomeCents: number; tentativeCents: number } {
+  const AMT = federalParams(input.year ?? TAX_RATES_YEAR).amt.value;
   const amtIncome = Math.max(0, input.taxableCents + input.addBackCents + input.preferenceCents);
   const exemption = Math.max(
     0,
