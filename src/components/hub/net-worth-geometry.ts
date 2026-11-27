@@ -1,6 +1,6 @@
 // The net worth chart's drawing maths (./net-worth-chart.tsx), pure so it can be tested: the
-// vertical scale that fits the days in view, the one big step that can flatten the rest, where a
-// day's value sits on the chart, and the line through the days.
+// vertical scale that fits the days in view, the big steps that can flatten the rest (taken out of
+// the scale, both sides kept), where a day's value sits on the chart, and the line through the days.
 
 import { formatWholeDollars } from "@/lib/money";
 
@@ -20,38 +20,44 @@ export const TYPICAL_MOVES_SPAN = 3;
 // Fewer non-zero changes than this and there is no "typical": only MIN_SPAN_CENTS applies.
 export const TYPICAL_MOVES_NEEDED = 3;
 
-// One step is "the big step" when one day's change is at least this share of the days' whole
-// range, with at least FOCUS_MIN_DAYS days on one side of it; and focusing on that side must
-// show the rest at least FOCUS_GAIN times taller, or it is not worth it.
+// A day-to-day change is "a big step" when it is at least this share of the range of the days in
+// view (once the bigger steps are taken out), with at least FOCUS_MIN_DAYS days in view; and taking
+// the steps out must show the rest at least FOCUS_GAIN times taller, or it is not worth it.
 export const STEP_SHARE = 0.6;
+// ...and at least this many times the typical (middle) day-to-day move of those days, so the
+// largest of a short, jumpy stretch is not taken for a step.
+export const STEP_VS_TYPICAL = 6;
 export const FOCUS_MIN_DAYS = 5;
 export const FOCUS_GAIN = 3;
+// The most steps taken out of one view (largest first). A fourth big step: fit all.
+export const MAX_BREAKS = 3;
 
 // How long the scale takes to settle on a new fit, in ms (none with reduced motion).
 export const SCALE_EASE_MS = 220;
 
-export type Step = {
+export type Break = {
   // The step lands on this day (an index among the days shown): the first day at the new level.
   index: number;
   // The change, in cents: positive up.
   cents: number;
-  // The side the scale fits when focused: the days before the step or from it on.
-  side: "before" | "after";
-  // Where the line leaves the chart on the other side: above the top edge or below the bottom.
-  edge: "top" | "bottom";
 };
 
 export type Fit = {
-  // The highest and lowest values the scale shows (0 with none), in cents: the scale's labels.
+  // The highest and lowest values the scale shows, in cents, for the days at its left edge (with
+  // no step taken out, for all the days): the scale's labels. 0 with no days.
   top: number;
   bottom: number;
   // The values at the chart's bottom and top edges (inside the padding), in cents.
   lo: number;
   hi: number;
-  // The big step among the days, whether or not the scale is focused on a side of it.
-  step: Step | null;
-  // The scale fits one side of the step (the rest runs off the edge).
+  // The big steps in view, largest first (up to MAX_BREAKS), whether or not they are taken out.
+  // None when there are more than MAX_BREAKS.
+  breaks: Break[];
+  // The steps are taken out of the scale: the days after each are drawn shifted by its amount.
   focused: boolean;
+  // What each day is shifted by when drawn, in cents (all 0 unless focused): the sum of the steps
+  // up to and including it. A day's true value less this is where it sits on the scale.
+  offsets: number[];
 };
 
 export type ChartScale = Fit & {
@@ -62,7 +68,7 @@ export type ChartScale = Fit & {
 
 const middle = (sorted: readonly number[]) => sorted[Math.floor((sorted.length - 1) / 2)];
 
-// The days' non-zero day-to-day changes, by size.
+// The days' non-zero day-to-day changes (their sizes).
 function movesIn(values: readonly number[]): number[] {
   const moves: number[] = [];
   for (let i = 1; i < values.length; i++) {
@@ -70,6 +76,13 @@ function movesIn(values: readonly number[]): number[] {
     if (move > 0) moves.push(move);
   }
   return moves;
+}
+
+// The middle of the days' non-zero moves; 0 with fewer than TYPICAL_MOVES_NEEDED.
+function typicalMove(values: readonly number[]): number {
+  const moves = movesIn(values);
+  if (moves.length < TYPICAL_MOVES_NEEDED) return 0;
+  return middle(moves.sort((a, b) => a - b));
 }
 
 // The span the days need at least: their own typical move, a few times over, never under $5 or
@@ -91,43 +104,61 @@ function fitDays(values: readonly number[]): Pick<Fit, "top" | "bottom" | "lo" |
   return { top, bottom, lo: mid - span / 2, hi: mid + span / 2 };
 }
 
-// The one day-to-day change that takes most of the height (at least STEP_SHARE of the range of
-// the days in view), when there are at least FOCUS_MIN_DAYS days on one side of it; null when
-// there is none, or when focusing would not make the rest any taller (FOCUS_GAIN).
-export function dominantStep(values: readonly number[]): Step | null {
+const NONE: Break[] = [];
+
+// The big steps among the days, largest first, each at least STEP_SHARE of the range left once the
+// bigger ones are taken out (the days after a step shifted by it). Empty when there are none, when
+// there are more than MAX_BREAKS, or when taking them out would not make the rest FOCUS_GAIN times
+// taller or leaves nothing that moves.
+export function bigSteps(values: readonly number[]): Break[] {
   const n = values.length;
-  if (n < FOCUS_MIN_DAYS + 1) return null;
-  const range = Math.max(...values) - Math.min(...values);
-  if (range <= 0) return null;
-  let at = 1;
-  for (let i = 2; i < n; i++) {
-    if (Math.abs(values[i] - values[i - 1]) > Math.abs(values[at] - values[at - 1])) at = i;
+  if (n < FOCUS_MIN_DAYS + 1) return NONE;
+  const shifted = values.slice();
+  const found: Break[] = [];
+  for (;;) {
+    const range = Math.max(...shifted) - Math.min(...shifted);
+    if (range <= 0) break;
+    let at = 1;
+    for (let i = 2; i < n; i++) {
+      if (Math.abs(shifted[i] - shifted[i - 1]) > Math.abs(shifted[at] - shifted[at - 1])) at = i;
+    }
+    const cents = shifted[at] - shifted[at - 1];
+    if (Math.abs(cents) < STEP_SHARE * range) break;
+    if (Math.abs(cents) < STEP_VS_TYPICAL * typicalMove(shifted)) break;
+    if (found.length === MAX_BREAKS) return NONE;
+    found.push({ index: at, cents });
+    for (let i = at; i < n; i++) shifted[i] -= cents;
   }
-  const cents = values[at] - values[at - 1];
-  if (Math.abs(cents) < STEP_SHARE * range) return null;
-  // The side with more days; the latest wins a tie.
-  const before = at;
-  const after = n - at;
-  if (Math.max(before, after) < FOCUS_MIN_DAYS) return null;
-  const side = after >= before ? "after" : "before";
-  const rest = side === "after" ? values.slice(at) : values.slice(0, at);
-  // A side with next to no moves of its own (a flat stretch) has nothing to show up close.
-  if (movesIn(rest).length < TYPICAL_MOVES_NEEDED) return null;
+  if (found.length === 0) return NONE;
+  // A line with next to no moves of its own once the steps are out has nothing to show up close.
+  if (movesIn(shifted).length < TYPICAL_MOVES_NEEDED) return NONE;
   const whole = fitDays(values);
-  const only = fitDays(rest);
-  if ((only.hi - only.lo) * FOCUS_GAIN > whole.hi - whole.lo) return null;
-  // The other side lies below the scale when it is lower than this one, above it otherwise.
-  const otherIsLower = side === "after" ? cents > 0 : cents < 0;
-  return { index: at, cents, side, edge: otherIsLower ? "bottom" : "top" };
+  const only = fitDays(shifted);
+  if ((only.hi - only.lo) * FOCUS_GAIN > whole.hi - whole.lo) return NONE;
+  return found;
 }
 
-// What the scale fits: exactly the days in view (or, when focused, the larger side of the one big
-// step among them), with the floor. `focus: false` fits all of them, step and all.
+// What each day is shifted by when the steps are taken out of the line.
+export function offsetsFor(n: number, breaks: readonly Break[]): number[] {
+  const offsets = new Array<number>(n).fill(0);
+  for (const b of breaks) for (let i = b.index; i < n; i++) offsets[i] += b.cents;
+  return offsets;
+}
+
+// What the scale fits: exactly the days in view, with the floor. When focused, with the big steps
+// taken out first (both sides of each kept); `focus: false` fits the days as they are, steps and all.
 export function fitScale(values: readonly number[], { focus }: { focus: boolean }): Fit {
-  const step = dominantStep(values);
-  if (!step || !focus) return { ...fitDays(values), step, focused: false };
-  const rest = step.side === "after" ? values.slice(step.index) : values.slice(0, step.index);
-  return { ...fitDays(rest), step, focused: true };
+  const breaks = bigSteps(values);
+  if (breaks.length === 0 || !focus) {
+    return { ...fitDays(values), breaks, focused: false, offsets: offsetsFor(values.length, []) };
+  }
+  const offsets = offsetsFor(values.length, breaks);
+  return {
+    ...fitDays(values.map((v, i) => v - offsets[i])),
+    breaks,
+    focused: true,
+    offsets,
+  };
 }
 
 // The days shown fill the width; the values fill the height.
@@ -154,21 +185,42 @@ export function chartScale(
   return { ...fit, ...scaleAt(fit, values.length, width, height) };
 }
 
-// What the marker at the chart's edge says, in plain words: "+$5,120 on Nov 3". With the figures
-// hidden, only the direction ("A big rise on Nov 3").
-export function stepWords(step: Pick<Step, "cents">, day: string, figureShown: boolean): string {
+// The scale's labels on each side: at the left edge true for the days there, at the right edge true
+// for the days there (the same heights, less what the steps in between moved the line). Null on
+// the right when no step is taken out (one scale, labelled once).
+export function sideLabels(fit: Pick<Fit, "top" | "bottom" | "offsets" | "focused">): {
+  left: { high: number; low: number };
+  right: { high: number; low: number } | null;
+} {
+  const left = { high: fit.top, low: fit.bottom };
+  const shift = fit.offsets.length ? fit.offsets[fit.offsets.length - 1] : 0;
+  if (!fit.focused || shift === 0) return { left, right: null };
+  return { left, right: { high: fit.top + shift, low: fit.bottom + shift } };
+}
+
+// What the label at a break says, in plain words: "+$5,120 on Nov 3". With the figures hidden,
+// only the direction ("A big rise on Nov 3").
+export function stepWords(step: Pick<Break, "cents">, day: string, figureShown: boolean): string {
   if (!figureShown) return `A big ${step.cents >= 0 ? "rise" : "drop"} on ${day}`;
   const sign = step.cents >= 0 ? "+" : "−";
   return `${sign}${formatWholeDollars(Math.abs(step.cents))} on ${day}`;
 }
 
-// The line's SVG path: at most one vertex per pixel, and the last point is always kept.
-export function linePath(values: readonly number[], { x, y }: ChartScale, width: number): string {
+// The line's SVG path: at most one vertex per pixel, the last point always kept; a break starts a
+// new piece (the day before it and the day itself are always vertices), so there is a gap at each.
+export function linePath(values: readonly number[], scale: ChartScale, width: number): string {
+  const { x, y, offsets, focused, breaks } = scale;
   const step = Math.max(1, Math.floor(values.length / Math.max(1, width)));
+  const starts = new Set(focused ? breaks.map((b) => b.index) : []);
+  const keep = (i: number) =>
+    i % step === 0 || i === values.length - 1 || starts.has(i) || starts.has(i + 1);
   return values
     .map((cents, i) => ({ cents, i }))
-    .filter(({ i }) => i % step === 0 || i === values.length - 1)
-    .map(({ cents, i }, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(cents).toFixed(1)}`)
+    .filter(({ i }) => keep(i))
+    .map(
+      ({ cents, i }, k) =>
+        `${k === 0 || starts.has(i) ? "M" : "L"}${x(i).toFixed(1)},${y(cents - (offsets[i] ?? 0)).toFixed(1)}`,
+    )
     .join(" ");
 }
 

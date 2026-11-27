@@ -1,15 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
   changeOver,
@@ -46,6 +38,7 @@ import {
   fitScale,
   linePath,
   scaleAt,
+  sideLabels,
   stepWords,
   type ChartScale,
 } from "./net-worth-geometry";
@@ -85,11 +78,15 @@ const RANGE_WORDS: Record<RangeKey, string> = {
   ALL: "All time",
 };
 
-// The session's choice between focusing on one side of a big step and fitting all of it.
+// The session's choice between taking big steps out of the scale and fitting all of it.
 const FIT_KEY = "jane:net-worth-fit";
-// Where a day beyond the scale is drawn: this far inside the chart's top or bottom edge, in px.
-const EDGE = 3;
-// The space between the step and its marker, in px.
+// The break mark's size where a big step is taken out of the line, in px.
+const BREAK_W = 8;
+const BREAK_H = 20;
+// Each break's label sits this far below the one before it, in px, so two close together don't
+// print over each other.
+const BREAK_LABEL_STAGGER = 14;
+// The space between a break and its label, in px.
 const STEP_MARKER_GAP = 6;
 
 // The scale's own range, eased to each new fit (SCALE_EASE_MS in net-worth-geometry.ts), so
@@ -277,7 +274,6 @@ export function NetWorthChart({
   // One big step in view: focus on the side with more days (the scale fits it), or fit all of
   // it. The choice holds for the session.
   const focusOn = useSyncExternalStore(subscribeFit, readFit, () => "focus") === "focus";
-  const clipId = useId();
   // What's open: a day (collapsed, a significant day's dot) or one of every movement's dots
   // (expanded), and whether its details are open beside it.
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -425,19 +421,21 @@ export function NetWorthChart({
   const fit = fitScale(values, { focus: focusOn });
   const eased = useEasedRange(fit);
   const { lo, hi } = eased;
-  const { top, bottom, step } = fit;
-  const { x, y: yRaw } = scaleAt(eased, values.length, width, H);
-  const scale: ChartScale = { ...fit, lo, hi, x, y: yRaw };
-  // A day beyond the scale (the other side of the big step) sits at the chart's edge, where the
-  // line runs off; dots, marks and the end point stay on the chart.
-  const y = (cents: number) => Math.min(H - EDGE, Math.max(EDGE, yRaw(cents)));
+  const { breaks, offsets } = fit;
+  const { x, y } = scaleAt(eased, values.length, width, H);
+  const scale: ChartScale = { ...fit, lo, hi, x, y };
+  // Where each day sits down the chart: its value less what the big steps taken out moved it (all
+  // zero otherwise). The scale's labels, the scrub and the header say the true values.
+  const plotDays = shown.map((p, i) => ({ ...p, cents: p.cents - (offsets[i] ?? 0) }));
+  const yDay = (i: number) => y(plotDays[i].cents);
+  const taken = fit.focused ? breaks.map((b) => `${b.index}:${b.cents}`).join() : "";
 
   // A dot for every movement in view, overlapping ones as one until zoomed apart.
   const layout = useMemo(() => {
     if (!moves || shown.length === 0) return null;
     // A phone's narrow chart groups more: a dot and its ×N label need the room (QA round 9).
     const gap = narrow ? DOT_GAP_NARROW : DOT_GAP;
-    const dots = layoutDots({ events: moves, days: shown, x, y, gap });
+    const dots = layoutDots({ events: moves, days: plotDays, x, y, gap });
     const inView = new Set(shown.map((p) => p.date));
     return {
       dots,
@@ -445,7 +443,7 @@ export function NetWorthChart({
       count: moves.filter((m) => inView.has(m.date)).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow]);
+  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow, taken]);
 
   // The wheel's handler, with this render's window; the page scrolls again once the chart can't
   // zoom further that way.
@@ -497,7 +495,7 @@ export function NetWorthChart({
       return m
         ? {
             group: m.group,
-            at: { x: x(m.i), y: y(shown[m.i].cents) },
+            at: { x: x(m.i), y: yDay(m.i) },
             title: dayLabel(m.group.date, { year: true }),
           }
         : null;
@@ -507,17 +505,20 @@ export function NetWorthChart({
   })();
 
   const path = linePath(values, scale, width);
-  const startY = yRaw(shown[0].cents);
-  const startOnChart = startY >= 0 && startY <= H;
-  // Today's dot only where today is on the chart (not when the big step sent it off the edge).
-  const todayY = yRaw(shown[shown.length - 1].cents);
-  const todayOnChart = todayY >= 0 && todayY <= H;
-  // The big step the scale is focused past: the marker at the edge the line runs off, the day it
-  // landed on, in the figure's own hidden-or-shown state.
-  const marked = fit.focused && step ? step : null;
-  const markerWords = marked
-    ? stepWords(marked, dayLabel(shown[marked.index].date), figureShown)
-    : null;
+  // The dashed "where the range started" line is true only left of the first big step taken out.
+  const startEnd =
+    fit.focused && breaks.length ? x(Math.min(...breaks.map((b) => b.index)) - 1) : width;
+  const labels = sideLabels(fit);
+  // Each big step taken out: where its break mark goes and what its label says (the day it landed
+  // on; no figure while the figures are hidden).
+  const marks2 = fit.focused
+    ? breaks.map((b, k) => ({
+        at: (x(b.index - 1) + x(b.index)) / 2,
+        y: (yDay(b.index - 1) + yDay(b.index)) / 2,
+        words: stepWords(b, dayLabel(shown[b.index].date), figureShown),
+        k,
+      }))
+    : [];
 
   const place = open
     ? placeBoxes({
@@ -762,35 +763,50 @@ export function NetWorthChart({
                 viewBox={`0 0 ${width} ${H}`}
                 className="absolute inset-0 overflow-visible"
               >
-                <clipPath id={clipId}>
-                  <rect x={-4} y={0} width={width + 8} height={H} />
-                </clipPath>
-                {/* Where the range started (not drawn when the scale is on the other side of a big
-                    step: that day is off the chart). */}
-                {startOnChart && (
-                  <line
-                    x1={0}
-                    x2={width}
-                    y1={startY}
-                    y2={startY}
-                    strokeWidth={1}
-                    strokeDasharray="2 5"
-                    className="stroke-zinc-400 dark:stroke-zinc-600"
-                  />
-                )}
-                {/* The line runs off the chart's edge at a big step the scale leaves out. */}
-                <g clipPath={`url(#${clipId})`}>
-                  <path
-                    key={`${chip}-${zoomed ? "zoom" : shown.length}`}
-                    d={path}
-                    pathLength={1}
-                    fill="none"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    className={`nw-line ${stroke}`}
-                  />
-                </g>
+                {/* Where the range started (only as far as it is true: left of the first big step
+                    taken out). */}
+                <line
+                  x1={0}
+                  x2={startEnd}
+                  y1={yDay(0)}
+                  y2={yDay(0)}
+                  strokeWidth={1}
+                  strokeDasharray="2 5"
+                  className="stroke-zinc-400 dark:stroke-zinc-600"
+                />
+                <path
+                  key={`${chip}-${zoomed ? "zoom" : shown.length}`}
+                  d={path}
+                  pathLength={1}
+                  fill="none"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  className={`nw-line ${stroke}`}
+                />
+                {/* A big step taken out of the line: a gap with a break mark (//). */}
+                {marks2.map((m) => (
+                  <g key={m.k} data-net-worth-break="">
+                    <rect
+                      x={m.at - BREAK_W / 2}
+                      y={m.y - BREAK_H / 2}
+                      width={BREAK_W}
+                      height={BREAK_H}
+                      className="fill-white dark:fill-zinc-950"
+                    />
+                    {[-2, 2].map((dx) => (
+                      <line
+                        key={dx}
+                        x1={m.at + dx - 2}
+                        y1={m.y + 7}
+                        x2={m.at + dx + 2}
+                        y2={m.y - 7}
+                        strokeWidth={1.5}
+                        className="stroke-current"
+                      />
+                    ))}
+                  </g>
+                ))}
                 {scrub !== null && (
                   <>
                     <line
@@ -803,17 +819,17 @@ export function NetWorthChart({
                     />
                     <circle
                       cx={x(at)}
-                      cy={y(point.cents)}
+                      cy={yDay(at)}
                       r={4.5}
                       strokeWidth={2}
                       className={`fill-white dark:fill-zinc-950 ${stroke}`}
                     />
                   </>
                 )}
-                {scrub === null && todayOnChart && (
+                {scrub === null && (
                   <circle
                     cx={x(shown.length - 1)}
-                    cy={y(shown[shown.length - 1].cents)}
+                    cy={yDay(shown.length - 1)}
                     r={3.5}
                     className="fill-current"
                   />
@@ -839,25 +855,26 @@ export function NetWorthChart({
               )}
               <Scale
                 width={width}
-                high={top}
-                low={bottom}
-                start={startOnChart ? shown[0].cents : null}
+                left={labels.left}
+                right={labels.right}
+                start={fit.focused ? null : shown[0].cents}
                 y={y}
-                zero={lo < 0 && hi > 0 ? y(0) : null}
+                zero={!fit.focused && lo < 0 && hi > 0 ? y(0) : null}
                 amounts={figureShown}
               />
-              {marked && markerWords && (
+              {marks2.map((m) => (
                 <p
+                  key={m.k}
                   data-net-worth-step=""
                   className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
                   style={{
-                    [marked.edge]: 0,
-                    ...stepSide(x(marked.index), width),
+                    top: m.k * BREAK_LABEL_STAGGER,
+                    ...stepSide(m.at, width),
                   }}
                 >
-                  {markerWords}
+                  {m.words}
                 </p>
-              )}
+              ))}
             </div>
             {expanded && movesState !== "idle" && (
               <p
@@ -896,7 +913,7 @@ export function NetWorthChart({
                   className="pointer-events-auto absolute flex items-center justify-center"
                   style={{
                     left: x(i) - MARK / 2,
-                    top: y(shown[i].cents) - MARK / 2,
+                    top: yDay(i) - MARK / 2,
                     width: MARK,
                     height: MARK,
                   }}
@@ -983,7 +1000,7 @@ export function NetWorthChart({
                 </button>
               );
             })}
-            {step && (
+            {breaks.length > 0 && (
               <button
                 type="button"
                 data-net-worth-fit=""
@@ -1281,8 +1298,8 @@ function Brush({
 // when the line crosses it. Not read out: the slider says each day's figure.
 function Scale({
   width,
-  high,
-  low,
+  left,
+  right,
   start,
   y,
   zero,
@@ -1291,13 +1308,16 @@ function Scale({
   // Off while the figure is hidden: the highest and lowest would give it away.
   amounts: boolean;
   width: number;
-  high: number;
-  low: number;
+  // The highest and lowest at the left edge, true for the days there; and at the right edge (the
+  // same heights) when big steps are taken out of the line, true for the days there.
+  left: { high: number; low: number };
+  right: { high: number; low: number } | null;
   start: number | null;
   y: (cents: number) => number;
   zero: number | null;
 }) {
   const label = "pointer-events-none absolute text-[10px] leading-none text-zinc-500 tabular-nums";
+  const { high, low } = left;
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
       {zero !== null && (
@@ -1326,7 +1346,25 @@ function Scale({
           {dollars(low)}
         </span>
       )}
-      {amounts && start !== null && start !== high && start !== low && width > 0 && (
+      {amounts && right && (
+        <>
+          <span
+            data-net-worth-scale="high-right"
+            className={label}
+            style={{ top: Math.max(0, y(high) - 12), right: 2 }}
+          >
+            {dollars(right.high)}
+          </span>
+          <span
+            data-net-worth-scale="low-right"
+            className={label}
+            style={{ top: y(low) + 2, right: 2 }}
+          >
+            {dollars(right.low)}
+          </span>
+        </>
+      )}
+      {amounts && !right && start !== null && start !== high && start !== low && width > 0 && (
         <span
           data-net-worth-scale="start"
           className={label}

@@ -4,10 +4,11 @@ import {
   MIN_SPAN_CENTS,
   PAD_Y,
   chartScale,
-  dominantStep,
+  bigSteps,
   fitControlWords,
   fitScale,
   linePath,
+  sideLabels,
   stepWords,
 } from "./net-worth-geometry";
 
@@ -173,93 +174,144 @@ describe("the floor follows the moves in view", () => {
   });
 });
 
-describe("the one big step", () => {
+describe("big steps taken out of the scale", () => {
   const before = walk(600_000, 10);
   const after = walk(before[before.length - 1] + 512_000, 25);
   const rise = [...before, ...after];
+  // The days' heights on the scale (a day's value less what the steps taken out moved it).
+  const plotted = (values: readonly number[], focus = true) => {
+    const s = chartScale(values, WIDTH, HEIGHT, { focus });
+    return { s, ys: values.map((v, i) => s.y(v - s.offsets[i])) };
+  };
+  const spanOf = (ys: readonly number[]) => (Math.max(...ys) - Math.min(...ys)) / PLOT;
 
-  it("is found: a day-to-day change of most of the range, with days on one side", () => {
-    const step = dominantStep(rise);
-    expect(step).toMatchObject({ index: 10, cents: expect.any(Number), side: "after" });
-    expect(step!.cents).toBeGreaterThan(500_000);
-    // The other side (the days before) lies below the focused scale.
-    expect(step!.edge).toBe("bottom");
+  it("finds the step: a day-to-day change of most of the range", () => {
+    const [step, ...others] = bigSteps(rise);
+    expect(others).toEqual([]);
+    expect(step.index).toBe(10);
+    expect(step.cents).toBeGreaterThan(500_000);
   });
 
-  it("focuses on the side with more days: the small moves fill the height", () => {
-    const all = fitScale(rise, { focus: false });
-    const focus = fitScale(rise, { focus: true });
-    expect(all.focused).toBe(false);
-    expect(focus.focused).toBe(true);
-    expect(focus.hi - focus.lo).toBeLessThan((all.hi - all.lo) / 10);
-    // The labels are the focused side's own highest and lowest: true values.
-    expect(focus.top).toBe(Math.max(...after));
-    expect(focus.bottom).toBe(Math.min(...after));
-    // The small moves take well over a third of the chart (they took about 1/20 with the step).
-    expect(share(after.slice(0, 25), true)).toBeGreaterThanOrEqual(0.33);
-    expect(share(rise, false)).toBeGreaterThan(0.9);
+  it("keeps both sides: each fills a third or more of the height, none runs off the chart", () => {
+    const { s, ys } = plotted(rise);
+    expect(s.focused).toBe(true);
+    expect(spanOf(ys.slice(0, 10))).toBeGreaterThanOrEqual(0.33);
+    expect(spanOf(ys.slice(10))).toBeGreaterThanOrEqual(0.33);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(HEIGHT);
+    // With the step in, the same small moves took a few percent (the founder's flat line).
+    const flat = plotted(rise, false);
+    expect(flat.s.focused).toBe(false);
+    expect(spanOf(flat.ys.slice(10))).toBeLessThan(0.1);
   });
 
-  it("fits the days before when they are the larger side, and the line leaves at the top", () => {
-    const long = walk(1_112_000, 25);
-    const drop = [...long, ...walk(long[long.length - 1] - 512_000, 8)];
-    const step = dominantStep(drop);
-    expect(step).toMatchObject({ index: 25, side: "before", edge: "bottom" });
-    expect(step!.cents).toBeLessThan(-500_000);
-    const lifted = [...walk(600_000, 25), ...walk(1_300_000, 8)];
-    expect(dominantStep(lifted)).toMatchObject({ side: "before", edge: "top" });
-    const f = fitScale(lifted, { focus: true });
-    expect(f.top).toBe(Math.max(...lifted.slice(0, 25)));
+  it("shifts the days after the step by its amount, and today stays on the chart", () => {
+    const s = chartScale(rise, WIDTH, HEIGHT);
+    const [step] = s.breaks;
+    expect(s.offsets.slice(0, 10).every((o) => o === 0)).toBe(true);
+    expect(s.offsets.slice(10).every((o) => o === step.cents)).toBe(true);
+    const todayY = s.y(rise[rise.length - 1] - s.offsets[rise.length - 1]);
+    expect(todayY).toBeGreaterThanOrEqual(0);
+    expect(todayY).toBeLessThanOrEqual(HEIGHT);
   });
 
-  it("prefers the later side when both are as long", () => {
-    const both = [...walk(600_000, 8), ...walk(1_200_000, 8)];
-    expect(dominantStep(both)?.side).toBe("after");
+  it("labels each side with its own true values", () => {
+    const s = fitScale(rise, { focus: true });
+    const labels = sideLabels(s);
+    // Left edge: the days before the step, true.
+    expect(labels.left.high).toBe(s.top);
+    expect(labels.left.low).toBe(s.bottom);
+    // Right edge: the same heights, true for the days after the step.
+    expect(labels.right).toEqual({
+      high: s.top + s.breaks[0].cents,
+      low: s.bottom + s.breaks[0].cents,
+    });
+    // A day after the step at the top of the scale reads as that label.
+    const top = Math.max(...after.map((v) => v - s.breaks[0].cents));
+    expect(top).toBeLessThanOrEqual(s.top);
+    expect(sideLabels(fitScale(rise, { focus: false })).right).toBeNull();
   });
 
-  it("is not a step with fewer than a handful of days on either side", () => {
-    const short = [...walk(600_000, FOCUS_MIN_DAYS - 1), ...walk(1_200_000, FOCUS_MIN_DAYS - 1)];
-    expect(dominantStep(short)).toBeNull();
-    const fit = fitScale(short, { focus: true });
+  it("steps down as well as up", () => {
+    const long = walk(1_112_000, 20);
+    const drop = [...long, ...walk(long[long.length - 1] - 512_000, 12)];
+    const [step] = bigSteps(drop);
+    expect(step.index).toBe(20);
+    expect(step.cents).toBeLessThan(-500_000);
+  });
+
+  it("takes out two steps, the largest first", () => {
+    const a = walk(600_000, 12);
+    const b = walk(a[a.length - 1] + 400_000, 12);
+    const c = walk(b[b.length - 1] + 1_100_000, 12);
+    const steps = bigSteps([...a, ...b, ...c]);
+    expect(steps.map((x) => x.index)).toEqual([24, 12]);
+    const s = chartScale([...a, ...b, ...c], WIDTH, HEIGHT);
+    expect(s.offsets[30]).toBeGreaterThan(1_400_000);
+    const ys = [...a, ...b, ...c].map((v, i) => s.y(v - s.offsets[i]));
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+  });
+
+  it("falls back to fit all with a fourth big step", () => {
+    let level = 600_000;
+    const days: number[] = [];
+    for (let k = 0; k < 5; k++) {
+      days.push(...walk(level, 10));
+      level += 300_000 * 3 ** k;
+    }
+    expect(bigSteps(days)).toEqual([]);
+    const fit = fitScale(days, { focus: true });
     expect(fit.focused).toBe(false);
+    expect(fit.offsets.every((o) => o === 0)).toBe(true);
+    // Three steps are still taken out.
+    expect(bigSteps(days.slice(0, 40)).length).toBe(3);
+  });
+
+  it("is not a step with fewer than a handful of days", () => {
+    const short = [...walk(600_000, FOCUS_MIN_DAYS - 3), ...walk(1_200_000, 2)];
+    expect(bigSteps(short)).toEqual([]);
   });
 
   it("is not a step when no one change takes most of the height", () => {
     const stairs = Array.from({ length: 30 }, (_, i) => 600_000 + i * 40_000);
-    expect(dominantStep(stairs)).toBeNull();
-    expect(dominantStep(walk(600_000, 40))).toBeNull();
+    expect(bigSteps(stairs)).toEqual([]);
+    expect(bigSteps(walk(600_000, 40))).toEqual([]);
   });
 
-  it("is not a step when focusing would show the rest no taller (a $2 jump on $300)", () => {
-    const values = [...Array(8).fill(30_000), ...Array(8).fill(30_200)];
-    expect(dominantStep(values)).toBeNull();
+  it("is not a step when taking it out would show the rest no taller (a $2 jump on $300)", () => {
+    expect(bigSteps([...Array(8).fill(30_000), ...Array(8).fill(30_200)])).toEqual([]);
   });
 
-  it("is not a step when the side it would focus on is flat (nothing to show up close)", () => {
+  it("is not a step when nothing else moves (a flat balance, then a paycheck)", () => {
     const flatThenPay = [...Array(20).fill(-50_000), ...Array(6).fill(150_000)];
-    expect(dominantStep(flatThenPay)).toBeNull();
+    expect(bigSteps(flatThenPay)).toEqual([]);
     expect(fitScale(flatThenPay, { focus: true }).focused).toBe(false);
   });
 
   it("is not there with no days or flat days", () => {
-    expect(dominantStep([])).toBeNull();
-    expect(dominantStep(Array(20).fill(5_000))).toBeNull();
+    expect(bigSteps([])).toEqual([]);
+    expect(bigSteps(Array(20).fill(5_000))).toEqual([]);
   });
 
   it("leaves the whole range fitted when not focused (Fit all)", () => {
     const all = fitScale(rise, { focus: false });
-    expect(all.step).not.toBeNull();
+    expect(all.breaks).toHaveLength(1);
     expect(all.top).toBe(Math.max(...rise));
     expect(all.bottom).toBe(Math.min(...rise));
     expect(fitControlWords(true)).toBe("Fit all");
     expect(fitControlWords(false)).toBe("Focus");
   });
 
-  it("runs the line off the edge at the step: the days before sit below the scale", () => {
-    const s = chartScale(rise, WIDTH, HEIGHT, { focus: true });
-    expect(s.y(before[before.length - 1])).toBeGreaterThan(HEIGHT);
-    // And the path still carries every day, so a clip at the edge is all it needs.
-    expect(linePath(rise, s, WIDTH).split("L").length).toBe(rise.length);
+  it("starts a new piece of the line at each break, so there is a gap", () => {
+    const s = chartScale(rise, WIDTH, HEIGHT);
+    const path = linePath(rise, s, WIDTH);
+    expect(path.match(/M/g)).toHaveLength(2);
+    expect(path.split("L").length).toBe(rise.length - 1);
+    // The line before and after the break sit at about the same height.
+    const pieces = path.split(" M");
+    const lastLeft = Number(pieces[0].split(" ").at(-1)!.split(",")[1]);
+    const firstRight = Number(pieces[1].split(" ")[0].split(",")[1]);
+    expect(Math.abs(lastLeft - firstRight)).toBeLessThan(PLOT / 3);
   });
 });
 
