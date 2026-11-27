@@ -3,7 +3,6 @@ import { CONTRIBUTION_LIMITS, PAYROLL_TAX } from "@/config/tax-rates";
 import { savingMessage } from "@/lib/jane-agent/tax-saving-message";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "./tax-estimate";
 import { findTaxSavings, type SavingsInput } from "./tax-savings";
-import { withoutEarnedIncomeCredit } from "./tax-engine/residency-gate";
 
 // Spec step 122: every way to pay less, each estimated with the config rates by running the
 // estimate again with the change.
@@ -184,10 +183,10 @@ describe("findTaxSavings", () => {
     // As the loader hands it over: the page's estimate, which already leaves the credit out.
     const held = loan({
       residentOnlyAllowed: false,
-      estimate: withoutEarnedIncomeCredit(estimateTaxes(low)),
+      estimate: estimateTaxes({ ...low, residentCreditsAllowed: false }),
     });
     const gate = (i: EstimateInput) => {
-      const e = withoutEarnedIncomeCredit(estimateTaxes(i));
+      const e = estimateTaxes({ ...i, residentCreditsAllowed: false });
       return e.totalTaxCents + (e.state?.taxCents ?? 0);
     };
     // What taking the interest away would cost, both sides without the credit.

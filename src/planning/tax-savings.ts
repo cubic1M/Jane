@@ -10,7 +10,6 @@ import {
 } from "@/config/tax-rates";
 import { formatWholeDollars } from "@/lib/money";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "./tax-estimate";
-import { withoutEarnedIncomeCredit } from "./tax-engine/residency-gate";
 import { addDays } from "@/lib/dates";
 
 // The tax savings finder (spec step 122): every way Jane can see for the person to pay less,
@@ -100,15 +99,17 @@ export function careShare(agiCents: number, jointly: boolean): number {
 }
 
 export function findTaxSavings(s: SavingsInput): TaxSaving[] {
-  const base = s.input;
   // Every estimate here is worked out the way the Taxes page shows it: without the earned income
   // credit until the person says they are a citizen or green card holder (IRS Pub. 519), or a
-  // saving would be the credit the page leaves out (CodeRabbit on #2367).
-  const gated = (e: TaxEstimate) =>
-    s.residentOnlyAllowed === true ? e : withoutEarnedIncomeCredit(e);
-  const before = total(gated(s.estimate));
+  // saving would be the credit the page leaves out (CodeRabbit on #2367). The estimator leaves it
+  // out itself (EstimateInput.residentCreditsAllowed).
+  const base: EstimateInput = {
+    ...s.input,
+    ...(s.residentOnlyAllowed === true ? {} : { residentCreditsAllowed: false }),
+  };
+  const before = total(s.residentOnlyAllowed === true ? s.estimate : estimateTaxes(base));
   const saved = (change: (i: EstimateInput) => EstimateInput) =>
-    before - total(gated(estimateTaxes(change(base))));
+    before - total(estimateTaxes(change(base)));
   // Payroll tax saved on pre-tax payroll deductions, under the Social Security wage base.
   // Only on wages that exist: a $3,000 FSA on $2,000 of pay saves payroll tax on $2,000.
   const payroll = (cents: number) =>

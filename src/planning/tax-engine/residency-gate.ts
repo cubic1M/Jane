@@ -100,17 +100,3 @@ export function earnedIncomeHeldLine(kind: ResidencyKind, upToCents: number): st
   const tail = kind === "unknown" ? " Tell me and I'll check it." : "";
   return `I haven't counted the Earned Income Credit (up to ${formatCents(upToCents)}): ${heldReason(kind)}${tail}`;
 }
-
-// The estimate with the earned income credit taken out: what the pure estimator
-// (src/planning/tax-estimate.ts) says when the person's status is not established. The credit
-// lowered the total tax and raised the refund, so both go back.
-export function withoutEarnedIncomeCredit(e: TaxEstimate): TaxEstimate {
-  const credit = e.credits.earnedIncomeCreditCents;
-  if (credit === 0) return e;
-  return {
-    ...e,
-    credits: { ...e.credits, earnedIncomeCreditCents: 0 },
-    totalTaxCents: e.totalTaxCents + credit,
-    refundCents: e.refundCents - credit,
-  };
-}

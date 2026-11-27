@@ -10,7 +10,6 @@ import {
   earnedIncomeHeldLine,
   residentOnlyAllowed,
   residentOnlyAllowedFor,
-  withoutEarnedIncomeCredit,
 } from "@/planning/tax-engine/residency-gate";
 import { f1 } from "./__fixtures__/students";
 import { SAVERS_CREDIT_DETECTORS } from "./savers-credit";
@@ -129,24 +128,6 @@ describe("the question that settles it", () => {
 });
 
 describe("the estimate without the earned income credit", () => {
-  const e = {
-    credits: { earnedIncomeCreditCents: 150_000, childTaxCreditCents: 0 },
-    totalTaxCents: -150_000,
-    refundCents: 400_000,
-  } as unknown as Parameters<typeof withoutEarnedIncomeCredit>[0];
-
-  it("puts the credit back into the tax and out of the refund", () => {
-    const out = withoutEarnedIncomeCredit(e);
-    expect(out.credits.earnedIncomeCreditCents).toBe(0);
-    expect(out.totalTaxCents).toBe(0);
-    expect(out.refundCents).toBe(250_000);
-  });
-
-  it("changes nothing when there was no credit", () => {
-    const none = { ...e, credits: { ...e.credits, earnedIncomeCreditCents: 0 } };
-    expect(withoutEarnedIncomeCredit(none)).toBe(none);
-  });
-
   it("says in fact words why, and asks only when the status is not known", () => {
     expect(earnedIncomeHeldLine("unknown", 150_000)).toContain("Tell me and I'll check it.");
     expect(earnedIncomeHeldLine("unknown", 150_000)).toContain("$1,500.00");
