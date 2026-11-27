@@ -972,6 +972,7 @@ function toldFacts(b: Builder) {
     "marketplace_benchmark_monthly",
     "claimed_as_dependent",
     "spouse_itemizes",
+    "lived_with_spouse",
     "enrollment",
     "tax_residency",
     "school_deposit",

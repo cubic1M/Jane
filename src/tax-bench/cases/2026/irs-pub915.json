@@ -77,11 +77,6 @@
     "expected": {
       "socialSecurityTaxable": 0
     },
-    "expectedFailure": {
-      "steps": ["unowned"],
-      "figures": ["socialSecurityTaxable"],
-      "reason": "Worksheet 1 line 7 takes the above-the-line adjustments off before the base is compared (31,550 is under 32,000); the estimate counts the other income before them (32,550) and makes 275.00 taxable. No roadmap step owns Social Security in the estimate."
-    },
     "note": "Line 6 is 32,550; less the 1,000 IRA deduction, 31,550, under the 32,000 joint base, so nothing is taxable."
   },
   {
@@ -130,11 +125,6 @@
     },
     "expected": {
       "socialSecurityTaxable": 340000
-    },
-    "expectedFailure": {
-      "steps": ["unowned"],
-      "figures": ["socialSecurityTaxable"],
-      "reason": "A married person filing separately who lived with the spouse has a base of 0, so 85% of the benefits count; the estimate gives married filing separately the single base (25,000) and counts none. No roadmap step owns Social Security in the estimate."
     },
     "note": "85% x 4,000 = 3,400.",
     "extra": {

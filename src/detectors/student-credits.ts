@@ -232,7 +232,19 @@ const studentLoanInterest: Detector = {
           ? found.cents
           : Math.min(paidYear, found.cents);
     const deduct = Math.round(Math.min(STUDENT_LOAN_INTEREST.max, interest ?? paidYear) * left);
-    const worth = Math.round(deduct * rate);
+    // What the deduction saves is the difference between two runs of the tax: with it and without. A
+    // rate times the amount is wrong when the deduction is larger than the income over the standard
+    // deduction (it can only take that much off): $72 "at 10%" beside a person who owes no tax.
+    const taxOf = (agi: number) =>
+      federalTaxOf(
+        agi,
+        status,
+        false,
+        year.earnedCents + year.stipendCents,
+        lawYearOf(data.today),
+        ageOf(facts),
+      );
+    const worth = Math.max(0, taxOf(year.agiCents) - taxOf(year.agiCents - deduct));
     if (worth <= 0) return null;
     const basis =
       found === null
@@ -267,7 +279,7 @@ const studentLoanInterest: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).${filingNoteOf(facts)}`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `Up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax at your income (${pct(rate)} on your next dollar)` : `${basis}; ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax at your income (${pct(rate)} on your next dollar)`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });
