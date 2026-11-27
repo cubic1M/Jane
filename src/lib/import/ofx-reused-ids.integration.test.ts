@@ -138,4 +138,49 @@ describe.runIf(url)("two accounts whose OFX row ids overlap", () => {
     );
     expect(await client.transaction.count({ where: { accountId: account } })).toBe(12);
   });
+
+  // CodeRabbit on this PR: rows stored under the key a reused id gets must be recognised later.
+  it("recognises rows kept under a reused id's own key, and keeps two files' rows in one upload", async () => {
+    const other = await client.user.create({ data: { email: "ofx-reused-ids-2@example.com" } });
+    try {
+      const db = scopedFor(other.id, client);
+      const account = (
+        await client.account.create({
+          data: {
+            userId: other.id,
+            source: "csv",
+            name: "Together",
+            type: "depository",
+            subtype: "checking",
+          },
+        })
+      ).id;
+      // Two overlapping files of one upload, an id reused for different transactions.
+      const both = await importCsvFiles(db, account, [
+        { name: "one.ofx", text: FIRST },
+        { name: "two.ofx", text: SECOND },
+      ]);
+      expect(both.inserted).toBe(12);
+      // The first file's rows taken back; the second file again is still its own rows.
+      await client.transaction.deleteMany({
+        where: { accountId: account, dedupeKey: { not: { contains: "|" } } },
+      });
+      expect(
+        (await importCsvFiles(db, account, [{ name: "two.ofx", text: SECOND }])).inserted,
+      ).toBe(0);
+      // And as a new account it is refused as already there, not made twice.
+      const again = await saveUpload(
+        db,
+        form(
+          { accountId: "new", "new.name": "Checking again", "new.kind": "checking" },
+          "two.ofx",
+          SECOND,
+        ),
+      );
+      expect(again.ok).toBe(false);
+      expect(!again.ok && again.error).toContain("already in Together");
+    } finally {
+      await client.user.deleteMany({ where: { id: other.id } });
+    }
+  });
 });
