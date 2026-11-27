@@ -280,9 +280,13 @@ describe.runIf(url)("policies read from documents against a real database", () =
     expect(asked).toBeDefined();
     const { reply } = await sendToJane(me, "did you read my policy", { client, now: NOW });
     expect(reply.body.split("\n")[0]).toBe("I read your Lemonade renters policy. Is this right?");
-    const tool = JSON.parse(
-      (await runChatTool(me, "insurance_documents", {}, { client, now: NOW })).content,
-    );
+    const result = await runChatTool(me, "insurance_documents", {}, { client, now: NOW });
+    const tool = JSON.parse(result.content);
+    // Every dollar amount in what it read is also given in cents, for the figure check.
+    for (const m of result.content.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
+      expect(result.cents).toContain(Math.round(Number(m[1].replace(/,/g, "")) * 100));
+    }
+    expect(result.cents.length).toBeGreaterThan(0);
     expect(tool.documents.map((d: { status: string }) => d.status)).toEqual([
       "confirmed",
       "waiting for them to confirm",
