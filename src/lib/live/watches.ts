@@ -8,6 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { liveOffers, type LiveOffer } from "@/lib/offers/catalog";
+import { withPersonLock } from "@/lib/person-lock";
 import { systemDb } from "@/lib/system-db";
 import { isTrialUser } from "@/lib/trial-ids";
 import { hasDemoBank } from "@/lib/plaid/demo";
@@ -174,18 +175,29 @@ export async function matchOffers({
   });
   const people = [...new Set(due.map((d) => d.watch.userId))];
   const now_ = people.slice(0, LIVE_MATCHES_PER_RUN);
+  let busy = 0;
   for (const userId of now_) {
     try {
-      await scan(userId, { client, now });
+      // One runner a person: two overlapping runs (a slow one, a manual one) never scan the same
+      // person at once, and the one that finds it taken leaves the person for the next run.
+      const locked = await withPersonLock("offer-rescan", userId, () => scan(userId, { client, now }), {
+        client,
+      });
+      if (!locked.ran) {
+        busy += 1;
+        continue;
+      }
     } catch (error) {
       // Not marked as matched: the next run tries this person again, but behind the people not
       // tried yet (a rewrite of the same value moves updated_at), so a few failing people never
       // keep everyone after them from being scanned.
       log.error("Rescanning a person for an offer failed", { error: String(error) });
+      // Only the time is touched: a lastMatch written back from the read at the start of the run
+      // could undo what a run overlapping this one has recorded since.
       for (const { watch } of due.filter((d) => d.watch.userId === userId)) {
         await scopedFor(userId, client).offerWatches.updateMany({
           where: { target: watch.target },
-          data: { lastMatch: watch.lastMatch },
+          data: { updatedAt: now },
         });
       }
       continue;
@@ -197,6 +209,7 @@ export async function matchOffers({
       });
     }
   }
-  log.info("offers_matched", { matched: now_.length, left: people.length - now_.length });
-  return { matched: now_.length, left: people.length - now_.length };
+  const matched = now_.length - busy;
+  log.info("offers_matched", { matched, left: people.length - matched });
+  return { matched, left: people.length - matched };
 }

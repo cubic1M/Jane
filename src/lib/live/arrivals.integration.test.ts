@@ -174,6 +174,29 @@ describe.runIf(url)("new findings told the moment they're found", () => {
     expect((await arrivals(userId)).at(-1)?.notice).toBe("posted");
   });
 
+  it("tells at most one a day even when two scans run at the same moment", async () => {
+    const userId = await person();
+    const a = await finding(userId, "gym", 48_000);
+    const b = await finding(userId, "music", 30_000);
+    const options = (at: Date) => ({
+      client,
+      now: at,
+      trigger: "webhook" as const,
+      triggerAt: at,
+      foundAt: at,
+    });
+
+    // The second scan's clock is earlier: sorted after the fact, it would have come first.
+    await Promise.all([
+      recordArrivals(userId, [a], options(NOW)),
+      recordArrivals(userId, [b], options(new Date(NOW.getTime() - 1_000))),
+    ]);
+
+    const rows = await arrivals(userId);
+    expect(rows.filter((r) => r.notice === "posted")).toHaveLength(1);
+    expect((await posted(userId)).filter((m) => m.dedupeKey?.startsWith("findings:"))).toHaveLength(1);
+  });
+
   it("keeps below the bar to the brief: a small saving, or one detection is unsure of", async () => {
     const userId = await person();
     await recordArrivals(

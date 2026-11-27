@@ -10,6 +10,7 @@ import { heartbeat } from "@/lib/heartbeat";
 import { CHAT_TRIAL_MONTH_SHARE, CLAUDE_MONTH_WARN_SHARE } from "@/config/agent-chat";
 import { monthlyCapCents, monthlySpentCents } from "@/lib/jane-agent/claude-limits";
 import { log } from "@/lib/log";
+import { sendToAny } from "@/lib/team-send";
 import { plaidEnvironment } from "@/lib/plaid/client";
 import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
 import { loginCheck, rlsCoverage, rlsSwitchWorks, systemSwitchWorks } from "@/lib/rls-coverage";
@@ -174,7 +175,7 @@ export async function reportRlsGaps({
       text: `Row-level security (docs/security/rls.md) no longer covers every user-owned table: ${what}. The app's own filters still apply. Check /admin/health; the next deploy re-runs scripts/rls-protect.mjs. You'll get one email per lapse.`,
       html: `<p>Row-level security no longer covers every user-owned table: ${what}.</p><p>The app's own filters still apply. Check <a href="${siteOrigin() ?? ""}/admin/health">/admin/health</a>; the next deploy re-runs <code>scripts/rls-protect.mjs</code>.</p><p>You'll get one email per lapse.</p>`,
     };
-    await Promise.all(to.map((address) => send({ ...message, to: address })));
+    await sendToAny(to, message, send);
   } catch (error) {
     await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
     log.error("Row-level security email failed", { error: String(error) });
@@ -210,7 +211,7 @@ export async function reportPlaidSlots({
       text: `${line}. Removing a bank doesn't give one back on Plaid's Trial plan, so the app offers statement upload once they're gone. To get more, upgrade the plan: docs/setup/plaid-trial.md. You'll get one email about this.`,
       html: `<p>${line}.</p><p>Removing a bank doesn't give one back on Plaid's Trial plan, so the app offers statement upload once they're gone. To get more, upgrade the plan: <code>docs/setup/plaid-trial.md</code>.</p><p>You'll get one email about this.</p>`,
     };
-    await Promise.all(teamEmails().map((address) => send({ ...message, to: address })));
+    await sendToAny(teamEmails(), message, send);
   } catch (error) {
     await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
     log.error("Plaid connections email failed", { error: String(error) });
@@ -260,7 +261,7 @@ export async function reportClaudeMonth({
       text: `${line}. ${then} ${raise}`,
       html: `<p>${line}. ${then}</p><p>${raise}</p>`,
     };
-    await Promise.all(teamEmails().map((address) => send({ ...message, to: address })));
+    await sendToAny(teamEmails(), message, send);
   } catch (error) {
     await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
     log.error("Claude month email failed", { error: String(error) });
@@ -315,7 +316,7 @@ export async function reportMissedJobs({
           text: `The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check /admin/health and the Vercel cron logs. You'll get one email per outage.`,
           html: `<p>The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check <a href="${siteOrigin() ?? ""}/admin/health">/admin/health</a> and the Vercel cron logs.</p><p>You'll get one email per outage.</p>`,
         };
-        await Promise.all(to.map((address) => send({ ...message, to: address })));
+        await sendToAny(to, message, send);
       } catch (error) {
         // Unclaim, so the next check tries again.
         await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });

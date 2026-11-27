@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { withPersonLock } from "@/lib/person-lock";
 import { matchOffers, refreshWatches } from "./watches";
 
 // Reverse matching against a real, migrated Postgres: each scan leaves the person's watches, and an
@@ -175,6 +176,38 @@ describe.runIf(url)("reverse matching", () => {
     scanned.length = 0;
     await matchOffers({ client, now: NOW, scan: fine });
     expect(scanned).not.toContain(idle);
+  });
+
+  it("leaves a person another run is scanning, and does not undo what an overlapping run recorded", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const idle = await person([
+      { type: "idle_cash", evidence: { excessCents: 2_000_000, assumedCurrentRateBps: 50 } },
+    ]);
+    await offer(BANK, { valueBps: 610 }, { status: "live" });
+    const scan = vi.fn(async () => {});
+
+    // Someone else's run holds this person: not scanned, not marked matched.
+    const held = await withPersonLock("offer-rescan", idle, async () => {
+      return matchOffers({ client, now: NOW, scan });
+    }, { client });
+    expect(held.ran && held.value.matched).toBe(0);
+    expect(scan.mock.calls.map(([id]) => id as string)).not.toContain(idle);
+
+    // A failed scan puts back nothing it read at the start: a match another run wrote stays.
+    const failing = vi.fn(async (userId: string) => {
+      if (userId === idle) {
+        await client.offerWatch.updateMany({
+          where: { userId: idle, target: "savings" },
+          data: { lastMatch: "another-run:signature" },
+        });
+        throw new Error("scan down");
+      }
+    });
+    await matchOffers({ client, now: NOW, scan: failing });
+    const watch = await client.offerWatch.findFirstOrThrow({
+      where: { userId: idle, target: "savings" },
+    });
+    expect(watch.lastMatch).toBe("another-run:signature");
   });
 
   it("runs a real rescan for someone an offer helps, without failing", async () => {

@@ -82,8 +82,9 @@ describe("reportPlaidSlots", () => {
   it("tries again next time if the email failed", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const client = clientWith(8);
-    send.mockRejectedValueOnce(new Error("no"));
+    send.mockRejectedValue(new Error("no"));
     expect(await report(client)).toBe(false);
+    send.mockReset();
     expect(await report(client)).toBe(true);
   });
 
@@ -147,10 +148,11 @@ describe("reportRlsGaps", () => {
     coverage.mockResolvedValue(gap);
     vi.spyOn(console, "error").mockImplementation(() => {});
     const client = fakeClient();
-    send.mockRejectedValueOnce(new Error("Resend down"));
+    send.mockRejectedValue(new Error("Resend down"));
 
     expect(await reportRlsGaps({ client: client as unknown as PrismaClient, send })).toBe(false);
     expect(client.notices.size).toBe(0);
+    send.mockReset();
     expect(await reportRlsGaps({ client: client as unknown as PrismaClient, send })).toBe(true);
   });
 });
