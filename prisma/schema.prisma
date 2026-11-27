@@ -4264,12 +4264,17 @@ model MoneyTransfer {
   by            String
   // What it came from: "paycheck:<transaction id>", "bill:<key>".
   planKey       String?   @map("plan_key")
+  // One transfer for one move of a plan: a second try to schedule the same move finds this row
+  // instead of making another. Null for a transfer with no plan, and for every row from before it
+  // existed; cleared when the transfer is cancelled or fails, so the move can be scheduled again.
+  uniqueKey     String?   @map("unique_key")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
   cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, uniqueKey])
   @@index([userId, status])
   @@map("money_transfers")
 }

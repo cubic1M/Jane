@@ -287,6 +287,7 @@ export async function payBill(
         purpose: "bill",
         sector: "bills",
         planKey,
+        uniqueKey: planKey,
         runOn: item.runOn,
       },
       by,

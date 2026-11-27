@@ -53,6 +53,11 @@ export type PaycheckPlanView = {
   kept: { billsCents: number; bufferCents: number; investingCents: number } | null;
 };
 
+// The key one move of a plan holds in money_transfers.unique_key: the same move scheduled twice
+// is one transfer.
+const moveKey = (planKey: string, move: Pick<PlannedMove, "purpose" | "toAccountId" | "goalId">) =>
+  `${planKey}|${move.purpose}|${move.toAccountId ?? ""}|${move.goalId ?? ""}`;
+
 // A transfer this plan already saved for the same move: a retry after a crash reuses it instead of
 // scheduling the money a second time.
 async function savedTransfer(
@@ -67,6 +72,8 @@ async function savedTransfer(
       toAccountId: move.toAccountId ?? null,
       goalId: move.goalId ?? null,
       status: { in: ["pending", "awaiting_partner", "releasing", "completed"] },
+      // Saved ahead of the partner call and never answered is not a scheduled move.
+      OR: [{ partnerRef: { not: null } }, { status: "awaiting_partner" }],
     },
     select: { id: true },
   });
@@ -239,7 +246,7 @@ export async function runPaycheckPlan(
     }
     const { id } = await scheduleTransfer(
       userId,
-      { ...move, amountCents: move.cents, planKey: key },
+      { ...move, amountCents: move.cents, planKey: key, uniqueKey: moveKey(key, move) },
       "autopilot",
       {
         client,
@@ -342,7 +349,7 @@ export async function movePaycheckPlan(
       try {
         const { id } = await scheduleTransfer(
           userId,
-          { ...move, amountCents: move.cents, planKey: row.key },
+          { ...move, amountCents: move.cents, planKey: row.key, uniqueKey: moveKey(row.key, move) },
           "person",
           {
             client,

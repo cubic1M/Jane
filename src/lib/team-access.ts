@@ -234,6 +234,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   autopilot_sector_set: own,
   money_transfer_scheduled: own,
   money_transfer_cancelled: own,
+  money_transfer_unconfirmed: own,
   what_if_adopted: own,
   lean_plan_started: own,
   books_merged: own,
