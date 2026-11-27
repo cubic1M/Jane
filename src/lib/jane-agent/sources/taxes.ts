@@ -1,5 +1,5 @@
 import { TAX_MESSAGE_PRIORITY, TAX_TAGS, type TaxTagKind } from "@/config/tax";
-import { estimateAnchorCents } from "../estimate-key";
+import { estimateKeySuffix } from "../estimate-key";
 import { estimateMessage } from "../tax-replies";
 import { w4Suggestion, withholdingFacts } from "../tax-w4";
 import { savingMessage } from "../tax-saving-message";
@@ -167,12 +167,12 @@ function estimateCards({ tax, acts }: In): Candidate[] {
     : estimate.estimate.totalTaxCents;
   // The card is keyed on the amount it was last posted at while the figure stays within a step of
   // it (estimate-key.ts), so a repost happens when the shown figure has moved by the step.
-  const anchor = estimateAnchorCents(balance, tax.estimatePostedCents ?? null);
+  const suffix = estimateKeySuffix(balance, tax.estimatePosted ?? null);
   return [
     card(
       "heads_up",
       estimateMessage(estimate),
-      acts ? `estimate:${estimate.year}:at${anchor}` : `estimate:${estimate.year}`,
+      acts ? `estimate:${estimate.year}:${suffix}` : `estimate:${estimate.year}`,
       P.estimate,
     ),
   ];

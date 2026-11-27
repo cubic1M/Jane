@@ -13,7 +13,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
 import { runChatTool } from "./claude-tools";
 import { TAX_ESTIMATE_STEP_CENTS } from "@/config/tax";
-import { lastEstimatePostedCents } from "./estimate-key";
+import { lastEstimatePosted } from "./estimate-key";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
@@ -253,7 +253,7 @@ describe.runIf(url)("the tax estimate against a real database", () => {
       context,
     );
     expect(safe.find((c) => c.dedupeKey.startsWith("estimate:"))!.dedupeKey).toMatch(
-      /^estimate:2026:at-?\d+$/,
+      /^estimate:2026:at-?\d+n\d+$/,
     );
     await setAutopilot(demoId, "ask", { client, now: LINKED });
   });
@@ -266,37 +266,42 @@ describe.runIf(url)("the tax estimate against a real database", () => {
       trigger: "open" as const,
     };
     const snapshot = (await loadSnapshot(demoId, { client, now: LINKED }))!;
-    const keyFor = (posted: number | null) =>
+    const keyFor = (posted: { cents: number; seq: number } | null) =>
       taxesSource
-        .gather({ ...snapshot, tax: { ...snapshot.tax!, estimatePostedCents: posted } }, context)
+        .gather({ ...snapshot, tax: { ...snapshot.tax!, estimatePosted: posted } }, context)
         .find((c) => c.dedupeKey.startsWith("estimate:"))!.dedupeKey;
     const e = snapshot.tax!.estimate!;
     const balance = e.withholdingKnown ? e.estimate.refundCents : e.estimate.totalTaxCents;
+    const near = balance - (TAX_ESTIMATE_STEP_CENTS - 1);
 
-    // Posted at this very figure, or within a step of it: the same key, so nothing is posted again.
-    expect(keyFor(balance)).toBe(`estimate:2026:at${balance}`);
-    expect(keyFor(balance - (TAX_ESTIMATE_STEP_CENTS - 1))).toBe(
-      `estimate:2026:at${balance - (TAX_ESTIMATE_STEP_CENTS - 1)}`,
+    // Posted at this very figure, or within a step of it: the posted card's own key, so nothing
+    // is posted again.
+    expect(keyFor({ cents: balance, seq: 3 })).toBe(`estimate:2026:at${balance}n3`);
+    expect(keyFor({ cents: near, seq: 3 })).toBe(`estimate:2026:at${near}n3`);
+    // A step away: a new key at the figure now shown, numbered after the last card.
+    expect(keyFor({ cents: balance - TAX_ESTIMATE_STEP_CENTS, seq: 3 })).toBe(
+      `estimate:2026:at${balance}n4`,
     );
-    // A step away: a new key at the figure now shown.
-    expect(keyFor(balance - TAX_ESTIMATE_STEP_CENTS)).toBe(`estimate:2026:at${balance}`);
-    expect(keyFor(balance + TAX_ESTIMATE_STEP_CENTS * 3)).toBe(`estimate:2026:at${balance}`);
+    // Coming back to an amount an earlier card was posted at is a new key, not that card's again.
+    expect(keyFor({ cents: balance + TAX_ESTIMATE_STEP_CENTS * 3, seq: 2 })).toBe(
+      `estimate:2026:at${balance}n3`,
+    );
     // Never posted: keyed on the figure shown.
-    expect(keyFor(null)).toBe(`estimate:2026:at${balance}`);
+    expect(keyFor(null)).toBe(`estimate:2026:at${balance}n1`);
 
-    // The last posted amount is read back from the newest estimate message of the year.
+    // The last posted card is read back from the newest estimate message of the year.
     await client.janeMessage.create({
       data: {
         userId: demoId,
         kind: "heads_up",
         body: "My estimate",
-        dedupeKey: "taxes:estimate:2026:at12345",
+        dedupeKey: "taxes:estimate:2026:at12345n7",
         refs: {},
       },
     });
-    expect(await lastEstimatePostedCents(demoId, 2026, client)).toBe(12_345);
+    expect(await lastEstimatePosted(demoId, 2026, client)).toEqual({ cents: 12_345, seq: 7 });
     await client.janeMessage.deleteMany({
-      where: { userId: demoId, dedupeKey: "taxes:estimate:2026:at12345" },
+      where: { userId: demoId, dedupeKey: "taxes:estimate:2026:at12345n7" },
     });
     await setAutopilot(demoId, "ask", { client, now: LINKED });
   });
