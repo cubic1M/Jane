@@ -72,6 +72,37 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     expect(await markCashIncome(db)).toBe(0);
   });
 
+  // CodeRabbit sweep: a row some rule or bank hint placed as other income (a benefit fund) is not
+  // a paycheck, however steadily it arrives; the stored row cannot say which rows this pass placed.
+  it("leaves money placed as other income alone", async () => {
+    const user = await client.user.create({
+      data: { email: `regular-payer-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    for (let i = 0; i < 6; i++) {
+      await client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: `benefit-${i}`,
+          date: new Date(Date.UTC(2026, 6, 3 + i * 14)),
+          amountCents: -150_000,
+          description: "ACH CREDIT 74192",
+          merchantName: "State Benefit Fund",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+          categorySource: "rule",
+        },
+      });
+    }
+    expect(await markCashIncome(scopedFor(user.id, client))).toBe(0);
+    expect(await details(user.id)).toEqual(["INCOME_OTHER"]);
+  });
+
   it("makes income of what Claude took for a purchase", async () => {
     const id = await person({
       name: "Northwind Labs",

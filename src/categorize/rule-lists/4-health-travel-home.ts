@@ -356,7 +356,6 @@ export const HEALTH_TRAVEL_HOME: readonly Rule[] = [
       "WATER AUTHORITY",
       "WATER & SEWER",
       "WATER AND SEWER",
-      "SEWER",
       "THAMES WATER",
     ],
     direction: "out",
@@ -364,6 +363,7 @@ export const HEALTH_TRAVEL_HOME: readonly Rule[] = [
   {
     category: "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
     keywords: [
+      "SEWER",
       "WASTE MANAGEMENT",
       "REPUBLIC SERVICES",
       "RECOLOGY",

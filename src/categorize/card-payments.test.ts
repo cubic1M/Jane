@@ -187,6 +187,14 @@ describe("paymentsToUnseenCards", () => {
     expect(paymentsToUnseenCards(rows, accounts)).toEqual([]);
   });
 
+  it("does not take a merchant's refund on a card as a payment arriving", () => {
+    const rows = [
+      row("a", "chk", "2026-10-22", 8_000, CARD, "SOME BANK ONLINE PMT"),
+      row("b", "apple", "2026-10-22", -8_000, "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES", "REFUND"),
+    ];
+    expect(paymentsToUnseenCards(rows, accounts).map((r) => r.id)).toEqual(["a"]);
+  });
+
   it("takes a payment that names a card on file as seen, even outside its statement", () => {
     const rows = [row("a", "chk", "2026-05-22", 49_500, CARD, "APPLECARD GSBANK PAYMENT")];
     expect(paymentsToUnseenCards(rows, accounts)).toEqual([]);

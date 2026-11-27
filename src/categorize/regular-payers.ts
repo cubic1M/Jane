@@ -24,6 +24,7 @@ import {
   REGULAR_PAYER_PERSON_WORD,
 } from "@/config/detection";
 import { isoDay } from "@/lib/dates";
+import type { Prisma } from "@/generated/prisma/client";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { dayNumber } from "@/detection/units";
 
@@ -84,15 +85,36 @@ const notIncome = (name: string) =>
 // The same amount left a different account at about the same time. Leaving the account it came
 // into doesn't count: that's pay being spent.
 function isOwnMoney(rows: readonly PayerRow[], moneyOut: readonly MoneyOutRow[]): boolean {
-  const moved = rows.filter((r) =>
-    moneyOut.some(
-      (o) =>
-        o.accountId !== r.accountId &&
-        o.amountCents === -r.amountCents &&
-        Math.abs(dayNumber(o.date) - dayNumber(r.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS,
+  // Each outgoing transfer accounts for one incoming row at most: three debits cannot explain six
+  // credits (CodeRabbit sweep). The most credits that can be paired one to one, so the answer does
+  // not depend on the order the debits come in.
+  const options = rows.map((r) =>
+    moneyOut.flatMap((o, i) =>
+      o.accountId !== r.accountId &&
+      o.amountCents === -r.amountCents &&
+      Math.abs(dayNumber(o.date) - dayNumber(r.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS
+        ? [i]
+        : [],
     ),
   );
-  return moved.length >= rows.length * REGULAR_PAYER_OWN_MONEY_SHARE;
+  const takenBy = new Map<number, number>();
+  const pair = (credit: number, seen: Set<number>): boolean => {
+    for (const debit of options[credit]) {
+      if (seen.has(debit)) continue;
+      seen.add(debit);
+      const holder = takenBy.get(debit);
+      if (holder === undefined || pair(holder, seen)) {
+        takenBy.set(debit, credit);
+        return true;
+      }
+    }
+    return false;
+  };
+  let moved = 0;
+  for (let credit = 0; credit < rows.length; credit++) {
+    if (pair(credit, new Set())) moved += 1;
+  }
+  return moved >= rows.length * REGULAR_PAYER_OWN_MONEY_SHARE;
 }
 
 // The ids of the rows that are regular pay.
@@ -196,26 +218,30 @@ export function employerExtras(
     .map((r) => r.id);
 }
 
+// The rows this pass may look at, and change: the write asks again, so a category the person sets
+// between the read and the write stays.
+const OPEN_ROWS = {
+  pending: false,
+  amountCents: { lt: 0 },
+  OR: [
+    { pfcDetailed: null },
+    { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } },
+    // Regular money by Zelle from someone: a tenant's rent, not a move of their own (debugger
+    // 11-02). The rules call all of it a transfer. Moves of their own are left out below.
+    {
+      categorySource: "rule",
+      pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+      description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
+    },
+  ],
+} satisfies Prisma.TransactionWhereInput;
+
 // Runs with the cash deposits, after an import, a bank sync and each night, before detection.
 // Returns how many rows changed. Once income they stay: only unplaced rows and Claude's guesses
 // are looked at, and an income row is neither.
 export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Promise<number> {
   const rows = await db.transactions.findMany({
-    where: {
-      pending: false,
-      amountCents: { lt: 0 },
-      OR: [
-        { pfcDetailed: null },
-        { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } },
-        // Regular money by Zelle from someone: a tenant's rent, not a move of their own (debugger
-        // 11-02). The rules call all of it a transfer. Moves of their own are left out below.
-        {
-          categorySource: "rule",
-          pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
-          description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
-        },
-      ],
-    },
+    where: OPEN_ROWS,
     select: {
       id: true,
       accountId: true,
@@ -236,11 +262,13 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     rows.filter((r) => r.pfcDetailed === null),
     salaried.flatMap((s) => (s.merchantName ? [s.merchantName] : [])),
   );
+  let extrasChanged = 0;
   if (extras.length > 0) {
-    await db.transactions.updateMany({
-      where: { id: { in: extras } },
+    const done = await db.transactions.updateMany({
+      where: { AND: [{ id: { in: extras } }, OPEN_ROWS] },
       data: { ...INCOME, categorySource: "rule" },
     });
+    extrasChanged = done.count;
   }
   const moneyOut = await db.transactions.findMany({
     where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
@@ -264,21 +292,21 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
     out,
   ).filter((id) => !paying.has(id));
-  if (pay.paychecks.length + regular.length + clients.length === 0) return extras.length;
+  if (pay.paychecks.length + regular.length + clients.length === 0) return extrasChanged;
   const [salary, other, contractor] = await Promise.all([
     db.transactions.updateMany({
-      where: { id: { in: pay.paychecks } },
+      where: { AND: [{ id: { in: pay.paychecks } }, OPEN_ROWS] },
       data: { ...SALARY, categorySource: "rule" },
     }),
     db.transactions.updateMany({
-      where: { id: { in: regular } },
+      where: { AND: [{ id: { in: regular } }, OPEN_ROWS] },
       data: { ...INCOME, categorySource: "rule" },
     }),
     // Contractor income: what the side-gig fact and the tax estimate read.
     db.transactions.updateMany({
-      where: { id: { in: clients } },
+      where: { AND: [{ id: { in: clients } }, OPEN_ROWS] },
       data: { ...CLIENT_INCOME, categorySource: "rule" },
     }),
   ]);
-  return extras.length + salary.count + other.count + contractor.count;
+  return extrasChanged + salary.count + other.count + contractor.count;
 }

@@ -304,6 +304,27 @@ describe("categorizeByRules", () => {
     expect(out("STRIPE TRANSFER ST-K3J9Q2")).not.toBe("INCOME_CONTRACTOR");
   });
 
+  // CodeRabbit sweep: the bank's deposit words must not turn a payout into wages.
+  it("reads a payout with a space after DES: as one phrase", () => {
+    expect(into("STRIPE DES: TRANSFER ID:ST-XXXXX")).toBe("INCOME_CONTRACTOR");
+  });
+
+  it("keeps a contractor payout income even when the bank adds DIRECT DEP", () => {
+    expect(into("STRIPE PAYOUT DIRECT DEP")).toBe("INCOME_CONTRACTOR");
+    expect(into("UPWORK DIRECT DEPOSIT")).toBe("INCOME_CONTRACTOR");
+    expect(into("ACME DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("UPWORK PAYROLL DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("FIVERR SALARY DIRECT DEP")).toBe("INCOME_SALARY");
+    expect(into("UPWORK WAGES DIRECT DEP")).toBe("INCOME_SALARY");
+    // A bare singular is no salary word: the contractor rule keeps it.
+    expect(into("UPWORK WAGE")).toBe("INCOME_CONTRACTOR");
+  });
+
+  it("reads rent a tenant sends as rental income, not a card payment", () => {
+    expect(into("TENANT RENT ONLINE PAYMENT")).toBe("INCOME_RENTAL");
+    expect(into("ONLINE PAYMENT THANK YOU")).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
   it("uses a card's own categories, both ways, so a return nets against its purchase", () => {
     const shop = { bankCategory: "Shopping" };
     expect(out("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
@@ -1040,6 +1061,16 @@ describe("a gig driver's money", () => {
       expect(rule(description, 100)).not.toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
     },
   );
+
+  it("a membership named before the company is a membership too", () => {
+    expect(rule("MEMBERSHIP EARNIN", 100)).not.toBe("LOAN_PAYMENTS_EWA");
+    expect(rule("EARNIN MEMBERSHIP", 100)).not.toBe("LOAN_PAYMENTS_EWA");
+  });
+
+  it("a plain sewer bill is sewage, a water and sewer bill is water", () => {
+    expect(rule("CITY SEWER", 4_000)).toBe("RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT");
+    expect(rule("WATER & SEWER DEPT", 4_000)).toBe("RENT_AND_UTILITIES_WATER");
+  });
 
   it("the advance itself is still borrowed money", () => {
     expect(rule("EARNIN CASH OUT", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");

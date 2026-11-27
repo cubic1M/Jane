@@ -97,6 +97,36 @@ describe("regular money in from one payer", () => {
       expect(regularPayers(into, out("checking", 50_000, 6))).toHaveLength(8);
     });
 
+    // CodeRabbit sweep: one debit explains one credit, not two equal credits on the same day.
+    it("counts each outgoing transfer once", () => {
+      const twice = into.flatMap((r) => [r, { ...r, id: `${r.id}-b` }]);
+      expect(regularPayers(twice, out("checking").slice(0, 4))).toHaveLength(16);
+      expect(regularPayers(twice, out("checking"))).toEqual([]);
+    });
+
+    // CodeRabbit sweep: the most credits that can be paired, whatever order the debits are in.
+    it("does not depend on the order the outgoing transfers come in", () => {
+      const day = (n: number) =>
+        new Date(Date.parse("2026-07-03T00:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
+      const starts = [0, 7, 14, 21, 28, 35];
+      const credits = starts.flatMap((d, i) =>
+        [d, d + 3].map((n, j) => ({
+          id: `c${i}-${j}`,
+          date: day(n),
+          amountCents: -50_000,
+          merchantName: "Home Fund",
+          accountId: "savings",
+        })),
+      );
+      // For the first three pairs: one debit that fits only the first credit, one that fits both.
+      const debit = (n: number) => ({ accountId: "checking", amountCents: 50_000, date: day(n) });
+      const wide = starts.slice(0, 4).map((d) => debit(d + 3));
+      const narrow = starts.slice(0, 4).map((d) => debit(d - 3));
+      expect(regularPayers(credits)).toHaveLength(12);
+      expect(regularPayers(credits, [...wide, ...narrow])).toEqual([]);
+      expect(regularPayers(credits, [...narrow, ...wide])).toEqual([]);
+    });
+
     it("is still income when only an odd one matches", () => {
       expect(regularPayers(into, out("checking").slice(0, 1))).toHaveLength(8);
     });
