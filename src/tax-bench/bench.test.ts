@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ALLOWED_SOURCE_HOSTS } from "@/config/tax-params";
 import { FIGURE_IDS, type FigureId } from "./figures";
-import { CASE_YEARS, FUTURE_INPUTS, INPUT_KEYS, loadCases, runCase } from "./serialize";
+import { CASE_YEARS, differs, FUTURE_INPUTS, INPUT_KEYS, loadCases, runCase } from "./serialize";
 
 // The accuracy bench (Tax T2): every fixed case through today's estimator. A case that is wrong
 // because of a defect the roadmap knows is an expected failure: the bench asserts that exactly the
@@ -72,6 +72,16 @@ describe.each(CASE_YEARS)("bench cases for %i", (year) => {
       wrong.sort(),
       `expected failure (${c.expectedFailure.steps.join(", ")}): the figures wrong today. If it is now empty the step has landed: remove expectedFailure`,
     ).toEqual(want);
+  });
+});
+
+describe("the comparison", () => {
+  it("is off for a figure that is not a number, and honours the tolerance for one that is", () => {
+    expect(differs(Number.NaN, 0)).toBe(true);
+    expect(differs(Number.POSITIVE_INFINITY, 0, 100)).toBe(true);
+    expect(differs(105, 100, 5)).toBe(false);
+    expect(differs(106, 100, 5)).toBe(true);
+    expect(differs(100, 100)).toBe(false);
   });
 });
 

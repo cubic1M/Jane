@@ -84,11 +84,16 @@ export const INPUT_KEYS: ReadonlySet<string> = new Set(Object.keys(INPUT_KEY_FLA
 
 export type Outcome = { estimate: TaxEstimate; wrong: FigureId[] };
 
+// Whether a figure is off by more than its tolerance. A figure that is not a number is always off
+// (NaN compares false with everything, so it would otherwise pass).
+export const differs = (actual: number, want: number, tolerance = 0): boolean =>
+  !Number.isFinite(actual) || Math.abs(actual - want) > tolerance;
+
 // Runs a case and lists the figures that differ from what it expects (beyond its tolerance).
 export function runCase(c: BenchCase): Outcome {
   const estimate = estimateTaxes(toInput(c));
   const wrong = (Object.entries(c.expected) as [FigureId, number][])
-    .filter(([id, want]) => Math.abs(FIGURES[id](estimate) - want) > (c.tolerance?.[id] ?? 0))
+    .filter(([id, want]) => differs(FIGURES[id](estimate), want, c.tolerance?.[id]))
     .map(([id]) => id);
   return { estimate, wrong };
 }
