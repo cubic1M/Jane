@@ -285,4 +285,25 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     });
     await client.cronRun.deleteMany({ where: { name: ACCURACY_JOB, startedAt: NOW } });
   });
+
+  it("emails a missing tax year with no accuracy run to go with it (names and years only)", async () => {
+    const send = vi.fn(async () => undefined);
+    // Two days after December 1, the day the check starts to warn about 2027.
+    const when = new Date("2026-12-03T12:00:00Z");
+    const taxReady = () => ({
+      state: "warning" as const,
+      day: "2026-12-04",
+      messages: ["No tax figures for 2027 yet; 2027 starts soon"],
+    });
+    expect(await sendAccuracyEmail({ client, now: when, send, taxReady })).toBe(true);
+    const [message] = send.mock.calls[0] as unknown as [{ subject: string; text: string }];
+    expect(message.subject).toBe("Jane tax figures: warning");
+    expect(message.text).toContain("tax figures (warning): No tax figures for 2027");
+    // Nothing is sent on a day with nothing to say.
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+    const calm = () => ({ state: "ok" as const, day: "2026-12-04", messages: [] });
+    expect(await sendAccuracyEmail({ client, now: when, send, taxReady: calm })).toBe(false);
+    expect(send).toHaveBeenCalledTimes(1);
+    await client.healthNotice.deleteMany({ where: { key: "accuracy:2026-12-03" } });
+  });
 });

@@ -1,5 +1,5 @@
 import versions from "./params-version.json";
-import type { FederalParams } from "./types";
+import type { FederalParams, ParamStatus } from "./types";
 import { US_2025 } from "./us-2025";
 import { US_2026 } from "./us-2026";
 
@@ -38,6 +38,50 @@ export function federalParams(year: number): FederalParams {
   const params = FEDERAL[year];
   if (!params) throw new NoTaxParamsError(year, "US");
   return params;
+}
+
+// A year whose file exists but whose figures are not all published (Tax T32): kept so the nightly
+// check knows what is awaited. Never priced: federalParams refuses it, so nothing can use a
+// figure that is not confirmed. It moves to FEDERAL and SUPPORTED_TAX_YEARS when complete.
+const DRAFT: Readonly<Record<number, FederalParams>> = {};
+
+export const DRAFT_TAX_YEARS: readonly number[] = Object.keys(DRAFT).map(Number);
+
+export function draftParams(year: number): FederalParams {
+  const params = DRAFT[year];
+  if (!params) throw new NoTaxParamsError(year, "US");
+  return params;
+}
+
+export type PendingGroup = {
+  year: number;
+  key: string;
+  status: ParamStatus;
+  checkedOn: string;
+  note: string;
+};
+
+// Every group not yet final: in a draft year, any that is not verified; in a supported year, any
+// still read from an IRS draft. The nightly check ages them (TAX_DRAFT_MAX_DAYS).
+export function pendingGroups(): PendingGroup[] {
+  const pending = (year: number, params: FederalParams, only: (s: ParamStatus) => boolean) =>
+    Object.entries(params).flatMap(([key, group]) =>
+      typeof group === "object" && group !== null && "status" in group && only(group.status)
+        ? [
+            {
+              year,
+              key,
+              status: group.status,
+              checkedOn: group.checkedOn,
+              note: group.verify ?? "",
+            },
+          ]
+        : [],
+    );
+  return [
+    ...SUPPORTED_TAX_YEARS.flatMap((y) => pending(y, federalParams(y), (s) => s === "draft")),
+    ...DRAFT_TAX_YEARS.flatMap((y) => pending(y, draftParams(y), (s) => s !== "verified")),
+  ];
 }
 
 // A fingerprint of each year's figures (sha256 of the canonical JSON, kept in params-version.json).

@@ -79,6 +79,18 @@ describe.runIf(url)("the nightly invariants", () => {
     expect(after.broken).toContain("questionWithDollars");
   });
 
+  it("is red when the year people are in has no tax figures, and says only a state and a count (Tax T32)", async () => {
+    // Far past the years Jane has figures for, so this holds when a new year is added.
+    const red = await runInvariants({ client, now: new Date("2031-01-02T12:00:00Z") });
+    expect(red.taxYear.state).toBe("red");
+    expect(red.taxYear.problems).toBeGreaterThanOrEqual(1);
+    expect(red.broken).toContain("taxYearReady");
+    // Mid-year in a supported year: nothing to say.
+    const ok = await runInvariants({ client, now: new Date("2026-06-15T12:00:00Z") });
+    expect(ok.taxYear).toEqual({ state: "ok", problems: 0 });
+    expect(ok.broken).not.toContain("taxYearReady");
+  });
+
   it("recomputes a fee finding from the rows it lists, and those from what's stored", async () => {
     const fee = await row({ accountId: checking, amountCents: 3400 });
     const listed = { id: fee.id, amountCents: 3400 };
