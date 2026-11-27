@@ -65,6 +65,7 @@ export function catchUpMustBeRoth(input: {
 }): boolean {
   return (
     input.taxYear >= ROTH_CATCH_UP.requiredFrom &&
-    input.priorYearFicaWagesCents > ROTH_CATCH_UP.priorYearFicaWagesOver
+    input.priorYearFicaWagesCents >
+      (ROTH_CATCH_UP.overByCatchUpYear[input.taxYear] ?? ROTH_CATCH_UP.priorYearFicaWagesOver)
   );
 }

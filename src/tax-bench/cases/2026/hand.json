@@ -459,11 +459,6 @@
     "expected": {
       "amt": 8797575
     },
-    "expectedFailure": {
-      "steps": ["unowned"],
-      "figures": ["amt"],
-      "reason": "us-2026.ts amt.phaseOutRate is 0.25 and the estimate uses it; the statute says 0.5 from 2026 (flagged WRONG TODAY in Tax T1). No roadmap step owns the correction."
-    },
     "note": "Taxable 383,900; regular tax 58,448 + 35% x 127,675 = 103,134.25. AMT income 383,900 + 16,100 + 300,000 = 700,000. Exemption 90,100 - 50% x (700,000 - 500,000) = 0 (not below zero). Base 700,000: 26% x 244,500 = 63,570 plus 28% x 455,500 = 127,540, tentative 191,110. AMT 191,110 - 103,134.25 = 87,975.75. With the code's 25% the exemption is 40,100 and the AMT 76,747.75."
   },
   {

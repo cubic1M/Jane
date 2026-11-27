@@ -157,9 +157,7 @@ export const US_2026: FederalParams = {
       source: RP2532,
       alsoSources: [code("24")],
       where:
-        "RP 2025-32 section 4.05 ($2,200 credit, $1,700 refundable part); 26 USC 24(b)(1) ($50 for each $1,000 or fraction), 24(h)(3) ($200,000 / $400,000)",
-      verify:
-        "The $2,500 earned income floor, the 15% rate and the $500 other-dependant credit (24(d), 24(h)(4)) were not re-read in T1.",
+        "RP 2025-32 section 4.05 ($2,200 credit, $1,700 refundable part); 26 USC 24(b)(1) ($50 for each $1,000 or fraction), 24(h)(3) ($200,000 / $400,000); re-read 2026-11-27 at law.cornell.edu: 24(d)(1)(B)(i) with 24(h)(6) (15 percent of earned income over $2,500), 24(h)(4) ($500 for each other dependent), 24(h)(5) ($1,400 refundable cap, indexed after 2024, which Rev. Proc. 2025-32 gives as $1,700)",
     },
   ),
   eitc: cited(
@@ -342,19 +340,20 @@ export const US_2026: FederalParams = {
   ),
   rothCatchUp: cited(
     {
-      priorYearFicaWagesOver: $(150_000),
+      // The threshold of the first year the rule is required (2027 catch-ups, set by 2026 wages).
+      priorYearFicaWagesOver: $(155_000),
       requiredFrom: 2027,
       rule: "26 USC 414(v)(7); T.D. 10033",
       // The wage threshold by the year the catch-up is made (the wages are those of the year before).
       overByCatchUpYear: { 2026: $(150_000), 2027: $(155_000) },
     },
     {
-      source: N2567,
-      alsoSources: ["https://www.irs.gov/pub/irs-drop/n-26-66.pdf"],
+      source: "https://www.irs.gov/pub/irs-drop/n-26-66.pdf",
+      alsoSources: [N2567],
       where:
-        "Notice 2025-67: $150,000 for 2025 wages (2026 catch-ups). Notice 2026-66: $155,000 for 2026 wages (2027 catch-ups).",
+        "Notice 2026-66 (read 2026-11-27), the paragraph on section 414(v)(7)(A): the Roth catch-up wage threshold for 2026, used to decide whether catch-up contributions for 2027 must be Roth, rises from $150,000 to $155,000. Notice 2025-67: $150,000 for 2025 wages (2026 catch-ups).",
       verify:
-        "WRONG TODAY: priorYearFicaWagesOver is $150,000 and the code applies it from 2027 (requiredFrom), but the threshold for 2027 catch-ups is $155,000 (Notice 2026-66; $150,000 is the 2026 one). Legacy fields kept in T1 (no figure changes; an existing test pins $150,000 for 2027); overByCatchUpYear holds both. Nothing in the app reads this yet; no roadmap step owns the correction.",
+        "Only 2026 and 2027 catch-up years are published. The threshold is indexed, so a later year's is higher than $155,000 and not yet known; a reader asked about a later year uses the 2027 figure and says so.",
     },
   ),
   studentLoanInterest: cited(
@@ -424,8 +423,7 @@ export const US_2026: FederalParams = {
       source: N2567,
       alsoSources: [RP2519, RP2532, code("129")],
       where:
-        "Notice 2025-67 (401(k) $24,500, catch-up $8,000 and $11,250, IRA $7,500 and $1,100); Rev. Proc. 2025-19 section 2.01 (HSA $4,400 / $8,750); Rev. Proc. 2025-32 section 4.15 (health FSA $3,400); 26 USC 129(a)(2)(A) ($7,500, $3,750 separate)",
-      verify: "The HSA catch-up at 55 ($1,000, 26 USC 223(b)(3)) was not re-read.",
+        "Notice 2025-67 (401(k) $24,500, catch-up $8,000 and $11,250, IRA $7,500 and $1,100); Rev. Proc. 2025-19 section 2.01 (HSA $4,400 / $8,750); Rev. Proc. 2025-32 section 4.15 (health FSA $3,400); 26 USC 129(a)(2)(A) ($7,500, $3,750 separate); 26 USC 223(b)(3) (HSA catch-up at 55: $1,000 fixed, not indexed; re-read 2026-11-27)",
     },
   ),
   dependentCare: cited(
@@ -494,7 +492,7 @@ export const US_2026: FederalParams = {
         married_separate: $(500_000),
         head_of_household: $(500_000),
       },
-      phaseOutRate: 0.25,
+      phaseOutRate: 0.5,
       lowRate: 0.26,
       highRate: 0.28,
       highRateFrom: {
@@ -508,14 +506,13 @@ export const US_2026: FederalParams = {
       source: RP2532,
       alsoSources: [code("55")],
       where:
-        "section 4.10: exemption $140,200 joint, $90,100 unmarried, $70,100 separate; 28 percent over $244,500 ($122,250 separate); phase-out starts $1,000,000 joint, $500,000 otherwise (all match). 26 USC 55(d)(4)(A)(ii)(IV) for the phase-out rate.",
-      status: "unconfirmed",
-      verify:
-        "WRONG TODAY: phaseOutRate is 0.25, but 26 USC 55(d)(4)(A)(ii)(IV), as amended by Pub. L. 119-21 section 70107 for tax years after 2025, substitutes 50 percent for 25 percent. Value kept in T1 on purpose (no figure changes in this step); no roadmap step owns the correction. The 26 / 28 percent rates were not re-read.",
+        "section 4.10 (read 2026-11-27): exemption $140,200 joint, $90,100 unmarried, $70,100 separate; the 28 percent rate applies above $244,500 ($122,250 separate); phase-out starts at $1,000,000 joint, $500,000 otherwise and is complete at $1,280,400 joint, $680,200 unmarried, $640,200 separate (each is the exemption divided by 0.5 above the start). Rate: 26 USC 55(d)(4)(A)(ii)(IV), added by Pub. L. 119-21 section 70107(c) for taxable years beginning after 2025: \"by substituting '50 percent' for '25 percent'\" (law.cornell.edu, read 2026-11-27). The 26 and 28 percent rates are 26 USC 55(b)(1)(A).",
     },
   ),
   mileage: cited(
     {
+      // Cents per mile for a mile with no date: the rate of the first period, so a year's total
+      // is never overstated. Every reader with a trip's date uses businessByPeriod instead.
       businessCentsPerMile: 72.5,
       businessByPeriod: [
         { from: "2026-01-01", to: "2026-06-30", centsPerMile: 72.5 },
@@ -526,9 +523,7 @@ export const US_2026: FederalParams = {
       source: N2610,
       alsoSources: ["https://www.irs.gov/tax-professionals/standard-mileage-rates"],
       where:
-        "Notice 2026-10, section 3: 72.5 cents per mile for business use from January 1; the IRS standard mileage rates page: 76 cents for July 1 to December 31, 2026 (release IR-2026-29, not opened).",
-      verify:
-        "WRONG TODAY for July to December: businessCentsPerMile is 72.5 for every mile, the IRS rate from July 1 is 76 cents. Jane holds a year's miles with no dates, so it cannot split them (MILEAGE_RATE_NOTE says so); kept in T1, no roadmap step owns the correction. The 76 cents is read from the IRS rates page, not from the release itself.",
+        "IRS standard mileage rates page (read 2026-11-27): business 72.5 cents for January 1 to June 30, 2026 (IR-2025-128, Notice 2026-10 section 3) and 76 cents for July 1 to December 31, 2026 (IR-2026-29).",
     },
   ),
   homeOffice: cited(
