@@ -3,7 +3,7 @@ import type { FilingStatus } from "@/config/tax";
 import { federalParams } from "@/config/tax-params";
 import { TAX_RATES_YEAR, type Bracket } from "@/config/tax-rates";
 import { amt } from "@/planning/equity-tax";
-import { bracketTax } from "@/planning/tax-brackets";
+import { bracketTax, bracketTaxExact } from "@/planning/tax-brackets";
 import {
   residentTax,
   stateParts,
@@ -177,14 +177,20 @@ export function incomeTax(
   const p = federalParams(year);
   const preferential = Math.min(clamp0(preferentialCents), clamp0(taxableCents));
   const ordinary = clamp0(taxableCents) - preferential;
-  const ordinaryTax = bracketTax(ordinary, p.brackets.value[status]);
-  if (preferential === 0) return ordinaryTax;
+  // The pieces are summed unrounded and rounded once: rounding the ordinary tax and each end of the
+  // gains stack separately made the tax fall by a cent as the income rose (single, taxable
+  // $1,999,999.98 with $0.03 of gains: 69,595,724 against 69,595,725).
+  const ordinaryExact = bracketTaxExact(ordinary, p.brackets.value[status]);
+  if (preferential === 0) return Math.round(ordinaryExact);
   const gains = p.capitalGains.value[status];
-  const stacked = bracketTax(ordinary + preferential, gains) - bracketTax(ordinary, gains);
+  const stackedExact =
+    bracketTaxExact(ordinary + preferential, gains) - bracketTaxExact(ordinary, gains);
   // Never more than taxing it all as ordinary income.
-  return Math.min(
-    ordinaryTax + stacked,
-    bracketTax(clamp0(taxableCents), p.brackets.value[status]),
+  return Math.round(
+    Math.min(
+      ordinaryExact + stackedExact,
+      bracketTaxExact(clamp0(taxableCents), p.brackets.value[status]),
+    ),
   );
 }
 

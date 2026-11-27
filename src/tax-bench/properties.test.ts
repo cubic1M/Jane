@@ -220,8 +220,28 @@ describe("the pieces, for any income", () => {
           incomeTax(lo + gains, gains, s),
         );
       }),
-      RUNS,
+      {
+        ...RUNS,
+        // The one-cent step that random runs found only now and then (Tax T5): with two cents of gains
+        // the tax at $1,999,999.99 was a cent HIGHER than at $2,000,000.00, because the ordinary tax
+        // and each end of the gains stack were rounded separately. Now always run.
+        examples: [["single", 199_999_997, 199_999_998, 2]],
+      },
     );
+  });
+
+  it("is not a cent lower as taxable income rises by a cent, with gains on top (Tax T5)", () => {
+    // Every cent of ordinary income from $1,999,999.00 to $2,000,001.00, with 0 to 33 cents of gains.
+    for (const s of ["single", "married_joint", "married_separate", "head_of_household"] as const) {
+      for (const gains of [0, 1, 2, 3, 5, 7, 11, 33]) {
+        let before = -1;
+        for (let ordinary = 199_999_900; ordinary <= 200_000_100; ordinary += 1) {
+          const tax = incomeTax(ordinary + gains, gains, s);
+          expect(tax, `${s} gains ${gains} ordinary ${ordinary}`).toBeGreaterThanOrEqual(before);
+          before = tax;
+        }
+      }
+    }
   });
 
   it("never takes the gains rates above what taxing it all as ordinary would", () => {

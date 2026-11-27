@@ -1,0 +1,52 @@
+[
+  {
+    "id": "t5-rounding-199999999",
+    "title": "One-cent step: single, taxable $1,999,999.99 with 2 cents of qualified dividends",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 Table 3 (single) and 4.03 (the 20 percent gains rate), worked in exact fractions of a cent and rounded once"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 201609997,
+      "dividendsCents": 2,
+      "qualifiedDividendsCents": 2
+    },
+    "expected": {
+      "incomeTax": 69595724
+    },
+    "note": "Taxable 201,609,997 + 2 - 1,610,000 = 199,999,999. Ordinary 199,999,997 taxed by the brackets and 2 cents at 20%: 69,595,724.29 exactly, so 69,595,724 when rounded once. Rounding each piece first gave 69,595,725."
+  },
+  {
+    "id": "t5-rounding-200000000",
+    "title": "One-cent step: single, taxable $2,000,000.00 with 2 cents of qualified dividends",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+      "where": "Rev. Proc. 2025-32 section 4.01 Table 3 (single) and 4.03 (the 20 percent gains rate), worked in exact fractions of a cent and rounded once"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 201609998,
+      "dividendsCents": 2,
+      "qualifiedDividendsCents": 2
+    },
+    "expected": {
+      "incomeTax": 69595725
+    },
+    "note": "Taxable 200,000,000. Ordinary 199,999,998 and 2 cents at 20%: 69,595,724.66 exactly, so 69,595,725 when rounded once. Rounding each piece first gave 69,595,724, a cent less than at $1,999,999.99."
+  }
+]
