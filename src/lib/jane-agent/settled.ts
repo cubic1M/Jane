@@ -20,7 +20,7 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 // Advice too, once a real account joins: the scan deletes the suggestion behind it, so nothing else
 // would ever close "Drop your mortgage insurance". Their links stay.
 
-type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
+type Open = { id: string; refs: MessageRefs; actions: MessageAction[]; createdAt: Date };
 
 // The autopilot question's own buttons (not step 84's "Pause autopilot", which works on
 // a level already picked).
@@ -35,9 +35,14 @@ export async function closeAnsweredElsewhere(
   const open: Open[] = (
     await db.janeMessages.findMany({
       where: { status: "open" },
-      select: { id: true, refs: true, actions: true },
+      select: { id: true, refs: true, actions: true, createdAt: true },
     })
-  ).map((m) => ({ id: m.id, refs: parseRefs(m.refs), actions: parseActions(m.actions) }));
+  ).map((m) => ({
+    id: m.id,
+    refs: parseRefs(m.refs),
+    actions: parseActions(m.actions),
+    createdAt: m.createdAt,
+  }));
   const ids = (pick: (m: Open) => string | undefined) =>
     open.flatMap((m) => {
       const id = pick(m);
@@ -54,6 +59,19 @@ export async function closeAnsweredElsewhere(
     Boolean(m.refs.lifeQuoteId && m.refs.lifeApplicationId) &&
     m.actions.some((a) => a.id === "lifecover.apply");
   const anyLifeQuote = open.some(offersLifeApply);
+  // One Apply card per quote: of several open ones for the same application and quote (one posted
+  // under the older card key), only the newest stays.
+  const newestApply = new Map<string, Open>();
+  for (const m of open.filter(offersLifeApply)) {
+    const key = `${m.refs.lifeApplicationId}:${m.refs.lifeQuoteId}`;
+    const kept = newestApply.get(key);
+    if (
+      !kept ||
+      m.createdAt > kept.createdAt ||
+      (+m.createdAt === +kept.createdAt && m.id > kept.id)
+    )
+      newestApply.set(key, m);
+  }
   const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const riskIds = ids((m) => m.refs.riskId);
   const suggestionKeys = ids((m) => m.refs.suggestion);
@@ -183,7 +201,9 @@ export async function closeAnsweredElsewhere(
       (savingGroup !== undefined && !sameOffered) ||
       (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
       (offersLifeApply(m) &&
-        (life?.id !== m.refs.lifeApplicationId || liveQuote !== m.refs.lifeQuoteId)) ||
+        (life?.id !== m.refs.lifeApplicationId ||
+          liveQuote !== m.refs.lifeQuoteId ||
+          newestApply.get(`${m.refs.lifeApplicationId}:${m.refs.lifeQuoteId}`)?.id !== m.id)) ||
       (suggestion !== undefined && settledSuggestions.has(suggestion))
     );
   };

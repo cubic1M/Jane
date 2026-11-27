@@ -371,6 +371,29 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
       );
     });
 
+    it("two open Apply cards for the same quote (one under the older key) leave only the newest", async () => {
+      const { me, message } = await sizedMessage();
+      const run = () =>
+        runJaneAgent(me, { client, now: new Date(NOW.getTime() + DAY), trigger: "open" });
+      await run();
+      const first = await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } });
+      const twin = await client.janeMessage.create({
+        data: {
+          userId: me,
+          kind: first.kind,
+          body: first.body,
+          refs: first.refs ?? {},
+          actions: first.actions ?? [],
+          dedupeKey: `insurance:old-key-${crypto.randomUUID()}`,
+        },
+      });
+      await run();
+      const open = (
+        await client.janeMessage.findMany({ where: { userId: me, status: "open" } })
+      ).filter((m) => parseActions(m.actions).some((a) => a.id === "lifecover.apply"));
+      expect(open.map((m) => m.id)).toEqual([twin.id]);
+    });
+
     it("a Yes or No answers the question the message showed, not a later one", async () => {
       const { me, tap } = await sizedMessage();
       const now = await tap("lifecover.apply");
