@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { systemDb } from "@/lib/system-db";
+import { systemDb, systemTransaction } from "@/lib/system-db";
 
 // Actions stuck in `running` (a crash mid-act: the pipeline set it running and never heard back).
 // Nothing sweeps them, because only the partner knows whether it acted: the team checks there, then
@@ -66,21 +66,32 @@ export async function markStuck(
     select: { userId: true },
   });
   if (!row) return false;
-  const { count } = await db.connectorAction.updateMany({
-    where: {
-      id: actionId,
-      status: "running",
-      updatedAt: { lt: new Date(now.getTime() - CONNECTOR_STUCK_MINUTES * MINUTE) },
+  // The status change and its audit record are one change: an audit that fails undoes the mark,
+  // so the team can try again, and a retry never finds a marked action with no record.
+  const marked = await systemTransaction(
+    WHY,
+    async (tx) => {
+      const { count } = await tx.connectorAction.updateMany({
+        where: {
+          id: actionId,
+          status: "running",
+          updatedAt: { lt: new Date(now.getTime() - CONNECTOR_STUCK_MINUTES * MINUTE) },
+        },
+        data: { status: outcome, reason: "marked_by_team", finishedAt: now },
+      });
+      if (count === 0) return false;
+      await logAudit(
+        { type: "admin", id: adminId },
+        "connector_action_marked",
+        { type: "connector_action", id: actionId },
+        { outcome, user_id: row.userId },
+        { tx },
+      );
+      return true;
     },
-    data: { status: outcome, reason: "marked_by_team", finishedAt: now },
-  });
-  if (count === 0) return false;
-  await logAudit(
-    { type: "admin", id: adminId },
-    "connector_action_marked",
-    { type: "connector_action", id: actionId },
-    { outcome, user_id: row.userId },
+    client,
   );
+  if (!marked) return false;
   await track(row.userId, "connector_action_marked", { outcome });
   return true;
 }

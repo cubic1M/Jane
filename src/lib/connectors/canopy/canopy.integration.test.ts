@@ -27,6 +27,7 @@ import { systemDb } from "@/lib/system-db";
 import { realPerson, removePeople, samplePerson, trialPerson } from "../__fixtures__/people";
 import { ConsentError, grantConsent } from "../consent";
 import { ReadRefused, readConnector } from "../read";
+import { savePull } from "./save";
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-18T15:00:00Z");
@@ -102,6 +103,30 @@ describe.runIf(url)("Canopy Connect, read into Jane's insurance", () => {
   it("updates its own policies on the next read, never doubling them", async () => {
     await readConnector(sample, "sandbox_canopy_connect", { client: db, now: NOW });
     expect(await policiesOf(sample)).toHaveLength(3);
+  });
+
+  it("stops counting a policy a later pull no longer reports in force, and leaves other sources alone", async () => {
+    const own = await system().insurancePolicy.create({
+      data: { userId: sample, kind: "renters", carrier: "State Farm", source: "document" },
+    });
+    await savePull(
+      sample,
+      { insurance_provider_friendly_name: "State Farm", policies: [] } as never,
+      { client: db },
+    );
+    expect(
+      await system().insurancePolicy.count({
+        where: { userId: sample, source: "canopy", status: "active" },
+      }),
+    ).toBe(0);
+    expect(
+      (await system().insurancePolicy.findUniqueOrThrow({ where: { id: own.id } })).status,
+    ).toBe("active");
+    expect(
+      await system().insurancePolicy.count({
+        where: { userId: sample, source: "canopy", status: "cancelled" },
+      }),
+    ).toBe(3);
   });
 
   it("never reads Canopy for a real person or a trial person, even with every lock open but its switch", async () => {

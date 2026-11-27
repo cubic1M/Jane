@@ -187,6 +187,74 @@ describe.runIf(url)('"Jane shows, you open and move it"', () => {
     });
   });
 
+  it("refuses to hand off an offer that changed, or a deposit the balance no longer covers", async () => {
+    const { userId, accountId } = await person();
+    const optionId = await option();
+    const planned = await plan(userId, request(accountId, optionId));
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    // The reviewer raised the rate after the yes: what was approved is not what would be handed off.
+    await system().switchOption.update({ where: { id: optionId }, data: { apyBps: 450 } });
+    await expect(executeAction(userId, planned.id, { now: LATER })).resolves.not.toBe("handed_off");
+    await system().switchOption.update({ where: { id: optionId }, data: { apyBps: 380 } });
+
+    const second = await person();
+    const secondOption = await option();
+    const planned2 = await plan(second.userId, request(second.accountId, secondOption));
+    await answerAction(
+      second.userId,
+      planned2.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned2.fingerprint },
+      { now: NOW },
+    );
+    await system().account.update({
+      where: { id: second.accountId },
+      data: { currentBalanceCents: 50_000 },
+    });
+    await expect(executeAction(second.userId, planned2.id, { now: LATER })).resolves.not.toBe(
+      "handed_off",
+    );
+  });
+
+  it("looks for the deposit from the handoff, not from the day it was planned", async () => {
+    const { userId, accountId } = await person();
+    const planned = await plan(userId, request(accountId, await option()));
+    // Approved three days later: planned Nov 6, handed off Monday Nov 9.
+    const answered = new Date(NOW.getTime() + 71 * 3_600_000);
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned.fingerprint },
+      { now: answered },
+    );
+    const handoff = new Date(answered.getTime() + (CONNECTOR_HOLD_MINUTES.other + 1) * MINUTE);
+    await expect(executeAction(userId, planned.id, { now: handoff })).resolves.toBe("handed_off");
+    // Past five business days from the plan (Nov 13), inside five from the handoff (Nov 16).
+    await line(userId, accountId, "2026-11-16", 80_000, "ALLY BANK $TRANSFER");
+    expect(await settleManualPayments(userId, { now: handoff })).toBe(1);
+  });
+
+  it("counts the window from when it was really handed off when execution ran late", async () => {
+    const { userId, accountId } = await person();
+    const planned = await plan(userId, request(accountId, await option()));
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    // The queue ran it four days late (Nov 10), well after the scheduled time.
+    const late = new Date("2026-11-10T15:00:00Z");
+    await expect(executeAction(userId, planned.id, { now: late })).resolves.toBe("handed_off");
+    // Five business days from Nov 10 reach Nov 17; from the scheduled time they ended Nov 13.
+    await line(userId, accountId, "2026-11-16", 80_000, "ALLY BANK $TRANSFER");
+    expect(await settleManualPayments(userId, { now: late })).toBe(1);
+  });
+
   // A bank whose name starts with a common word: a store or airline line of the same amount
   // isn't the deposit, and the bank's own pull still is.
   it.each([

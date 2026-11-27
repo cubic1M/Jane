@@ -165,7 +165,9 @@ export function snaptradeHttp({
     async accounts(user) {
       const body = (await call("GET", "/accounts/all", as(user))) as { results?: unknown };
       if (!Array.isArray(body.results)) throw new SnaptradeError(null, "SHAPE");
-      return (body.results as SnaptradeAccount[]).slice(0, SNAPTRADE.maxAccounts);
+      // Never part of a list: a refresh that saw only the first accounts would remove the rest.
+      if (body.results.length > SNAPTRADE.maxAccounts) throw new SnaptradeError(null, "TOO_MANY");
+      return body.results as SnaptradeAccount[];
     },
     async positions(user, accountId) {
       if (!ID.test(accountId)) throw new SnaptradeError(null, "BAD_ID");

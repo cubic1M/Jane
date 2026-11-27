@@ -221,6 +221,38 @@ describe.runIf(url)("connector consent and the vault", () => {
       );
     });
 
+    it("a new grant replaces the old one: one current consent, the rest history", async () => {
+      const person = await samplePerson(db);
+      people.push(person);
+      const now = new Date("2026-11-06T12:00:00Z");
+      await grantConsent(person, "fake_sandbox", ["pay_bills"], { now });
+      await grantConsent(person, "fake_sandbox", ["pay_bills"], { now });
+      const rows = await system().connectorConsent.findMany({
+        where: { userId: person, connectorId: "fake_sandbox" },
+        select: { revokedAt: true },
+      });
+      expect(rows).toHaveLength(2);
+      expect(rows.filter((r) => r.revokedAt === null)).toHaveLength(1);
+    });
+
+    it("writes the revocation to the audit trail even when a later step fails, and again on retry", async () => {
+      const person = await samplePerson(db);
+      people.push(person);
+      await grantConsent(person, "fake_sandbox", ["pay_bills"]);
+      const events = async () =>
+        (
+          await system().auditLog.findMany({
+            where: { targetId: person, event: "connector_consent_revoked" },
+            select: { id: true },
+          })
+        ).length;
+      expect(await revokeConsent(person, "fake_sandbox")).toBe(true);
+      expect(await events()).toBe(1);
+      // Nothing active now: a second call records nothing more.
+      expect(await revokeConsent(person, "fake_sandbox")).toBe(false);
+      expect(await events()).toBe(1);
+    });
+
     it("never shows a real person the sandbox, nor anything while off", async () => {
       expect((await connectionsView(real)).available).toEqual([]);
       vi.stubEnv("CONNECTORS", "");

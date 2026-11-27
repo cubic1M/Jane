@@ -99,8 +99,32 @@ export function snaptradeRead(
   let leftOut = 0;
   for (const position of positions.results) {
     const holding = holdingOf(position);
-    if (!holding) leftOut += 1;
-    else holdings.push(holding);
+    if (!holding) {
+      leftOut += 1;
+      continue;
+    }
+    // One holding per security in an account: two lines under one ticker (two lots, or two
+    // listings the symbol cannot tell apart) are added together, never one over the other.
+    const same = holdings.find((h) => h.ref === holding.ref);
+    if (!same) {
+      holdings.push(holding);
+      continue;
+    }
+    // The unit price is the units-weighted average of the lines' own prices, not the rounded
+    // values divided back (fractions of a cent in each line's value would skew it).
+    const units = same.quantity + holding.quantity;
+    same.priceCents =
+      units > 0
+        ? Math.round(
+            (same.priceCents * same.quantity + holding.priceCents * holding.quantity) / units,
+          )
+        : same.priceCents;
+    same.quantity = units;
+    same.valueCents += holding.valueCents;
+    same.costBasisCents =
+      same.costBasisCents === null || holding.costBasisCents === null
+        ? null
+        : same.costBasisCents + holding.costBasisCents;
   }
   const net = account.net_value;
   const mask = (account.masked_account_number ?? "").replace(/\D/g, "").slice(-4);

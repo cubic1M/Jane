@@ -146,6 +146,17 @@ describe.runIf(url)("the one connect flow", () => {
     expect(await finishConnect(real, "fake_partner", { client: db, now: NOW })).toBeNull();
   });
 
+  it("takes the yes back when the partner's step does not open, so the card offers it again", async () => {
+    const person = await samplePerson(db);
+    people.push(person);
+    partner.mockRejectedValueOnce(new Error("partner down"));
+    await expect(
+      startConnect(person, "fake_partner", { client: db, now: NOW, returnUrl: "/home" }),
+    ).rejects.toThrow("partner down");
+    expect(await currentScopes(person, "fake_partner", { client: db })).toBeNull();
+    expect(await connectOffered(person, "fake_partner", { client: db })).toBe(true);
+  });
+
   it("never offers it again after a Not now", async () => {
     const other = await samplePerson(db);
     people.push(other);

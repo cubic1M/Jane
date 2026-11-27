@@ -255,4 +255,16 @@ describe.runIf(url)("connector webhook intake", () => {
     });
     expect(await statusOf(id)).toBe("succeeded");
   });
+
+  it("forgets the delivery when the lookup of whose it is fails, so the retry counts", async () => {
+    const id = `evt_${crypto.randomUUID()}`;
+    // A reference the database refuses (a NUL byte) makes the lookup itself throw.
+    const raw = event("bad\u0000ref", "done", id);
+    await expect(receiveWebhook("fake_sandbox", raw, signedHeaders(raw, SECRET))).rejects.toThrow();
+    expect(
+      await system().connectorWebhookEvent.count({
+        where: { connectorId: "fake_sandbox", eventId: id },
+      }),
+    ).toBe(0);
+  });
 });

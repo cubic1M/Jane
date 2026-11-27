@@ -16,56 +16,61 @@ export async function saveSnaptradeReads(
   reads: readonly SnaptradeRead[],
   { client }: { client: PrismaClient },
 ): Promise<ReadResult> {
-  const db = scopedFor(userId, client);
   let positions = 0;
-  for (const read of reads) {
-    const key = { connectorCredentialId: credentialId, externalAccountId: read.externalId };
-    const account = await db.accounts.upsert({
-      where: { connectorCredentialId_externalAccountId: key },
-      create: { ...key, userId, source: "snaptrade", ...read.account },
-      update: read.account,
-      select: { id: true },
-    });
-    const asOf = day(read.asOf);
-    const kept: string[] = [];
-    for (const h of read.holdings) {
-      const security = {
-        name: h.name,
-        ticker: h.ticker,
-        type: h.type,
-        subtype: h.subtype,
-        isCashEquivalent: h.isCashEquivalent,
-        closePriceCents: h.priceCents,
-        closePriceAsOf: asOf,
-      };
-      const { id: securityId } = await db.securities.upsert({
-        where: { userId_plaidSecurityId: { userId, plaidSecurityId: h.ref } },
-        create: { userId, plaidSecurityId: h.ref, ...security },
-        update: security,
+  // One change: a failure partway leaves the previous complete snapshot, never a new balance
+  // beside old or half-replaced holdings.
+  await scopedFor(userId, client).transaction(async (tx) => {
+    for (const read of reads) {
+      const key = { connectorCredentialId: credentialId, externalAccountId: read.externalId };
+      const account = await tx.accounts.upsert({
+        where: { connectorCredentialId_externalAccountId: key },
+        create: { ...key, userId, source: "snaptrade", ...read.account },
+        update: read.account,
         select: { id: true },
       });
-      const holding = {
-        quantity: h.quantity,
-        priceCents: h.priceCents,
-        priceAsOf: asOf,
-        valueCents: h.valueCents,
-        costBasisCents: h.costBasisCents,
-      };
-      await db.holdings.upsert({
-        where: { accountId_securityId: { accountId: account.id, securityId } },
-        create: { userId, accountId: account.id, securityId, ...holding },
-        update: holding,
+      const asOf = day(read.asOf);
+      const kept: string[] = [];
+      for (const h of read.holdings) {
+        const security = {
+          name: h.name,
+          ticker: h.ticker,
+          type: h.type,
+          subtype: h.subtype,
+          isCashEquivalent: h.isCashEquivalent,
+          closePriceCents: h.priceCents,
+          closePriceAsOf: asOf,
+        };
+        const { id: securityId } = await tx.securities.upsert({
+          where: { userId_plaidSecurityId: { userId, plaidSecurityId: h.ref } },
+          create: { userId, plaidSecurityId: h.ref, ...security },
+          update: security,
+          select: { id: true },
+        });
+        const holding = {
+          quantity: h.quantity,
+          priceCents: h.priceCents,
+          priceAsOf: asOf,
+          valueCents: h.valueCents,
+          costBasisCents: h.costBasisCents,
+        };
+        await tx.holdings.upsert({
+          where: { accountId_securityId: { accountId: account.id, securityId } },
+          create: { userId, accountId: account.id, securityId, ...holding },
+          update: holding,
+        });
+        kept.push(securityId);
+      }
+      await tx.holdings.deleteMany({
+        where: { accountId: account.id, securityId: { notIn: kept } },
       });
-      kept.push(securityId);
+      positions += kept.length;
     }
-    await db.holdings.deleteMany({ where: { accountId: account.id, securityId: { notIn: kept } } });
-    positions += kept.length;
-  }
-  await db.accounts.deleteMany({
-    where: {
-      connectorCredentialId: credentialId,
-      externalAccountId: { notIn: reads.map((r) => r.externalId) },
-    },
+    await tx.accounts.deleteMany({
+      where: {
+        connectorCredentialId: credentialId,
+        externalAccountId: { notIn: reads.map((r) => r.externalId) },
+      },
+    });
   });
   const n = reads.length;
   return {

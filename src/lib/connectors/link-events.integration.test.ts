@@ -25,7 +25,7 @@ import {
 import { realPerson, removePeople } from "./__fixtures__/people";
 import { useConnectorsForTests } from "./registry";
 import type { Connector, LinkEvent } from "./types";
-import { storeCredential } from "./vault";
+import { NoCredential, hasCredential, storeCredential, withCredential } from "./vault";
 import { receiveWebhook } from "./webhooks";
 import { createHmac } from "node:crypto";
 import { STRIPE_FC } from "@/config/connectors";
@@ -95,6 +95,12 @@ describe.runIf(url)("link events through the webhook intake", () => {
     });
     expect((await status(mine)).status).toBe("needs_relink");
     expect((await status(theirs)).status).toBe("active");
+    // A broken link opens nothing until the person connects again.
+    expect(await hasCredential(mine, linking.id, { client: db })).toBe(false);
+    await expect(
+      withCredential(mine, linking.id, async (secret) => secret, { client: db }),
+    ).rejects.toBeInstanceOf(NoCredential);
+    expect(await hasCredential(theirs, linking.id, { client: db })).toBe(true);
 
     // The same delivery again is a repeat, nothing more.
     expect((await send({ id: `${ref}-1`, link: ref, change: "disconnected" })).body).toMatchObject({

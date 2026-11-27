@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 import { applyPartnerEvent } from "../pipeline";
@@ -49,6 +50,59 @@ const release = (lineId: string, client: PrismaClient) =>
     where: { connectorId: LINES, eventId: lineId },
   });
 
+// All the lines of one settlement, or none: a line another run just took, or an error partway,
+// gives back what was claimed.
+async function claimAll(lineIds: string[], client: PrismaClient, now: Date): Promise<boolean> {
+  const got: string[] = [];
+  try {
+    for (const id of lineIds) {
+      if (!(await claim(id, client, now))) {
+        for (const taken of got) await release(taken, client);
+        return false;
+      }
+      got.push(id);
+    }
+    return true;
+  } catch (error) {
+    for (const taken of got) await release(taken, client);
+    throw error;
+  }
+}
+
+// The settlement itself, with its claims kept only if the card moved: an error before the status
+// changed gives the lines back, so the next run can finish the card; one after it (the audit or
+// tracking) keeps them, since the card is done and the lines are spoken for.
+async function settleOne(
+  userId: string,
+  actionId: string,
+  lineIds: string[],
+  event: Parameters<typeof applyPartnerEvent>[2],
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<Awaited<ReturnType<typeof applyPartnerEvent>>> {
+  try {
+    const moved = await applyPartnerEvent(userId, actionId, event, { client, now });
+    return moved;
+  } catch (error) {
+    const still = await scopedFor(userId, client).connectorActions.count({
+      where: { id: actionId, status: "handed_off" },
+    });
+    if (still > 0) for (const id of lineIds) await release(id, client);
+    throw error;
+  }
+}
+
+// The person's own day of the handoff (never earlier than the planned day).
+async function handoffDay(
+  userId: string,
+  planned: string,
+  handedOff: Date | null,
+  client: PrismaClient,
+): Promise<string> {
+  if (!handedOff) return planned;
+  const day = await todayOf(userId, { client, now: handedOff });
+  return day > planned ? day : planned;
+}
+
 // Every handed-off manual payment or move of this person's that has now posted. Returns how many
 // settled.
 export async function settleManualPayments(
@@ -62,7 +116,14 @@ export async function settleManualPayments(
       status: "handed_off",
     },
     orderBy: { createdAt: "asc" },
-    select: { id: true, connectorId: true, externalRef: true, details: true, note: true },
+    select: {
+      id: true,
+      connectorId: true,
+      externalRef: true,
+      details: true,
+      note: true,
+      runAt: true,
+    },
   });
   if (waiting.length === 0) return 0;
   const days = waiting.map((w) => {
@@ -102,19 +163,22 @@ export async function settleManualPayments(
             sources: [],
           },
           amountCents: Number(details.amountCents),
-          payOn: String(details.today ?? ""),
+          // The window opens at the handoff, not at the plan: a deposit the new bank pulls a week
+          // after it was planned still falls inside it.
+          payOn: await handoffDay(userId, String(details.today ?? ""), action.runAt, client),
           accountId,
         },
         lines,
         taken,
       );
       if (!found || found.confidence !== "amount_days_and_name") continue;
-      if (!(await claim(found.lineId, client, now))) continue;
+      if (!(await claimAll([found.lineId], client, now))) continue;
       taken.add(found.lineId);
       const line = lines.find((l) => l.id === found.lineId)!;
-      const moved = await applyPartnerEvent(
+      const moved = await settleOne(
         userId,
         action.id,
+        [line.id],
         {
           eventId: `bank_line_${line.id}`,
           externalRef: action.externalRef,
@@ -143,15 +207,12 @@ export async function settleManualPayments(
       );
       if (!move) continue;
       // Both lines or neither: a line another run just took means this isn't settled yet.
-      if (!(await claim(move.lineIds[0], client, now))) continue;
-      if (!(await claim(move.lineIds[1], client, now))) {
-        await release(move.lineIds[0], client);
-        continue;
-      }
+      if (!(await claimAll([...move.lineIds], client, now))) continue;
       for (const id of move.lineIds) taken.add(id);
-      const moved = await applyPartnerEvent(
+      const moved = await settleOne(
         userId,
         action.id,
+        [...move.lineIds],
         {
           eventId: `bank_lines_${move.lineIds.join("_")}`,
           externalRef: action.externalRef,
@@ -189,11 +250,12 @@ export async function settleManualPayments(
       }
       continue;
     }
-    if (!(await claim(line.id, client, now))) continue;
+    if (!(await claimAll([line.id], client, now))) continue;
     taken.add(line.id);
-    const moved = await applyPartnerEvent(
+    const moved = await settleOne(
       userId,
       action.id,
+      [line.id],
       {
         eventId: `bank_line_${line.id}`,
         externalRef: action.externalRef,

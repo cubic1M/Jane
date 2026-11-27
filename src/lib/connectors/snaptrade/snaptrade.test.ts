@@ -69,6 +69,23 @@ describe("SnapTrade's holdings as Plaid Investments' shape", () => {
     expect(odd.leftOut).toBe(2);
   });
 
+  it("keeps the unit price of fractional lines whole when combining them", () => {
+    const line = { ...SNAPTRADE_DOCS_POSITIONS.results[0]!, units: "0.001", price: "5" };
+    const both = snaptradeRead(SNAPTRADE_DOCS_ACCOUNT, { results: [line, line] });
+    expect(both.holdings[0]?.priceCents).toBe(500);
+  });
+
+  it("adds two lines under one ticker into one holding", () => {
+    const first = SNAPTRADE_DOCS_POSITIONS.results[0]!;
+    const both = snaptradeRead(SNAPTRADE_DOCS_ACCOUNT, { results: [first, first] });
+    const one = snaptradeRead(SNAPTRADE_DOCS_ACCOUNT, { results: [first] }).holdings[0]!;
+    expect(both.holdings).toHaveLength(1);
+    expect(both.holdings[0]).toMatchObject({
+      quantity: one.quantity * 2,
+      valueCents: one.valueCents * 2,
+    });
+  });
+
   it("reads retirement accounts by the brokerage's words, and skips paper, closed and non-investment ones", () => {
     const kind = (raw_type: string) =>
       snaptradeRead({ ...SNAPTRADE_DOCS_ACCOUNT, raw_type }, { results: [] }).account.subtype;
