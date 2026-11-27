@@ -558,6 +558,20 @@ describe.runIf(url)("the Robinhood connection", () => {
       ).toEqual(["VOO"]);
     });
 
+    it("keeps the cash it saved when a later answer leaves the cash balance out", async () => {
+      const userId = await person();
+      await connected(userId);
+      const cashOf = async () =>
+        (await accountsOf(userId))
+          .flatMap((a) => a.holdings)
+          .filter((h) => h.security.type === "cash")
+          .map((h) => h.valueCents);
+      expect(await cashOf()).toEqual([2_000_000]);
+      fake.options.answers = { get_portfolio: { total_value: "90000.00" } };
+      await refreshConnection(userId, { now: new Date(Date.now() + 1000) });
+      expect(await cashOf()).toEqual([2_000_000]);
+    });
+
     it("doesn't add an order twice", async () => {
       const userId = await person();
       await connected(userId);

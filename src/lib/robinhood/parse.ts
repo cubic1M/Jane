@@ -137,8 +137,13 @@ function kindOf(row: Obj): { subtype: string | null; label: string | null } {
 
 export function parseAccounts(answer: unknown): AccountHandle[] {
   const rows = listIn("get_accounts", answer, ["accounts"]);
+  // A list longer than the cap is not read part way: an account past the cap would look closed
+  // and be deleted with its holdings.
+  if (rows.length > ROBINHOOD_LIMITS.accounts) {
+    throw new RobinhoodShapeError("get_accounts", shapeOf(answer));
+  }
   const seen = new Map<string, number>();
-  const handles = rows.slice(0, ROBINHOOD_LIMITS.accounts).map((row) => {
+  const handles = rows.map((row) => {
     if (!isObject(row)) throw new RobinhoodShapeError("get_accounts", shapeOf(answer));
     const number = firstOf(row, NUMBER_FIELDS);
     if (typeof number !== "string" || !number.trim()) {
@@ -242,7 +247,9 @@ export function parsePositions(
 ): { positions: Position[]; dropped: number } {
   const rows = listIn("get_equity_positions", answer, ["positions"]);
   const positions: Position[] = [];
-  let dropped = 0;
+  // Rows past the cap count as left out, so the list is not taken for the whole holding and
+  // nothing past the cap is deleted.
+  let dropped = Math.max(0, rows.length - ROBINHOOD_LIMITS.positions);
   for (const row of rows.slice(0, ROBINHOOD_LIMITS.positions)) {
     if (!isObject(row)) throw new RobinhoodShapeError("get_equity_positions", shapeOf(answer));
     const symbol = cleanSymbol(firstOf(row, ["symbol", "ticker"]), accounts);
@@ -305,10 +312,11 @@ export function parseOrders(
   answer: unknown,
   accounts: readonly AccountHandle[],
   now: Date,
-): { orders: FilledOrder[]; dropped: number } {
+): { orders: FilledOrder[]; dropped: number; pastLimit: number } {
   const rows = listIn("get_equity_orders", answer, ["orders"]);
   const orders: FilledOrder[] = [];
-  let dropped = 0;
+  const pastLimit = Math.max(0, rows.length - ROBINHOOD_LIMITS.orders);
+  let dropped = pastLimit;
   for (const row of rows.slice(0, ROBINHOOD_LIMITS.orders)) {
     if (!isObject(row)) throw new RobinhoodShapeError("get_equity_orders", shapeOf(answer));
     if (String(firstOf(row, ["state", "status"]) ?? "").toLowerCase() !== "filled") continue;
@@ -350,5 +358,5 @@ export function parseOrders(
       date,
     });
   }
-  return { orders, dropped };
+  return { orders, dropped, pastLimit };
 }

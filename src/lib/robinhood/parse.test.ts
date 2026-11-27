@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ROBINHOOD_LIMITS } from "@/config/robinhood";
 import { ACCOUNT_NUMBER_MARKER } from "./__fixtures__/fake-robinhood";
 import {
   AccountHandle,
@@ -296,6 +297,32 @@ describe("what's kept", () => {
       },
     ]);
     expect(dropped).toBe(3);
+  });
+});
+
+describe("lists longer than the cap are never read as the whole", () => {
+  it("refuses an account list over the cap, so no account past it looks closed", () => {
+    const rows = Array.from({ length: ROBINHOOD_LIMITS.accounts + 1 }, (_, i) => ({
+      account_number: `A${i}`,
+      type: "cash",
+    }));
+    expect(() => parseAccounts({ accounts: rows })).toThrow(RobinhoodShapeError);
+  });
+
+  it("counts positions past the cap as left out", () => {
+    const rows = Array.from({ length: ROBINHOOD_LIMITS.positions + 3 }, () => ({
+      symbol: "AAPL",
+      quantity: "1",
+      price: "10",
+    }));
+    const { positions, dropped } = parsePositions({ positions: rows }, []);
+    expect(positions).toHaveLength(ROBINHOOD_LIMITS.positions);
+    expect(dropped).toBe(3);
+  });
+
+  it("counts orders past the cap, so the history is known to be cut", () => {
+    const rows = Array.from({ length: ROBINHOOD_LIMITS.orders + 2 }, () => ({ state: "queued" }));
+    expect(parseOrders({ orders: rows }, [], NOW)).toMatchObject({ dropped: 2, pastLimit: 2 });
   });
 });
 

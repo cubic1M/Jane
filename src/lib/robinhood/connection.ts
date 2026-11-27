@@ -126,7 +126,13 @@ export async function removeConnection(
   const row = await db.robinhoodConnections.findFirst({
     select: { id: true, secretsEncrypted: true, clientId: true, createdAt: true },
   });
-  if (!row) return false;
+  if (!row) {
+    // Nothing to remove, but a removal that stopped partway left derived rows behind: the sweep
+    // is safe to repeat, so a retry finishes it.
+    forgetPrimer(userId);
+    await removeOrphans(userId, { client });
+    return false;
+  }
   let tokens: string[] = [];
   try {
     const { accessToken, refreshToken } = openSecrets(row.secretsEncrypted);
@@ -137,8 +143,19 @@ export async function removeConnection(
   await db.robinhoodConnections.deleteMany({ where: { id: row.id } });
   try {
     forgetPrimer(userId);
-    await removeOrphans(userId, { client });
-    await forgetSince(db, row.createdAt, "bank");
+    // Each step on its own: one failing does not stop the other, and the failure still surfaces.
+    let failure: unknown = null;
+    try {
+      await removeOrphans(userId, { client });
+    } catch (error) {
+      failure = error;
+    }
+    try {
+      await forgetSince(db, row.createdAt, "bank");
+    } catch (error) {
+      failure ??= error;
+    }
+    if (failure) throw failure;
   } finally {
     // The stored tokens are gone, so this is the one chance to end them there, whatever failed above.
     const revoked = robinhoodOffered() && (await revokeTokens(row.clientId, tokens));

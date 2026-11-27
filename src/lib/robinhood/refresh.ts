@@ -103,12 +103,15 @@ async function readOrders(
   now: Date,
 ): Promise<FilledOrder[] | null> {
   try {
-    const { orders, dropped } = parseOrders(
+    const { orders, dropped, pastLimit } = parseOrders(
       await reader.read("get_equity_orders", account.args()),
       accounts,
       now,
     );
     if (dropped > 0) log.warn("Robinhood orders left out", { dropped });
+    // A history cut at the cap would date a sold lot wrongly (an earlier buy past the cap): the
+    // orders count as unavailable and the earlier ones stay.
+    if (pastLimit > 0) return null;
     return orders;
   } catch (error) {
     if (error instanceof RobinhoodSignedOutError) throw error;
@@ -203,6 +206,15 @@ async function saveHoldings(db: Saving, accountId: string, read: Read, today: Da
       valueCents: read.portfolio.cashCents,
       costBasisCents: null,
     });
+  }
+  // A valid answer that leaves the cash balance out says nothing about cash: what was saved stays
+  // (only an explicit zero removes it).
+  if (read.portfolio.cashCents === null) {
+    const cash = await db.securities.findFirst({
+      where: { plaidSecurityId: CASH_REF },
+      select: { id: true },
+    });
+    if (cash) kept.push(cash.id);
   }
   if (!read.partial) {
     await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: kept } } });
