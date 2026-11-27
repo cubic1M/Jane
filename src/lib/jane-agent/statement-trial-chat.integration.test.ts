@@ -280,7 +280,14 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
       form.set("accountId", "new");
       form.set("new.name", "Checking");
       form.set("new.kind", "checking");
-      form.append("files", new File([madeUpChaseCsv(name, NOW)], "s.csv", { type: "text/csv" }));
+      // The statement's own merchants are all known to the rules (Trader Joe's, written without its
+      // apostrophe, is now one), so a monthly charge from a shop no rule knows is added: that is
+      // what Claude is asked about for a real account.
+      const odd = ["12/10/2030", "01/10/2031", "02/10/2031", "03/10/2031"].map(
+        (day) => `DEBIT,${day},"ZZGATE ODD SHOP 4471",-12.00,DEBIT_CARD,0.00,,`,
+      );
+      const text = [madeUpChaseCsv(name, NOW).trimEnd(), ...odd, ""].join("\n");
+      form.append("files", new File([text], "s.csv", { type: "text/csv" }));
       return form;
     };
     await saveUpload(scopedFor(statement, client), data("ZZGATE"), { client });
