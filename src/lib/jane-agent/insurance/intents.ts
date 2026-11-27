@@ -276,7 +276,10 @@ export function parseInsurance(text: string): InsuranceIntent | null {
       event: eventIn(text),
     };
   }
-  if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind: null };
+  // A health plan's year, unless the question names another kind of policy ("my car deductible").
+  const named = kindIn(text);
+  const healthYear = HEALTH_YEAR.test(text) && (named === null || named === "health");
+  if (healthYear) return { kind: "insurance", ask: "health_year", policyKind: null };
   if (FILE_FOR_ME.test(text)) return { kind: "insurance", ask: "file_claim", policyKind: null };
   if (RENEWAL_CALL.test(text) && !NOT_A_POLICY.test(text)) {
     return { kind: "insurance", ask: "renewal_call", policyKind: kindIn(text) };
@@ -303,7 +306,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (CAR.test(text))
     return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
-  if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind };
+  if (healthYear) return { kind: "insurance", ask: "health_year", policyKind };
   if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   if (RISKS.test(text)) return { kind: "insurance", ask: "risks", policyKind };
   if (HOUSEHOLD.test(text)) return { kind: "insurance", ask: "household", policyKind };
