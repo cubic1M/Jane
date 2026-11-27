@@ -1,6 +1,7 @@
 import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
 import { NON_SPENDING_CATEGORIES, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
+import type { RepeatMark } from "@/lib/recurring-marks";
 import { categoryLabel } from "./labels";
 
 // Where money goes, month by month. Pure: transactions in, totals out. Amounts follow
@@ -212,6 +213,8 @@ export type SpendingLine = {
   account: string;
   cents: number;
   category: string;
+  // The recurring charge it is, when the page asks for marks (src/lib/recurring-marks.ts).
+  repeat?: RepeatMark | null;
 };
 
 // Every transaction spendingInsights counts as spending in the range, newest first.
@@ -221,7 +224,13 @@ export function spendingLines(
     asOf,
     monthCount,
     accountNames = new Map(),
-  }: { asOf: string; monthCount: number; accountNames?: ReadonlyMap<string, string> },
+    repeatOf,
+  }: {
+    asOf: string;
+    monthCount: number;
+    accountNames?: ReadonlyMap<string, string>;
+    repeatOf?: (t: InsightTransaction) => RepeatMark | null;
+  },
 ): SpendingLine[] {
   const inRange = new Set(monthsEnding(asOf, monthCount));
   return transactions
@@ -238,6 +247,7 @@ export function spendingLines(
       account: (t.accountId && accountNames.get(t.accountId)) || "",
       cents: t.amountCents,
       category: categoryLabel(t.pfcPrimary),
+      ...(repeatOf ? { repeat: t.amountCents > 0 ? repeatOf(t) : null } : {}),
     }));
 }
 

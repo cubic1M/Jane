@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
@@ -6,7 +5,7 @@ import { loadDetectionInput } from "@/detection/input";
 import { cheaperPlansOf } from "@/detectors/cover-facts";
 import { loadProfileInput } from "@/lib/profile";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
-import { frequencyWords } from "@/lib/explain-input";
+import { Rows } from "./rows";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -15,47 +14,12 @@ import { dayLabel } from "@/lib/day-label";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { subscriptionTrimSentence } from "@/lib/subscription-trim";
 
-const day = (iso: string | null) => (iso ? dayLabel(iso, { year: true }) : "–");
-
-function Rows({ rows, cards }: { rows: RecurringCharge[]; cards: Map<string, string> }) {
-  return (
-    <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 text-sm dark:divide-zinc-800 dark:border-zinc-800">
-      {rows.map((r) => (
-        <li
-          key={r.key}
-          className="flex flex-wrap items-start justify-between gap-2 px-4 py-3 [overflow-wrap:anywhere]"
-        >
-          <span className="flex flex-col">
-            <span className="font-medium">{r.merchant}</span>
-            <span className="text-xs text-zinc-500">
-              {formatCents(r.lastAmountCents)} {frequencyWords(r.frequency)} · last{" "}
-              {day(r.lastDate)} · next {day(r.nextDate)}
-            </span>
-            {cards.has(r.key) && (
-              <Link
-                href={`/report/${cards.get(r.key)}`}
-                className="text-xs font-medium text-emerald-700 hover:underline"
-              >
-                Cancel or review
-              </Link>
-            )}
-          </span>
-          <span className="font-medium">{formatCents(r.annualCostCents)} a year</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 async function Subscriptions() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [input, confirmed, profileInput] = await Promise.all([
+  const [input, checks, profileInput] = await Promise.all([
     loadDetectionInput(user.id),
-    db.subscriptionChecks.findMany({
-      where: { isSubscription: true },
-      select: { merchantKey: true },
-    }),
+    db.subscriptionChecks.findMany({ select: { merchantKey: true, isSubscription: true } }),
     // The rows the cheaper-plan card was made from (src/lib/suggestions.ts detectFor).
     loadProfileInput(user.id),
   ]);
@@ -63,7 +27,11 @@ async function Subscriptions() {
   // What the cheaper-plan card counts, each service with its plan and a year of the difference:
   // they add up to the card's figure (cheaperPlansOf; debug 2, 11-22: none was on this page).
   const plans = cheaperPlansOf(profileInput);
-  input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
+  input.subscriptionMerchantKeys = checks.filter((c) => c.isSubscription).map((c) => c.merchantKey);
+  // What they said is not a subscription, as on Money and in the chat, so the marks agree.
+  input.declinedSubscriptionMerchantKeys = checks
+    .filter((c) => !c.isSubscription)
+    .map((c) => c.merchantKey);
   const rows = recurringCharges(input);
   const findings = await db.findings.findMany({
     where: {

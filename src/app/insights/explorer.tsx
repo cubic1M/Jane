@@ -13,6 +13,8 @@ import type {
 } from "@/insights/spending";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
+import { RepeatMark as RepeatMarkTag } from "@/components/repeat-mark";
+import type { RepeatMark } from "@/lib/recurring-marks";
 import { axisDollars, axisTicks } from "./axis";
 
 // Where your money goes, to explore: the month chart picks the month, and every row opens to
@@ -208,6 +210,7 @@ function Lines({ lines, href, title }: { lines: SpendingLine[]; href?: string; t
               <span className="flex min-w-0 flex-col">
                 <span>{l.merchant}</span>
                 {l.account && <span className="text-xs text-zinc-500">{l.account}</span>}
+                {l.repeat && <RepeatMarkTag mark={l.repeat} />}
               </span>
               <span className="tabular-nums">
                 {l.cents < 0 ? `−${formatCents(-l.cents)}` : formatCents(l.cents)}
@@ -242,6 +245,8 @@ type Row = {
   share?: number;
   value?: ReactNode;
   bar?: boolean;
+  // A small mark under the row, outside its button (a link can't sit inside one).
+  mark?: ReactNode;
   open: () => ReactNode;
 };
 
@@ -295,6 +300,7 @@ function Rows({ rows, label }: { rows: Row[]; label: string }) {
                 </span>
               )}
             </button>
+            {r.mark && <div className="pl-4">{r.mark}</div>}
             {isOpen && <div className="mb-2 pl-4">{r.open()}</div>}
           </li>
         );
@@ -312,6 +318,7 @@ export function SpendingExplorer({
   changeMonths,
   topMerchants,
   lines,
+  merchantMarks = {},
   incomeNote,
 }: {
   months: MonthTotals[];
@@ -323,6 +330,8 @@ export function SpendingExplorer({
   changeMonths: { before: string; after: string } | null;
   topMerchants: MerchantTotal[];
   lines: SpendingLine[];
+  // A merchant's recurring charge, by the merchant's name (src/lib/recurring-marks.ts).
+  merchantMarks?: Record<string, RepeatMark>;
   // Said under the chart: cash deposits counted as income, and how sure (./cash-income.tsx).
   incomeNote?: ReactNode;
 }) {
@@ -438,6 +447,9 @@ export function SpendingExplorer({
               label: m.merchant,
               cents: m.cents,
               share: rangeTotal > 0 ? m.cents / rangeTotal : undefined,
+              mark: merchantMarks[m.merchant] && (
+                <RepeatMarkTag mark={merchantMarks[m.merchant]!} withAmount />
+              ),
               open: () => (
                 <Lines
                   lines={groups.get(`m|${m.merchant}`) ?? []}

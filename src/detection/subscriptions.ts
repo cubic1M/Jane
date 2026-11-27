@@ -22,6 +22,11 @@ export type RecurringCharge = {
   key: string;
   merchantKey: string;
   merchant: string;
+  // The account it's charged to, and the ids of the transactions the stream is made of (empty for
+  // a Plaid stream whose transactions we don't have): how a spending row finds its charge
+  // (src/lib/recurring-marks.ts).
+  accountId: string | null;
+  transactionIds: string[];
   frequency: Frequency;
   lastAmountCents: number;
   lastDate: string | null;
@@ -69,6 +74,8 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
           key: s.key,
           merchantKey: s.merchantKey,
           merchant: billName(s, input.accounts),
+          accountId: s.accountId,
+          transactionIds: s.charges.map((c) => c.id),
           frequency: s.frequency as Frequency,
           lastAmountCents: s.lastAmountCents,
           lastDate: s.lastDate,

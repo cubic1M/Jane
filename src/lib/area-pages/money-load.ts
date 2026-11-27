@@ -8,6 +8,7 @@ import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { addDays, forecastAccounts, comingUpBills } from "@/detection/forecast";
 import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges } from "@/detection/subscriptions";
+import { recurringMarks, type RepeatMark } from "@/lib/recurring-marks";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { endedOn, monthCutShortAt } from "@/lib/data-ended";
@@ -47,7 +48,8 @@ export type MoneyArea = MoneyTreeInput & {
   actions: Record<string, { label: string; href: string; why: string }>;
   fixes: Record<string, BooksFix>;
   assetPromptHref: string | null;
-  topMerchants: { merchant: string; cents: number }[];
+  // Each with the mark of the recurring charge it is, if it is one (src/lib/recurring-marks.ts).
+  topMerchants: { merchant: string; cents: number; repeat: RepeatMark | null }[];
   // Accounts left out of net worth for having no balance.
   missing: string[];
 };
@@ -156,6 +158,10 @@ export async function loadMoneyArea(
     .filter((c) => !c.isSubscription)
     .map((c) => c.merchantKey);
   const card = new Map(findings.map((f) => [f.key, f.id]));
+  // The Subscriptions page's own charges, read once: they list the recurring branch and mark the
+  // merchants below.
+  const charges = recurringCharges(input);
+  const marks = recurringMarks(charges);
   const worth = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
     owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
@@ -221,7 +227,7 @@ export async function loadMoneyArea(
       amountCents: b.amountCents,
     })),
     weekEnds: addDays(asOf, 7),
-    recurring: recurringCharges(input).map((r) => ({
+    recurring: charges.map((r) => ({
       key: r.key,
       merchant: r.merchant,
       lastAmountCents: r.lastAmountCents,
@@ -293,7 +299,11 @@ export async function loadMoneyArea(
     ),
     fixes: Object.fromEntries(open.map((o) => [o.id, booksFix(o)])),
     assetPromptHref: prompt ? promptHref(prompt) : null,
-    topMerchants: insights.topMerchants.slice(0, 5),
+    topMerchants: insights.topMerchants.slice(0, 5).map((m) => ({
+      merchant: m.merchant,
+      cents: m.cents,
+      repeat: marks.forMerchant(m.merchant),
+    })),
     missing: worth.missing,
   };
 }

@@ -15,6 +15,8 @@ import { FeeList } from "./fee-list";
 import { loadFeeList } from "@/lib/bank-fees";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { RepeatMark as RepeatMarkTag } from "@/components/repeat-mark";
+import { loadRecurringMarks } from "@/lib/recurring-marks";
 
 const SHOWN = 100;
 
@@ -47,7 +49,7 @@ async function Transactions({
   const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
   const first = isDay(day) ? day : isDay(from) ? from : null;
   const last = isDay(day) ? day : isDay(to) ? to : first;
-  const [rows, rules, accounts, cardPayments] = await Promise.all([
+  const [rows, rules, accounts, cardPayments, marks] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -98,6 +100,8 @@ async function Transactions({
         pfcDetailed: true,
       },
     }),
+    // The Subscriptions page's charges, read once and matched to the rows in memory.
+    loadRecurringMarks(user.id),
   ]);
   const groups = categoryOptions();
   const paymentNames = cardPaymentNames(
@@ -175,11 +179,13 @@ async function Transactions({
               t.pfcPrimary && t.pfcDetailed
                 ? `${categoryLabel(t.pfcPrimary)} · ${detailedLabel(t.pfcPrimary, t.pfcDetailed)}`
                 : "Uncategorized";
+            // Only a charge (money out) repeats; a refund or deposit is never marked.
+            const repeat = t.amountCents > 0 ? marks.forTransaction(t) : null;
             return (
               <li key={t.id} className="px-4 py-3 [overflow-wrap:anywhere]">
                 <details>
                   <summary className="flex cursor-pointer flex-wrap justify-between gap-2">
-                    <span className="flex flex-col">
+                    <span className="flex min-w-0 flex-col gap-0.5">
                       <span data-private className="font-medium">
                         {merchant}
                       </span>
@@ -190,6 +196,7 @@ async function Transactions({
                         {t.categorySource === "cash_income" &&
                           " (a cash deposit, counted as income)"}
                       </span>
+                      {repeat && <RepeatMarkTag mark={repeat} />}
                     </span>
                     <span className={t.amountCents < 0 ? "text-emerald-700" : ""}>
                       {t.amountCents < 0 ? "+" : ""}
