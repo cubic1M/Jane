@@ -928,7 +928,7 @@ export function NetWorthChart({
                 <p
                   key={m.k}
                   data-net-worth-step=""
-                  className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
+                  className="pointer-events-none absolute z-10 bg-white px-1 py-0.5 text-[11px] leading-none font-medium overflow-hidden text-ellipsis whitespace-nowrap text-zinc-700 tabular-nums dark:bg-zinc-950 dark:text-zinc-300"
                   style={stepStyle(stepPlaces[m.k], width)}
                 >
                   {m.words}
@@ -1086,9 +1086,10 @@ type Opened = { kind: "day"; key: string } | { kind: "dot"; index: number; key: 
 // The label's place: its anchor edge across (or its middle), and its top, from placeStepLabels.
 function stepStyle(place: StepLabelPlace, width: number): React.CSSProperties {
   const top = place.y;
-  if (place.anchor === "start") return { top, left: place.x };
-  if (place.anchor === "end") return { top, right: width - place.x };
-  return { top, left: place.x, transform: "translateX(-50%)" };
+  const maxWidth = width;
+  if (place.anchor === "start") return { top, left: place.x, maxWidth };
+  if (place.anchor === "end") return { top, right: width - place.x, maxWidth };
+  return { top, left: place.x, maxWidth, transform: "translateX(-50%)" };
 }
 
 // A range chip's days, as a window over the whole history.

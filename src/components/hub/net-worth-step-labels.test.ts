@@ -118,6 +118,9 @@ describe("a break's label", () => {
     });
     expect(p.box.left).toBeGreaterThanOrEqual(0);
     expect(p.box.top).toBeGreaterThanOrEqual(0);
+    // Wider than the chart: cut to the chart's width, never past its right edge.
+    expect(p.box.width).toBeLessThanOrEqual(90);
+    expect(p.box.left + p.box.width).toBeLessThanOrEqual(90);
   });
 });
 

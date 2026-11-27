@@ -300,7 +300,8 @@ export function placeStepLabels(input: {
   };
   for (let k = 0; k < at.length; k++) {
     const a = at[k];
-    const w = widths[k];
+    // A label wider than the chart is cut to the chart's width (the chart shows it with an ellipsis).
+    const w = Math.min(widths[k], width);
     const roomier: "start" | "end" = a > width / 2 ? "end" : "start";
     const beside = (side: "start" | "end", top: number) =>
       make(
