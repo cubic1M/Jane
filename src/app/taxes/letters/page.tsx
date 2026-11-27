@@ -115,9 +115,13 @@ async function Content() {
               </div>
             )}
             {check?.advice && <DemoAdviceLabel />}
-            <a href={rule.source} className={`text-xs ${LINK}`} rel="noreferrer">
-              About this notice
-            </a>
+            {/^https?:\/\//.test(rule.source) ? (
+              <a href={rule.source} className={`text-xs ${LINK}`} rel="noreferrer">
+                About this notice
+              </a>
+            ) : (
+              <p className="text-xs text-zinc-500">{rule.source}</p>
+            )}
           </section>
         );
       })}

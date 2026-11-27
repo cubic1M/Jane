@@ -95,7 +95,8 @@ export async function addTaxCorrection(
       create: { userId, year, kind: correction.kind, ...data },
       update: {},
     });
-  else await db.taxCorrections.create({ data: { userId, year, kind: correction.kind, ...data } });
+  else if (!(await savedJustNow(db, year, correction.kind, data, now)))
+    await db.taxCorrections.create({ data: { userId, year, kind: correction.kind, ...data } });
   await logAudit(
     { type: "user", id: userId },
     "tax_correction_added",
@@ -104,6 +105,30 @@ export async function addTaxCorrection(
   );
   await track(userId, "tax_correction_added", { kind: correction.kind, via });
   await rescan(userId, client, now);
+}
+
+// The same correction saved moments ago: this is a retry of a submission whose later steps (the
+// audit record, the rescan) failed after the row was written, so it is not added a second time.
+const RETRY_WINDOW_MS = 120_000;
+async function savedJustNow(
+  db: ReturnType<typeof scopedFor>,
+  year: number,
+  kind: string,
+  data: { payerKey: string | null; label: string; cents: number | null; paidTo: string | null },
+  now: Date,
+): Promise<boolean> {
+  const found = await db.taxCorrections.findFirst({
+    where: {
+      year,
+      kind,
+      label: data.label,
+      cents: data.cents,
+      paidTo: data.paidTo,
+      createdAt: { gte: new Date(now.getTime() - RETRY_WINDOW_MS) },
+    },
+    select: { id: true },
+  });
+  return found !== null;
 }
 
 // Undo: the estimate goes back to what the accounts show.

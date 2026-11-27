@@ -17,7 +17,7 @@ import { ResidencyForm } from "./residency-form";
 import { FamilyForm } from "./family-form";
 import { HomeForm } from "./home-form";
 import { SideIncomeForm } from "./side-income-form";
-import { FAMILY_FORM_CHILDREN } from "./answers";
+import { FAMILY_FORM_CHILDREN, FAMILY_MAX_CHILDREN } from "./answers";
 import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
 import { localitiesIn } from "@/planning/tax-states";
@@ -132,12 +132,24 @@ async function ProfileContent() {
       <FamilyForm
         values={{
           year,
-          children: Array.from({ length: FAMILY_FORM_CHILDREN }, (_, i) => {
-            const c = parseChildren(pay?.familyChildren)[i];
-            return c
-              ? { age: String(c.ageAtYearEnd), ssn: c.hasSsn, months: String(c.monthsLivedWithYou) }
-              : { age: "", ssn: true, months: "12" };
-          }),
+          children: Array.from(
+            {
+              length: Math.max(
+                FAMILY_FORM_CHILDREN,
+                Math.min(FAMILY_MAX_CHILDREN, parseChildren(pay?.familyChildren).length),
+              ),
+            },
+            (_, i) => {
+              const c = parseChildren(pay?.familyChildren)[i];
+              return c
+                ? {
+                    age: String(c.ageAtYearEnd),
+                    ssn: c.hasSsn,
+                    months: String(c.monthsLivedWithYou),
+                  }
+                : { age: "", ssn: true, months: "12" };
+            },
+          ),
           spouseWages: centsToInput(pay?.spouseWagesCents),
           paysOverHalfHome: pay?.paysOverHalfHome ?? false,
           studentYears:

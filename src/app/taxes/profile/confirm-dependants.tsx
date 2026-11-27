@@ -19,6 +19,8 @@ export function ConfirmDependants({
         Found by Jane: {dependantsWords(childrenUnder17, otherDependants)}, from {from}. Are these
         your dependants?
       </p>
+      <input type="hidden" name="childrenUnder17" value={childrenUnder17} />
+      <input type="hidden" name="otherDependants" value={otherDependants} />
       <SubmitButton className="h-11 self-start rounded-lg bg-zinc-900 px-4 font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-300">
         Yes, these are my dependants
       </SubmitButton>

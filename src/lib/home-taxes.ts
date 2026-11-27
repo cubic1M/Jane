@@ -179,7 +179,8 @@ export async function loadHomeTaxes(
 }
 
 export type HomeAnswers = {
-  points: { cents: number; year: number; purchase: boolean; loanYears: number } | null;
+  // "keep": the page showed no points (they were paid in another year) and the person left it so.
+  points: { cents: number; year: number; purchase: boolean; loanYears: number } | null | "keep";
   sale: {
     boughtOn: string;
     priceCents: number;
@@ -199,7 +200,7 @@ export async function saveHomeAnswers(
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
   const money = (n: number) => Number.isInteger(n) && n >= 0;
-  const p = answers.points;
+  const p = answers.points === "keep" ? null : answers.points;
   if (
     p &&
     (!money(p.cents) ||
@@ -225,10 +226,14 @@ export async function saveHomeAnswers(
   }
   const at = (d: string) => new Date(`${d}T00:00:00Z`);
   const data = {
-    pointsCents: p?.cents ?? null,
-    pointsYear: p?.year ?? null,
-    pointsPurchase: p?.purchase ?? null,
-    pointsLoanYears: p?.loanYears ?? null,
+    ...(answers.points === "keep"
+      ? {}
+      : {
+          pointsCents: p?.cents ?? null,
+          pointsYear: p?.year ?? null,
+          pointsPurchase: p?.purchase ?? null,
+          pointsLoanYears: p?.loanYears ?? null,
+        }),
     homeBoughtOn: s ? at(s.boughtOn) : null,
     homePriceCents: s?.priceCents ?? null,
     homeSoldOn: s ? at(s.soldOn) : null,

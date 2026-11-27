@@ -125,6 +125,22 @@ export async function dismissSaving(
   key: SavingKey,
   { client = defaultClient, via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
+  await closeSaving(userId, year, key, client);
+  await track(userId, "tax_saving_dismissed", { key, via });
+}
+
+// A suggestion acted on (a reminder or a goal made from it) is closed for the year the same way,
+// so a second tap can't add a second deadline or goal. Not an analytics "dismissed".
+export async function completeSaving(
+  userId: string,
+  year: number,
+  key: SavingKey,
+  { client = defaultClient }: Options = {},
+): Promise<void> {
+  await closeSaving(userId, year, key, client);
+}
+
+async function closeSaving(userId: string, year: number, key: SavingKey, client: PrismaClient) {
   const db = scopedFor(userId, client);
   const profile = await db.taxProfiles.findFirst({ select: { savingsDismissed: true } });
   const list = [...new Set([...(profile?.savingsDismissed ?? []), `${year}:${key}`])];
@@ -133,5 +149,4 @@ export async function dismissSaving(
     create: { userId, savingsDismissed: list },
     update: { savingsDismissed: list },
   });
-  await track(userId, "tax_saving_dismissed", { key, via });
 }

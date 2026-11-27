@@ -56,6 +56,17 @@ const headline = (view: TaxSetAsideView) => {
   return "What's withheld and paid covers your tax so far.";
 };
 
+function payerRow(p: { key: string; label: string; cents: number }) {
+  return (
+    <li key={p.key} className="flex flex-wrap items-center justify-between gap-2">
+      <span className="[overflow-wrap:anywhere]">
+        {p.label}, {formatCents(p.cents)}
+      </span>
+      <NotIncomeButton payerKey={p.key} label={p.label} />
+    </li>
+  );
+}
+
 export function SetAsideSection({ view }: { view: TaxSetAsideView }) {
   const { corrections, soFar } = view.estimateView;
   return (
@@ -111,14 +122,17 @@ export function SetAsideSection({ view }: { view: TaxSetAsideView }) {
         <div className="mt-2 flex flex-col gap-4">
           {soFar.payers.length > 0 && (
             <ul className="flex flex-col gap-2" aria-label="Income Jane counted">
-              {soFar.payers.slice(0, PAYERS_SHOWN).map((p) => (
-                <li key={p.key} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="[overflow-wrap:anywhere]">
-                    {p.label}, {formatCents(p.cents)}
-                  </span>
-                  <NotIncomeButton payerKey={p.key} label={p.label} />
+              {soFar.payers.slice(0, PAYERS_SHOWN).map(payerRow)}
+              {soFar.payers.length > PAYERS_SHOWN && (
+                <li>
+                  <details>
+                    <summary className={SUMMARY}>{soFar.payers.length - PAYERS_SHOWN} more</summary>
+                    <ul className="mt-2 flex flex-col gap-2">
+                      {soFar.payers.slice(PAYERS_SHOWN).map(payerRow)}
+                    </ul>
+                  </details>
                 </li>
-              ))}
+              )}
             </ul>
           )}
           <PointOutForm />

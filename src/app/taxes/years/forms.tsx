@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { PLANNED_EVENT_KINDS } from "@/config/tax-years";
 import { yearsAction, type YearsState } from "./actions";
 import { FormStatus } from "@/components/form-status";
+import { useKeepOnError } from "@/components/keep-on-error";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -34,8 +35,9 @@ export function RetireForm({ current }: { current: number }) {
 
 export function EventForm() {
   const [state, action, pending] = useActionState<YearsState, FormData>(yearsAction, null);
+  const keep = useKeepOnError(action, state, { resetOnOk: true });
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form {...keep} className="flex flex-col gap-3">
       <input type="hidden" name="intent" value="add" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1">

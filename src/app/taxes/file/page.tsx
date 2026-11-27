@@ -34,17 +34,21 @@ async function Content() {
   const now = new Date();
   const today = await todayOf(user.id, { now });
   const year = filingYear(today);
-  const [partner, ret] = await Promise.all([
+  const [partner, current, earlier] = await Promise.all([
     filingPartnerFor(user.id),
     loadReturn(user.id, year, { now }),
+    loadReturn(user.id, year - 1, { now }),
   ]);
+  // A return still waiting (to sign, to be accepted) stays on the page after the new year starts.
+  const ret = current ?? (earlier && earlier.status !== "accepted" ? earlier : null);
+  const shownYear = ret?.year ?? year;
   const season = inFilingSeason(year, today);
 
   return (
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">File your {year} taxes</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">File your {shownYear} taxes</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Jane hands your tax profile, income, tags and forms to the filing partner. You review the
           return and sign it; nothing is filed until you do.

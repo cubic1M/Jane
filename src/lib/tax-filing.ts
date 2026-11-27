@@ -3,13 +3,13 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { filingPartnerFor, type ReturnPackage, type ReturnPreview } from "@/lib/filing";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
-import { isoDay as iso } from "@/lib/dates";
 
 // Filing (spec step 126): Jane hands the year over to the filing partner, the person reviews
 // it and signs, and Jane tracks it. Nothing is submitted without the person's review and
@@ -173,14 +173,16 @@ export async function startReturn(
     via,
   }: Options & { via: "chat" | "page" | "autopilot" },
 ): Promise<ReturnView> {
-  const year = filingYear(iso(now));
+  // The person's own day, the one the filing page works from.
+  const today = await todayOf(userId, { client, now });
+  const year = filingYear(today);
   const partner = await filingPartnerFor(userId, { client });
   if (!partner) {
     throw new FilingError(
       "Filing through Jane isn't available for your accounts yet. Your tax-time pack is ready for whoever does your taxes.",
     );
   }
-  if (!inFilingSeason(year, iso(now)))
+  if (!inFilingSeason(year, today))
     throw new FilingError(`Filing for ${year} opens in late January ${year + 1}.`);
   const db = scopedFor(userId, client);
   const existing = await db.taxReturns.findFirst({ where: { year }, select: { id: true } });

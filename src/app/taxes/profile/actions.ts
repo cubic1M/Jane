@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
 import { TaxProfileError, confirmFound, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
-import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
+import {
+  ResidencyError,
+  loadResidency,
+  saveLocality,
+  saveMoves,
+  saveWorkState,
+} from "@/lib/tax-states";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
@@ -17,6 +23,7 @@ import {
   residencyFrom,
   sideIncomeFrom,
 } from "./answers";
+import { scopedFor } from "@/lib/db-scoped";
 import { ignoring } from "@/lib/ignoring";
 import { todayOf } from "@/lib/today";
 
@@ -76,10 +83,17 @@ export async function saveResidencyAction(
   try {
     const entry = residencyFrom(formData);
     if (entry.move) {
-      await saveMoves(user.id, Number(entry.move.date.slice(0, 4)), [entry.move], {
-        now,
-        via: "page",
-      });
+      const moveYear = Number(entry.move.date.slice(0, 4));
+      // The form shows only the first of several moves: saved unchanged, the others stay.
+      const { told } = await loadResidency(user.id, moveYear);
+      const first = told?.[0];
+      const unchanged =
+        told !== null &&
+        told.length > 1 &&
+        first?.date === entry.move.date &&
+        first.from === entry.move.from &&
+        first.to === entry.move.to;
+      if (!unchanged) await saveMoves(user.id, moveYear, [entry.move], { now, via: "page" });
     } else if (entry.oneState) {
       await saveMoves(user.id, defaultTaxYear(await todayOf(user.id, { now })), [], {
         now,
@@ -127,7 +141,9 @@ export async function saveHomeAction(
   const user = await requireUser();
   const now = new Date();
   try {
-    const answers = homeFrom(formData, defaultTaxYear(await todayOf(user.id, { now })));
+    const year = defaultTaxYear(await todayOf(user.id, { now }));
+    const stored = await scopedFor(user.id).taxProfiles.findFirst({ select: { pointsYear: true } });
+    const answers = homeFrom(formData, year, stored?.pointsYear ?? null);
     await saveHomeAnswers(user.id, answers, { now, via: "page" });
     revalidatePath("/taxes");
     revalidatePath("/taxes/profile");
@@ -160,9 +176,18 @@ export async function saveSideIncomeAction(
 
 // "Yes, these are my dependants": the children Jane found in the household the person listed
 // for insurance, saved as their answer with one tap (from /taxes or the tax profile).
-export async function confirmDependants(): Promise<void> {
+export async function confirmDependants(formData: FormData): Promise<void> {
   const user = await requireUser();
-  await ignoring(TaxProfileError, () => confirmFound(user.id, "dependants", { via: "page" }));
+  // Only the counts the person was shown: if the household changed since the page was drawn, the
+  // page is drawn again with the new counts and nothing is saved.
+  const { dependants } = await loadTaxProfile(user.id);
+  const shown = (name: string) => String(formData.get(name) ?? "");
+  if (
+    shown("childrenUnder17") === String(dependants.childrenUnder17) &&
+    shown("otherDependants") === String(dependants.otherDependants)
+  ) {
+    await ignoring(TaxProfileError, () => confirmFound(user.id, "dependants", { via: "page" }));
+  }
   revalidatePath("/taxes");
   revalidatePath("/taxes/profile");
 }
