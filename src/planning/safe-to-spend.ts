@@ -35,6 +35,9 @@ export type SafeTax = {
   status: "needed" | "covered" | "unknown" | "no_income";
   keptApartCents: number;
   confidencePercent: number;
+  // Set when the year has no IRS figures (W-N): the tax is not counted for that reason, which is
+  // not the same as not seeing what is withheld.
+  noParamsYear?: number;
 };
 
 export type SafeToSpend = {
@@ -60,6 +63,7 @@ export type SafeToSpend = {
   taxSoFarCents: number;
   taxHeldCents: number;
   taxStatus: SafeTax["status"];
+  taxNoParamsYear?: number;
   taxKeptApartCents: number;
   taxConfidencePercent: number;
   safeCents: number;
@@ -185,6 +189,7 @@ export function safeToSpend(
     taxSoFarCents,
     taxHeldCents,
     taxStatus: tax.status,
+    ...(tax.noParamsYear !== undefined ? { taxNoParamsYear: tax.noParamsYear } : {}),
     taxKeptApartCents: tax.keptApartCents,
     taxConfidencePercent: tax.confidencePercent,
     safeCents: beforeTax - taxHeldCents,

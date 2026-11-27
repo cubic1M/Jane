@@ -50,6 +50,8 @@ type SafeInput = {
   taxSoFarCents?: number;
   // "unknown": Jane can't see what's withheld, so it holds nothing back and says so.
   taxStatus?: "needed" | "covered" | "unknown" | "no_income";
+  // The year Jane has no IRS figures for, when that is why the tax is not counted.
+  taxNoParamsYear?: number;
   // Kept apart for this tax, seen or told: 0 is said plainly.
   taxKeptApartCents?: number;
   safeCents: number;
@@ -337,7 +339,10 @@ const taxUnknownLine = (safe: SafeInput): CalcLine[] =>
   safe.taxStatus === "unknown"
     ? [
         {
-          label: "Not counted: tax, as Jane can't see all that's withheld from your pay",
+          label:
+            safe.taxNoParamsYear !== undefined
+              ? `Not counted: tax. ${noParamsText(safe.taxNoParamsYear)}`
+              : "Not counted: tax, as Jane can't see all that's withheld from your pay",
           sign: "",
           cents: 0,
           unknown: true,
