@@ -102,16 +102,25 @@ const subscribeReduced = (onChange: () => void) => {
 const reducedNow = () =>
   typeof window.matchMedia === "function" && window.matchMedia(REDUCED).matches;
 
-function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: number } {
-  const [shown, setShown] = useState({ lo: target.lo, hi: target.hi });
-  const now = useRef({ lo: target.lo, hi: target.hi });
+// `frame` names the coordinate frame the bounds are in (which big steps are taken out of the
+// line): when it changes the bounds snap, since easing across frames would draw the line far
+// off the chart.
+function useEasedRange(target: { lo: number; hi: number; frame: string }): {
+  lo: number;
+  hi: number;
+} {
+  const [shown, setShown] = useState(target);
+  const now = useRef(target);
   const reduced = useSyncExternalStore(subscribeReduced, reducedNow, () => false);
+  const { lo, hi, frame: inFrame } = target;
   useEffect(() => {
+    const goal = { lo, hi, frame: inFrame };
     const from = now.current;
-    if (reduced || (from.lo === target.lo && from.hi === target.hi)) {
-      now.current = { lo: target.lo, hi: target.hi };
+    const same = from.lo === goal.lo && from.hi === goal.hi;
+    if (reduced || same || from.frame !== goal.frame) {
+      now.current = goal;
       // Keep the eased copy current too, for when reduced motion is turned off again.
-      setShown((s) => (s.lo === target.lo && s.hi === target.hi ? s : now.current));
+      setShown((s) => (s.lo === goal.lo && s.hi === goal.hi && s.frame === goal.frame ? s : goal));
       return;
     }
     const start = performance.now();
@@ -120,16 +129,17 @@ function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: nu
       const t = Math.min(1, (at - start) / SCALE_EASE_MS);
       const e = 1 - (1 - t) ** 3;
       now.current = {
-        lo: from.lo + (target.lo - from.lo) * e,
-        hi: from.hi + (target.hi - from.hi) * e,
+        lo: from.lo + (goal.lo - from.lo) * e,
+        hi: from.hi + (goal.hi - from.hi) * e,
+        frame: goal.frame,
       };
       setShown(now.current);
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [reduced, target.lo, target.hi]);
-  return reduced ? target : shown;
+  }, [reduced, lo, hi, inFrame]);
+  return reduced || shown.frame !== inFrame ? target : shown;
 }
 
 // The session's fit choice, in sessionStorage (and in memory where that is not allowed): read
@@ -305,6 +315,7 @@ export function NetWorthChart({
   // Expanded, the wheel zooms the time axis around the pointer. A native listener, not React's
   // (passive, so it couldn't stop the page scrolling); it reads this render's state through a ref.
   const onWheel = useRef<(e: WheelEvent) => void>(() => {});
+  const wheelRemainder = useRef(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -419,7 +430,8 @@ export function NetWorthChart({
   // The scale fits exactly the days in view (their own range, and a floor that follows their own
   // moves) and settles on each new fit over a moment (not with reduced motion).
   const fit = fitScale(values, { focus: focusOn });
-  const eased = useEasedRange(fit);
+  const taken = fit.focused ? fit.breaks.map((b) => `${b.index}:${b.cents}`).join() : "";
+  const eased = useEasedRange({ lo: fit.lo, hi: fit.hi, frame: taken });
   const { lo, hi } = eased;
   const { breaks, offsets } = fit;
   const { x, y } = scaleAt(eased, values.length, width, H);
@@ -428,7 +440,6 @@ export function NetWorthChart({
   // zero otherwise). The scale's labels, the scrub and the header say the true values.
   const plotDays = shown.map((p, i) => ({ ...p, cents: p.cents - (offsets[i] ?? 0) }));
   const yDay = (i: number) => y(plotDays[i].cents);
-  const taken = fit.focused ? breaks.map((b) => `${b.index}:${b.cents}`).join() : "";
 
   // A dot for every movement in view, overlapping ones as one until zoomed apart.
   const layout = useMemo(() => {
@@ -455,10 +466,24 @@ export function NetWorthChart({
       // A sideways swipe (a trackpad, shift and the wheel) moves the days in view, so a big step
       // can be dragged out of them without the brush.
       const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      const next = sideways
-        ? panWindow(win, total, (e.deltaX / r.width) * (win.to - win.from))
-        : zoomWindow(win, total, e.deltaY > 0 ? 1.25 : 0.8, share);
-      if (next.from === win.from && next.to === win.to) return;
+      let next: ViewWindow;
+      if (sideways) {
+        // Slow swipes move a fraction of a day each: they add up until there is a whole day.
+        wheelRemainder.current += (e.deltaX / r.width) * (win.to - win.from);
+        const days = Math.trunc(wheelRemainder.current);
+        if (days === 0) {
+          e.preventDefault();
+          return;
+        }
+        wheelRemainder.current -= days;
+        next = panWindow(win, total, days);
+      } else {
+        next = zoomWindow(win, total, e.deltaY > 0 ? 1.25 : 0.8, share);
+      }
+      if (next.from === win.from && next.to === win.to) {
+        wheelRemainder.current = 0;
+        return;
+      }
       e.preventDefault();
       setView(next);
       setScrub(null);
