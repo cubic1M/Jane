@@ -199,6 +199,25 @@ describe("asking for a lower phone or internet rate", () => {
     );
     expect(s.why).toMatch(/still worth asking/);
   });
+
+  it("lists two bills worth the same in one order, whatever order the findings arrive in", () => {
+    const ask = (merchant: string, monthlyCents: number) => ({
+      type: "bill_negotiation",
+      annualSavingsCents: 54_000,
+      confidence: "high" as const,
+      bill: { merchant, monthlyCents, typicalHighCents: monthlyCents - 4_500 },
+    });
+    const whys = [
+      [ask("Verizon Wireless", 14_500), ask("Comcast", 16_500)],
+      [ask("Comcast", 16_500), ask("Verizon Wireless", 14_500)],
+    ].map(
+      (findings) =>
+        fire("equity", (d) => ({ ...d, findings })).find((x) => x.topic === "bill_negotiation")!
+          .why,
+    );
+    expect(whys[0]).toBe(whys[1]);
+    expect(whys[0]).toMatch(/^Comcast is .*; Verizon Wireless is /);
+  });
 });
 
 describe("a category running over", () => {
