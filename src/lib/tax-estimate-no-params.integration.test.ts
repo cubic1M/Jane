@@ -41,7 +41,7 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
   });
 
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
     await client.$disconnect();
   });
 

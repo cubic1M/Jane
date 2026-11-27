@@ -44,7 +44,7 @@ describe.runIf(url)("a year with no IRS figures, on every surface", { timeout: 1
   });
 
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
     await client.$disconnect();
   });
 
