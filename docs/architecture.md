@@ -112,7 +112,7 @@ $CRON_SECRET`:
 | Route | When (UTC) | What it does |
 | --- | --- | --- |
 | `/api/cron/plaid-sync` | 10:00 daily | Syncs stale Plaid items, removes inactive ones (after a warning), snapshots balances for net worth, raises deadline reminders, queues each person's nightly controller run, and works through due jobs. |
-| `/api/cron/digest` | 15:00 daily | The weekly digest for anyone whose Monday has arrived, and due jobs. |
+| `/api/cron/digest` | 18:00 daily | The weekly digest for anyone whose Monday has arrived, the monthly report, Jane's daily chat run, the team's error, ops and accuracy emails, and due jobs. 18:00 is the one hour outside quiet hours (9pm to 8am) in every timezone offered on /settings, winter and summer, even with Hobby starting a cron as late as the end of its hour (`src/lib/jane-agent/daily-run-schedule.test.ts`). |
 | `/api/cron/market-history` | 09:00 daily | Adds the day's closes for the model ETFs from Alpaca (read only). |
 | `/api/cron/strategy-eval` | 09:30 daily | Replays every strategy over the stored closes and saves each level's choice. |
 | `/api/cron/practice-scan` | 21:30 daily | Scans every practice portfolio and runs its autopilot, in the practice ledger only. |

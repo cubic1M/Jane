@@ -98,6 +98,8 @@ export async function GET(request: Request) {
         }),
         // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
         // there never stops the rest of the run.
+        // It skips anyone in quiet hours, so this cron's hour (vercel.json) is outside them in
+        // every timezone offered (src/lib/jane-agent/daily-run-schedule.test.ts).
         // Its own budget, but never more than what's left (review 10-31).
         chat: await runJaneAgentForAll({
           budgetMs: Math.max(
