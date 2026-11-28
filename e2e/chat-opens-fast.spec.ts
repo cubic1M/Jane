@@ -44,6 +44,23 @@ test("the first open of the day gets Jane's turn after the page, without a reloa
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
 
+  // The first visit may have started a turn of its own: let it finish before the reset below.
+  await expect
+    .poll(
+      () =>
+        owner(
+          async (c) =>
+            (
+              await c.query(
+                "SELECT value->>'state' AS state FROM jane_preferences WHERE user_id = $1 AND key = 'open_run'",
+                [user.userId],
+              )
+            ).rows[0]?.state ?? "none",
+        ),
+      { timeout: 120_000, intervals: [1_000] },
+    )
+    .not.toBe("running");
+
   // A new day for this person: nothing Jane said, and no turn remembered.
   await owner(async (c) => {
     await c.query("DELETE FROM jane_messages WHERE user_id = $1", [user.userId]);

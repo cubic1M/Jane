@@ -39,7 +39,9 @@ export function ScanRefresher({ shown, opened = false }: { shown: number; opened
     };
     tell();
     return () => clearTimeout(retry);
-  }, [opened]);
+    // `shown` too: a page that is refreshed in place and finds a turn owed again tells again (the
+    // server starts nothing twice).
+  }, [opened, shown]);
   useEffect(() => {
     const started = Date.now();
     let busy = false;
