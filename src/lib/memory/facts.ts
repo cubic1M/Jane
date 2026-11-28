@@ -171,85 +171,96 @@ export async function recordFacts(
   for (const row of rows) if (!held.has(row.key)) held.set(row.key, row);
 
   const outcomes: RecordOutcome[] = [];
-  for (const raw of drafts) {
-    const draft = tidy(raw);
-    if (draft.label === "" || (typeof draft.value === "string" && draft.value === "")) {
-      outcomes.push("blocked");
-      continue;
-    }
-    if (isSensitiveFact(draft)) {
-      outcomes.push("blocked");
-      continue;
-    }
-    let row = held.get(draft.key) ?? null;
-    if (row?.source === FORGOTTEN) {
-      // Only the person saying it again brings back what they asked Jane to forget.
-      if (SOURCE_RANK[draft.source] < SOURCE_RANK.answer) {
-        outcomes.push("forgotten");
+  // Something Jane remembers about taxes is about to change (or changed before a later draft
+  // failed): the household's tax record copies the older stores again the next time it is read.
+  let taxTouched = false;
+  try {
+    for (const raw of drafts) {
+      const draft = tidy(raw);
+      if (draft.label === "" || (typeof draft.value === "string" && draft.value === "")) {
+        outcomes.push("blocked");
         continue;
       }
-      await db.userFacts.deleteMany({ where: { id: row.id } });
-      row = null;
-    }
-    const current = row ? toKnown(row) : null;
-    const step = weigh(current, draft);
-    const data = {
-      key: draft.key,
-      value: { value: draft.value } as Prisma.InputJsonObject,
-      label: draft.label,
-      source: draft.source,
-      sourceRef: draft.sourceRef ?? null,
-      confidence: step.confidence,
-      firstSeen: now,
-      lastConfirmed: now,
-    };
-    if (step.kind === "create" || !row) {
-      held.set(draft.key, await db.userFacts.create({ data: { userId, ...data } }));
-      outcomes.push("created");
-    } else if (step.kind === "supersede") {
-      const next = await db.userFacts.create({ data: { userId, ...data } });
-      await db.userFacts.updateMany({ where: { id: row.id }, data: { supersededById: next.id } });
-      held.set(draft.key, next);
-      outcomes.push("superseded");
-    } else if (step.kind === "weaken") {
-      await db.userFacts.updateMany({
-        where: { id: row.id },
-        data: { confidence: step.confidence },
-      });
-      held.set(draft.key, { ...row, confidence: step.confidence });
-      outcomes.push("weakened");
-    } else {
-      // The same evidence again changes nothing, beyond noting once a day that it still holds.
-      const stale = now.getTime() - row.lastConfirmed.getTime() >= DAY_MS;
-      if (!step.newEvidence && step.confidence === row.confidence && !stale) {
-        outcomes.push("unchanged");
+      if (isSensitiveFact(draft)) {
+        outcomes.push("blocked");
         continue;
       }
-      // The stronger source names it: what the person said, over what the data showed.
-      const stronger = SOURCE_RANK[draft.source] > SOURCE_RANK[row.source as FactSource];
-      const update = {
+      let row = held.get(draft.key) ?? null;
+      if (row?.source === FORGOTTEN) {
+        // Only the person saying it again brings back what they asked Jane to forget.
+        if (SOURCE_RANK[draft.source] < SOURCE_RANK.answer) {
+          outcomes.push("forgotten");
+          continue;
+        }
+        await db.userFacts.deleteMany({ where: { id: row.id } });
+        row = null;
+      }
+      const current = row ? toKnown(row) : null;
+      const step = weigh(current, draft);
+      if (isTaxToldFact(draft.key) && step.kind !== "confirm") taxTouched = true;
+      const data = {
+        key: draft.key,
+        value: { value: draft.value } as Prisma.InputJsonObject,
+        label: draft.label,
+        source: draft.source,
+        sourceRef: draft.sourceRef ?? null,
         confidence: step.confidence,
+        firstSeen: now,
         lastConfirmed: now,
-        evidenceCount: row.evidenceCount + (step.newEvidence ? 1 : 0),
-        ...(stronger
-          ? { source: draft.source, sourceRef: draft.sourceRef ?? null, label: draft.label }
-          : step.newEvidence
-            ? { sourceRef: draft.sourceRef ?? row.sourceRef }
-            : {}),
       };
-      await db.userFacts.updateMany({ where: { id: row.id }, data: update });
-      held.set(draft.key, { ...row, ...update });
-      outcomes.push(step.newEvidence ? "confirmed" : "unchanged");
+      if (step.kind === "create" || !row) {
+        held.set(draft.key, await db.userFacts.create({ data: { userId, ...data } }));
+        outcomes.push("created");
+      } else if (step.kind === "supersede") {
+        const next = await db.userFacts.create({ data: { userId, ...data } });
+        await db.userFacts.updateMany({ where: { id: row.id }, data: { supersededById: next.id } });
+        held.set(draft.key, next);
+        outcomes.push("superseded");
+      } else if (step.kind === "weaken") {
+        await db.userFacts.updateMany({
+          where: { id: row.id },
+          data: { confidence: step.confidence },
+        });
+        held.set(draft.key, { ...row, confidence: step.confidence });
+        outcomes.push("weakened");
+      } else {
+        // The same evidence again changes nothing, beyond noting once a day that it still holds.
+        const stale = now.getTime() - row.lastConfirmed.getTime() >= DAY_MS;
+        if (!step.newEvidence && step.confidence === row.confidence && !stale) {
+          outcomes.push("unchanged");
+          continue;
+        }
+        // A repeat that still changes the row (it can raise its sureness over the line the profile
+        // reads from) counts as a change too.
+        if (isTaxToldFact(draft.key)) taxTouched = true;
+        // The stronger source names it: what the person said, over what the data showed.
+        const stronger = SOURCE_RANK[draft.source] > SOURCE_RANK[row.source as FactSource];
+        const update = {
+          confidence: step.confidence,
+          lastConfirmed: now,
+          evidenceCount: row.evidenceCount + (step.newEvidence ? 1 : 0),
+          ...(stronger
+            ? { source: draft.source, sourceRef: draft.sourceRef ?? null, label: draft.label }
+            : step.newEvidence
+              ? { sourceRef: draft.sourceRef ?? row.sourceRef }
+              : {}),
+        };
+        await db.userFacts.updateMany({ where: { id: row.id }, data: update });
+        held.set(draft.key, { ...row, ...update });
+        outcomes.push(step.newEvidence ? "confirmed" : "unchanged");
+      }
     }
-  }
-  // Something Jane remembers about taxes changed: the household's tax record copies the older
-  // stores again the next time it is read (marking is one update; the copy is not made here).
-  const changed = drafts.some(
-    (d, i) => !["unchanged", "blocked", "forgotten"].includes(outcomes[i] ?? "blocked"),
-  );
-  if (changed && drafts.some((d) => isTaxToldFact(d.key))) {
-    const { markNeedsRepair } = await import("@/lib/tax-facts/repair");
-    await markNeedsRepair(userId, { client });
+  } finally {
+    // One update, whether the batch finished or failed half way; a failure here must not hide the
+    // batch's own error, and is counted by the nightly accuracy checks.
+    if (taxTouched) {
+      try {
+        const { markNeedsRepair } = await import("@/lib/tax-facts/repair");
+        await markNeedsRepair(userId, { client });
+      } catch {
+        // The record is copied again at the next write of an older store.
+      }
+    }
   }
   return outcomes;
 }

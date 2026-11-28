@@ -10,6 +10,13 @@ vi.mock("@/lib/db-scoped", async (original) => {
   return { ...real, personTransaction: vi.fn(real.personTransaction) };
 });
 
+// The real reading of the older stores, except where a test changes a store while it reads.
+vi.mock("@/lib/tax-facts/legacy", async (original) => {
+  const real = await original<typeof import("@/lib/tax-facts/legacy")>();
+  return { ...real, readLegacySources: vi.fn(real.readLegacySources) };
+});
+
+import { readLegacySources } from "@/lib/tax-facts/legacy";
 import { saveFamilyDetails } from "@/lib/family-taxes";
 import { familyFrom } from "@/app/taxes/profile/answers";
 import { forgetEverything, forgetFact, listFacts, recordFact } from "@/lib/memory/facts";
@@ -285,6 +292,38 @@ describe.runIf(url)("the household record follows the older stores", () => {
     // The record is marked to be copied again, so the next read has the answer.
     expect(fact(await household(id), "residency.status").value).toBe("citizen_or_green_card");
     expect(await rows(id, "residency.status")).toBe(1);
+  });
+
+  it("never ends with the older of two answers when another save lands while it reads", async () => {
+    const id = await person();
+    await household(id);
+    await correctFact(id, "home_state", "CA", options);
+    // Another request saves NY just after this sync has read the stores (CA) and before it writes.
+    const real = vi.mocked(readLegacySources).getMockImplementation()!;
+    vi.mocked(readLegacySources).mockImplementationOnce(async (...args) => {
+      const read = await real(...args);
+      await client.janePreference.update({
+        where: { userId_kind_key: { userId: id, kind: "fact", key: "profile:home_state" } },
+        data: { value: { value: "NY" } },
+      });
+      return read;
+    });
+    const { syncRecord } = await import("@/lib/tax-facts/through");
+    await syncRecord(id, options);
+    expect(await told(id, "home_state")).toEqual({ value: "NY" });
+    expect(fact(await household(id), "home.state").value).toBe("NY");
+  });
+
+  it("finishes a forget whose record cleanup failed, at the next read", async () => {
+    const id = await person();
+    await correctFact(id, "tax_residency", "other_visa", options);
+    await household(id);
+    vi.mocked(personTransaction).mockRejectedValueOnce(new Error("the database blinked"));
+    // The older store lets go; the record's cleanup fails once: the call still returns.
+    await expect(clearCorrection(id, "tax_residency", options)).resolves.toBe(true);
+    // The record is marked, and copying the older stores again removes every row of it.
+    expect(fact(await household(id), "residency.status").status).toBe("unknown");
+    expect(await rows(id, "residency.status")).toBe(0);
   });
 
   it("copies again when something Jane remembers about taxes changed in the chat", async () => {
