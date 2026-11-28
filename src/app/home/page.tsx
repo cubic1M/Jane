@@ -48,7 +48,7 @@ import {
 } from "@/lib/net-worth-history";
 
 // Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
-// words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
+// words. The hero row (net worth, what's saved), the next 30 days of bills and
 // paydays, and a tile per area with its health, one number and a tiny chart. What needs the
 // person shows only when there is something. The day's suggestions pop up at the bottom of the
 // hub (the chat beside it leaves them out here). The chat is docked beside it (the side chat).
@@ -210,8 +210,8 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions, banks, concierge, read, looked] =
-    await Promise.all([
+  const [top, checklist, autopilot, books, suggestions, banks, concierge, read] = await Promise.all(
+    [
       loadHubTop(user.id),
       firstWeekChecklist(user.id),
       autopilotOf(user.id),
@@ -221,8 +221,8 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       loadBankNotices(user.id),
       conciergeMode(user.id),
       scopedFor(user.id).transactions.aggregate({ _max: { date: true } }),
-      isFirstDetectionComplete(user.id),
-    ]);
+    ],
+  );
   if (!top) redirect("/connect");
   // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
   const oldStatements = staleStatementsEnd(read._max.date, top.hero.asOf);
@@ -247,7 +247,6 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       <HeroRow
         hero={heroView(top.hero)}
         planItems={home.plan.items}
-        looking={!looked}
         chart={
           top.hero.netWorth?.known === false ? (
             <NetWorthUnknown />

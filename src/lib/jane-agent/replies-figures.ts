@@ -33,8 +33,10 @@ export function figureReply(working: Working | null): Reply {
 // No figure named: which one?
 export function whichFigureReply(): Reply {
   return {
-    body: "Which figure? I can show how I got any of these: safe to spend, your spending, your income, net worth, your money health score or your debt-free date.",
-    actions: FIGURE_IDS.slice(0, 4).map((id) => openLink(FIGURE_LABELS[id], `/figures/${id}`)),
+    body: "Which figure? I can show how I got any of these: your spending, your income, net worth, your money health score or your debt-free date.",
+    actions: FIGURE_IDS.filter((id) => id !== "safe_to_spend")
+      .slice(0, 4)
+      .map((id) => openLink(FIGURE_LABELS[id], `/figures/${id}`)),
     refs: {},
   };
 }

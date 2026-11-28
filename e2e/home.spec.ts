@@ -40,20 +40,13 @@ test("new people land on Connect; once data is in, the hub matches the report @c
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
   await waitForImport(page);
-  const headline = await page.getByRole("heading", { level: 1 }).textContent();
 
   await page.goto("/home");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached();
-  // The report's "We found $X a year" and the hub's money found are the same number (the hub
-  // shows whole dollars).
-  const amount = (headline?.match(/\$[\d,.]+/)?.[0] ?? "").replace(/\.\d\d$/, "");
-  await page.locator('[data-hub-tile="saved"] [data-show-value]').click();
-  await expect(page.locator('[data-hub-number="saved"]')).toContainText(amount);
-  // It links to the report that shows it (hub QA: it linked to /plan, a bigger total).
-  await expect(page.getByRole("link", { name: "Money found", exact: true })).toHaveAttribute(
-    "href",
-    "/report",
-  );
+  // No Safe to spend or Money found tile on Home (founder 11-28), and no saved tile before
+  // anything is saved.
+  await expect(page.getByText(/safe to spend|money found/i)).toHaveCount(0);
+  await expect(page.locator('[data-hub-tile="saved"]')).toHaveCount(0);
   // "Your plan" opens beside the tile, with the whole plan a link inside (founder: no
   // teleporting to another page).
   await page.getByRole("button", { name: /^Your plan: \d+ things? ›$/ }).click();

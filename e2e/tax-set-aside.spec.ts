@@ -45,14 +45,7 @@ test("the calculation is shown, says no advice, and takes a correction", async (
   await row("Standard deduction").locator("summary").click();
   await expect(row("Standard deduction")).toContainText("check with a tax professional");
 
-  // Home and the full working quote the same line.
-  await page.goto("/home");
-  await page
-    .getByRole("button", { name: /why this number/i })
-    .first()
-    .click();
-  await expect(page.locator("[data-safe-why]")).toContainText("Tax not yet withheld or paid");
-  await expect(page.locator("[data-safe-why]")).toContainText("none kept apart");
+  // The full working (its figure page) quotes the same line.
   await page.goto("/figures/safe_to_spend");
   await expect(page.getByText("Tax not yet withheld or paid").first()).toBeVisible();
 

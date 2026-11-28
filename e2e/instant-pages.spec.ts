@@ -383,7 +383,7 @@ test.describe("what a person has seen", () => {
       .getByRole("button", { name: "Show value of net worth" });
     const hidden = async () => {
       await expect(netWorth).toContainText("•••••");
-      for (const number of ["net-worth", "safe", "saved"]) {
+      for (const number of ["net-worth", "saved"]) {
         await expect(page.locator(`[data-hub-number="${number}"]`).first()).not.toContainText("$");
       }
     };

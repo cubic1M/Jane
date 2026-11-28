@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser } from "./db";
+import { E2E_DATABASE_URL, addSavedChange, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
 // Home's big figures start hidden (founder 11-04: "start off with all the big ones blinded, since
@@ -19,15 +19,16 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   baseURL,
 }) => {
   userId = await demoPerson(context, page, baseURL);
+  // Something saved, so the Saved tile (and its figure) is there to check.
+  await addSavedChange(userId, { title: "Cancel Hulu", annualCents: 21_600 });
   await page.goto("/home");
 
   const chart = page.locator("[data-net-worth-chart]");
   const netWorth = chart.locator('[data-hub-number="net-worth"]');
-  const safe = page.locator('[data-hub-number="safe"]');
   const saved = page.locator('[data-hub-number="saved"]');
   const dollars = /\$/;
 
-  for (const figure of [netWorth, safe, saved]) {
+  for (const figure of [netWorth, saved]) {
     await expect(figure).toContainText("•••••");
     await expect(figure).not.toContainText(dollars);
   }
@@ -60,7 +61,6 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   await expect(netWorth).toHaveText(/^-?\$[\d,]+$/);
   await expect(chart.locator('[data-net-worth-scale="tick"]').first()).toBeVisible();
   await expect(chart.locator("[data-net-worth-change]")).toContainText(dollars);
-  await expect(safe).toContainText("•••••");
   await expect(saved).toContainText("•••••");
 
   // Hidden again with the same button.
@@ -68,14 +68,14 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   await expect(netWorth).toContainText("•••••");
   await expect(chart.locator("[data-net-worth-scale]")).toHaveCount(0);
 
-  // Asking why this number is asking to see it; hiding it shuts the why.
-  const safeTile = page.locator('[data-hub-tile="safe"]');
-  const why = safeTile.getByRole("button", { name: /why this number/ });
-  await why.click();
-  await expect(safe).toHaveText(/\$[\d,]+/);
-  await safeTile.locator("[data-show-value]").click();
-  await expect(safe).toContainText("•••••");
-  await expect(why).toHaveAttribute("aria-expanded", "false");
+  // Asking where the saving came from is asking to see it; hiding it shuts the list.
+  const savedTile = page.locator('[data-hub-tile="saved"]');
+  const where = savedTile.getByRole("button", { name: /where it came from/ });
+  await where.click();
+  await expect(saved).toHaveText(/\$[\d,]+/);
+  await savedTile.locator("[data-show-value]").click();
+  await expect(saved).toContainText("•••••");
+  await expect(where).toHaveAttribute("aria-expanded", "false");
 
   // Never remembered: the next visit starts hidden.
   await chart.getByRole("button", { name: "Show value of net worth" }).click();

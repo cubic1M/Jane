@@ -22,7 +22,7 @@ describe("Home while it loads", () => {
   // and filled in its own style, or it's a blank page again.
   it("keeps its shape before the stylesheet arrives", () => {
     const blocks = html.match(/<div class="[^"]*animate-pulse[^"]*"[^>]*>/g) ?? [];
-    expect(blocks.length).toBeGreaterThanOrEqual(7);
+    expect(blocks.length).toBeGreaterThanOrEqual(3);
     for (const b of blocks) {
       expect(b).toMatch(/style="[^"]*min-height:\d+px[^"]*background:rgba/);
     }

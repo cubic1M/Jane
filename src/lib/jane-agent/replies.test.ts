@@ -764,9 +764,9 @@ describe("help and unknown", () => {
       intent: { kind: "coming_up", days: 7 },
     });
     expect(unknownReply("purple", TODAY).refs.choices?.map((c) => c.label)).toEqual([
-      "Safe to spend",
       "What's due this week",
       "My subscriptions",
+      "Where my money went",
     ]);
   });
 

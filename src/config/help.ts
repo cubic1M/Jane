@@ -12,7 +12,7 @@ export type HelpGroup = {
 export const HELP_GROUPS: readonly HelpGroup[] = [
   {
     title: "Your money",
-    examples: ["safe to spend", "what's due this week", "how much did I spend on food last month"],
+    examples: ["what's due this week", "how much did I spend on food last month"],
     link: { label: "See today", href: "/home" },
   },
   {

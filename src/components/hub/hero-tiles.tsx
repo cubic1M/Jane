@@ -1,21 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { PlanHero, SafeHero, SavedHero } from "@/lib/hub/view";
+import { useCallback, useRef, useState } from "react";
+import type { PlanHero, SavedHero } from "@/lib/hub/view";
 import type { SavedKind } from "@/lib/membership/service";
 import { formatWholeDollars } from "@/lib/money";
 import { Blinded, ShowValue } from "./blinded";
 import { CalcLines, CalcPopup } from "./calc-popup";
-import { Meter, StackBar } from "./charts";
-import { MarchingPath } from "@/components/marching-path";
+import { Meter } from "./charts";
 
-// The home hub's Safe to spend and Saved tiles (founder: "When you click safe to spend till… it
-// should expand first having a summary on why that number is what it is. On the bottom, that box
-// should suggest smth like what are u aiming to spend and it would link you to the chat on the
-// right with a dotted line … Saved so far should also have an interaction feature where you click
-// on it it expands and shows a summary of where was saved"). Each opens in place, its height
-// animated (.hub-open, none with reduced motion); the page it used to link to is a link inside.
+// The home hub's Saved tile (founder: "Saved so far should also have an interaction feature where
+// you click on it it expands and shows a summary of where was saved"), and "Your plan" beside it.
+// It opens in place, its height animated (.hub-open, none with reduced motion). There is no tile
+// for money not yet saved (founder 11-28: removed); the plan link then stands alone.
 
 const CARD =
   "group relative flex min-w-0 flex-col gap-2 border border-zinc-300 bg-white p-4 hover:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-zinc-100";
@@ -27,12 +24,6 @@ const NUMBER_ROW = "flex flex-wrap items-center gap-x-3";
 
 // Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
 const dollars = formatWholeDollars;
-
-// What goes in the chat's message box: the person types the amount and sends it themselves. The
-// hint shows greyed after the cursor until they type, and is never sent (founder: "there should be
-// after 'I am aiming to spend' with a clue, like '[dollar amount]'").
-const AIM_PROMPT = "I'm aiming to spend $";
-const AIM_HINT = "[amount] on [what]";
 
 const KIND_WORDS: Record<SavedKind, string> = {
   refund: "refund",
@@ -54,180 +45,14 @@ function Opens({ id, open, children }: { id: string; open: boolean; children: Re
   );
 }
 
-export function SafeTile({ safe }: { safe: SafeHero }) {
-  const [open, setOpen] = useState(false);
-  const [shown, setShown] = useState(false);
-  // Asking why this number is asking to see it.
-  const toggleOpen = () => {
-    if (!open) setShown(true);
-    setOpen(!open);
-  };
-  const toggleShown = () => {
-    if (shown) {
-      setOpen(false);
-      setShowHow(false);
-    }
-    setShown(!shown);
-  };
-  const aim = useRef<HTMLButtonElement>(null);
-  const [line, setLine] = useState<{
-    from: { x: number; y: number };
-    to: { x: number; y: number };
-  } | null>(null);
-  const [fading, setFading] = useState(false);
-
-  // The line shows for a few seconds, then fades; it follows nothing once drawn.
-  useEffect(() => {
-    if (!line) return;
-    const fade = setTimeout(() => setFading(true), 4500);
-    const gone = setTimeout(() => setLine(null), 5000);
-    return () => {
-      clearTimeout(fade);
-      clearTimeout(gone);
-    };
-  }, [line]);
-
-  const aimToSpend = () => {
-    // The side chat comes into view with the prompt waiting in its box (it isn't sent), and
-    // says where the box is, for the dotted line from here to it.
-    const onBox = (e: Event) => {
-      const to = (e as CustomEvent<{ x: number; y: number }>).detail;
-      const r = aim.current?.getBoundingClientRect();
-      if (!r) return;
-      // Toward the chat: from the side it's on (beside the page), or the bottom (a phone's sheet).
-      const from =
-        to.x > r.right
-          ? { x: r.right, y: r.top + r.height / 2 }
-          : { x: r.left + r.width / 2, y: r.bottom };
-      setFading(false);
-      setLine({ from, to });
-    };
-    window.addEventListener("jane:box", onBox, { once: true });
-    setTimeout(() => window.removeEventListener("jane:box", onBox), 5000);
-    window.dispatchEvent(
-      new CustomEvent("jane:ask", { detail: { text: AIM_PROMPT, hint: AIM_HINT } }),
-    );
-  };
-  const tile = useRef<HTMLDivElement>(null);
-  const how = useRef<HTMLButtonElement>(null);
-  const [showHow, setShowHow] = useState(false);
-  const closeHow = useCallback(() => setShowHow(false), []);
-
-  return (
-    <div ref={tile} data-hub-tile="safe" className={CARD}>
-      <span className={LABEL}>{safe.label}</span>
-      <div className={NUMBER_ROW}>
-        <span
-          data-hub-number="safe"
-          className={`block text-2xl font-semibold tracking-tight tabular-nums ${safe.short ? "font-bold" : ""}`}
-        >
-          {/* Being short still says so while the amount is hidden. */}
-          {safe.short && "Short "}
-          {shown ? dollars(safe.cents) : <Blinded />}
-        </span>
-        <ShowValue shown={shown} what={safe.label.toLowerCase()} onToggle={toggleShown} />
-      </div>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="safe-why"
-        aria-label={`${safe.label}: why this number`}
-        onClick={toggleOpen}
-        className={TOGGLE}
-      >
-        <span className="block w-full">
-          <StackBar
-            parts={safe.parts}
-            emphasis="safe"
-            label={safe.parts.map((p) => `${p.label} ${Math.round(p.share * 100)}%`).join(", ")}
-          />
-        </span>
-        <span aria-hidden className="flex flex-wrap gap-x-3 text-xs text-zinc-500">
-          {safe.parts.map((p) => (
-            <span key={p.key}>
-              {p.key === "safe" ? "■" : "□"} {p.label}
-            </span>
-          ))}
-        </span>
-        <span className="text-sm font-medium underline underline-offset-4">
-          {open ? "Less" : "Why this number?"}
-        </span>
-      </button>
-      <Opens id="safe-why" open={open}>
-        <div data-safe-why="">
-          <CalcLines lines={safe.why} label="Why this number" />
-        </div>
-        <button
-          ref={how}
-          type="button"
-          aria-expanded={showHow}
-          aria-controls="safe-how"
-          aria-haspopup="dialog"
-          data-safe-how=""
-          onClick={() => setShowHow((o) => !o)}
-          className={`${LINK} text-left`}
-        >
-          How it&apos;s worked out ›
-        </button>
-        <button
-          ref={aim}
-          type="button"
-          data-aim-to-spend=""
-          onClick={aimToSpend}
-          className="self-start text-sm font-medium underline underline-offset-4"
-        >
-          What are you aiming to spend?
-          <span className="sr-only"> Opens the chat with it ready to type.</span>
-        </button>
-      </Opens>
-      {line && <ChatLine from={line.from} to={line.to} fading={fading} />}
-      {showHow && (
-        <CalcPopup
-          id="safe-how"
-          title="How it's worked out"
-          anchor={tile}
-          trigger={how}
-          onClose={closeHow}
-          full={{ href: "/figures/safe_to_spend", label: "The full working" }}
-        >
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">
-            What&apos;s in checking, less what&apos;s already spoken for before payday.
-          </p>
-          <CalcLines lines={safe.steps} label="Safe to spend, worked out" />
-        </CalcPopup>
-      )}
-    </div>
-  );
-}
-
-// Money found with no dollar figure: what's to look at, as the report says it, or "Nothing yet"
-// when there's nothing at all, never "$0/yr" (night QA 10-30). Null when there's a figure. Before
-// the first scan has looked (`looking`), nothing found isn't "Nothing yet" (beta walk 11-12, from
-// the debugger: Home said so right after linking, beside tiles full of things to look at).
-export function foundWords(
-  saved: Pick<SavedHero, "label" | "cents">,
-  planItems: number,
-  looking = false,
-): string | null {
-  if (saved.label !== "Money found" || saved.cents !== 0) return null;
-  if (planItems > 0) return `${planItems} to look at`;
-  return looking ? "Still looking" : "Nothing yet";
-}
-
 export function SavedTile({
   saved,
   planItems,
   plan = null,
-  wide = false,
-  looking = false,
 }: {
   saved: SavedHero;
   planItems: number;
-  // The first scan hasn't looked yet.
-  looking?: boolean;
   plan?: PlanHero | null;
-  // The whole row on a wide screen, when there's no Safe to spend beside it.
-  wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(false);
@@ -235,127 +60,16 @@ export function SavedTile({
   const planButton = useRef<HTMLButtonElement>(null);
   const [showPlan, setShowPlan] = useState(false);
   const closePlan = useCallback(() => setShowPlan(false), []);
+  // Only money saved has a tile; before that there is nothing to show but the plan.
   const savedSoFar = saved.label === "Saved so far";
-  const words = foundWords(saved, planItems, looking);
-  const number =
-    words !== null ? (
-      words
-    ) : !shown ? (
-      <Blinded />
-    ) : (
-      <>
-        {dollars(saved.cents)}
-        {saved.perYear && <span className="text-base font-normal text-zinc-500">/yr</span>}
-      </>
-    );
-  // Words aren't a figure: nothing to hide.
-  const showValue = words === null && (
-    <ShowValue
-      shown={shown}
-      what={saved.label.toLowerCase()}
-      onToggle={() => {
-        if (shown) {
-          setOpen(false);
-          setShowPlan(false);
-        }
-        setShown(!shown);
-      }}
-    />
-  );
+  if (!savedSoFar && planItems === 0) return null;
   // Asking where it came from is asking to see it.
   const toggleOpen = () => {
     if (!open) setShown(true);
     setOpen(!open);
   };
-  return (
-    <div ref={tile} data-hub-tile="saved" className={wide ? `${CARD} sm:col-span-2` : CARD}>
-      {savedSoFar ? (
-        <>
-          <span className={LABEL}>{saved.label}</span>
-          <div className={NUMBER_ROW}>
-            <span
-              data-hub-number="saved"
-              className="block text-2xl font-semibold tracking-tight tabular-nums"
-            >
-              {number}
-            </span>
-            {showValue}
-          </div>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls="saved-where"
-            aria-label={`${saved.label}: where it came from`}
-            onClick={toggleOpen}
-            className={TOGGLE}
-          >
-            {/* Confirmed money only (the verified savings record); what's expected is apart. */}
-            <span data-hub-confirmed="" className="text-xs text-zinc-500">
-              Confirmed in your transactions
-            </span>
-            {saved.expectedCents > 0 && (
-              <span
-                data-hub-expected=""
-                className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                Expected, not confirmed yet:{" "}
-                {shown ? `${dollars(saved.expectedCents)}/yr` : <Blinded />}
-              </span>
-            )}
-            <span className="block w-full">
-              <Meter
-                share={saved.share}
-                label={`${Math.round(saved.share * 100)}% of what Jane found`}
-              />
-            </span>
-            <span className="text-sm font-medium underline underline-offset-4">
-              {open ? "Less" : "Where it came from"}
-            </span>
-          </button>
-        </>
-      ) : (
-        <>
-          {/* Nothing saved yet: what Jane found is the report's total, one tap away. */}
-          <Link
-            prefetch={false}
-            href="/report"
-            className="text-sm font-medium text-zinc-600 after:absolute after:inset-0 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            {saved.label}
-          </Link>
-          <div className={NUMBER_ROW}>
-            <p
-              data-hub-number="saved"
-              className="text-2xl font-semibold tracking-tight tabular-nums"
-            >
-              {number}
-            </p>
-            {showValue}
-          </div>
-        </>
-      )}
-      {savedSoFar && (
-        <Opens id="saved-where" open={open}>
-          <ul data-saved-where="" className="flex flex-col gap-1 text-sm tabular-nums">
-            {saved.items.map((item, k) => (
-              <li key={k} className="flex justify-between gap-3">
-                <span className="min-w-0 [overflow-wrap:anywhere]">
-                  {item.title}
-                  <span className="text-zinc-500"> · {KIND_WORDS[item.kind]}</span>
-                </span>
-                <span className="shrink-0 font-semibold">
-                  {dollars(item.cents)}
-                  {item.yearly && <span className="font-normal text-zinc-500">/yr</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {saved.more > 0 && <p className="text-xs text-zinc-500">and {saved.more} more</p>}
-          <Link prefetch={false} href="/saved" className={LINK}>
-            See every saving ›
-          </Link>
-        </Opens>
-      )}
+  const planUi = (
+    <>
       {planItems > 0 && (
         <button
           ref={planButton}
@@ -409,32 +123,90 @@ export function SavedTile({
           </p>
         </CalcPopup>
       )}
-    </div>
+    </>
   );
-}
-
-// The marching dotted line from the tile to the chat's message box, over the page; it fades out
-// after a few seconds (no march with reduced motion).
-function ChatLine({
-  from,
-  to,
-  fading,
-}: {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  fading: boolean;
-}) {
-  const sideways = Math.abs(to.x - from.x) > Math.abs(to.y - from.y);
-  const d = sideways
-    ? `M${from.x},${from.y} C${(from.x + to.x) / 2},${from.y} ${(from.x + to.x) / 2},${to.y} ${to.x},${to.y}`
-    : `M${from.x},${from.y} C${from.x},${(from.y + to.y) / 2} ${to.x},${(from.y + to.y) / 2} ${to.x},${to.y}`;
+  // No savings yet: just the plan's link, in the page's own flow (no card, nothing to fill).
+  if (!savedSoFar) {
+    return (
+      <div ref={tile} data-hub-tile="plan" className="relative flex flex-col">
+        {planUi}
+      </div>
+    );
+  }
   return (
-    <svg
-      aria-hidden="true"
-      data-chat-line=""
-      className={`pointer-events-none fixed inset-0 z-[60] h-full w-full overflow-visible transition-opacity duration-500 motion-reduce:transition-none ${fading ? "opacity-0" : "opacity-100"}`}
-    >
-      <MarchingPath d={d} />
-    </svg>
+    <div ref={tile} data-hub-tile="saved" className={CARD}>
+      <span className={LABEL}>{saved.label}</span>
+      <div className={NUMBER_ROW}>
+        <span
+          data-hub-number="saved"
+          className="block text-2xl font-semibold tracking-tight tabular-nums"
+        >
+          {shown ? dollars(saved.cents) : <Blinded />}
+        </span>
+        <ShowValue
+          shown={shown}
+          what={saved.label.toLowerCase()}
+          onToggle={() => {
+            if (shown) {
+              setOpen(false);
+              setShowPlan(false);
+            }
+            setShown(!shown);
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="saved-where"
+        aria-label={`${saved.label}: where it came from`}
+        onClick={toggleOpen}
+        className={TOGGLE}
+      >
+        {/* Confirmed money only (the verified savings record); what's expected is apart. */}
+        <span data-hub-confirmed="" className="text-xs text-zinc-500">
+          Confirmed in your transactions
+        </span>
+        {saved.expectedCents > 0 && (
+          <span
+            data-hub-expected=""
+            className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            Expected, not confirmed yet:{" "}
+            {shown ? `${dollars(saved.expectedCents)}/yr` : <Blinded />}
+          </span>
+        )}
+        <span className="block w-full">
+          <Meter
+            share={saved.share}
+            label={`${Math.round(saved.share * 100)}% of what Jane found`}
+          />
+        </span>
+        <span className="text-sm font-medium underline underline-offset-4">
+          {open ? "Less" : "Where it came from"}
+        </span>
+      </button>
+      <Opens id="saved-where" open={open}>
+        <ul data-saved-where="" className="flex flex-col gap-1 text-sm tabular-nums">
+          {saved.items.map((item, k) => (
+            <li key={k} className="flex justify-between gap-3">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {item.title}
+                <span className="text-zinc-500"> · {KIND_WORDS[item.kind]}</span>
+              </span>
+              <span className="shrink-0 font-semibold">
+                {dollars(item.cents)}
+                {item.yearly && <span className="font-normal text-zinc-500">/yr</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {saved.more > 0 && <p className="text-xs text-zinc-500">and {saved.more} more</p>}
+        <Link prefetch={false} href="/saved" className={LINK}>
+          See every saving ›
+        </Link>
+      </Opens>
+      {planUi}
+    </div>
   );
 }

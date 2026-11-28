@@ -32,16 +32,6 @@ const worth = (f: { annualSavingsCents: number | null; once?: true }) =>
   f.once && f.annualSavingsCents !== null
     ? ` (about ${formatCents(f.annualSavingsCents)} back)`
     : yearly(f.annualSavingsCents);
-// "Still to look at": the yearly part a year, the part that comes back once as that.
-function stillToLook(p: DigestPayload): string | false {
-  if (p.moneyFoundCents <= 0) return false;
-  const once = p.moneyFoundOnceCents ?? 0;
-  const year = p.moneyFoundCents - once;
-  if (once <= 0) return `Still to look at: ${formatCents(p.moneyFoundCents)} a year`;
-  if (year <= 0) return `Still to look at: ${formatCents(once)} to get back`;
-  return `Still to look at: ${formatCents(year)} a year and ${formatCents(once)} to get back`;
-}
-
 // How sure, after each line: "(84% sure)". A finding's is the report's own (findingSure); older
 // payloads have only its level, the band its percentage fell in (SUGGESTION_CONFIDENCE_FROM), so
 // they say that band.
@@ -236,13 +226,6 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
       `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
     (p.savedToDateOnceCents ?? 0) > 0 &&
       `Money that came back once: ${formatCents(p.savedToDateOnceCents ?? 0)}`,
-    // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
-    // 10-30: an insurance reshop on its own).
-    stillToLook(p),
-    // Listed below at their yearly cost, but not in that total (debugger 11-02).
-    stillToLook(p) !== false &&
-      p.newFindings.some((f) => f.onlyOnceApproved) &&
-      "Subscriptions count toward the total once you decide to cancel them.",
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
   const close = { label: "See your monthly close", url: links.close };

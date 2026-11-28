@@ -81,7 +81,6 @@ const EXAMPLES = [
   "can I afford $900 for a trip in March",
   "how much did I spend on food last month",
   "what's due this week",
-  "safe to spend",
   "cancel Hulu, lower my phone bill, or get my refund from Target",
   "what did you do",
 ];
@@ -97,11 +96,6 @@ export function helpReply(): Reply {
 // Spec step 89: no dead ends. What Jane can answer right now, the closest to what was asked
 // first (by its words), as buttons that answer it.
 const NEARBY: readonly { label: string; words: RegExp; intent: (asOf: string) => Intent }[] = [
-  {
-    label: "Safe to spend",
-    words: /\b(?:spend|money|left|afford|cash|broke|enough)\b/,
-    intent: () => ({ kind: "safe_to_spend" }),
-  },
   {
     label: "What's due this week",
     words: /\b(?:bills?|due|owe|payments?|rent|upcoming|soon)\b/,
