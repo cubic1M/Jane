@@ -37,6 +37,20 @@ export const SPENDING_DETECTOR_RATES = {
   ] as readonly string[],
   trialMaxCents: 200,
   trialConvertedMinCents: 500,
+  // Paid charges after the trial before it is a trial that turned into billing: two charges
+  // never make a cadence, and the Subscriptions page must list the merchant.
+  trialMinPaidCharges: 2,
+  // Everyday shops (Plaid personal finance categories, PRIMARY or DETAILED names): a coffee, a
+  // meal, groceries, gas, a fare, a parking meter, a corner store or a pharmacy counter. Charges
+  // there become a trial or subscription card only when the Subscriptions page lists them as a
+  // subscription (a plan's own words or merchant), never on an amount pattern alone.
+  everydayPrimaries: ["FOOD_AND_DRINK", "TRANSPORTATION"] as readonly string[],
+  everydayDetailed: [
+    "GENERAL_MERCHANDISE_CONVENIENCE_STORES",
+    "GENERAL_MERCHANDISE_DISCOUNT_STORES",
+    "GENERAL_MERCHANDISE_SUPERSTORES",
+    "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+  ] as readonly string[],
   // Low balance: checking and savings hold less than this share of a month's regular bills.
   lowBalanceShare: 1,
   // Under this share of a month's bills in cash is urgent, and counts for this share of what is

@@ -13,6 +13,7 @@ import { cheaperPhonePlan } from "./cover-facts";
 import type { DetectionInput } from "@/detection/types";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
+import { recurringRowFor } from "./recurring-source";
 import { type Confidence, type Detector, suggestion } from "./contract";
 import {
   evidence,
@@ -86,6 +87,8 @@ const duplicateSubscription: Detector = {
     const dupCats: readonly string[] = S.duplicateCategories;
     const byCat = new Map<string, Series[]>();
     for (const s of regular(data)) {
+      // Only what the Subscriptions page lists as a subscription (founder 11-28).
+      if (!recurringRowFor(data, s.txs[s.txs.length - 1]!, true)) continue;
       if (s.pfc && dupCats.includes(s.pfc)) byCat.set(s.pfc, [...(byCat.get(s.pfc) ?? []), s]);
     }
     const groups = [...byCat.values()].filter((g) => g.length >= 2);
@@ -144,6 +147,8 @@ const priceIncrease: Detector = {
   detect({ profile, data }) {
     const rises = regular(data)
       .filter((s) => s.txs.length >= S.priceRiseMinCharges)
+      // Only a charge the Subscriptions and regular bills page lists (founder 11-28).
+      .filter((s) => recurringRowFor(data, s.txs[s.txs.length - 1]!, false) !== null)
       .filter((s) => !s.txs.some((t) => S.priceRiseNot.includes(t.pfc ?? "")))
       .flatMap((s) => {
         const earlier = s.txs.slice(0, -1).map((t) => t.amountCents);
@@ -370,36 +375,39 @@ const trialConversion: Detector = {
       const after = trial
         ? sorted.filter((t) => t.date > trial.date && t.amountCents >= S.trialConvertedMinCents)
         : [];
-      if (!trial || after.length === 0) return [];
-      // How often it charges, from the paid charges' spacing; one paid charge says nothing
-      // about that, so it counts once (debugger 10-30: one $120 MasterClass charge read as
-      // "$1,440 a year", as if monthly).
-      const span =
-        (Date.parse(after[after.length - 1].date) - Date.parse(after[0].date)) / 86_400_000;
-      const perYear =
-        after.length < 2
-          ? 1
-          : Math.min(12, Math.max(1, Math.round((365 * (after.length - 1)) / span)));
+      if (!trial || after.length < S.trialMinPaidCharges) return [];
+      // Only a charge the Subscriptions and regular bills page lists (an everyday shop's only as a
+      // subscription): it recurs at a cadence the
+      // recurring rule accepted (founder 11-28: two coffees a year apart were "a trial now
+      // billing you"). The yearly figure is that page's own, at the charge's own cadence.
+      const lastPaid = after[after.length - 1]!;
+      const primary = lastPaid.pfc ? categoryOf(lastPaid.pfc)?.primary : null;
+      const everyday =
+        (primary && S.everydayPrimaries.includes(primary)) ||
+        S.everydayDetailed.includes(lastPaid.pfc ?? "");
+      const row = recurringRowFor(data, lastPaid, everyday);
+      if (!row) return [];
       return [
         {
           description,
-          price: after[after.length - 1].amountCents,
+          price: row.lastAmountCents,
           n: after.length,
-          perYear,
-          paced: after.length >= 2,
+          yearlyCents: row.annualCostCents,
         },
       ];
     });
     if (converted.length === 0) return null;
     // The report's figure when it has one: the charge to ask back, once (gate B: $13.99 on the
     // report, "$168 a year" here).
-    const reported = reportsWorth(data, "trial_conversion");
-    const worth = reported ?? converted.reduce((s, c) => s + c.price * c.perYear, 0);
-    const yearly = reported === null && converted.every((c) => c.paced);
+    // Not the report's figure: its trial finding is a once-charge for any merchant with a small
+    // first charge, so it can include a merchant this card does not name (CodeRabbit, founder
+    // 11-28). The figure is the named charges' own, at their cadence.
+    const worth = converted.reduce((s, c) => s + c.yearlyCents, 0);
+    const yearly = true;
     const total = `${formatCents(worth)}${yearly ? " a year" : ""}`;
     return suggestion("subscriptions", "trial_conversion", {
-      title: "A free trial turned into a paid subscription: keep it or cancel it",
-      headline: headlineOf("Cancel a trial now billing you", worth, "saves", !yearly),
+      title: "A free trial turned into a paid subscription: check it is one you want",
+      headline: headlineOf("Check a trial now billing you", worth, "saves", !yearly),
       short: clip(
         `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${total}.`,
       ),
@@ -414,14 +422,14 @@ const trialConversion: Detector = {
       urgency: "soon",
       // The total only when there's more than one: one conversion's total is its price, already
       // said (debug 3, 11-19: "now costs $120.00 (…): $120.00.").
-      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}${c.paced ? "" : " (charged once since, so how often isn't known yet)"}`).join("; ")}${converted.length > 1 ? `: ${total} in all` : ""}.`,
+      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}${converted.length > 1 ? `: ${total} in all` : ""}.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
       watch: {
         kind: "charge_stops",
         payees: converted.map((c) => ({
           description: c.description,
           amountCents: c.price,
-          perYear: c.perYear,
+          perYear: Math.max(1, Math.round(c.yearlyCents / c.price)),
         })),
       },
     });

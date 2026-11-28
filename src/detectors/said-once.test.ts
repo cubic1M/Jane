@@ -30,6 +30,14 @@ const trial = (data: ProfileInput): ProfileInput => ({
       pfc: "GENERAL_SERVICES_EDUCATION",
       accountId: "x",
     },
+    // Billed again each month since: a trial turned billing needs a cadence (founder 11-28).
+    ...["2026-08-08", "2026-09-08", "2026-10-08"].map((date) => ({
+      date,
+      amountCents: 12_000,
+      description: "SKILLHOUSE",
+      pfc: "GENERAL_SERVICES_EDUCATION",
+      accountId: "x",
+    })),
   ],
 });
 

@@ -1,6 +1,7 @@
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/input";
 import { nextPayday } from "@/detection/paydays";
+import type { RecurringRow } from "@/profile/build";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
@@ -55,8 +56,22 @@ export async function loadRecurring(
 export async function subscriptionYear(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
-): Promise<{ yearlyCents: number; count: number }> {
+): Promise<{
+  yearlyCents: number;
+  count: number;
+  recurring: readonly RecurringRow[];
+}> {
   const { charges } = await loadRecurring(userId, { client, now });
   const subs = charges.filter((c) => c.subscription);
-  return { yearlyCents: subs.reduce((a, c) => a + c.annualCostCents, 0), count: subs.length };
+  return {
+    yearlyCents: subs.reduce((a, c) => a + c.annualCostCents, 0),
+    count: subs.length,
+    // Every row of the page, so a card names only what the page lists.
+    recurring: charges.map((c) => ({
+      merchantKey: c.merchantKey,
+      subscription: c.subscription,
+      lastAmountCents: c.lastAmountCents,
+      annualCostCents: c.annualCostCents,
+    })),
+  };
 }

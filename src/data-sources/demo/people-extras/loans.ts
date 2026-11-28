@@ -32,7 +32,7 @@ const O = (
 // loan from Dan and Lena. See the detectors in src/detectors/debt.ts.
 export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Maya: Audible went up in September ($14.95 to $16.45), and a Skillshare trial ($0.99)
-  // turned into $13.99 charges.
+  // turned into $13.99 charges, every month since (three, so the subscriptions page lists it).
   renter: {
     monthly: [
       R(
@@ -72,7 +72,7 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
         "SKILLSHARE",
         "GENERAL_SERVICES_EDUCATION",
         0.99,
-        [-50],
+        [-103],
         "Skillshare",
       ),
       O(
@@ -81,7 +81,7 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
         "SKILLSHARE",
         "GENERAL_SERVICES_EDUCATION",
         13.99,
-        [-43, -13],
+        [-73, -43, -13],
         "Skillshare",
       ),
     ],

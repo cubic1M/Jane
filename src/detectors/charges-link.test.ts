@@ -34,7 +34,7 @@ describe("the links to a charge", () => {
   });
 
   it("open the charge whose price went up", () => {
-    const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+    const months = ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
     const amounts = [999, 999, 999, 999, 999, 1299];
     const s = fire(
       ...months.map((m, i) =>
