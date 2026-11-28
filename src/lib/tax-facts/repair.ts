@@ -33,11 +33,20 @@ type Options = { client?: PrismaClient; now?: Date };
 // that was copied before is brought in line, and the first copy only adds.
 type RepairOptions = Options & { sync?: boolean };
 
+// A row of the record as the audit check reads it.
+type StoredRow = {
+  key: string;
+  memberKey: string;
+  taxYear: number;
+  origin: string;
+  value: unknown;
+};
+
 // The sensitive facts a repair would write that the record does not hold yet, by key and origin
 // (never a value): audited before the write, as every sensitive write is.
 export function sensitiveChanges(
   copy: ReturnType<typeof legacyRows>,
-  stored: readonly { key: string; origin: string; value: unknown }[],
+  stored: readonly StoredRow[],
   userId: string,
   day: string,
 ): { key: TaxFactKey; origin: string }[] {
@@ -54,10 +63,12 @@ export function sensitiveChanges(
     const same = stored.some(
       (s) =>
         s.key === data.key &&
+        s.memberKey === data.memberKey &&
+        s.taxYear === data.taxYear &&
         s.origin === data.origin &&
         JSON.stringify(s.value) === JSON.stringify(data.value),
     );
-    const mark = `${input.key}|${input.origin}`;
+    const mark = `${data.taxYear}|${data.memberKey}|${input.key}|${input.origin}`;
     if (!same && !seen.has(mark)) {
       seen.add(mark);
       out.push({ key: input.key, origin: input.origin });
@@ -70,7 +81,7 @@ export async function repairRecord(
   userId: string,
   taxYear: number,
   sources: LegacySources,
-  stored: readonly { key: string; origin: string; value: unknown }[],
+  stored: readonly StoredRow[],
   { client = defaultClient, now = new Date(), sync = false }: RepairOptions = {},
 ): Promise<void> {
   // Written to the audit log first: an entry for a copy that then fails is a harmless extra, a copy

@@ -292,6 +292,23 @@ describe.runIf(url)("the household fact record against a real database", () => {
     ]);
   });
 
+  it("audits each member's sensitive fact, even when another member has the same value", async () => {
+    const id = await person();
+    const kid = (age: number) => ({ ageAtYearEnd: age, hasSsn: true, monthsLivedWithYou: 12 });
+    await client.taxProfile.create({
+      data: {
+        userId: id,
+        childrenUnder17: 2,
+        answered: ["dependants"],
+        familyChildren: [kid(9), kid(4)],
+      },
+    });
+    await loadTaxHousehold(id, YEAR, { client, now: NOW });
+    const entries = vi.mocked(logAudit).mock.calls.map((c) => c[3]);
+    expect(entries.filter((m) => m?.key === "member.ssn_valid_for_work")).toHaveLength(2);
+    expect(JSON.stringify(entries)).not.toContain('"yes"');
+  });
+
   it("dates a fact on the person's own day, either side of UTC midnight", async () => {
     const id = await person({ timezone: "America/Los_Angeles" });
     // 3pm and 7pm on Nov 27 in Los Angeles: the second is already Nov 28 in UTC.
