@@ -4,6 +4,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { loadTransactionsBetween } from "@/detection/input";
 import { dayLabel } from "@/lib/day-label";
 import { db as defaultClient } from "@/lib/db";
+import { cachedCopy } from "@/lib/read-cache";
 import { todayOf } from "@/lib/today";
 import { formatCents } from "@/lib/money";
 import { priceRises, type PriceRise } from "@/planning/price-rises";
@@ -19,11 +20,23 @@ type Options = { client?: PrismaClient; now?: Date };
 // A year of charges and a little more, so a plan paid once a year is still in it.
 const LOOKBACK_DAYS = 400;
 
+// Inside a read cache (a chat turn, a snapshot build, the dock's route) the year's charges are read
+// once for all of them: a cold chat turn read them six times, 400 days of every transaction each time.
 export async function loadPriceRises(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<PriceRise[]> {
   const today = await todayOf(userId, { client, now });
+  return cachedCopy(`priceRises:${userId}:${today}`, client, () =>
+    loadPriceRisesOn(userId, client, today),
+  );
+}
+
+async function loadPriceRisesOn(
+  userId: string,
+  client: PrismaClient,
+  today: string,
+): Promise<PriceRise[]> {
   // Read as the rest of the app reads them, under the names it gives (not "Amc Online -- Ks
   // 12/06"), so the chat's search finds what a card names.
   const rows = await loadTransactionsBetween(userId, {
