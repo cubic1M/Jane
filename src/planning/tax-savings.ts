@@ -8,7 +8,6 @@ import {
 } from "@/config/tax-rates";
 import { federalParams, ownLawYear } from "@/config/tax-params";
 import { formatWholeDollars } from "@/lib/money";
-import { federalParams } from "@/config/tax-params";
 import {
   estimateTaxes,
   nonItemizerGift,
