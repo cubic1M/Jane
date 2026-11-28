@@ -318,6 +318,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxProfiles: scoped.taxProfile,
     taxTags: scoped.taxTag,
     taxCorrections: scoped.taxCorrection,
+    // The household fact record (src/lib/tax-facts/).
+    taxFacts: scoped.taxFact,
+    taxHouseholdMembers: scoped.taxHouseholdMember,
     taxForms: scoped.taxForm,
     taxDocuments: scoped.taxDocument,
     priorReturns: scoped.priorReturn,

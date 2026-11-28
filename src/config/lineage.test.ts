@@ -35,4 +35,16 @@ describe("lineage of every user-owned table", () => {
       "add it to CLEARED_WITHOUT_DATA, or to KEPT_WITHOUT_DATA with why",
     ).toEqual([]);
   });
+
+  it("never clears what the person typed or chose when their data is gone", () => {
+    // "Start over" clears what was worked out from bank data; their own tax corrections, the
+    // household they named and the answers they gave stay (CodeRabbit, tax step T9: a tax
+    // correction was cleared outright).
+    expect(
+      Object.keys(CLEARED_WITHOUT_DATA).filter((name) => {
+        const lineage = LINEAGE[name];
+        return lineage === "entered" || lineage === "record";
+      }),
+    ).toEqual([]);
+  });
 });
