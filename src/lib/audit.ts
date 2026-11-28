@@ -234,6 +234,8 @@ export type AuditEvent =
   | "proposal_answered"
   // A button on one of Jane's chat messages (spec step 81): which one, never the text.
   | "chat_action_taken"
+  // "Clear chat": the typed messages and answers deleted for good, counts only.
+  | "chat_cleared"
   // What Jane remembers (spec step 91): saved on the person's tap, deleted in Settings.
   | "preference_saved"
   | "preference_deleted"

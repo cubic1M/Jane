@@ -467,7 +467,23 @@ async function sendToJaneWork(
   if (!reply.refs.topic) {
     reply.refs = { ...reply.refs, topic: { kind: "asked", target: text.slice(0, 80) } };
   }
-  const replied = await storeReply(userId, reply, { client, at: answeredAt });
+  // The person cleared the chat while this was being answered ("Clear chat", ./clear-chat.ts): the
+  // question is gone, so the answer is shown once but not stored, or it would sit alone in a chat
+  // that was just emptied.
+  const stillAsked = (await db.janeMessages.count({ where: { id: sent.id } })) > 0;
+  const replied: ChatMessage = stillAsked
+    ? await storeReply(userId, reply, { client, at: answeredAt })
+    : {
+        id: `cleared:${randomUUID()}`,
+        kind: "reply",
+        body: reply.body,
+        refs: reply.refs,
+        actions: reply.actions,
+        status: "open",
+        answeredWith: null,
+        answeredAt: null,
+        createdAt: answeredAt,
+      };
   // Gate E's category check, reporting only: what it would have flagged goes to the log and a
   // count, and the reply stays as it is (src/config/claim-check.ts).
   await noteClaims(userId, reply.body, source, { client, now });
