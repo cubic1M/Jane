@@ -49,7 +49,9 @@ import {
   scaleAt,
   type ChartScale,
 } from "./net-worth-geometry";
-import { dayLabel } from "@/lib/day-label";
+import { dayLabel, monthLabel } from "@/lib/day-label";
+import { CHART_VIEW_STORAGE_KEY } from "@/config/net-worth-changes";
+import { barLabel, bucketChanges, changeScale, type Bar } from "./net-worth-changes";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
 // worth from their first day with Jane to today, as one clean line. A big number with the
@@ -97,6 +99,37 @@ const subscribeReduced = (onChange: () => void) => {
 };
 const reducedNow = () =>
   typeof window.matchMedia === "function" && window.matchMedia(REDUCED).matches;
+
+// The chosen view, remembered in this browser (CHART_VIEW_STORAGE_KEY). With no storage (a private
+// window) the choice lasts until the page is left.
+type ChartView = "line" | "changes";
+let chosenView: ChartView | null = null;
+const viewListeners = new Set<() => void>();
+const subscribeView = (onChange: () => void) => {
+  viewListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    viewListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+};
+function viewNow(): ChartView {
+  if (chosenView) return chosenView;
+  try {
+    return window.localStorage.getItem(CHART_VIEW_STORAGE_KEY) === "changes" ? "changes" : "line";
+  } catch {
+    return "line";
+  }
+}
+function chooseView(view: ChartView) {
+  chosenView = view;
+  try {
+    window.localStorage.setItem(CHART_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Not remembered: it still switches.
+  }
+  viewListeners.forEach((notify) => notify());
+}
 
 function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: number } {
   const [shown, setShown] = useState(target);
@@ -239,9 +272,19 @@ export function NetWorthChart({
   // figure on a day). The line's shape and the percent stay: they don't say how much.
   const [figureShown, setFigureShown] = useState(false);
   const [range, setRange] = useState<RangeKey>("ALL");
+  // The line of net worth, or one bar per period of how much it moved (the person's choice, kept
+  // on this device; the server and the first paint show the line).
+  const mode = useSyncExternalStore(subscribeView, viewNow, () => "line" as const);
   // Zoomed by hand (the wheel, a pinch, the brush): the days in view; null follows the range.
   const [view, setView] = useState<ViewWindow | null>(null);
-  const [scrub, setScrub] = useState<number | null>(null);
+  // The day or bar under the pointer or the keys; it belongs to the view it was made in, so a view
+  // changed from outside (another window) starts with none.
+  const [picked, setPicked] = useState<{ at: number | null; mode: ChartView }>({
+    at: null,
+    mode: "line",
+  });
+  const scrub = picked.mode === mode ? picked.at : null;
+  const setScrub = (at: number | null) => setPicked({ at, mode });
   const [expanded, setExpanded] = useState(false);
   const clipId = useId();
   // What's open: a day (collapsed, a significant day's dot) or one of every movement's dots
@@ -398,7 +441,46 @@ export function NetWorthChart({
   // The axis labels (the target fit's, so the line does not shift as the scale eases), and the
   // room at the left they need while the figures are shown.
   const ticks = niceTicks(fit.lo, fit.hi);
-  const gutter = figureShown ? gutterFor(ticks.map(dollars)) : 0;
+  // Changes view: a bar for each day, week or month on screen, on its own scale (refit to the bars
+  // in view), each in a slot of the width after the axis labels.
+  const changes = mode === "changes";
+  const bars: Bar[] = changes ? bucketChanges(points, win.from, win.to) : [];
+  // The power of the bar scale follows the bars on screen (linear unless one huge bar would flatten
+  // the rest) and eases to each new fit; the labels are the target fit's.
+  const barFit = changes ? changeScale(bars, H) : null;
+  const barEase = useEasedRange({ lo: barFit?.exponent ?? 1, hi: barFit?.exponent ?? 1 });
+  const barScale = changes ? changeScale(bars, H, barEase.lo) : null;
+  const barTicks = barFit?.ticks ?? [];
+  // The bars keep the left edge for "$0" even when the figures are hidden.
+  const gutter = changes
+    ? gutterFor(["$0", ...(figureShown ? barTicks.map(dollars) : [])])
+    : figureShown
+      ? gutterFor(ticks.map(dollars))
+      : 0;
+  const slot = bars.length ? (width - gutter) / bars.length : 0;
+  // The bar a day (an index among those shown) belongs to.
+  const barAt = (day: number) =>
+    Math.max(
+      0,
+      bars.findIndex((b) => b.endIndex - win.from >= day),
+    );
+  const activeBar = changes && scrub !== null ? (bars[barAt(at)] ?? null) : null;
+  // Hovered or scrubbed: what that day (or bar) did to net worth, besides where it stands.
+  const dayIndex0 = win.from + at;
+  const stepCents =
+    activeBar?.change ??
+    (dayIndex0 > 0 && points[dayIndex0]
+      ? points[dayIndex0].cents - points[dayIndex0 - 1].cents
+      : 0);
+  const stepWords = activeBar
+    ? barLabel(
+        activeBar,
+        (d) => dayLabel(d, { year: true }),
+        (m) => monthLabel(m, { long: true }),
+      )
+    : point
+      ? dayLabel(point.date, { year: true })
+      : "";
   // A pointer's place across the days (0 to 1), left of the gutter being the first day.
   const shareOf = (clientX: number, r: { left: number; width: number }) =>
     Math.min(1, Math.max(0, (clientX - r.left - gutter) / Math.max(1, r.width - gutter)));
@@ -472,7 +554,7 @@ export function NetWorthChart({
   const dayIndex = new Map(shown.map((p, i) => [p.date, i]));
   // Until every movement is in (or if it couldn't load), the biggest days stand in.
   const marks =
-    !expanded && !layout
+    !expanded && !layout && !changes
       ? daysToMark(events, shown[0]?.date ?? "").flatMap((g) => {
           const i = dayIndex.get(g.date);
           return i === undefined ? [] : [{ group: g, i }];
@@ -514,11 +596,40 @@ export function NetWorthChart({
       })
     : null;
 
-  const indexAt = (clientX: number) => {
+  // The day under a pointer, by the days shown (what a drag-selection zooms to).
+  const dayAt = (clientX: number) => {
     const rect = box.current?.getBoundingClientRect();
     if (!rect || shown.length < 2) return shown.length - 1;
     const share = shareOf(clientX, rect);
     return Math.round(share * (shown.length - 1));
+  };
+  // The day a drag-selection edge means: by the days in the line view; in the Changes view the
+  // first day of the bar under the left edge, the last day of the bar under the right (bars of
+  // months differ in length, so the day under the pointer is not the bar's).
+  const edgeDay = (clientX: number, edge: "start" | "end") => {
+    const rect = box.current?.getBoundingClientRect();
+    if (!changes || !rect || bars.length === 0) return dayAt(clientX);
+    const bar = bars[Math.min(bars.length - 1, Math.floor(shareOf(clientX, rect) * bars.length))];
+    return edge === "end"
+      ? bar.endIndex - win.from
+      : Math.max(
+          0,
+          shown.findIndex((p) => p.date === bar.from),
+        );
+  };
+  // What a pointer scrubs to: the day under it, or in the Changes view the end of the bar under it.
+  const indexAt = (clientX: number) => {
+    const rect = box.current?.getBoundingClientRect();
+    if (!changes || !rect || bars.length === 0) return dayAt(clientX);
+    const share = shareOf(clientX, rect);
+    const bar = bars[Math.min(bars.length - 1, Math.floor(share * bars.length))];
+    return bar.endIndex - win.from;
+  };
+  // One bar or day left or right of where the arrow keys are.
+  const stepFrom = (from: number, by: number) => {
+    if (!changes || bars.length === 0) return from + by;
+    const to = Math.min(bars.length, Math.max(0, barAt(from) + by));
+    return to >= bars.length ? shown.length : bars[to].endIndex - win.from;
   };
   // Zooming: by hand from here on (the chips stop showing as chosen), boxes shut.
   const zoomTo = (next: ViewWindow) => {
@@ -634,26 +745,71 @@ export function NetWorthChart({
           Your line starts today. It grows each day from here.
         </p>
       ) : (
-        <p data-net-worth-change="" className="text-sm tabular-nums">
-          <span className="font-semibold">
-            <span aria-hidden="true">{arrow(move.cents)} </span>
-            {figureShown ? (
-              <>
-                {signed(move.cents)}
-                {move.share !== null && ` (${percent(move.share)})`}
-              </>
-            ) : (
-              move.share !== null && percent(move.share)
-            )}
-          </span>{" "}
-          <span className="text-zinc-600 dark:text-zinc-400">
-            {scrub === null ? windowWords : dayLabel(point.date, { year: true })}
-          </span>
-        </p>
+        <div className="flex flex-wrap items-baseline gap-x-2 text-sm tabular-nums">
+          <p data-net-worth-change="" className="text-sm tabular-nums">
+            <span className="font-semibold">
+              <span aria-hidden="true">{arrow(move.cents)} </span>
+              {figureShown ? (
+                <>
+                  {signed(move.cents)}
+                  {move.share !== null && ` (${percent(move.share)})`}
+                </>
+              ) : (
+                move.share !== null && percent(move.share)
+              )}
+            </span>{" "}
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {scrub === null
+                ? windowWords
+                : changes
+                  ? `through ${point ? dayLabel(point.date, { year: true }) : ""}`
+                  : stepWords}
+            </span>
+          </p>
+          {scrub !== null && (
+            <span data-net-worth-step="" className="font-semibold">
+              {activeBar && (
+                <span className="font-normal text-zinc-600 dark:text-zinc-400">{stepWords}: </span>
+              )}
+              {figureShown ? signed(stepCents) : arrow(stepCents)}
+              <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                {activeBar && activeBar.period !== "day" ? " in the period" : " that day"}
+              </span>
+            </span>
+          )}
+        </div>
       )}
 
       {!single && (
         <>
+          <div role="group" aria-label="Chart view" className="flex gap-1">
+            {(
+              [
+                ["line", "Net worth"],
+                ["changes", "Changes"],
+              ] as const
+            ).map(([key, words]) => (
+              <button
+                key={key}
+                type="button"
+                data-net-worth-view={key}
+                aria-pressed={mode === key}
+                onClick={() => {
+                  chooseView(key);
+                  setScrub(null);
+                  setFocusDot(null);
+                  shut();
+                }}
+                className={`inline-flex min-h-11 items-center justify-center border px-3 text-sm font-medium ${
+                  mode === key
+                    ? "border-zinc-950 bg-zinc-950 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950"
+                    : "border-zinc-300 text-zinc-600 hover:text-zinc-950 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-50"
+                }`}
+              >
+                {words}
+              </button>
+            ))}
+          </div>
           <div
             ref={area}
             className="nw-area relative"
@@ -732,7 +888,8 @@ export function NetWorthChart({
                 setSel(null);
                 if (drag?.moved && e.pointerType === "mouse") {
                   // The days under the drag, zoomed into (at least MIN_DAYS), the axis refit.
-                  const [i, j] = [indexAt(drag.x), indexAt(e.clientX)].sort((p, q) => p - q);
+                  const [x0, x1] = [drag.x, e.clientX].sort((p, q) => p - q);
+                  const [i, j] = [edgeDay(x0, "start"), edgeDay(x1, "end")];
                   justSelected.current = true;
                   // A drag at the last day keeps the day before it too.
                   const from = Math.min(win.from + i, total - MIN_DAYS);
@@ -766,7 +923,7 @@ export function NetWorthChart({
                   return;
                 }
                 // A tap or click on a movement's dot opens it.
-                if (!layout) return;
+                if (!layout || changes) return;
                 const r = e.currentTarget.getBoundingClientRect();
                 const i = layout.hit(e.clientX - r.left, e.clientY - r.top);
                 if (i === null) return;
@@ -785,11 +942,12 @@ export function NetWorthChart({
                 if (view && e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
                   const quarter = Math.max(1, Math.round((win.to - win.from) / 4));
                   zoomTo(panWindow(win, total, e.key === "ArrowLeft" ? -quarter : quarter));
-                } else if (e.key === "ArrowLeft") setScrub(Math.max(0, from - jump));
+                } else if (e.key === "ArrowLeft") setScrub(Math.max(0, stepFrom(from, -jump)));
                 else if (e.key === "ArrowRight") {
-                  const next = from + jump;
-                  setScrub(next >= shown.length - 1 ? null : next);
-                } else if (e.key === "Home") setScrub(0);
+                  const next = stepFrom(from, jump);
+                  setScrub(next >= (changes ? shown.length : shown.length - 1) ? null : next);
+                } else if (e.key === "Home")
+                  setScrub(changes && bars.length ? bars[0].endIndex - win.from : 0);
                 else if (e.key === "End" || e.key === "Escape") setScrub(null);
                 else if (e.key === "+" || e.key === "=") zoomBy(0.5);
                 else if (e.key === "-") zoomBy(2);
@@ -811,27 +969,62 @@ export function NetWorthChart({
                   <rect x={-6} y={-6} width={width + 12} height={H + 12} />
                 </clipPath>
                 <g clipPath={`url(#${clipId})`}>
+                  {changes && barScale && (
+                    // One bar per period: up from the zero line, down below it. Each carries its
+                    // change in cents (data-change) and the period it covers.
+                    <g
+                      data-net-worth-bars=""
+                      data-period={bars[0]?.period}
+                      data-exponent={barScale.exponent.toFixed(3)}
+                      data-fit={barFit?.exponent.toFixed(3)}
+                    >
+                      {bars.map((b, k) => {
+                        const gap = slot > 4 ? 1.5 : 0;
+                        const top = Math.min(barScale.y(b.change), barScale.zero);
+                        const h = Math.abs(barScale.y(b.change) - barScale.zero);
+                        return (
+                          <rect
+                            key={b.from}
+                            data-net-worth-bar=""
+                            data-change={b.change}
+                            data-from={b.from}
+                            x={gutter + k * slot + gap / 2}
+                            y={top}
+                            width={Math.max(1, slot - gap)}
+                            height={h}
+                            className={`fill-current ${
+                              activeBar && activeBar !== b ? "opacity-40" : ""
+                            }`}
+                          />
+                        );
+                      })}
+                    </g>
+                  )}
                   {/* Where the range started. */}
-                  <line
-                    x1={gutter}
-                    x2={width}
-                    y1={yDay(0)}
-                    y2={yDay(0)}
-                    strokeWidth={1}
-                    strokeDasharray="2 5"
-                    className="stroke-zinc-400 dark:stroke-zinc-600"
-                  />
-                  <path
-                    key={`${chip}-${zoomed ? "zoom" : shown.length}`}
-                    d={path}
-                    pathLength={1}
-                    fill="none"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    className={`nw-line ${stroke}`}
-                  />
-                  {scrub !== null && (
+                  {!changes && (
+                    <line
+                      x1={gutter}
+                      x2={width}
+                      y1={yDay(0)}
+                      y2={yDay(0)}
+                      strokeWidth={1}
+                      strokeDasharray="2 5"
+                      className="stroke-zinc-400 dark:stroke-zinc-600"
+                    />
+                  )}
+                  {!changes && (
+                    <path
+                      key={`${chip}-${zoomed ? "zoom" : shown.length}`}
+                      d={path}
+                      pathLength={1}
+                      fill="none"
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      className={`nw-line ${stroke}`}
+                    />
+                  )}
+                  {scrub !== null && !changes && (
                     <>
                       <line
                         x1={x(at)}
@@ -850,7 +1043,7 @@ export function NetWorthChart({
                       />
                     </>
                   )}
-                  {scrub === null && (
+                  {scrub === null && !changes && (
                     <circle
                       cx={x(shown.length - 1)}
                       cy={yDay(shown.length - 1)}
@@ -868,7 +1061,7 @@ export function NetWorthChart({
                   style={{ left: Math.min(sel.a, sel.b), width: Math.abs(sel.b - sel.a) }}
                 />
               )}
-              {layout && (
+              {layout && !changes && (
                 <MovementDots
                   ref={dotsRef}
                   counts={expanded}
@@ -888,9 +1081,10 @@ export function NetWorthChart({
               )}
               <Scale
                 height={H}
-                ticks={ticks}
-                y={y}
-                zero={lo < 0 && hi > 0 ? y(0) : null}
+                ticks={changes ? barTicks : ticks}
+                y={changes && barScale ? barScale.y : y}
+                zero={changes && barScale ? barScale.zero : lo < 0 && hi > 0 ? y(0) : null}
+                zeroLeft={changes}
                 amounts={figureShown}
               />
             </div>
@@ -981,6 +1175,15 @@ export function NetWorthChart({
               )}
             </div>
           </div>
+
+          {changes && (
+            <p data-net-worth-caption="" className="text-xs text-zinc-600 dark:text-zinc-400">
+              One bar per {bars[0]?.period ?? "day"}: how much net worth went up or down.
+              {barFit &&
+                barFit.exponent < 1 &&
+                " Bar heights are compressed so small and large changes both show; the labels are the real amounts."}
+            </p>
+          )}
 
           {expanded && (
             <Brush
@@ -1309,6 +1512,7 @@ function Scale({
   ticks,
   y,
   zero,
+  zeroLeft,
   amounts,
 }: {
   // Off while the figure is hidden: the labels would give it away.
@@ -1318,6 +1522,8 @@ function Scale({
   ticks: number[];
   y: (cents: number) => number;
   zero: number | null;
+  // "$0" at the left, by the other labels (the bars run to the right edge).
+  zeroLeft: boolean;
 }) {
   const label =
     "pointer-events-none absolute bg-white/80 px-0.5 text-[10px] leading-none text-zinc-500 tabular-nums dark:bg-zinc-950/80";
@@ -1332,7 +1538,11 @@ function Scale({
             className="absolute right-0 left-0 border-t border-zinc-400 dark:border-zinc-500"
             style={{ top: zero }}
           />
-          <span data-net-worth-scale="zero" className={label} style={{ top: zero + 2, right: 2 }}>
+          <span
+            data-net-worth-scale="zero"
+            className={label}
+            style={{ top: zero + 2, ...(zeroLeft ? { left: 2 } : { right: 2 }) }}
+          >
             $0
           </span>
         </>
