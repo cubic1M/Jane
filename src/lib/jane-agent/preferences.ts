@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { isTaxToldFact } from "@/lib/tax-facts/told";
 import { takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
 import { preferenceRef, recordFact, type FactDraft, type FactValue } from "@/lib/memory/facts";
 
@@ -128,6 +129,7 @@ export async function deletePreference(
   // forgotten answer would still be used there (src/lib/told-mirrors.ts). The row is read inside
   // the transaction and deleted only while it still says what was read, so the copy taken back is
   // always the copy of the answer that went (a new answer saved in between is read again).
+  const taken: { told: string | null } = { told: null };
   const count = await db.transaction(async (tx) => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const row = await tx.janePreferences.findFirst({
@@ -142,10 +144,18 @@ export async function deletePreference(
       await tx.userFacts.deleteMany({ where: { sourceRef: preferenceRef(row.kind, row.key) } });
       const told = row.kind === "fact" ? toldKeyOf(row.key) : null;
       if (told) await takeBackMirrors(tx, [{ key: told, value: toldValueOf(row.value) }]);
+      taken.told = told;
       return gone.count;
     }
     throw new Error("The preference kept changing while it was deleted");
   });
+  // The household's tax record (src/lib/tax-facts/) holds what they said too: every row of it goes
+  // for good, here, at the one place a told preference is deleted, so no door can miss it. A caller
+  // that cleans up as well just repeats it, harmlessly. Loaded late: the record reads this file.
+  if (count > 0 && taken.told && isTaxToldFact(taken.told)) {
+    const { forgetToldRecord } = await import("@/lib/tax-facts/through");
+    await forgetToldRecord(userId, taken.told, { client });
+  }
   if (count > 0) {
     await logAudit(
       { type: "user", id: userId },
