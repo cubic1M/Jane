@@ -49,14 +49,16 @@ function squeezes(token: string, asked: string[]): boolean {
 // single short word is never taken as the start of a longer one, so "ne" doesn't find "netflix";
 // as a part of the name as written ("net" in NETFLIX) it is exact, as the tool says: "part of a name".
 export function nameMatcher(asked: string): (names: readonly string[]) => NameMatch {
+  // As asked, filler words and all ("State Dept of Revenue" is found as it is written), and without
+  // the filler for the looser tests.
+  const phrase = plain(asked);
   const wanted = words(asked).filter((w) => !FILLER.has(w));
-  const phrase = wanted.join(" ");
   if (phrase === "") return () => null;
   return (names) => {
     let similar = false;
     for (const name of names) {
       if (plain(name).includes(phrase)) return "exact";
-      if (similar) continue;
+      if (similar || wanted.length === 0) continue;
       const tokens = words(name).filter((t) => !FILLER.has(t));
       const found = (w: string) =>
         tokens.some(

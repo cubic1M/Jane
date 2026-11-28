@@ -9,6 +9,9 @@ describe("nameMatcher", () => {
     expect(match("california arts", "CALIFORNIA ARTS #0412 SAN FRANCISCO CA")).toBe("exact");
     expect(match("California Arts", "california arts")).toBe("exact");
     expect(match("netflix", "NETFLIX.COM")).toBe("exact");
+    // Words like "of" and "the" are part of a name as written.
+    expect(match("State Dept of Revenue", "State Dept of Revenue")).toBe("exact");
+    expect(match("the home depot", "THE HOME DEPOT #4411")).toBe("exact");
   });
 
   it("calls the ways banks shorten or lengthen a name a similar name", () => {
