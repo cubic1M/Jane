@@ -268,4 +268,38 @@ describe.runIf(url)("a bank's history: what Jane holds, says, and goes back for"
     await client.auditLog.deleteMany({ where: { targetId: big.id } });
     await client.plaidItem.delete({ where: { id: big.id } });
   });
+
+  it("an outage during the read from the start does not use up the one try", async () => {
+    const flaky = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-flaky-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-flaky"),
+        institutionName: "Flaky Bank",
+        createdAt: new Date("2026-10-01T12:00:00Z"),
+        transactionsCursor: "f1",
+      },
+    });
+    const page = (next: string) =>
+      syncPage({
+        accounts: [plaidAccount({ account_id: `${suffix}-flaky` })],
+        next_cursor: next,
+        status: "HISTORICAL_UPDATE_COMPLETE",
+      });
+    // The read from the start fails (a refusal that is not a limit, which is not retried), the saved
+    // cursor goes on; the next night asks for the read from the start again, and it works.
+    transactionsSync
+      .mockRejectedValueOnce(plaidApiError("INVALID_REQUEST"))
+      .mockResolvedValueOnce(page("f2"))
+      .mockResolvedValueOnce(page("f3"));
+    await syncItem(flaky.id, { client, api, now: NOW });
+    expect(transactionsSync.mock.calls[0][0].cursor).toBeUndefined();
+    expect(transactionsSync.mock.calls[1][0].cursor).toBe("f1");
+    await syncItem(flaky.id, { client, api, now: new Date(NOW.getTime() + 86_400_000) });
+    expect(transactionsSync.mock.calls[2][0].cursor).toBeUndefined();
+    const note = (await latestNotes([flaky.id], { client })).get(flaky.id)!;
+    expect(note.rescannedAt).not.toBeNull();
+    await client.auditLog.deleteMany({ where: { targetId: flaky.id } });
+    await client.plaidItem.delete({ where: { id: flaky.id } });
+  });
 });

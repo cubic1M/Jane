@@ -830,19 +830,24 @@ async function syncItemWork(
       () => false,
     ));
   let sync: PlaidSync;
+  // Whether the read from the start was done, or refused for good, and so is not to be tried again.
+  let rescanSpent = rescan;
   try {
     sync = await (async () => {
       if (!rescan) return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
-      // The read from the start is tried once: if Plaid refuses it (an Item with a very large history
-      // answers TRANSACTIONS_SYNC_ITEM_LIMIT_EXCEEDED to a call with no cursor,
-      // plaid.com/docs/errors/transactions/), the link goes on from its saved cursor as before, and
-      // the attempt still counts, so it is never asked again.
+      // The read from the start goes once. If Plaid refuses it for good (an Item with a very large
+      // history answers TRANSACTIONS_SYNC_ITEM_LIMIT_EXCEEDED to a call with no cursor,
+      // plaid.com/docs/errors/transactions/), the link goes on from its saved cursor as before and the
+      // attempt counts, so it is never asked again. Any other failure (a time-out, an outage) goes on
+      // from the saved cursor for this run too, but does not count: a later sync tries again.
       try {
         return await new PlaidDataSource(api, accessToken, null).load();
       } catch (error) {
+        const code = plaidErrorCode(error);
         log.warn("Reading a bank again from the start failed; going on from its saved cursor", {
-          code: plaidErrorCode(error),
+          code,
         });
+        rescanSpent = code === "TRANSACTIONS_SYNC_ITEM_LIMIT_EXCEEDED";
         return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
       }
     })();
@@ -943,7 +948,7 @@ async function syncItemWork(
       {
         status: sync.updateStatus,
         cursorMoved: (sync.nextCursor || null) !== item.transactionsCursor,
-        rescanned: rescan,
+        rescanned: rescanSpent,
         previous: previousNote,
         now,
       },
