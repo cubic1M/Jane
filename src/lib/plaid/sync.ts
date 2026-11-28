@@ -831,11 +831,21 @@ async function syncItemWork(
     ));
   let sync: PlaidSync;
   try {
-    sync = await new PlaidDataSource(
-      api,
-      accessToken,
-      rescan ? null : item.transactionsCursor,
-    ).load();
+    sync = await (async () => {
+      if (!rescan) return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+      // The read from the start is tried once: if Plaid refuses it (an Item with a very large history
+      // answers TRANSACTIONS_SYNC_ITEM_LIMIT_EXCEEDED to a call with no cursor,
+      // plaid.com/docs/errors/transactions/), the link goes on from its saved cursor as before, and
+      // the attempt still counts, so it is never asked again.
+      try {
+        return await new PlaidDataSource(api, accessToken, null).load();
+      } catch (error) {
+        log.warn("Reading a bank again from the start failed; going on from its saved cursor", {
+          code: plaidErrorCode(error),
+        });
+        return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+      }
+    })();
   } catch (error) {
     // The cursor stays where it was, so the next sync (a webhook, the daily job) resumes from it.
     await noteSyncFailure(db, item.id, error, now, client);

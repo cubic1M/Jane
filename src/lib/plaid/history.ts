@@ -109,7 +109,7 @@ export function historyLine(bank: string, held: HeldHistory, status: string | nu
   if (status === HISTORY_COMPLETE) {
     return { state: "complete", text: `${range} (this is everything ${bank} gave).` };
   }
-  if (status === null || status === "UNKNOWN") {
+  if (status === null || status === "UNKNOWN" || status === "TRANSACTIONS_UPDATE_STATUS_UNKNOWN") {
     return { state: "unknown", text: `${range} (Jane is checking how far back ${bank} goes).` };
   }
   return { state: "pending", text: `${range} (Plaid is still sending older history).` };

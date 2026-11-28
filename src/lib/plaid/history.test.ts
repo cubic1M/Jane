@@ -71,6 +71,9 @@ describe("how far back a bank's history goes", () => {
       "History from Chase: Oct 19, 2026 to today (Plaid is still sending older history).",
     );
     expect(historyLine("Chase", held("2026-10-19"), null).state).toBe("unknown");
+    expect(
+      historyLine("Chase", held("2026-10-19"), "TRANSACTIONS_UPDATE_STATUS_UNKNOWN").state,
+    ).toBe("unknown");
     expect(historyLine("Chase", held(null), null).state).toBe("empty");
   });
 });

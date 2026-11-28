@@ -7,7 +7,12 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
-import { plaidAccount, plaidTransaction, syncPage } from "@/data-sources/plaid/__fixtures__/plaid";
+import {
+  plaidAccount,
+  plaidApiError,
+  plaidTransaction,
+  syncPage,
+} from "@/data-sources/plaid/__fixtures__/plaid";
 import { encrypt } from "@/lib/crypto";
 import { historyForPerson, historyForTeam, itemsStillCatchingUp, latestNotes } from "./history";
 import { syncItem } from "./sync";
@@ -223,5 +228,44 @@ describe.runIf(url)("a bank's history: what Jane holds, says, and goes back for"
     expect(transactionsSync.mock.calls[1][0].cursor).toBe("s2");
     await client.auditLog.deleteMany({ where: { targetId: other.id } });
     await client.plaidItem.delete({ where: { id: other.id } });
+  });
+
+  it("goes on from the saved cursor when Plaid refuses the read from the start, and never asks again", async () => {
+    const big = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-big-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-big"),
+        institutionName: "Big Bank",
+        createdAt: new Date("2026-10-01T12:00:00Z"),
+        transactionsCursor: "b1",
+      },
+    });
+    transactionsSync
+      .mockRejectedValueOnce(plaidApiError("TRANSACTIONS_SYNC_ITEM_LIMIT_EXCEEDED"))
+      .mockResolvedValueOnce(
+        syncPage({
+          accounts: [plaidAccount({ account_id: `${suffix}-big` })],
+          next_cursor: "b2",
+          status: "HISTORICAL_UPDATE_COMPLETE",
+        }),
+      )
+      .mockResolvedValueOnce(
+        syncPage({
+          accounts: [plaidAccount({ account_id: `${suffix}-big` })],
+          next_cursor: "b3",
+          status: "HISTORICAL_UPDATE_COMPLETE",
+        }),
+      );
+    await syncItem(big.id, { client, api, now: NOW });
+    expect(transactionsSync.mock.calls[0][0].cursor).toBeUndefined();
+    expect(transactionsSync.mock.calls[1][0].cursor).toBe("b1");
+    expect(
+      (await client.plaidItem.findUniqueOrThrow({ where: { id: big.id } })).transactionsCursor,
+    ).toBe("b2");
+    await syncItem(big.id, { client, api, now: new Date(NOW.getTime() + 86_400_000) });
+    expect(transactionsSync.mock.calls[2][0].cursor).toBe("b2");
+    await client.auditLog.deleteMany({ where: { targetId: big.id } });
+    await client.plaidItem.delete({ where: { id: big.id } });
   });
 });
