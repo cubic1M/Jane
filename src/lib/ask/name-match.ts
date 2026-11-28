@@ -46,7 +46,8 @@ function squeezes(token: string, asked: string[]): boolean {
 // What was asked for, tested against the names one row goes by. "exact": the asked words appear
 // as written. "similar": every asked word is there as the start of a word, or as the start of a
 // longer one it shortens ("ca" for california), or the whole name is squeezed into one word. A
-// single short word never matches by shortening, so "net" doesn't find "netflix" by accident.
+// single short word is never taken as the start of a longer one, so "ne" doesn't find "netflix";
+// as a part of the name as written ("net" in NETFLIX) it is exact, as the tool says: "part of a name".
 export function nameMatcher(asked: string): (names: readonly string[]) => NameMatch {
   const wanted = words(asked).filter((w) => !FILLER.has(w));
   const phrase = wanted.join(" ");

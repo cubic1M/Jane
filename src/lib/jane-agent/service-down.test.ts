@@ -23,6 +23,8 @@ describe("the place a question names", () => {
   it.each([
     ["did I buy something from california arts before", "california arts"],
     ["how much did I spend at Trader Joe's this year?", "Trader Joe's"],
+    ["Did I buy a gift for my daughter from California Arts before?", "California Arts"],
+    ["Did I pay for Netflix before?", "Netflix"],
     ["did I pay the dentist last month", null],
     ["when did I last pay netflix", null],
     ["what's my balance", null],

@@ -107,6 +107,17 @@ describe.runIf(url)(
           data: {
             userId: user.id,
             source: "csv",
+            name: "Old Savings",
+            mask: "1111",
+            type: "depository",
+            subtype: "savings",
+            currentBalanceCents: -10_000,
+          },
+        });
+        await client.account.create({
+          data: {
+            userId: user.id,
+            source: "csv",
             name: "Travel Card",
             mask: "9902",
             type: "credit",
@@ -295,6 +306,8 @@ describe.runIf(url)(
           expect(r.accounts).toEqual(
             expect.arrayContaining([
               expect.objectContaining({ account: "Travel Card ····9902", owed: "$850.10" }),
+              // An overdraft keeps its sign: it is not money in the account.
+              expect.objectContaining({ account: "Old Savings ····1111", balance: "-$100.00" }),
               expect.objectContaining({
                 account: "Everyday Checking ····4821",
                 balance: "$4,123.77",
@@ -311,6 +324,25 @@ describe.runIf(url)(
       check(JSON.parse(seen[0]));
       expect(source).toBe("claude");
       expect(reply.body).toMatch(expectIn);
+    });
+
+    it("looks outside the dates when the end date alone is the limit", async () => {
+      const seen: string[] = [];
+      await ask(
+        "did I buy anything at best buy before 2026",
+        scripted(
+          {
+            tool: "search_transactions",
+            input: { merchant: "best buy", to: "2026-01-01" },
+          },
+          () => "Not before 2026, but there are some later.",
+          seen,
+        ),
+      );
+      const result = JSON.parse(seen[0]);
+      expect(result.matched).toBe(0);
+      expect(result.outsideTheseDates.map((t: { date: string }) => t.date)).toContain("2026-11-02");
+      expect(result.note).toBeUndefined();
     });
 
     it("never returns another person's rows, whoever is asked", async () => {

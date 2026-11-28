@@ -3,6 +3,7 @@ import { ASK_DEFAULT_SEARCH_DAYS, ASK_MAX_UPCOMING_DAYS, ASK_SEARCH_LIMIT } from
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
+import { loadCounting, onlyCounted } from "@/lib/account-copies";
 import { nameMatcher, type NameMatch } from "./name-match";
 import { loadDetectionInput, loadTransactionsBetween } from "@/detection/input";
 import { comingUpBills } from "@/detection/forecast";
@@ -215,13 +216,16 @@ export async function runAskTool(
       const accountOf = new Map(
         accounts.map((a) => [a.id, a.mask ? `${a.name} ····${a.mask}` : a.name]),
       );
+      // A name that fits an account Jane counts under another (the same account linked twice)
+      // asks for the one counted, which is where its rows are read from.
+      const counting = await loadCounting(db);
       const accountIds = new Set(
         accounts
           .filter(
             (a) =>
               !accountAsked || `${a.name} ${a.mask ?? ""}`.toLowerCase().includes(accountAsked),
           )
-          .map((a) => a.id),
+          .map((a) => counting.representativeOf(a.id)),
       );
       const nameMatch = nameMatcher(merchant);
       // Read as detection reads them (names from the merchant directory, an account linked twice
@@ -272,7 +276,7 @@ export async function runAskTool(
       // from a charge last December is never answered with "no charges" (founder's live
       // /deadlines, 10-29: the chat looked from Aug 1 for a December charge).
       const elsewhere =
-        merchant && matches.length === 0 && from !== ALL_TIME
+        merchant && matches.length === 0 && (from !== ALL_TIME || to !== today)
           ? (await matching(ALL_TIME, today)).filter(
               (t) => t.kind === "exact" && (t.date < from || t.date > to),
             )
@@ -355,12 +359,17 @@ export async function runAskTool(
 
     case "account_balances": {
       const rows = await db.accounts.findMany({
+        where: await onlyCounted(db),
         select: { name: true, mask: true, type: true, subtype: true, currentBalanceCents: true },
         orderBy: { name: "asc" },
       });
       return out({
         accounts: rows.map((a) => {
-          const cents = a.currentBalanceCents === null ? null : money(a.currentBalanceCents);
+          // Signed as the bank gives it (an overdraft is negative); the figure allowed is its size.
+          const cents =
+            a.currentBalanceCents === null
+              ? null
+              : (money(a.currentBalanceCents), formatCents(a.currentBalanceCents));
           return {
             account: a.mask ? `${a.name} ····${a.mask}` : a.name,
             type: a.subtype ?? a.type,

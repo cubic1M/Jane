@@ -22,14 +22,24 @@ export const SERVICE_DOWN_TEXT =
 
 // The words after "from / at / to / with / for" in a question about buying or paying somewhere:
 // "did I buy something from california arts before" gives "california arts".
-const PLACE =
-  /\b(?:bought|buy|purchase[ds]?|spent|spend|paid|pay|ordered?|order|charged?|shop(?:ped)?|subscribed?)\b[^?]*?\b(?:from|at|to|with|for|on)\s+([A-Za-z0-9&'.\- ]{2,40}?)(?:\s+(?:before|ever|last|this|in|on|yesterday|today|recently|again|since|during|over)\b|[?.!,]|$)/i;
+const placeAfter = (words: string) =>
+  new RegExp(
+    `\\b(?:bought|buy|purchase[ds]?|spent|spend|paid|pay|ordered?|order|charged?|shop(?:ped)?|subscribed?)\\b[^?]*?\\b(?:${words})\\s+([A-Za-z0-9&'.\\- ]{2,40}?)(?:\\s+(?:before|ever|last|this|in|on|yesterday|today|recently|again|since|during|over)\\b|[?.!,]|$)`,
+    "i",
+  );
+// "from", "at", "to" and "with" name the place; "for" and "on" only when none of those does ("a gift
+// for my daughter from X" is X; "pay for Netflix" is Netflix).
+const CLAUSES = [placeAfter("from|at|to|with"), placeAfter("for|on")];
 
 export function merchantAsked(text: string): string | null {
-  const found = PLACE.exec(text)?.[1]
-    ?.trim()
-    .replace(/^(?:the|a|an|my)\s+/i, "");
-  return found && found.length >= 2 ? found : null;
+  for (const clause of CLAUSES) {
+    const found = clause
+      .exec(text)?.[1]
+      ?.trim()
+      .replace(/^(?:the|a|an|my)\s+/i, "");
+    if (found && found.length >= 2) return found;
+  }
+  return null;
 }
 
 // The reply for a question Claude couldn't be asked: the plain line, and, when the question names
