@@ -46,13 +46,18 @@ export async function clearChat(
       unpinned: pinned.length,
     };
   });
-  // Counts only, never a word of what was said.
-  await logAudit(
-    { type: "user", id: userId },
-    "chat_cleared",
-    { type: "user", id: userId },
-    counts,
-  );
+  // Counts only, never a word of what was said. The deletion has committed: a failed audit write is
+  // logged, and never turns it into an error for the person.
+  try {
+    await logAudit(
+      { type: "user", id: userId },
+      "chat_cleared",
+      { type: "user", id: userId },
+      counts,
+    );
+  } catch (error) {
+    log.error("chat_cleared not audited", { error: String(error).slice(0, 200) });
+  }
   try {
     await track(userId, "chat_cleared", {
       messages: counts.messages,

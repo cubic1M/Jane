@@ -147,6 +147,7 @@ describe.runIf(url)("Clear chat", { timeout: 60_000 }, () => {
   });
 
   it("leaves nothing of the old chat for the next answer to quote", async () => {
+    await clearChat(me, { client });
     expect(await recentTurns(me, { client })).toEqual([]);
     const sent: string[] = [];
     const claude = () =>
@@ -178,6 +179,50 @@ describe.runIf(url)("Clear chat", { timeout: 60_000 }, () => {
     }
     // What Jane learned stays in its context: the memory still says they rent.
     expect(await client.userFact.count({ where: { userId: me, key: "housing" } })).toBe(1);
+  });
+
+  it("does not leave an answer alone in the emptied chat when it was cleared mid-answer", async () => {
+    const lone = await client.user.create({
+      data: { email: `clear-flight-${crypto.randomUUID()}@example.com`, timezone: "UTC" },
+    });
+    try {
+      // Claude's answer arrives after the person pressed Clear chat.
+      const claude = () =>
+        ({
+          messages: {
+            stream: () => {
+              const stream = {
+                on: () => stream,
+                abort() {},
+                finalMessage: async () => {
+                  await clearChat(lone.id, { client });
+                  return {
+                    stop_reason: "end_turn",
+                    content: [{ type: "text", text: "An answer to a question that is gone." }],
+                    usage: { input_tokens: 1, output_tokens: 1 },
+                  };
+                },
+              };
+              return stream;
+            },
+          },
+        }) as never;
+      const { reply } = await sendToJane(lone.id, "hello", {
+        client,
+        now: NOW,
+        claude,
+        primerMs: 60_000,
+      });
+      // The person still sees it, once; nothing of the exchange is stored.
+      expect(reply.body).toBe("An answer to a question that is gone.");
+      expect(
+        await client.janeMessage.count({
+          where: { userId: lone.id, kind: { in: ["user", "reply"] } },
+        }),
+      ).toBe(0);
+    } finally {
+      await client.user.delete({ where: { id: lone.id } });
+    }
   });
 
   it("is harmless on a chat that is already empty", async () => {
