@@ -27,6 +27,7 @@ import {
 } from "@/planning/tax-tags";
 import { isoDay as iso } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
+import { todayOf } from "@/lib/today";
 
 // The tax organizer (spec step 119): the year's tax tags and the forms to expect, loaded
 // from the person's own transactions and loans; their own tags and "I have it" saved here.
@@ -43,19 +44,28 @@ const yearRange = (year: number) => ({
 
 export async function loadOverrides(
   userId: string,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, now }: Options = {},
 ): Promise<TagOverrides> {
+  // The cache key leaves the clock out on purpose (one read per piece of work); a caller that
+  // passes `now` on a scratch client (a test, a frozen sweep) gets that day's window.
   return client === defaultClient
     ? overridesOnce(userId)
-    : cachedCopy(`taxOverrides:${userId}`, client, () => overridesFrom(userId, client));
+    : cachedCopy(`taxOverrides:${userId}`, client, () => overridesFrom(userId, client, now));
 }
 
 // Read once per server render (React's cache): /taxes's sections each ask (31 times).
 const overridesOnce = cache((userId: string) => overridesFrom(userId, defaultClient));
 
-async function overridesFrom(userId: string, client: PrismaClient): Promise<TagOverrides> {
+async function overridesFrom(
+  userId: string,
+  client: PrismaClient,
+  now: Date = new Date(),
+): Promise<TagOverrides> {
   const db = scopedFor(userId, client);
-  const since = new Date(Date.now() - 400 * 86_400_000);
+  // 400 days back from the person's own day, not the UTC clock's (T7: at 7pm in Los Angeles the
+  // UTC day is already tomorrow).
+  const today = await todayOf(userId, { client, now });
+  const since = new Date(Date.parse(`${today}T00:00:00Z`) - 400 * 86_400_000);
   const [rows, profile, freelance] = await Promise.all([
     db.taxTags.findMany({ select: { transactionId: true, merchantKey: true, tag: true } }),
     db.taxProfiles.findFirst({ select: { incomeKinds: true, answered: true } }),
@@ -261,6 +271,7 @@ async function loadTaxFormsFrom(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxFormsView> {
   const db = scopedFor(userId, client);
+  const thisYear = Number((await todayOf(userId, { client, now })).slice(0, 4));
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);
   const counting = await loadCounting(db);
   const [transactions, accounts, loansAll, received] = await Promise.all([
@@ -327,7 +338,7 @@ async function loadTaxFormsFrom(
     loans: loans.map((l) => ({
       name: l.account.name,
       kind: l.kind,
-      ytdInterestPaidCents: year === now.getUTCFullYear() ? l.ytdInterestPaidCents : null,
+      ytdInterestPaidCents: year === thisYear ? l.ytdInterestPaidCents : null,
     })),
     // Spec step 219: an exchange that sold crypto sends a 1099-DA.
     cryptoSales: (await loadEquityIncome(userId, year, { client, now })).crypto.exchangesSold,
@@ -353,7 +364,8 @@ export async function markTaxForm(
   },
 ): Promise<ExpectedForm> {
   // The year comes from the browser, and each new one is a new row.
-  if (Math.abs(year - now.getUTCFullYear()) > FORM_YEARS_ANY_WAY) {
+  const thisYear = Number((await todayOf(userId, { client, now })).slice(0, 4));
+  if (Math.abs(year - thisYear) > FORM_YEARS_ANY_WAY) {
     throw new TaxOrganizerError("That form isn't on your list anymore.");
   }
   const { forms } = await loadTaxForms(userId, year, { client, now });

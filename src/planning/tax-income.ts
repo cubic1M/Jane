@@ -7,6 +7,9 @@ import {
   PAY_FREQUENCIES,
   SALES_TAX_PAYEE,
 } from "@/config/tax";
+import { TAX_PAYMENT_WINDOW } from "@/config/tax-payments";
+import { dayLabel } from "@/lib/day-label";
+import { formatCents } from "@/lib/money";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
 import { DAY_MS, daysBetween } from "@/lib/dates";
@@ -404,27 +407,88 @@ export function businessSalesSoFar(transactions: IncomeTransaction[], year: numb
 
 const FEDERAL_PAYEE = /\b(?:IRS|USATAXPYMT|US TREASURY|U\.S\. TREASURY|EFTPS)\b/i;
 
-// Estimated tax paid toward the year: tax payments from Feb 1 of the year to Jan 31 of the
-// next (January's is usually the last quarter of the year before), split federal / state.
+// A tax payment seen or told: its day and what it paid, split federal / state.
+export type TaxPayment = { date: string; cents: number; to: "federal" | "state" };
+
+// Every tax payment in the lines (positive amounts to the tax agencies), whatever its date; property
+// tax and sales tax are not income tax.
+export function taxPaymentsIn(transactions: IncomeTransaction[]): TaxPayment[] {
+  const out: TaxPayment[] = [];
+  for (const t of transactions) {
+    if (t.pfcDetailed !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" || t.amountCents <= 0) continue;
+    // Spec step 170: property tax goes to the county, not toward the year's income tax.
+    if (PROPERTY_TAX_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`)) continue;
+    if (SALES_TAX_PAYEE.test(t.description)) continue;
+    out.push({
+      date: t.date,
+      cents: t.amountCents,
+      to: FEDERAL_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`) ? "federal" : "state",
+    });
+  }
+  return out;
+}
+
+// The payments that count toward the year, by the payment's own date: from Feb 1 of the year to
+// Jan 31 of the next (January 1-15 is the year's fourth installment, due Jan 15; Jan 16-31 is the
+// same year's balance paid with an early return: IRS Pub. 505 (2026), see TAX_PAYMENT_WINDOW).
+export function taxPaymentsInYear(payments: readonly TaxPayment[], year: number): TaxPayment[] {
+  const from = `${year}-${TAX_PAYMENT_WINDOW.yearFrom}`;
+  const to = `${year + 1}-${TAX_PAYMENT_WINDOW.nextYearTo}`;
+  return payments.filter((p) => p.date >= from && p.date <= to);
+}
+
+export function sumPayments(payments: readonly TaxPayment[]): {
+  federalCents: number;
+  stateCents: number;
+} {
+  const sum = (to: TaxPayment["to"]) =>
+    payments.filter((p) => p.to === to).reduce((s, p) => s + p.cents, 0);
+  return { federalCents: sum("federal"), stateCents: sum("state") };
+}
+
+// Estimated tax paid toward the year, split federal / state.
 export function taxPaymentsFor(
   transactions: IncomeTransaction[],
   year: number,
 ): { federalCents: number; stateCents: number } {
-  const from = `${year}-02-01`;
-  const to = `${year + 1}-01-31`;
-  let federalCents = 0;
-  let stateCents = 0;
-  for (const t of transactions) {
-    if (t.pfcDetailed !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" || t.amountCents <= 0) continue;
-    if (t.date < from || t.date > to) continue;
-    // Spec step 170: property tax goes to the county, not toward the year's income tax.
-    if (PROPERTY_TAX_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`)) continue;
-    if (SALES_TAX_PAYEE.test(t.description)) continue;
-    if (FEDERAL_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`))
-      federalCents += t.amountCents;
-    else stateCents += t.amountCents;
+  return sumPayments(taxPaymentsInYear(taxPaymentsIn(transactions), year));
+}
+
+// What the year before left, for telling a first estimate from last year's balance.
+export type PriorYearPayments = {
+  // Federal estimates paid in the year before (its June to January installments).
+  paidEstimates: boolean;
+  // The year before's balance due, from a confirmed prior return; null when not known.
+  balanceDueCents: number | null;
+};
+
+// The assumption lines for federal payments the year's estimate counted on a guess (T7):
+// - February 1 to April 15 of the year, equal to the year before's known balance due, with no
+//   estimates paid the year before: the first estimate, or that balance? Counted as the first.
+// - January 16-31 after: past the fourth installment's January 15 date; counted as the year's.
+export function taxPaymentNotes(
+  payments: readonly TaxPayment[],
+  year: number,
+  prior: PriorYearPayments,
+): string[] {
+  const W = TAX_PAYMENT_WINDOW;
+  const notes: string[] = [];
+  for (const p of taxPaymentsInYear(payments, year).filter((q) => q.to === "federal")) {
+    const monthDay = p.date.slice(5);
+    const inFirst =
+      p.date.startsWith(String(year)) && monthDay >= W.yearFrom && monthDay <= W.firstEstimateDue;
+    const late = p.date.startsWith(String(year + 1)) && monthDay > W.fourthDue;
+    if (inFirst && !prior.paidEstimates && prior.balanceDueCents === p.cents) {
+      notes.push(
+        `Jane took the ${formatCents(p.cents)} paid on ${dayLabel(p.date)} as a ${year} estimate; it may be last year's balance.`,
+      );
+    } else if (late) {
+      notes.push(
+        `Jane took the ${formatCents(p.cents)} paid on ${dayLabel(p.date, { year: true })} as a ${year} payment; it came after the fourth estimate's January 15 date, so it may be the balance paid with an early return, or it may belong to ${year + 1}.`,
+      );
+    }
   }
-  return { federalCents, stateCents };
+  return notes;
 }
 
 // Spec step 170: property tax paid in the year (to a county or city tax office), for the

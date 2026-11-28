@@ -308,7 +308,7 @@ export async function savePayStub(
     if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.asOf) || Number.isNaN(Date.parse(entry.asOf))) {
       throw new TaxProfileError("Give the pay stub's date.");
     }
-    if (entry.asOf > iso(now))
+    if (entry.asOf > (await todayOf(userId, { client, now })))
       throw new TaxProfileError("The pay stub's date can't be in the future.");
     const amounts = [
       entry.grossCents,

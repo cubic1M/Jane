@@ -116,7 +116,12 @@ export async function openCase(
   const existing = await db.taxIdentityCases.findFirst({ where: { closedAt: null } });
   if (existing) throw new IdentityError("You already have a case open. Finish its steps first.");
   const row = await db.taxIdentityCases.create({
-    data: { userId, sign, source, openedOn: new Date(`${iso(now)}T00:00:00Z`) },
+    data: {
+      userId,
+      sign,
+      source,
+      openedOn: new Date(`${await todayOf(userId, { client, now })}T00:00:00Z`),
+    },
   });
   await logAudit(
     { type: "user", id: userId },
@@ -149,14 +154,15 @@ export async function markStep(
   const done = {
     ...((row.steps && typeof row.steps === "object" ? row.steps : {}) as Record<string, string>),
   };
-  done[step] = iso(now);
+  const today = await todayOf(userId, { client, now });
+  done[step] = today;
   const view = caseView({ sign: row.sign as SignKey, openedOn: iso(row.openedOn), done });
   await db.taxIdentityCases.updateMany({
     where: { id: row.id },
     data: { steps: done, closedAt: view.complete ? now : null },
   });
   if (step === "ip_pin") {
-    const year = Number(iso(now).slice(0, 4));
+    const year = Number(today.slice(0, 4));
     await db.taxProfiles.upsert({
       where: { userId },
       create: { userId, ipPinHaveYear: year },
@@ -172,7 +178,8 @@ export async function markHavePin(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const year = Number(iso(now).slice(0, 4));
+  // The person's year, as loadIdentity reads it (not the UTC clock's: at 7pm on Dec 31 in Los Angeles).
+  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   await scopedFor(userId, client).taxProfiles.upsert({
     where: { userId },
     create: { userId, ipPinHaveYear: year },
@@ -194,9 +201,10 @@ export async function remindIpPin(
   if (!view.season) throw new IdentityError("The IP PIN reminder is for January to April.");
   if (view.havePin) throw new IdentityError("You already have your IP PIN for this year.");
   if (view.reminded) throw new IdentityError("That reminder is already on your deadlines.");
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const planned = `${view.year}-${IP_PIN.remindOn}`;
-  const dueOn = planned >= today ? planned : iso(new Date(now.getTime() + 7 * 86_400_000));
+  const dueOn =
+    planned >= today ? planned : iso(new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000));
   await addDeadline(
     userId,
     {

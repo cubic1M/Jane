@@ -9,6 +9,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { documentPartnerFor } from "@/lib/tax-docs";
@@ -147,7 +148,7 @@ export async function loadTaxDocuments(
   ]);
   await adoptCopyDocuments(db, counting, year, stored, new Set(expected.forms.map((f) => f.key)));
   const byKey = new Map(stored.map((d) => [d.key, d]));
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const forms: CollectedForm[] = expected.forms.map((f) => {
     const row = byKey.get(f.key);
     if (!row) return { ...f, document: null, check: null, usable: false };
@@ -184,7 +185,7 @@ export async function collectTaxDocuments(
   userId: string,
   { client = defaultClient, now = new Date(), tick }: Options & { tick: boolean },
 ): Promise<{ collected: number; ticked: number }> {
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const none = { collected: 0, ticked: 0 };
   if (!inDocumentSeason(today)) return none;
   const partner = await documentPartnerFor(userId, { client });
@@ -192,7 +193,7 @@ export async function collectTaxDocuments(
   const db = scopedFor(userId, client);
   const profile = await db.taxProfiles.findFirst({ select: { documentsCheckedOn: true } });
   if (profile?.documentsCheckedOn && iso(profile.documentsCheckedOn) >= today) return none;
-  const year = now.getUTCFullYear() - 1;
+  const year = Number(today.slice(0, 4)) - 1;
   const before = await loadTaxDocuments(userId, year, { client, now });
   const wanted = before.forms.filter((f) => !f.document && f.by <= today);
   const fetched = wanted.length
@@ -287,7 +288,7 @@ export async function decideDocument(
       userId,
       {
         title: `Ask ${form.from} for a corrected ${TAX_FORMS[form.formKey as TaxFormKey].form}`,
-        dueOn: addDays(iso(now), TAX_DOCUMENTS.remindDays),
+        dueOn: addDays(await todayOf(userId, { client, now }), TAX_DOCUMENTS.remindDays),
         kind: "other",
         note: `Their form doesn't match your accounts. Jane isn't using it until it's sorted.`,
       },
@@ -318,7 +319,7 @@ export async function chaseMissing(
     userId,
     {
       title: `Ask ${form.from} for your ${form.form}`,
-      dueOn: addDays(iso(now), TAX_DOCUMENTS.remindDays),
+      dueOn: addDays(await todayOf(userId, { client, now }), TAX_DOCUMENTS.remindDays),
       kind: "other",
       note: `It was due by ${form.by}. Most payers can send it again or put it online.`,
     },
