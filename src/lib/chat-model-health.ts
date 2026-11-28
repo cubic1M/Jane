@@ -17,10 +17,14 @@ export async function chatModelLine({
     createdAt: { gte: new Date(now.getTime() - CHAT_MODEL_DOWN_HOURS * 3_600_000), lte: now },
   };
   const ops = systemDb(WHY, client).opsEvent;
-  const [count, first] = await Promise.all([
-    ops.count({ where }),
+  const [refused, chat, first] = await Promise.all([
+    ops.count({ where: { ...where, kind: "claude_key_refused" } }),
+    ops.count({ where: { ...where, kind: "chat_model_unavailable" } }),
     ops.findFirst({ where, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
   ]);
+  // A refused key writes both kinds for one chat turn (the call, then the turn): count the turns,
+  // and the refused calls alone when only background work met the refusal.
+  const count = chat > 0 ? chat : refused;
   if (count === 0 || !first) return null;
   const since = `${first.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC`;
   return `Chat model unavailable: ${count} refused or failed ${count === 1 ? "call" : "calls"} since ${since}`;

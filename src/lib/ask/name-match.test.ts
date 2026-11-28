@@ -27,7 +27,14 @@ describe("nameMatcher", () => {
     // A short single word doesn't find a longer name by accident.
     expect(match("net", "NETFLIX")).toBe("exact");
     expect(match("ne", "COSTCO")).toBeNull();
+    expect(match("ne", "NETFLIX")).toBeNull();
+    expect(match("la", "LA FITNESS")).toBe("exact");
     expect(match("", "ANYTHING")).toBeNull();
+  });
+
+  it("keeps names in any script", () => {
+    expect(match("東京", "東京 CAFE")).toBe("exact");
+    expect(match("café", "CAFÉ BORRONE")).toBe("exact");
   });
 
   it("looks at every name a row goes by", () => {

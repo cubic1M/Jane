@@ -43,6 +43,14 @@ describe.runIf(url)("the chat model's red line", () => {
       now: hoursAgo(2),
     });
     expect(await chatModelLine({ client, now: NOW })).toBe(
+      "Chat model unavailable: 1 refused or failed call since 2027-03-01 07:00 UTC",
+    );
+  });
+
+  it("counts the refused calls alone when only background work met the refusal", async () => {
+    await recordOpsEvent("claude_key_refused", { code: "HTTP_401", client, now: hoursAgo(5) });
+    await recordOpsEvent("claude_key_refused", { code: "HTTP_401", client, now: hoursAgo(4) });
+    expect(await chatModelLine({ client, now: NOW })).toBe(
       "Chat model unavailable: 2 refused or failed calls since 2027-03-01 07:00 UTC",
     );
   });

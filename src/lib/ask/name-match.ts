@@ -22,7 +22,7 @@ export type NameMatch = "exact" | "similar" | null;
 const words = (text: string): string[] =>
   text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .split(" ")
     .filter(Boolean);
 
@@ -57,7 +57,11 @@ export function nameMatcher(asked: string): (names: readonly string[]) => NameMa
   return (names) => {
     let similar = false;
     for (const name of names) {
-      if (plain(name).includes(phrase)) return "exact";
+      // A fragment of under three letters is a whole word of the name, never a piece of one.
+      const written = plain(name);
+      if (phrase.length >= 3 ? written.includes(phrase) : ` ${written} `.includes(` ${phrase} `)) {
+        return "exact";
+      }
       if (similar || wanted.length === 0) continue;
       const tokens = words(name).filter((t) => !FILLER.has(t));
       const found = (w: string) =>
