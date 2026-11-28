@@ -81,9 +81,17 @@ export type SnapshotContext = {
 // are in the window if it holds as many as were asked for, and then they are the answer.
 function newestOnly(operation: string, args: Args): boolean {
   const first = Array.isArray(args.orderBy) ? args.orderBy[0] : args.orderBy;
-  const byNewest = isObject(first) && first.date === "desc";
-  if (operation === "aggregate")
-    return Object.keys(args).every((k) => k === "where" || k === "_max") && isObject(args._max);
+  // Newest first by date before anything else, so the newest rows are the first of the whole table.
+  const byNewest = isObject(first) && Object.keys(first)[0] === "date" && first.date === "desc";
+  if (operation === "aggregate") {
+    const max = args._max;
+    return (
+      Object.keys(args).every((k) => k === "where" || k === "_max") &&
+      isObject(max) &&
+      Object.keys(max).length === 1 &&
+      max.date === true
+    );
+  }
   return (
     byNewest && (operation === "findFirst" || (operation === "findMany" && args.take !== undefined))
   );

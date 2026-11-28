@@ -132,6 +132,32 @@ describe.runIf(url)("a table read once for all that ask of it", { timeout: 120_0
     expect(statements).toBe(alone);
   });
 
+  it("answers the newest rows from the window, and only those", async () => {
+    const db = scopedFor(userId, client);
+    const asked = () =>
+      Promise.all([
+        db.transactions.findFirst({
+          orderBy: { date: "desc" },
+          select: { date: true, amountCents: true },
+        }),
+        db.transactions.aggregate({ _max: { date: true } }),
+        // Not about the newest day: the largest amount of all time, and a largest-amount order.
+        db.transactions.aggregate({ _max: { amountCents: true } }),
+        db.transactions.findFirst({
+          orderBy: [{ amountCents: "desc" }, { date: "desc" }],
+          select: { id: true },
+        }),
+      ]);
+    statements = 0;
+    const alone = await asked();
+    const aloneStatements = statements;
+    statements = 0;
+    const shared = await withRequestMemo(asked);
+    expect(JSON.stringify(shared)).toBe(JSON.stringify(alone));
+    // The two about the newest day share the window's one read; the other two ask the database.
+    expect(statements).toBe(aloneStatements - 1);
+  });
+
   it("forgets what it held when something is written", async () => {
     const db = scopedFor(userId, client);
     await withRequestMemo(async () => {

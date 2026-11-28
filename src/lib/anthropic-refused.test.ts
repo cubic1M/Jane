@@ -8,7 +8,7 @@ vi.mock("@/lib/log", () => ({
   log: { warn: (...a: unknown[]) => warned(...a), error: vi.fn(), info: vi.fn() },
 }));
 
-import { CLAUDE_REFUSED_PAUSE_MS } from "@/config/outside-calls";
+import { CLAUDE_REFUSED_PAUSE_MS, CLAUDE_REFUSED_PROBE_MS } from "@/config/outside-calls";
 import { claudeFetch, resetClaudeRefusalForTests } from "./anthropic";
 
 // A key the store refuses is refused on every call, and every chat turn used to ask, wait for the
@@ -85,6 +85,32 @@ describe("a refused Claude key", () => {
     expect(network).toHaveBeenCalledTimes(2);
     release(new Response("{}", { status: 200 }));
     expect((await probe).status).toBe(200);
+  });
+
+  it("keeps the probe alone however long it takes", async () => {
+    await ask();
+    vi.advanceTimersByTime(CLAUDE_REFUSED_PAUSE_MS + 1);
+    let release: (r: Response) => void = () => undefined;
+    network.mockReturnValueOnce(new Promise<Response>((r) => (release = r)));
+    const probe = ask();
+    vi.advanceTimersByTime(CLAUDE_REFUSED_PROBE_MS * 5);
+    expect((await ask()).status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(2);
+    release(new Response("{}", { status: 200 }));
+    await probe;
+    network.mockResolvedValue(new Response("{}", { status: 200 }));
+    expect((await ask()).status).toBe(200);
+  });
+
+  it("tries again after a probe that got no answer", async () => {
+    await ask();
+    vi.advanceTimersByTime(CLAUDE_REFUSED_PAUSE_MS + 1);
+    network.mockRejectedValueOnce(new Error("socket hang up"));
+    await expect(ask()).rejects.toThrow("socket hang up");
+    expect((await ask()).status).toBe(401);
+    vi.advanceTimersByTime(CLAUDE_REFUSED_PROBE_MS + 1);
+    network.mockResolvedValue(new Response("{}", { status: 200 }));
+    expect((await ask()).status).toBe(200);
   });
 
   it("does not treat other failures as a refusal", async () => {

@@ -215,6 +215,16 @@ describe.runIf(url)("reads answered from rows in memory", { timeout: 120_000 }, 
     expect(
       ask("findMany", { where: { description: { contains: "e", mode: "insensitive" } } }),
     ).toBeNull();
+    // Insensitive applies to equality and membership too, which compare as written here.
+    expect(
+      ask("findMany", { where: { merchantName: { equals: "NETFLIX", mode: "insensitive" } } }),
+    ).toBeNull();
+    expect(
+      ask("findMany", { where: { merchantName: { in: ["NETFLIX"], mode: "insensitive" } } }),
+    ).toBeNull();
+    expect(
+      ask("findMany", { where: { merchantName: { not: { equals: "x" }, mode: "insensitive" } } }),
+    ).toBeNull();
     expect(ask("findMany", { take: -1 })).toBeNull();
     expect(ask("findMany", { where: { nope: 1, userId } })).toBeNull();
   });

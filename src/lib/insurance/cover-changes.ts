@@ -82,13 +82,14 @@ export type CoverEventFound = {
 // job, a baby), a car added to what they own or a new car loan, and what they told Jane.
 export async function coverEvents(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now }: Options = {},
 ): Promise<CoverEventFound[]> {
   // Each of Home's area trees asks for these with a clock of its own, a few milliseconds apart, which
-  // no shared read can tell from a new question: one answer for the render (a write forgets it).
-  if (client !== defaultClient) return coverEventsFrom(userId, client, now);
+  // no shared read can tell from a new question: one answer for the render (a write forgets it). A
+  // caller that names its day, or a client of its own, is asking its own question.
+  if (client !== defaultClient || now) return coverEventsFrom(userId, client, now ?? new Date());
   return (await memoRead(`${userId}|coverEvents`, () =>
-    coverEventsFrom(userId, client, now),
+    coverEventsFrom(userId, client, new Date()),
   )) as CoverEventFound[];
 }
 

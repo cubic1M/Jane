@@ -136,6 +136,9 @@ function test(f: FieldInfo, filter: unknown, raw: unknown): Truth {
   const parts: Truth[] = [];
   for (const [op, arg] of Object.entries(filter)) {
     if (op === "mode") continue;
+    // Insensitive applies to equality, membership and "not" as well, which compare as written here:
+    // the database answers those.
+    if (insensitive && !["contains", "startsWith", "endsWith"].includes(op)) no();
     if (op === "equals") {
       parts.push(arg === null ? value === null : value === null ? null : value === plain(f, arg));
     } else if (op === "not") {

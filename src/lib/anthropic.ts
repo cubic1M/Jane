@@ -43,16 +43,29 @@ export function chatModel(): string {
 // Jane's own words), and then one call goes through to see whether the key works again. Only the
 // refusal's code is kept, never the key.
 let refused: { until: number; status: number } | null = null;
+// Whether the one call that tries again is out.
+let probing = false;
 
 export const claudeFetch: typeof fetch = async (input, init) => {
   await freshSwitches();
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
-  if (refused) {
-    if (Date.now() < refused.until) return refusal(refused.status);
-    // The pause is over: this call is the one that tries again, and the rest wait for its answer.
-    refused = { ...refused, until: Date.now() + CLAUDE_REFUSED_PROBE_MS };
+  const probe = refused !== null && Date.now() >= refused.until;
+  if (refused && (!probe || probing)) return refusal(refused.status);
+  // The pause is over: this call is the one that tries again, and the rest are refused until its
+  // answer is in, however long that takes.
+  if (probe) probing = true;
+  let response: Response;
+  try {
+    response = await send(input, init);
+  } catch (error) {
+    if (probe) {
+      // No answer: the pause starts over, and the next call after it tries again.
+      probing = false;
+      refused = { ...refused!, until: Date.now() + CLAUDE_REFUSED_PROBE_MS };
+    }
+    throw error;
   }
-  const response = await send(input, init);
+  if (probe) probing = false;
   if (response.status === 401 || response.status === 403) {
     // Only the first refusal of a pause is logged and raised; the probe after it starts another.
     log.warn("Claude refused the key; calls to it are paused for a few minutes", {
@@ -81,6 +94,7 @@ function refusal(status: number): Response {
 // For tests: forget a remembered refusal.
 export function resetClaudeRefusalForTests() {
   refused = null;
+  probing = false;
 }
 
 function send(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) {
