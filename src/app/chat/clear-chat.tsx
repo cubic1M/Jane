@@ -36,7 +36,7 @@ export function ClearChat() {
           Clear chat
         </button>
         {state.error && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="text-sm">
             {state.error}
           </p>
         )}
@@ -54,7 +54,7 @@ export function ClearChat() {
       <input type="hidden" name="confirm" value="yes" />
       <p>{CLEAR_CHAT_WARNING}</p>
       {state.error && (
-        <p role="alert" className="font-medium text-red-700 dark:text-red-400">
+        <p role="alert" className="font-medium">
           {state.error}
         </p>
       )}
@@ -62,7 +62,7 @@ export function ClearChat() {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-h-11 items-center rounded-lg bg-red-700 px-4 font-medium text-white disabled:opacity-60"
+          className="inline-flex min-h-11 items-center rounded-lg bg-zinc-900 px-4 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-60"
         >
           {pending ? "Deleting…" : "Delete every message"}
         </button>
