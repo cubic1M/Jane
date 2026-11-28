@@ -46,10 +46,14 @@ async function post(url: string, body: unknown) {
 
 export function LinkButton({
   itemId,
+  fullHistoryFor,
   label,
   className,
 }: {
   itemId?: string;
+  // A new link of the same bank asking for the longest history, moved onto this bank's accounts
+  // by the server (src/lib/plaid/replace.ts).
+  fullHistoryFor?: string;
   label: string;
   className: string;
 }) {
@@ -58,6 +62,8 @@ export function LinkButton({
   const [error, setError] = useState<string | null>(null);
   // The last slot went while the page was open: the page itself now offers uploading instead.
   const [full, setFull] = useState(false);
+  // The full history is being moved in: it can take a few minutes.
+  const [waiting, setWaiting] = useState(false);
 
   function linkingFull() {
     setFull(true);
@@ -69,6 +75,7 @@ export function LinkButton({
     setBusy(true);
     setError(null);
     try {
+      // A full-history tap opens a new link (the token that asks for the longest history), not update mode.
       const token = await post("/api/plaid/link-token", itemId ? { itemId } : {});
       if (token.body.code === LINKING_FULL_CODE) return linkingFull();
       if (!token.ok) throw new Error(token.body.error ?? "Couldn't start linking.");
@@ -78,6 +85,23 @@ export function LinkButton({
         onSuccess: async (publicToken, metadata) => {
           // A request that fails or can't be reached must not leave the button on "Opening…".
           try {
+            if (fullHistoryFor) {
+              setWaiting(true);
+              const moved = await post("/api/plaid/full-history", {
+                publicToken,
+                itemId: fullHistoryFor,
+                institutionName: metadata.institution?.name ?? null,
+              }).finally(() => setWaiting(false));
+              if (moved.body.code === LINKING_FULL_CODE) return linkingFull();
+              if (!moved.ok) {
+                setError(moved.body.error ?? "Nothing was changed. Please try again later.");
+                setBusy(false);
+                return;
+              }
+              router.refresh();
+              setBusy(false);
+              return;
+            }
             if (itemId) {
               // Update mode keeps the same item: it stops asking, and syncs (the server's job).
               const repaired = await post("/api/plaid/repaired", { itemId });
@@ -133,8 +157,13 @@ export function LinkButton({
   return (
     <div className="flex flex-col gap-2">
       <button type="button" onClick={open} disabled={busy} className={className}>
-        {busy ? "Opening…" : label}
+        {waiting ? "Getting your history…" : busy ? "Opening…" : label}
       </button>
+      {waiting && (
+        <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
+          This can take a few minutes. Keep this page open; nothing you set is lost.
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
           {error}

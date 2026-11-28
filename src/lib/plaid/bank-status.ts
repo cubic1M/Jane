@@ -1,8 +1,10 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { momentLabel } from "@/lib/day-label";
 import { timezoneOf } from "@/lib/today";
+import { fullHistoryState } from "./history";
 import { ITEM_STATUS } from "./sync";
 
 // What a linked bank needs from the person, said calmly and honestly (the founder: "Your bank
@@ -45,15 +47,30 @@ export type BankItem = {
 
 export type BankNotice = {
   itemId: string;
-  kind: "sign_in" | "reconnect_soon" | "new_accounts" | "trouble";
+  kind:
+    | "sign_in"
+    | "reconnect_soon"
+    | "new_accounts"
+    | "trouble"
+    | "full_history"
+    | "full_history_waiting";
   title: string;
   words: string;
-  // Opens Plaid Link in update mode for this bank.
+  // Opens Plaid Link in update mode for this bank, or for "full_history" a new link of it.
   action: string | null;
+  fullHistory?: boolean;
 };
 
 // `timezone`: the person's own, so a disconnect's day is their day (Plaid gives a moment in UTC).
-export function bankNotices(items: readonly BankItem[], now: Date, timezone = "UTC"): BankNotice[] {
+export function bankNotices(
+  items: readonly BankItem[],
+  now: Date,
+  timezone = "UTC",
+  // Banks that can give a longer history (src/lib/plaid/history.ts offerFullHistory).
+  fullHistory: ReadonlySet<string> = new Set(),
+  // Banks whose tap was refused lately, with the day it is offered again.
+  waiting: ReadonlyMap<string, Date> = new Map(),
+): BankNotice[] {
   return items.flatMap((item): BankNotice[] => {
     const name = item.name ?? "Your bank";
     const age = `What you see from there was last updated ${updatedAgo(item.lastSyncedAt, now)}.`;
@@ -85,6 +102,25 @@ export function bankNotices(items: readonly BankItem[], now: Date, timezone = "U
         words: "Choose which to share, and Jane counts them too.",
         action: "Choose accounts",
       });
+    if (fullHistory.has(item.id))
+      notices.push({
+        itemId: item.id,
+        kind: "full_history",
+        title: `Get my full history from ${name}`,
+        words:
+          "One sign-in at your bank. Jane keeps every category, tag and past balance you have, and nothing is counted twice. If anything goes wrong, nothing changes.",
+        action: "Get my full history",
+        fullHistory: true,
+      });
+    const again = waiting.get(item.id);
+    if (again && !fullHistory.has(item.id))
+      notices.push({
+        itemId: item.id,
+        kind: "full_history_waiting",
+        title: `Jane could not get the full history from ${name} yet`,
+        words: `The longer history did not line up with what Jane already holds, so nothing was changed. Jane will offer it again after ${momentLabel(again, timezone)}.`,
+        action: null,
+      });
     if (item.lastErrorCode)
       notices.push({
         itemId: item.id,
@@ -102,6 +138,7 @@ export async function loadBankNotices(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<BankNotice[]> {
   const items = await scopedFor(userId, client).plaidItems.findMany({
+    where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
     select: {
       id: true,
       institutionName: true,
@@ -115,9 +152,12 @@ export async function loadBankNotices(
   });
   // Their timezone only matters for a disconnect's day, which is rare.
   const timezone = items.some((i) => i.reconnectBy) ? await timezoneOf(userId) : "UTC";
+  const state = await fullHistoryState(userId, { client, now });
   return bankNotices(
     items.map((i) => ({ ...i, name: i.institutionName })),
     now,
     timezone,
+    state.offers,
+    state.waiting,
   );
 }

@@ -22,6 +22,9 @@ export async function finishRead(
   sync: PlaidSync,
   client: PrismaClient,
   startedAt: Date,
+  // The link's row: the removals run in a transaction that takes its lock first (live-item.ts), so a link
+  // replaced meanwhile loses nothing and removes nothing.
+  itemId?: string,
 ): Promise<RereadResult> {
   const retry = { removed: 0, keepCursor: true, spent: false, held: null } as const;
   // Plaid has nothing ready yet: not a set to compare against, so nothing is removed and the link
@@ -40,7 +43,7 @@ export async function finishRead(
       const id = accountIds.get(t.accountRef);
       if (id && (!windows.has(id) || t.date < windows.get(id)!)) windows.set(id, t.date);
     }
-    const out = await removeWhatPlaidDropped(userId, windows, listed, startedAt, client);
+    const out = await removeWhatPlaidDropped(userId, windows, listed, startedAt, client, itemId);
     if (out.kind === "done")
       return { removed: out.removed, keepCursor: false, spent: true, held: null };
     log.warn("A bank's read from the start would remove too many rows; nothing removed", {

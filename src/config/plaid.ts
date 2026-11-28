@@ -141,3 +141,37 @@ export const HISTORY_COMPLETE = "HISTORICAL_UPDATE_COMPLETE";
 // and the link is flagged on /admin/history.
 export const REREAD_MAX_POSTED_REMOVALS = 5;
 export const REREAD_MAX_POSTED_SHARE = 0.02;
+
+// One tap for the full history (src/lib/plaid/replace.ts): how long, in all, the new link's history is
+// waited for (Plaid says it typically arrives within a minute or two, plaid.com/docs/transactions/webhooks/,
+// read 2026-11-28), and how often it is looked at. Past it nothing is changed and the new link is removed.
+export const REPLACE_WAIT_MS = 120_000;
+export const REPLACE_WAIT_STEP_MS = 10_000;
+// The whole replacement (the wait, the matching, the categories, the move) must end well inside the
+// route's 300 s limit (src/app/api/plaid/full-history/route.ts): past this a replacement that has not
+// reached the move is given up and the new link removed.
+export const REPLACE_TOTAL_MS = 240_000;
+// The new link is kept (hidden, status "replacing") from the moment it is made until the move. The
+// nightly job removes one older than this, at Plaid and here: the function that made it is gone.
+export const REPLACING_STALE_MS = 15 * 60_000;
+// Statuses of a plaid_items row that is not a bank link the person has: a link made for a replacement
+// that has not moved in yet ("replacing"), and the link a fuller one took over ("replaced"). Every list,
+// count, sync and webhook treats them as not there.
+export const HIDDEN_ITEM_STATUSES = ["replaced", "replacing"] as const;
+// Charges the new read words differently (a rewritten name, a posted day that moved) still pair with the
+// old row of the same account and amount when the days are this close.
+export const TWIN_DATE_SLACK_DAYS = 3;
+// A pending charge younger than this is never deleted by the move: the new link may not list it yet,
+// and the later posted charge finds it again by its old id (pending_transaction_id).
+export const STALE_PENDING_DAYS = 10;
+// A posted charge the person holds is never deleted by the move. When the new read, inside the days it
+// actually returned, has no twin for one, the move refuses before writing anything.
+// Margin kept for the commit and the removal at Plaid after the categories are asked for.
+export const REPLACE_COMMIT_MARGIN_MS = 30_000;
+// A kept pending row meets its posted charge (same account and amount, the only candidate) within this many days.
+export const LEGACY_POSTED_DAYS = 10;
+// After a refusal (plaid_history_refused) the tap is not offered for this many days for that link: each
+// tap makes a billed Item, and a hole in the new read does not close by trying again at once.
+export const REFUSAL_WAIT_DAYS = 7;
+// The nightly job raises an ops event when a hidden link has failed to be removed at Plaid this many nights.
+export const REMOVAL_FAILURES_BEFORE_ALERT = 3;

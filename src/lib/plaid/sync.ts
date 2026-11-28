@@ -5,6 +5,7 @@ import { scrub } from "@/lib/scrub";
 import { rebuildPastBalances } from "@/lib/plaid/past-balances";
 import { heldHistory, latestNotes, recordHistory, rescanDue } from "@/lib/plaid/history";
 import { deleteRemoved } from "@/lib/plaid/reread-removals";
+import { lockLiveItem } from "@/lib/plaid/live-item";
 import { finishRead, type RereadResult } from "@/lib/plaid/reread-finish";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
@@ -34,7 +35,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { personTransaction, scopedFor, type PersonTx, type ScopedDb } from "@/lib/db-scoped";
+import { Prisma } from "@/generated/prisma/client";
 import { withReadCache } from "@/lib/read-cache";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import {
@@ -49,7 +51,9 @@ import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
 import { killed } from "@/config/kill-switches";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { SIGN_IN_PLAID_CODES } from "@/config/plaid";
+import { HIDDEN_ITEM_STATUSES, SIGN_IN_PLAID_CODES, STALE_PENDING_DAYS } from "@/config/plaid";
+import { touchedIds } from "./hangs-on";
+import { LEGACY_PENDING_PREFIX, adoptLegacyPending } from "./legacy-pending";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { policiesFromPayments } from "@/lib/found-policies";
@@ -88,7 +92,16 @@ export const ITEM_STATUS = {
   active: "active",
   // The bank needs the person to sign in again (Link update mode).
   loginRequired: "login_required",
+  // A fuller link of the same bank took over its accounts (src/lib/plaid/replace.ts): never synced,
+  // never shown, removed at Plaid.
+  replaced: "replaced",
+  // A link made for a replacement, kept (hidden, with its token) from its making until the move
+  // turns it into the person's link; the nightly job removes one the move never reached.
+  replacing: "replacing",
 } as const;
+
+// Rows written to one transaction at a time, so a long first read never holds one open for long.
+const WRITE_CHUNK = 500;
 
 // Why a sync failed, kept on the item so the person is told plainly: a sign-in needed marks it
 // for Link's update mode; anything else (an outage, a rate limit that didn't pass) is recorded
@@ -159,16 +172,26 @@ type Options = {
   onReady?: () => void;
 };
 
-async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
-  // Together, not one after another: each is a round trip to the database and the person is
-  // waiting on the first scan (a person with many accounts waited the longest).
-  const saved = await Promise.all(
-    sync.accounts.map((account) =>
-      db.accounts.upsert({
-        where: { plaidAccountId: account.ref },
-        create: {
-          userId: db.userId,
-          source: "plaid",
+async function saveAccounts(
+  db: ScopedDb,
+  itemId: string,
+  sync: { accounts: NormalizedAccount[] },
+  client: PrismaClient,
+) {
+  // In the order of Plaid's account ids, whatever order Plaid lists them in: two syncs of one link then
+  // take their row locks in the same order and cannot deadlock.
+  const accounts = [...sync.accounts].sort((x, y) => x.ref.localeCompare(y.ref));
+  if (accounts.length === 0) return new Map<string, string>();
+  const userId = db.userId;
+  const ids = await personTransaction(
+    userId,
+    async (tx) => {
+      await lockLiveItem(tx, itemId);
+      // Three statements however many accounts there are: the new ones, the figures of every one, the ids.
+      await tx.account.createMany({
+        data: accounts.map((account) => ({
+          userId,
+          source: "plaid" as const,
           itemId,
           plaidAccountId: account.ref,
           name: account.name,
@@ -176,19 +199,34 @@ async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: Norm
           type: SYNCED_KINDS[account.kind].type,
           subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
           currentBalanceCents: account.currentBalanceCents,
-        },
-        update: {
-          name: account.name,
-          mask: account.mask,
-          currentBalanceCents: account.currentBalanceCents,
-          // Investment accounts keep Plaid's own subtype (spec step 128).
-          ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
-        },
-        select: { id: true },
-      }),
-    ),
+        })),
+        skipDuplicates: true,
+      });
+      await tx.$executeRaw`
+        UPDATE accounts AS a SET name = v.name, mask = v.mask, current_balance_cents = v.balance,
+          subtype = COALESCE(v.subtype, a.subtype), updated_at = now()
+        FROM unnest(${accounts.map((x) => x.ref)}::text[], ${accounts.map((x) => x.name)}::text[], ${accounts.map((x) => x.mask)}::text[], ${accounts.map((x) => x.currentBalanceCents)}::int[], ${accounts.map((x) => x.plaidSubtype ?? null)}::text[]) AS v(ref, name, mask, balance, subtype)
+        WHERE a.plaid_account_id = v.ref AND a.user_id = ${userId}`;
+      const saved = await tx.account.findMany({
+        where: { userId, plaidAccountId: { in: accounts.map((x) => x.ref) } },
+        select: { id: true, plaidAccountId: true },
+      });
+      // An account whose Plaid id is another person's was skipped by createMany: raise, as the upsert it
+      // replaces did (a unique violation), so the sync fails and rolls this back, never skips in silence.
+      if (saved.length !== new Set(accounts.map((x) => x.ref)).size) {
+        throw new Error("A bank account in this link belongs to another person");
+      }
+      return saved;
+    },
+    client,
   );
-  return new Map(sync.accounts.map((account, i) => [account.ref, saved[i].id]));
+  const byRef = new Map(ids.map((r) => [r.plaidAccountId, r.id] as const));
+  return new Map(
+    accounts.flatMap((account) => {
+      const id = byRef.get(account.ref);
+      return id ? [[account.ref, id] as const] : [];
+    }),
+  );
 }
 
 // An optional read (recurring streams, loans and cards, investments) that Plaid refused or could
@@ -200,9 +238,16 @@ function optionalFailure(error: unknown): string {
   return error.code ?? (error.status ? `HTTP_${error.status}` : "NO_ANSWER");
 }
 
-async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, sync: PlaidSync) {
+async function saveTransactions(
+  db: ScopedDb,
+  accountIds: Map<string, string>,
+  sync: PlaidSync,
+  itemId: string,
+  client: PrismaClient,
+) {
+  const userId = db.userId;
   const categorized = await categorizeTransactions(sync.transactions, db, {
-    claude: meteredClaude(db.userId),
+    claude: meteredClaude(userId),
   });
   // A posted transaction replaces its pending one (Plaid's pending_transaction_id), whether or
   // not Plaid has listed the pending one as removed yet: never both, so nothing counts twice.
@@ -214,6 +259,7 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
       t.pendingExternalId && !t.pending ? [[t.pendingExternalId, t.externalId] as const] : [],
     ),
   );
+  const pendingRef = new Map(categorized.map((t) => [t.externalId, t.pendingExternalId ?? null]));
   const rows = categorized.flatMap((t) => {
     const accountId = accountIds.get(t.accountRef);
     if (!accountId || pendingOf.has(t.externalId)) return [];
@@ -233,60 +279,192 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     ];
   });
 
-  const replaced =
-    pendingOf.size === 0
-      ? []
-      : await db.transactions.findMany({
-          where: { plaidTransactionId: { in: [...pendingOf.keys()] }, pending: true },
-          select: {
-            plaidTransactionId: true,
-            pfcPrimary: true,
-            pfcDetailed: true,
-            categorySource: true,
-          },
-        });
-  for (const p of replaced.filter((p) => p.categorySource === "user")) {
-    const row = rows.find((r) => r.plaidTransactionId === pendingOf.get(p.plaidTransactionId!));
-    if (row)
-      Object.assign(row, {
-        pfcPrimary: p.pfcPrimary,
-        pfcDetailed: p.pfcDetailed,
-        categorySource: "user",
+  // Every write below is inside a transaction that begins by taking the link's row lock and refusing
+  // when the link was replaced meanwhile (lockLiveItem), so a sync and the move of the link's accounts
+  // never write at the same time and a sync after the move writes nothing.
+  type Changed = { row: (typeof rows)[number]; keepCategory: boolean };
+  const writeChanged = async (tx: PersonTx, list: readonly Changed[]) => {
+    for (const { row, keepCategory } of list) {
+      const { plaidTransactionId, pfcPrimary, pfcDetailed, categorySource, ...rest } = row;
+      await tx.transaction.updateMany({
+        where: { userId, plaidTransactionId },
+        data:
+          keepCategory && categorySource !== "user"
+            ? rest
+            : { ...rest, pfcPrimary, pfcDetailed, categorySource },
       });
-  }
-  const saved = await db.transactions.findMany({
-    where: { plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
-    select: { plaidTransactionId: true, categorySource: true },
-  });
-  const existing = new Set(saved.map((t) => t.plaidTransactionId));
-  // Categories the person set by hand survive Plaid's later changes to the transaction.
-  const corrected = new Set(
-    saved.filter((t) => t.categorySource === "user").map((t) => t.plaidTransactionId),
+    }
+  };
+  // The pending ones go only once their posted rows are saved or updated, in the same transaction or a
+  // later one: a save that fails leaves them, so the next sync (from the same cursor) can still carry a
+  // category the person set across.
+  const finish = async (tx: PersonTx, replacedIds: readonly string[]) => {
+    if (replacedIds.length > 0)
+      await tx.transaction.deleteMany({
+        where: { userId, plaidTransactionId: { in: [...replacedIds] } },
+      });
+    // A kept pending row that nothing ever claimed is a ghost after STALE_PENDING_DAYS; one the person
+    // has anything on is never deleted.
+    const old = await tx.transaction.findMany({
+      where: {
+        userId,
+        pending: true,
+        plaidTransactionId: { startsWith: LEGACY_PENDING_PREFIX },
+        accountId: { in: [...accountIds.values()] },
+        date: { lt: new Date(Date.now() - STALE_PENDING_DAYS * 86_400_000) },
+      },
+      select: { id: true, categorySource: true, incomePlacement: true },
+    });
+    if (old.length > 0) {
+      const touched = await touchedIds(tx, userId, old, client);
+      // The same protection again at the delete: a category set since the read keeps the row.
+      await tx.transaction.deleteMany({
+        where: {
+          userId,
+          id: { in: old.filter((r) => !touched.has(r.id)).map((r) => r.id) },
+          // Still a kept row: a sync that overlapped this one may have taken it over meanwhile.
+          plaidTransactionId: { startsWith: LEGACY_PENDING_PREFIX },
+          incomePlacement: null,
+          OR: [{ categorySource: null }, { categorySource: { not: "user" } }],
+        },
+      });
+    }
+    return deleteRemoved(tx.transaction, userId, sync.removedTransactionIds);
+  };
+  const { replacedIds, changed, added, done } = await personTransaction(
+    userId,
+    async (tx) => {
+      await lockLiveItem(tx, itemId);
+      const replaced =
+        pendingOf.size === 0
+          ? []
+          : await tx.transaction.findMany({
+              where: { userId, plaidTransactionId: { in: [...pendingOf.keys()] }, pending: true },
+              select: {
+                plaidTransactionId: true,
+                pfcPrimary: true,
+                pfcDetailed: true,
+                categorySource: true,
+              },
+            });
+      for (const p of replaced.filter((p) => p.categorySource === "user")) {
+        const row = rows.find((r) => r.plaidTransactionId === pendingOf.get(p.plaidTransactionId!));
+        if (row)
+          Object.assign(row, {
+            pfcPrimary: p.pfcPrimary,
+            pfcDetailed: p.pfcDetailed,
+            categorySource: "user",
+          });
+      }
+      const saved = await tx.transaction.findMany({
+        where: { userId, plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
+        select: { plaidTransactionId: true, categorySource: true },
+      });
+      const existing = new Set(saved.map((t) => t.plaidTransactionId));
+      // Categories the person set by hand survive Plaid's later changes to the transaction.
+      const corrected = new Set(
+        saved.filter((t) => t.categorySource === "user").map((t) => t.plaidTransactionId),
+      );
+      const fresh = rows.filter((r) => !existing.has(r.plaidTransactionId));
+      // A pending charge kept from the link this one replaced (legacy-pending.ts) is the same charge
+      // when it arrives here: the kept row takes the new id and what the person set on it stays.
+      const ghosts =
+        fresh.length === 0
+          ? []
+          : await tx.transaction.findMany({
+              where: {
+                userId,
+                pending: true,
+                plaidTransactionId: { startsWith: LEGACY_PENDING_PREFIX },
+                accountId: { in: [...accountIds.values()] },
+              },
+              select: {
+                id: true,
+                accountId: true,
+                date: true,
+                amountCents: true,
+                description: true,
+                categorySource: true,
+              },
+            });
+      const adopted =
+        ghosts.length === 0
+          ? new Map<string, string>()
+          : adoptLegacyPending(
+              ghosts,
+              // A posted charge whose pending one was found by its id is that one's, not a kept row's.
+              fresh
+                .filter((r) => {
+                  const p = pendingRef.get(r.plaidTransactionId);
+                  return !p || !replaced.some((x) => x.plaidTransactionId === p);
+                })
+                .map((r) => ({
+                  ...r,
+                  pendingExternalId: pendingRef.get(r.plaidTransactionId) ?? null,
+                })),
+            );
+      // Taken over atomically: the update only matches a row that is still a kept one, so of two syncs
+      // that overlap only one gets it; the other saves its charge as a new row.
+      const lost = new Set<string>();
+      for (const r of fresh) {
+        const ghostId = adopted.get(r.plaidTransactionId);
+        if (!ghostId) continue;
+        const kept = ghosts.find((g) => g.id === ghostId)?.categorySource === "user";
+        const { pfcPrimary, pfcDetailed, categorySource, ...rest } = r;
+        const { count: took } = await tx.transaction.updateMany({
+          where: {
+            id: ghostId,
+            userId,
+            plaidTransactionId: { startsWith: LEGACY_PENDING_PREFIX },
+          },
+          data: kept ? rest : { ...rest, pfcPrimary, pfcDetailed, categorySource },
+        });
+        if (took !== 1) lost.add(r.plaidTransactionId);
+      }
+      const { count } = await tx.transaction.createMany({
+        data: fresh
+          .filter((r) => !adopted.has(r.plaidTransactionId) || lost.has(r.plaidTransactionId))
+          .map((r) => ({ ...r, userId, source: "plaid" as const })),
+        skipDuplicates: true,
+      });
+      const replacedIds = replaced.map((p) => p.plaidTransactionId!);
+      const changed: Changed[] = rows
+        .filter((r) => existing.has(r.plaidTransactionId))
+        .map((r) => ({ row: r, keepCategory: corrected.has(r.plaidTransactionId) }));
+      // The usual sync is this one transaction, taken with one lock. A long list of changed rows (a read
+      // from the start brings every row) goes a chunk at a time, each chunk in its own guarded one.
+      if (changed.length <= WRITE_CHUNK) {
+        await writeChanged(tx, changed);
+        return {
+          replacedIds,
+          added: count + adopted.size - lost.size,
+          changed,
+          done: { removed: await finish(tx, replacedIds) },
+        };
+      }
+      return { replacedIds, added: count + adopted.size - lost.size, changed, done: null };
+    },
+    client,
   );
-  const fresh = rows.filter((r) => !existing.has(r.plaidTransactionId));
-  const changed = rows.filter((r) => existing.has(r.plaidTransactionId));
-
-  const { count: added } = await db.transactions.createMany({
-    data: fresh.map((r) => ({ ...r, userId: db.userId, source: "plaid" as const })),
-    skipDuplicates: true,
-  });
-  for (const { plaidTransactionId, ...data } of changed) {
-    const { pfcPrimary, pfcDetailed, categorySource, ...rest } = data;
-    await db.transactions.updateMany({
-      where: { plaidTransactionId },
-      data:
-        corrected.has(plaidTransactionId) && categorySource !== "user"
-          ? rest
-          : { ...rest, pfcPrimary, pfcDetailed, categorySource },
-    });
+  if (done) return { added, updated: changed.length, removed: done.removed };
+  for (let i = 0; i < changed.length; i += WRITE_CHUNK) {
+    await personTransaction(
+      userId,
+      async (tx) => {
+        await lockLiveItem(tx, itemId);
+        await writeChanged(tx, changed.slice(i, i + WRITE_CHUNK));
+      },
+      client,
+    );
   }
-  // The pending ones go only once their posted rows are saved or updated: a save that fails leaves them, so
-  // the next sync (from the same cursor) can still carry a category the person set across.
-  if (replaced.length > 0)
-    await db.transactions.deleteMany({
-      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
-    });
-  const removed = await deleteRemoved(db.transactions, db.userId, sync.removedTransactionIds);
+  const removed = await personTransaction(
+    userId,
+    async (tx) => {
+      await lockLiveItem(tx, itemId);
+      return finish(tx, replacedIds);
+    },
+    client,
+  );
   return { added, updated: changed.length, removed };
 }
 
@@ -358,6 +536,7 @@ async function saveLiabilities(
   api: PlaidApi,
   accessToken: string,
   itemId: string,
+  client: PrismaClient,
 ): Promise<SyncResult["liabilities"]> {
   let data;
   try {
@@ -368,9 +547,16 @@ async function saveLiabilities(
     return "unavailable";
   }
   // Fresh balances, and the loan accounts themselves if the transactions sync had none.
-  const accountIds = await saveAccounts(db, itemId, {
-    accounts: data.accounts.map(normalizeAccount).filter((a): a is NormalizedAccount => a !== null),
-  });
+  const accountIds = await saveAccounts(
+    db,
+    itemId,
+    {
+      accounts: data.accounts
+        .map(normalizeAccount)
+        .filter((a): a is NormalizedAccount => a !== null),
+    },
+    client,
+  );
   // A card or loan's figures have no currency of their own: they're in its account's.
   const inDollarAccounts = new Set(
     data.accounts.filter((a) => inDollars(a.balances)).map((a) => a.account_id),
@@ -486,6 +672,7 @@ async function saveInvestments(
   accessToken: string,
   itemId: string,
   now: Date,
+  client: PrismaClient,
 ): Promise<SyncResult["investments"]> {
   let holdings: Awaited<ReturnType<PlaidApi["investmentsHoldingsGet"]>>["data"];
   try {
@@ -498,7 +685,7 @@ async function saveInvestments(
   const accounts = holdings.accounts
     .map((a) => normalizeAccount(a))
     .filter((a): a is NormalizedAccount => a !== null);
-  const accountIds = await saveAccounts(db, itemId, { accounts });
+  const accountIds = await saveAccounts(db, itemId, { accounts }, client);
   const securityIds = await saveSecurities(db, holdings.securities.map(normalizeSecurity));
   await saveHoldings(db, accountIds, securityIds, holdings.holdings);
   await saveInvestmentTransactions(db, api, accessToken, accountIds, securityIds, now);
@@ -723,7 +910,7 @@ export async function syncDemoInvestments(
     [],
     demoExtrasOf(item.demoExtras),
   );
-  await saveInvestments(db, api, accessToken, item.id, now);
+  await saveInvestments(db, api, accessToken, item.id, now, client);
 }
 
 // A sync and everything it sets off read the same person's facts again and again (the detectors,
@@ -760,6 +947,7 @@ async function syncItemWork(
       plaidItemId: true,
       accessTokenEncrypted: true,
       transactionsCursor: true,
+      status: true,
       createdAt: true,
       liabilities: true,
       investments: true,
@@ -767,6 +955,8 @@ async function syncItemWork(
     },
   });
   if (!item) throw new Error("Plaid item not found");
+  if ((HIDDEN_ITEM_STATUSES as readonly string[]).includes(item.status))
+    throw new Error("Plaid item was replaced");
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
   // Books QA: a sample person's second bank login only brings its accounts and transactions;
@@ -858,14 +1048,23 @@ async function syncItemWork(
     throw error;
   }
   timing.mark("load");
+  // The link may have been replaced by a fuller one (src/lib/plaid/replace.ts) while Plaid answered:
+  // its accounts have new Plaid ids now, and saving under the old ones would make them twice.
+  if (
+    (await db.plaidItems.count({
+      where: { id: item.id, status: { in: [...HIDDEN_ITEM_STATUSES] } },
+    })) > 0
+  ) {
+    throw new Error("Plaid item was replaced");
+  }
   // A save that fails says why too: the cursor stays and tomorrow fails the same way, in silence.
   const [accountIds, counts] = await (async () => {
-    const ids = await saveAccounts(db, item.id, sync);
+    const ids = await saveAccounts(db, item.id, sync, client);
     timing.mark("save_accounts");
     // The demo bank's home and car, once its loans are saved (spec step 67), while the
     // transactions are saved: neither waits on the other.
     const [saved] = await Promise.all([
-      saveTransactions(db, ids, sync),
+      saveTransactions(db, ids, sync, item.id, client),
       isDemoToken(accessToken) && !secondLogin
         ? ensureDemoAssets(item.userId, item.id, { client, now })
         : null,
@@ -878,7 +1077,7 @@ async function syncItemWork(
   // A finished read from the start: what Plaid no longer lists goes (src/lib/plaid/reread-finish.ts).
   let reread: RereadResult | null = null;
   if (readFromStart) {
-    reread = await finishRead(item.userId, accountIds, sync, client, readFromStart);
+    reread = await finishRead(item.userId, accountIds, sync, client, readFromStart, item.id);
     counts.removed += reread.removed;
     if (reread.spent === false) rescanSpent = false;
   }
@@ -905,8 +1104,10 @@ async function syncItemWork(
   // five seconds on live for a person with holdings, with the brief waiting behind them.
   const [recurring, liabilities, investments] = await Promise.all([
     saveRecurringStreams(db, api, accessToken, accountIds),
-    readsLiabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
-    readsInvestments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
+    readsLiabilities ? saveLiabilities(db, api, accessToken, item.id, client) : ("off" as const),
+    readsInvestments
+      ? saveInvestments(db, api, accessToken, item.id, now, client)
+      : ("off" as const),
   ]);
   timing.mark("recurring_liabilities_investments");
   // A sample person's values list and named beneficiaries (steps 236 and 237), once their
@@ -937,8 +1138,9 @@ async function syncItemWork(
   }
 
   const nextCursor = (reread?.keepCursor ? item.transactionsCursor : sync.nextCursor) || null;
-  await db.plaidItems.updateMany({
-    where: { id: item.id },
+  const { count: stillThere } = await db.plaidItems.updateMany({
+    // Never over a link that was replaced while this sync waited on Plaid.
+    where: { id: item.id, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
     data: {
       // Plaid's empty cursor means it has nothing yet, which isn't a first sync done.
       transactionsCursor: nextCursor,
@@ -948,6 +1150,13 @@ async function syncItemWork(
       lastErrorAt: null,
     },
   });
+  if (stillThere === 0) {
+    // A fuller link took this one's accounts while this sync saved under their old Plaid ids: what it
+    // made is a second copy, and a replaced link has no accounts of its own (src/lib/plaid/replace.ts),
+    // so they go, with their rows.
+    await db.accounts.deleteMany({ where: { itemId: item.id } });
+    throw new Error("Plaid item was replaced");
+  }
 
   // How far back this link's history goes, written down for the person and the team. Never fails the sync.
   if (realBank) {

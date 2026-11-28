@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
@@ -122,6 +123,7 @@ async function SettingsContent({
       },
     }),
     mine.plaidItems.findMany({
+      where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
       select: {
         id: true,
         institutionName: true,

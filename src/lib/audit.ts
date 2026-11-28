@@ -104,6 +104,10 @@ export type AuditEvent =
   | "item_relinked"
   // How far back a linked bank's history goes, as counts and days (src/lib/plaid/history.ts).
   | "plaid_history_checked"
+  // A bank link replaced by a fuller one of the same bank (src/lib/plaid/replace.ts), counts only.
+  | "plaid_history_replaced"
+  // A replacement refused after the new link was made, with a reason code and counts only.
+  | "plaid_history_refused"
   // Admin tools: every view of user data and every status change.
   | "admin_viewed_queue"
   | "admin_viewed_action"

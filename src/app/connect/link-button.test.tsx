@@ -37,9 +37,9 @@ describe("the Link button when a request after Link fails", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  async function press(itemId?: string) {
+  async function press(itemId?: string, fullHistoryFor?: string) {
     // The button is the first element of the returned tree.
-    const tree = LinkButton({ itemId, label: "Link", className: "x" }) as {
+    const tree = LinkButton({ itemId, fullHistoryFor, label: "Link", className: "x" }) as {
       props: { children: [{ props: { onClick: () => Promise<void> } }] };
     };
     await tree.props.children[0].props.onClick();
@@ -72,5 +72,41 @@ describe("the Link button when a request after Link fails", () => {
     await created.onSuccess("public-1", {});
     expect(states[0]).toBe(false);
     expect(states[1]).toBe("Not yet.");
+  });
+
+  it("for the full history, posts the new link with the old bank's id, and frees the button when it fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ linkToken: "link-1" }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "Nothing was changed." }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await press(undefined, "bank_1");
+    await created.onSuccess("public-1", { institution: { name: "Bank" } });
+    // A new link is asked for (no item id), and the exchange goes to the full-history route.
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({});
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/plaid/full-history");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      publicToken: "public-1",
+      itemId: "bank_1",
+      institutionName: "Bank",
+    });
+    // states: busy, error, full, waiting
+    expect(states[0]).toBe(false);
+    expect(states[1]).toBe("Nothing was changed.");
+    expect(states[3]).toBe(false);
+  });
+
+  it("for the full history, clears the waiting words when the request can't be reached", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ linkToken: "link-1" }) })
+        .mockRejectedValueOnce(new Error("offline")),
+    );
+    await press(undefined, "bank_1");
+    await created.onSuccess("public-1", {});
+    expect(states[0]).toBe(false);
+    expect(states[3]).toBe(false);
   });
 });

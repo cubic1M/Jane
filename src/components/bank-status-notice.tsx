@@ -19,7 +19,13 @@ export function BankStatusNotice({ notices }: { notices: readonly BankNotice[] }
         >
           <strong>{n.title}</strong>
           <p className="text-zinc-600 dark:text-zinc-400">{n.words}</p>
-          {n.action && <LinkButton itemId={n.itemId} label={n.action} className={BUTTON} />}
+          {n.action && (
+            <LinkButton
+              {...(n.fullHistory ? { fullHistoryFor: n.itemId } : { itemId: n.itemId })}
+              label={n.action}
+              className={BUTTON}
+            />
+          )}
         </aside>
       ))}
     </section>

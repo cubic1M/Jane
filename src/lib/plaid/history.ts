@@ -8,6 +8,7 @@ import {
   MAX_DAYS_REQUESTED_FROM,
   TRANSACTION_DAYS_REQUESTED,
 } from "@/config/plaid";
+import { HIDDEN_ITEM_STATUSES, REFUSAL_WAIT_DAYS } from "@/config/plaid";
 import { addDays, daysBetween } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { safeMetadata } from "@/lib/audit";
@@ -66,7 +67,13 @@ type Judged = {
   linkedAt: Date;
   rescannedAt: string | null;
   now: Date;
+  // When the one tap was last refused for this link after its new link was made, if ever.
+  refusedAt?: Date | null;
 };
+
+// Whether a refusal is recent enough that the tap is not offered again yet.
+export const waitingAfterRefusal = (refusedAt: Date | null | undefined, now: Date): boolean =>
+  !!refusedAt && now.getTime() - refusedAt.getTime() < REFUSAL_WAIT_DAYS * 86_400_000;
 
 // Read the link again from an empty cursor, once: Plaid's docs say a call without a cursor returns the
 // entire history of updates, so a cursor that was saved past older data is cured by it. Only for a
@@ -87,7 +94,8 @@ export function offerFullHistory(j: Judged): boolean {
     j.status === HISTORY_COMPLETE &&
     j.rescannedAt !== null &&
     !holdsAllAsked(j.held, j.linkedAt) &&
-    daysRequestedFor(j.linkedAt) < TRANSACTION_DAYS_REQUESTED
+    daysRequestedFor(j.linkedAt) < TRANSACTION_DAYS_REQUESTED &&
+    !waitingAfterRefusal(j.refusedAt, j.now)
   );
 }
 
@@ -152,6 +160,32 @@ export async function latestNotes(
     if (note && row.targetId) notes.set(row.targetId, note);
   }
   return notes;
+}
+
+// The last refusal of the one tap for each link (an audit row written when a replacement was refused after
+// its new link was made), so the offer waits and no retap makes another billed Item.
+export async function refusalsFor(
+  itemIds: readonly string[],
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<Map<string, Date>> {
+  if (itemIds.length === 0) return new Map();
+  const rows = await systemDb(WHY, client).auditLog.findMany({
+    where: {
+      event: "plaid_history_refused",
+      targetType: "plaid_item",
+      targetId: { in: [...itemIds] },
+      // Only a refusal that will come again: a hole in the new read, or accounts that differ. A wait that
+      // timed out ("try again in an hour"), a second tap or a busy link do not hold the tap back.
+      OR: [
+        { metadata: { path: ["reason"], equals: "read_differs" } },
+        { metadata: { path: ["reason"], equals: "accounts_differ" } },
+      ],
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    distinct: ["targetId"],
+    select: { targetId: true, createdAt: true },
+  });
+  return new Map(rows.flatMap((r) => (r.targetId ? [[r.targetId, r.createdAt] as const] : [])));
 }
 
 // What a link's accounts hold now.
@@ -237,6 +271,8 @@ export type ItemHistory = {
   line: HistoryLine;
   // The one tap is on offer (see offerFullHistory).
   offer: boolean;
+  // The tap was refused lately and is not offered until this day (null when it is not waiting).
+  waitingUntil: Date | null;
   // Plaid's webhook codes for this link in the last days (they are kept WEBHOOK_EVENT_DAYS).
   webhookCodes: string[];
   // Still not complete and past the days the nightly job keeps asking.
@@ -261,6 +297,10 @@ async function describe(
     rows.map((r) => r.id),
     { client },
   );
+  const refusals = await refusalsFor(
+    rows.map((r) => r.id),
+    { client },
+  );
   const webhooks = rows.length
     ? await systemDb(WHY, client).plaidWebhookEvent.findMany({
         where: { plaidItemId: { in: rows.map((r) => r.plaidItemId) } },
@@ -280,6 +320,7 @@ async function describe(
         linkedAt: r.createdAt,
         rescannedAt: note?.rescannedAt ?? null,
         now,
+        refusedAt: refusals.get(r.id) ?? null,
       };
       const codes: string[] = [];
       for (const w of webhooks) {
@@ -296,6 +337,12 @@ async function describe(
         note,
         line: historyLine(bank, now_, note?.status ?? null),
         offer: offerFullHistory(judged),
+        // Refused lately and otherwise on offer: the day it is offered again.
+        waitingUntil:
+          waitingAfterRefusal(judged.refusedAt, now) &&
+          offerFullHistory({ ...judged, refusedAt: null })
+            ? new Date(judged.refusedAt!.getTime() + REFUSAL_WAIT_DAYS * 86_400_000)
+            : null,
         webhookCodes: codes,
         stuck:
           note?.status !== HISTORY_COMPLETE &&
@@ -319,7 +366,11 @@ export async function historyForPerson(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<ItemHistory[]> {
   const db = scopedFor(userId, client);
-  const rows = await db.plaidItems.findMany({ select: SELECT, orderBy: { createdAt: "asc" } });
+  const rows = await db.plaidItems.findMany({
+    where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
+    select: SELECT,
+    orderBy: { createdAt: "asc" },
+  });
   return describe(rows, (id) => heldHistory(db, id), now, client);
 }
 
@@ -332,6 +383,7 @@ export async function historyForTeam({
     "Admin history page: every linked bank's history",
     client,
   ).plaidItem.findMany({
+    where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
     select: { ...SELECT, userId: true },
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -346,6 +398,34 @@ export async function historyForTeam({
     client,
   );
   return out.map((o, i) => ({ ...o, userId: rows[i].userId }));
+}
+
+// The last replacements the one tap refused after the new link was made (src/lib/plaid/replace.ts): the
+// day, the link, the reason code and counts. Nothing else is recorded about them.
+export type Refusal = { at: Date; itemId: string; reason: string; holes: number; rows: number };
+export async function recentRefusals(
+  { client = defaultClient }: { client?: PrismaClient } = {},
+  limit = 20,
+): Promise<Refusal[]> {
+  const found = await systemDb(
+    "Admin history page: why a full-history replacement was refused",
+    client,
+  ).auditLog.findMany({
+    where: { event: "plaid_history_refused" },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: { createdAt: true, targetId: true, metadata: true },
+  });
+  return found.map((r) => {
+    const m = (r.metadata ?? {}) as Record<string, unknown>;
+    return {
+      at: r.createdAt,
+      itemId: r.targetId ?? "",
+      reason: typeof m.reason === "string" ? m.reason : "unknown",
+      holes: typeof m.holes === "number" ? m.holes : 0,
+      rows: typeof m.rows === "number" ? m.rows : 0,
+    };
+  });
 }
 
 // Links the nightly job reads whatever their last sync: not complete at Plaid yet (or never judged),
@@ -382,4 +462,30 @@ export async function itemsStillCatchingUp(
     after = page[page.length - 1].id;
   }
   return found;
+}
+
+// The banks that offer the one tap, for the notices on Home and Connect. Never fails the page.
+export async function fullHistoryOffers(
+  userId: string,
+  options: { client?: PrismaClient; now?: Date } = {},
+): Promise<Set<string>> {
+  return (await fullHistoryState(userId, options)).offers;
+}
+
+// The banks on offer, and the banks whose tap is waiting after a refusal with the day it comes back.
+export async function fullHistoryState(
+  userId: string,
+  options: { client?: PrismaClient; now?: Date } = {},
+): Promise<{ offers: Set<string>; waiting: Map<string, Date> }> {
+  try {
+    const all = await historyForPerson(userId, options);
+    return {
+      offers: new Set(all.filter((h) => h.offer).map((h) => h.itemId)),
+      waiting: new Map(
+        all.flatMap((h) => (h.waitingUntil ? [[h.itemId, h.waitingUntil] as const] : [])),
+      ),
+    };
+  } catch {
+    return { offers: new Set(), waiting: new Map() };
+  }
 }

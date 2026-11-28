@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { db as defaultClient } from "@/lib/db";
 import { restOfTheirData } from "@/lib/data-export-rest";
 import { scopedFor } from "@/lib/db-scoped";
@@ -113,6 +114,7 @@ export async function exportUserData(
       },
     }),
     db.plaidItems.findMany({
+      where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
       select: {
         id: true,
         institutionName: true,

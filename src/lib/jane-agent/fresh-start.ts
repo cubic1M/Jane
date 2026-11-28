@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { db as defaultClient } from "@/lib/db";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
@@ -24,7 +25,10 @@ export async function markFreshStartIfEmpty(
   db: Db,
   client: PrismaClient = defaultClient,
 ): Promise<void> {
-  const [banks, accounts] = await Promise.all([db.plaidItems.count(), db.accounts.count()]);
+  const [banks, accounts] = await Promise.all([
+    db.plaidItems.count({ where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } } }),
+    db.accounts.count(),
+  ]);
   if (banks + accounts > 0) return;
   await systemDb("A person's own row: jane_rls only reads users", client).user.updateMany({
     where: { id: db.userId },

@@ -28,6 +28,11 @@ export const OPS_EVENT_KINDS = {
   // A bank's read from the start would have removed too many rows: nothing was removed and the
   // link goes on from its saved cursor (src/lib/plaid/reread-removals.ts).
   plaid_reread_held: { label: "bank re-reads held back (too many rows would go)", urgent: false },
+  // A one-tap full-history replacement was refused after the new Item was made (the code says why).
+  plaid_history_refused: { label: "full-history replacements refused", urgent: false },
+  // A bank link that was replaced (or never moved in) could not be removed at Plaid for several nights: a
+  // billed Item nobody can see.
+  plaid_removal_stuck: { label: "replaced bank links Plaid would not remove", urgent: true },
 } as const;
 
 export type OpsEventKind = keyof typeof OPS_EVENT_KINDS;

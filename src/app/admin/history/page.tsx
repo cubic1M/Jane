@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { LoadingBar } from "@/components/loading-bar";
 import { logAudit } from "@/lib/audit";
 import { momentLabel } from "@/lib/day-label";
-import { dayWords, historyForTeam } from "@/lib/plaid/history";
+import { dayWords, historyForTeam, recentRefusals } from "@/lib/plaid/history";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { AdminTable } from "../admin-table";
@@ -18,7 +18,7 @@ const when = (at: Date | string | null) =>
 
 async function History() {
   const admin = await requireAdmin();
-  const rows = await historyForTeam();
+  const [rows, refusals] = await Promise.all([historyForTeam(), recentRefusals()]);
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_history", null, {
     count: rows.length,
   });
@@ -75,6 +75,20 @@ async function History() {
               .filter(Boolean)
               .join(", ") || "none",
           ],
+        }))}
+      />
+      <h2 className="text-xl font-semibold tracking-tight">Full-history replacements refused</h2>
+      <p className={MUTED}>
+        The one tap was refused after the new link was made. The new link is taken off Plaid at
+        once, or kept hidden for the nightly job to remove; nothing of the person&apos;s changed.
+        The reason code and counts only.
+      </p>
+      <AdminTable
+        data-history-refusals=""
+        head={["When", "Link", "Reason", "Charges with no twin", "Charges held"]}
+        rows={refusals.map((r, i) => ({
+          key: `${r.itemId}-${i}`,
+          cells: [when(r.at), r.itemId.slice(0, 8), r.reason, String(r.holes), String(r.rows)],
         }))}
       />
     </>

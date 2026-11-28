@@ -1,6 +1,7 @@
 import { REREAD_MAX_POSTED_REMOVALS, REREAD_MAX_POSTED_SHARE } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { personTransaction } from "@/lib/db-scoped";
+import { lockLiveItem } from "@/lib/plaid/live-item";
 
 // A read from an empty cursor lists the Item's whole current set as "added" and carries no
 // "removed" entries; a cursor saved after it skips every removal that happened before it. So a
@@ -67,10 +68,14 @@ export async function removeWhatPlaidDropped(
   // person) may be newer than the list, so it is never taken as dropped.
   startedAt: Date,
   client?: PrismaClient,
+  // The link whose row is locked first, in the same transaction as the removals (after the sync's own
+  // locked write transactions have committed): a replaced or replacing link refuses, so nothing is removed.
+  itemId?: string,
 ): Promise<RereadOutcome> {
   return personTransaction(
     userId,
     async (tx): Promise<RereadOutcome> => {
+      if (itemId) await lockLiveItem(tx, itemId);
       const all = await tx.transaction.findMany({
         where: {
           userId,
