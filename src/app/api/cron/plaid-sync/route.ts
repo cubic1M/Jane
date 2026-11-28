@@ -6,6 +6,7 @@ import {
   CRON_SYNC_BUDGET_MS,
   CRON_SYNC_LEAST_MS,
   CRON_SYNC_LIMIT,
+  HISTORY_CATCH_UP_DAYS,
   STALE_SYNC_HOURS,
 } from "@/config/plaid";
 import { db } from "@/lib/db";
@@ -169,7 +170,13 @@ async function syncBanks(startedAt: number) {
     where: {
       status: ITEM_STATUS.active,
       userId: STAYING,
-      OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lt: cutoff } }],
+      OR: [
+        { lastSyncedAt: null },
+        { lastSyncedAt: { lt: cutoff } },
+        // A bank linked lately is read again whatever its last sync: its older history may have
+        // arrived since, and a missed webhook must not leave it at 30 days.
+        { createdAt: { gt: new Date(Date.now() - HISTORY_CATCH_UP_DAYS * 86_400_000) } },
+      ],
     },
     select: { id: true },
     orderBy: { lastSyncedAt: { sort: "asc", nulls: "first" } },

@@ -65,13 +65,15 @@ export async function POST(request: Request) {
     try {
       // Under the webhooks' lock: Plaid's webhook can arrive between tries, and only one may run a scan.
       for (let tries = 0; tries < FIRST_SYNC_TRIES; tries++) {
-        let notReady = false;
+        // Not ready, or only the first 30 days so far: asked again until Plaid has the whole history.
+        let waiting = false;
         const ran = await syncFromWebhook(itemId, {
           sync: async (id) => {
-            notReady = Boolean((await syncItem(id, { progressive: true }))?.notReady);
+            const result = await syncItem(id, { progressive: true });
+            waiting = Boolean(result?.notReady || result?.historyPending);
           },
         });
-        if (!ran || !notReady) break;
+        if (!ran || !waiting) break;
         await new Promise((resolve) => setTimeout(resolve, FIRST_SYNC_WAIT_MS));
       }
     } catch (error) {

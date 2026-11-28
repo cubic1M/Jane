@@ -226,6 +226,19 @@ describe("PlaidDataSource", () => {
     expect(batch.nextCursor).toBe("c9");
   });
 
+  it("says when Plaid has only the first 30 days, and not once it has the history", async () => {
+    const first = vi
+      .fn()
+      .mockResolvedValue(syncPage({ next_cursor: "c1", status: "INITIAL_UPDATE_COMPLETE" }));
+    expect(
+      (await new PlaidDataSource(apiWith(first), "access-sandbox-x", null).load()).historyPending,
+    ).toBe(true);
+    const later = vi.fn().mockResolvedValue(syncPage({ next_cursor: "c2" }));
+    expect(
+      (await new PlaidDataSource(apiWith(later), "access-sandbox-x", "c1").load()).historyPending,
+    ).toBe(false);
+  });
+
   it("gives up after a few restarts, and other errors aren't retried", async () => {
     const mutating = vi
       .fn()

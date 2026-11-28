@@ -1,9 +1,19 @@
 // Plaid settings in one place. Products: Transactions, plus Liabilities as an optional
 // product from spec step 65 (read-only rates and payments for cards and loans).
 
-// History requested when an account is first linked. Detection looks back 12 months and
-// Plaid recommends at least 180 days for recurring streams.
-export const TRANSACTION_DAYS_REQUESTED = 365;
+// History requested when an account is first linked: the most Plaid allows (transactions.days_requested
+// at /link/token/create, maximum 730, default 90: plaid.com/docs/api/link/#link-token-create-request-transactions,
+// read 2026-11-28). It can't be raised for an Item that already has Transactions: Plaid's only way is
+// /item/remove and a new link (plaid.com/docs/api/products/transactions/#transactions-sync-request-options-days-requested).
+// Plaid bills Transactions per connected Item, not by days of history (the founder checks the price).
+// Detection looks back 12 months and Plaid recommends at least 180 days for recurring streams.
+export const TRANSACTION_DAYS_REQUESTED = 730;
+
+// A bank linked in the last this many days is read again by the daily job even if it synced today:
+// Plaid delivers 30 days first and the rest (INITIAL_UPDATE_COMPLETE, then HISTORICAL_UPDATE_COMPLETE:
+// plaid.com/docs/transactions/webhooks/, read 2026-11-28) later, and a missed SYNC_UPDATES_AVAILABLE
+// webhook must not leave a person at 30 days.
+export const HISTORY_CATCH_UP_DAYS = 3;
 
 // Transactions per /transactions/sync page (Plaid allows 1 to 500).
 export const SYNC_PAGE_SIZE = 500;

@@ -154,6 +154,11 @@ describe("GET /api/cron/plaid-sync", () => {
     const cutoff = where.OR[1].lastSyncedAt.lt as Date;
     expect(Date.now() - cutoff.getTime()).toBeGreaterThanOrEqual(20 * 60 * 60 * 1000);
     expect(Date.now() - cutoff.getTime()).toBeLessThan(20 * 60 * 60 * 1000 + 60_000);
+    // A bank linked in the last 3 days is read again whatever its last sync (a missed historical
+    // update webhook must not leave it at 30 days).
+    const recent = where.OR[2].createdAt.gt as Date;
+    expect(Date.now() - recent.getTime()).toBeGreaterThanOrEqual(3 * 86_400_000);
+    expect(Date.now() - recent.getTime()).toBeLessThan(3 * 86_400_000 + 60_000);
   });
 
   it("still snapshots balances when Plaid isn't set up", async () => {
