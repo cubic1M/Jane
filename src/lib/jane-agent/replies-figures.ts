@@ -25,7 +25,9 @@ export function figureReply(working: Working | null): Reply {
   ].filter((l): l is string => Boolean(l));
   return {
     body: lines.join(" "),
-    actions: [openLink("See all of it", `/figures/${working.id}`)],
+    // The free-standing figure page for this one is gone (it opens Home), so no link to it.
+    actions:
+      working.id === "safe_to_spend" ? [] : [openLink("See all of it", `/figures/${working.id}`)],
     refs: {},
   };
 }
@@ -33,8 +35,10 @@ export function figureReply(working: Working | null): Reply {
 // No figure named: which one?
 export function whichFigureReply(): Reply {
   return {
-    body: "Which figure? I can show how I got any of these: safe to spend, your spending, your income, net worth, your money health score or your debt-free date.",
-    actions: FIGURE_IDS.slice(0, 4).map((id) => openLink(FIGURE_LABELS[id], `/figures/${id}`)),
+    body: "Which figure? I can show how I got any of these: your spending, your income, net worth, your money health score or your debt-free date.",
+    actions: FIGURE_IDS.filter((id) => id !== "safe_to_spend")
+      .slice(0, 4)
+      .map((id) => openLink(FIGURE_LABELS[id], `/figures/${id}`)),
     refs: {},
   };
 }

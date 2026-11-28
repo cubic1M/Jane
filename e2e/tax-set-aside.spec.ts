@@ -5,7 +5,7 @@ import { E2E_DATABASE_URL, addFreelancer, deleteUser, signedInUser, treatAsDemoB
 import { signInWith } from "./session";
 
 // The tax left to cover, on a real account: a fact, not advice; the calculation line by line; and a
-// correction that moves it, on Home's Safe to spend too, and can be undone.
+// correction that moves it, and can be undone.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -44,17 +44,6 @@ test("the calculation is shown, says no advice, and takes a correction", async (
   await expect(row("Standard deduction")).toContainText("Assumed");
   await row("Standard deduction").locator("summary").click();
   await expect(row("Standard deduction")).toContainText("check with a tax professional");
-
-  // Home and the full working quote the same line.
-  await page.goto("/home");
-  await page
-    .getByRole("button", { name: /why this number/i })
-    .first()
-    .click();
-  await expect(page.locator("[data-safe-why]")).toContainText("Tax not yet withheld or paid");
-  await expect(page.locator("[data-safe-why]")).toContainText("none kept apart");
-  await page.goto("/figures/safe_to_spend");
-  await expect(page.getByText("Tax not yet withheld or paid").first()).toBeVisible();
 
   // "That isn't income".
   await page.goto("/taxes?focus=estimate:set-aside");

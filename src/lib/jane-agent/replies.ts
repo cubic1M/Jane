@@ -81,7 +81,6 @@ const EXAMPLES = [
   "can I afford $900 for a trip in March",
   "how much did I spend on food last month",
   "what's due this week",
-  "safe to spend",
   "cancel Hulu, lower my phone bill, or get my refund from Target",
   "what did you do",
 ];
@@ -97,11 +96,6 @@ export function helpReply(): Reply {
 // Spec step 89: no dead ends. What Jane can answer right now, the closest to what was asked
 // first (by its words), as buttons that answer it.
 const NEARBY: readonly { label: string; words: RegExp; intent: (asOf: string) => Intent }[] = [
-  {
-    label: "Safe to spend",
-    words: /\b(?:spend|money|left|afford|cash|broke|enough)\b/,
-    intent: () => ({ kind: "safe_to_spend" }),
-  },
   {
     label: "What's due this week",
     words: /\b(?:bills?|due|owe|payments?|rent|upcoming|soon)\b/,
@@ -953,19 +947,9 @@ export function comingUpReply(
 
 // "Safe to spend": the number on Today.
 // "Hi": hello, safe to spend, and something to ask. "Thanks": you're welcome.
-export function greetingReply(
-  thanks: boolean,
-  safe: { safeCents: number; payday: string | null } | null,
-  asOf: string | null = null,
-): Reply {
+export function greetingReply(thanks: boolean): Reply {
   if (thanks) return reply("You're welcome! I'm here whenever you need me.");
-  const money = safe
-    ? ` You have ${fmt(safe.safeCents)} safe to spend${safe.payday ? ` until ${asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday)}` : ""}.`
-    : "";
-  return reply(
-    `Hi!${money} Ask me anything about your money, like "${EXAMPLES[0]}".`,
-    safe ? [openLink("See today", "/home")] : [],
-  );
+  return reply(`Hi! Ask me anything about your money, like "${EXAMPLES[0]}".`);
 }
 
 export function safeReply(

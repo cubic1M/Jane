@@ -5,7 +5,7 @@ import { ArriveAtTop } from "./arrive-at-top";
 // Home while it loads, on a slow phone for seconds (mobile pass 11-16: at 1.5 s a blank page under
 // the header, no sign anything was coming): the first screen's shape in plain blocks, no words.
 // The net worth card with its chart's room (190 px on a phone, 260 wider, as the chart itself),
-// then Safe to spend and Money found. It is still the page's loading bar to the code and tests
+// only (the Saved tile shows once there is something saved). It is still the page's loading bar to the code and tests
 // that wait for one (data-loading-bar), and says so to a screen reader.
 //
 // A slow phone draws this before the stylesheet arrives (none loaded at 1.5 s and 3 s), so the
@@ -46,14 +46,6 @@ export function HomeLoading() {
           <div className={BLOCK} style={block(16, 96)} />
           <div className={BLOCK} style={block(48, 192)} />
           <div className={`w-full sm:h-[260px] ${BLOCK}`} style={block(190, "100%")} />
-        </div>
-        <div className={CARD} style={card}>
-          <div className={BLOCK} style={block(16, 112)} />
-          <div className={BLOCK} style={block(36, 160)} />
-        </div>
-        <div className={CARD} style={card}>
-          <div className={BLOCK} style={block(16, 96)} />
-          <div className={BLOCK} style={block(32, 144)} />
         </div>
       </div>
     </>

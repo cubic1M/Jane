@@ -104,8 +104,8 @@ async function Budgets({ searchParams }: { searchParams: PageProps<"/budgets">["
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Bills that come less often than monthly, and seasons when you usually spend more, spread
-            over the year: {formatCents(irregular.yearlyCents)} a year in all. Safe to spend on Home
-            already takes this month&apos;s share off. Math from your data, not a recommendation.
+            over the year: {formatCents(irregular.yearlyCents)} a year in all. Math from your data,
+            not a recommendation.
           </p>
           <ul className="flex flex-col gap-3">
             {irregular.items.map((item) => (

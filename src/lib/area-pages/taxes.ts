@@ -446,7 +446,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
             cents: aside.holdCents,
             summary:
               aside.status === "needed"
-                ? `An estimate, ${aside.percent}% sure. Safe to spend leaves it out.`
+                ? `An estimate, ${aside.percent}% sure.`
                 : aside.status === "unknown"
                   ? "Jane can't see all that's withheld from your pay."
                   : aside.status === "no_income"

@@ -3,11 +3,9 @@ import { E2E_DATABASE_URL, addSavedChange, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
 
-// Home's Safe to spend and Saved tiles open in place (founder: "When you click safe to spend
-// till… it should expand first having a summary on why that number is what it is. On the
-// bottom, that box should suggest smth like what are u aiming to spend and it would link you to
-// the chat on the right with a dotted line … Saved so far should also … expand and show a
-// summary of where was saved"). At 1440 wide and on a phone (the mobile project).
+// Home's Saved tile opens in place (founder: "Saved so far should also … expand and show a
+// summary of where was saved"). At 1440 wide and on a phone (the mobile project). The Safe to
+// spend and Money found tiles are gone (founder 11-28); e2e/hub.spec.ts says so.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -16,28 +14,6 @@ let userId: string | undefined;
 test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
-
-const money = (text: string | null) => Number((text ?? "").replace(/[^\d]/g, ""));
-
-// A sum's lines with their signs, down to its total ("="): the balance, what's added ("+", pay due
-// that hasn't come in) and what's held back ("−"). Lines after the total aren't counted in it.
-async function sumLines(list: Locator) {
-  const rows = await list.locator(":scope > div").evaluateAll((divs) =>
-    divs.map((d) => ({
-      sign: d.querySelector("dt > span")?.textContent ?? "",
-      cents: d.querySelector("dd")?.textContent ?? "",
-    })),
-  );
-  const end = rows.findIndex((r) => r.sign === "=");
-  const parts = rows.slice(0, end).map((r) => ({ sign: r.sign, dollars: money(r.cents) }));
-  return {
-    start: parts[0]!.dollars,
-    added: parts.filter((p) => p.sign === "+").reduce((s, p) => s + p.dollars, 0),
-    held: parts.filter((p) => p.sign === "−").reduce((s, p) => s + p.dollars, 0),
-    total: money(rows[end]!.cents),
-    lines: end + 1,
-  };
-}
 
 // A tile's pop-up sits beside it: never over the tile, the net worth chart or the chat.
 async function clearOf(page: Page, popup: Locator, tile: Locator) {
@@ -62,106 +38,6 @@ async function clearOf(page: Page, popup: Locator, tile: Locator) {
   }
 }
 
-test("safe to spend says why it's that number, and hands what to spend to the chat", async ({
-  context,
-  page,
-  baseURL,
-  isMobile,
-}) => {
-  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
-  userId = await demoPerson(context, page, baseURL);
-  await page.goto("/home");
-
-  const tile = page.locator('[data-hub-tile="safe"]');
-  const open = tile.getByRole("button", { name: /^Safe to spend/ });
-  await expect(open).toHaveAttribute("aria-expanded", "false");
-  await open.click();
-  await expect(open).toHaveAttribute("aria-expanded", "true");
-
-  // The balance now, less what's held back, equals the number on the tile.
-  const why = tile.locator("[data-safe-why]");
-  await expect(why).toBeVisible();
-  await expect(why).toContainText("In checking now");
-  const sum = await sumLines(why.locator("[data-calc-lines]"));
-  expect(sum.lines).toBeGreaterThanOrEqual(3);
-  // Short: the balance, at most four things held back (pay due today besides) and the total.
-  expect(sum.lines - (await why.locator("dt", { hasText: /pay due/ }).count())).toBeLessThanOrEqual(
-    6,
-  );
-  const total = sum.total;
-  // Whole dollars on screen: within a dollar a line for rounding.
-  expect(Math.abs(sum.start + sum.added - sum.held - total)).toBeLessThanOrEqual(sum.lines);
-  expect(money(await tile.locator('[data-hub-number="safe"]').textContent())).toBe(total);
-
-  // "How it's worked out" stays on Home: a pop-up beside the tile, joined to it by a dashed line,
-  // with the sum line by line (each bill on its own) and the full page as a link inside.
-  const how = tile.getByRole("button", { name: /How it's worked out/ });
-  await how.click();
-  const popup = page.getByRole("dialog", { name: "How it's worked out" });
-  await expect(popup).toBeVisible();
-  await expect(page).toHaveURL(/\/home$/);
-  await expect(how).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
-  await expectMarchingLine(page.locator("[data-popup-line]"));
-  await expect(popup.locator("[data-calc-lines] dt").first()).toContainText("In checking today");
-  const steps = await sumLines(popup.locator("[data-calc-lines]"));
-  expect(Math.abs(steps.start + steps.added - steps.held - steps.total)).toBeLessThanOrEqual(
-    steps.lines,
-  );
-  expect(steps.total).toBe(total);
-  // The page can still be settling just after it opens: it must end up clear.
-  await expect(() => clearOf(page, popup, tile)).toPass();
-  await expect(popup.getByRole("link", { name: /The full working/ })).toHaveAttribute(
-    "href",
-    "/figures/safe_to_spend",
-  );
-  // Esc closes it and gives the focus back; so does a click anywhere else.
-  await page.keyboard.press("Escape");
-  await expect(popup).toHaveCount(0);
-  await expect(how).toBeFocused();
-  await how.click();
-  await expect(popup).toBeVisible();
-  // The page's own margin, beside the tiles: nothing there to click.
-  await page
-    .locator("main")
-    .first()
-    .click({ position: { x: 2, y: 2 } });
-  await expect(popup).toHaveCount(0);
-
-  // It closes and opens again in place (before the chat comes up: on a phone its sheet covers
-  // the page).
-  await open.click();
-  await expect(open).toHaveAttribute("aria-expanded", "false");
-  await expect(why).toBeHidden();
-  await open.click();
-  await expect(why).toBeVisible();
-
-  // "What are you aiming to spend?": the chat comes into view with it ready to type, not sent,
-  // and a dotted line joins the tile to it.
-  await tile.locator("[data-aim-to-spend]").click();
-  const box = page
-    .frameLocator('iframe[title="Chat with Jane"]')
-    .getByRole("textbox", { name: "Message Jane" });
-  const chat = page.frameLocator('iframe[title="Chat with Jane"]');
-  await expect(box).toHaveValue("I'm aiming to spend $", { timeout: 30_000 });
-  await expect(box).toBeFocused();
-  await expect(page.locator("[data-chat-line]")).toBeAttached();
-  await expectMarchingLine(page.locator("[data-chat-line]"));
-  // A greyed clue after the cursor, not part of what's typed.
-  const hint = chat.locator("[data-composer-hint]");
-  // After the text, or on its own line under the box when the box is too narrow for both.
-  await expect(hint).toContainText("[amount] on [what]");
-  await expect(hint).toBeVisible();
-  // Sent untouched, nothing goes: the sentence waits to be finished.
-  await box.press("Enter");
-  await expect(box).toHaveValue("I'm aiming to spend $");
-  await expect(chat.locator("[data-draft-question]")).toHaveCount(0);
-  // Typing takes the clue away.
-  await box.pressSequentially("40 on shoes");
-  await expect(hint).toHaveCount(0);
-  await expect(box).toHaveValue("I'm aiming to spend $40 on shoes");
-});
-
 test("saved so far opens on where the savings came from", async ({
   context,
   page,
@@ -175,12 +51,9 @@ test("saved so far opens on where the savings came from", async ({
   await page.goto("/home");
 
   const tile = page.locator('[data-hub-tile="saved"]');
-  // On a phone each tile takes the whole row; on a wide screen the two share it (debugger
-  // 10-30: on a phone Saved so far sat in the left half with nothing beside it).
-  const safeBox = (await page.locator('[data-hub-tile="safe"]').boundingBox())!;
-  const savedBox = (await tile.boundingBox())!;
-  if (isMobile) expect(Math.abs(savedBox.width - safeBox.width)).toBeLessThanOrEqual(1);
-  else expect(Math.abs(savedBox.y - safeBox.y)).toBeLessThanOrEqual(1);
+  // It takes the whole row, on a phone and wide (it sits alone under the net worth chart).
+  const row = (await page.locator('section[aria-label="Your money at a glance"]').boundingBox())!;
+  expect(Math.abs((await tile.boundingBox())!.width - row.width)).toBeLessThanOrEqual(1);
   const open = tile.getByRole("button", { name: /^Saved so far/ });
   await open.click();
   await expect(open).toHaveAttribute("aria-expanded", "true");

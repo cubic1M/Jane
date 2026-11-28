@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NO_INCOME, estimateTaxes, type EstimateIncome } from "./tax-estimate";
 import { workOutSetAside, type SetAsideInput, type TaxLine } from "./tax-set-aside";
 
-// CodeRabbit sweep 1b: "Held back from Safe to spend" showed the amount left after what is kept
+// CodeRabbit sweep 1b: "Held back from Safe to spend" (now "Held back for tax") showed the amount left after what is kept
 // apart even when that was under the minimum and Safe to spend held $0. (Same helper as
 // tax-set-aside.test.ts.)
 
@@ -81,7 +81,7 @@ describe("the held line under the minimum", () => {
     );
     expect(out.holdCents).toBe(0);
     const held = out.lines.find((l) => l.key === "held")!;
-    expect(held.label).not.toMatch(/Held back from Safe to spend/);
+    expect(held.label).not.toMatch(/Held back for tax/);
     expect(held.cents).toBe(4_000);
   });
   it("still says it when the amount is held", () => {
@@ -91,6 +91,6 @@ describe("the held line under the minimum", () => {
       }),
     );
     expect(out.holdCents).toBeGreaterThan(0);
-    expect(out.lines.find((l) => l.key === "held")!.label).toBe("Held back from Safe to spend");
+    expect(out.lines.find((l) => l.key === "held")!.label).toBe("Held back for tax");
   });
 });

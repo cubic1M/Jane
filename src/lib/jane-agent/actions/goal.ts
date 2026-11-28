@@ -30,7 +30,7 @@ export const goalStart: ActionHandler = {
     }
     return {
       answeredWith: action.label,
-      note: `Added "${goal.name}" to your goals. Safe to spend now sets a little aside for it each month.`,
+      note: `Added "${goal.name}" to your goals. A little is now set aside for it each month.`,
     };
   },
 };

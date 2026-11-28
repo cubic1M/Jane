@@ -97,7 +97,6 @@ describe("the morning brief", () => {
     expect(brief.body).toBe(
       [
         "Good morning!",
-        "You have $1,234.56 safe to spend until payday, Oct 30 (in 11 days).",
         "Bills due soon: Netflix $15.49 tomorrow.",
         "3 things are waiting for you.",
       ].join("\n"),
@@ -109,7 +108,7 @@ describe("the morning brief", () => {
       snapshot({ safeToSpend: { safeCents: -5_000, payday: null } }),
       "brief",
     );
-    expect(brief.body).toContain("You're short by $50.00 this month, after your bills.");
+    expect(brief.body).not.toMatch(/short by|safe to spend/);
     expect(brief.body).toContain("No bills due in the next 2 days.");
     expect(brief.body).toContain("Nothing is waiting on you.");
   });

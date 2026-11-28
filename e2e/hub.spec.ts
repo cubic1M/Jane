@@ -36,15 +36,15 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await page.goto("/home");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached();
 
-  // The hero row: safe to spend with its bar, net worth, and money found or saved.
+  // The hero row: the net worth, and no Safe to spend or Money found tile (founder 11-28).
   const hero = page.getByRole("region", { name: "Your money at a glance" });
-  await expect(hero.locator("[data-hub-number]")).toHaveCount(3);
-  // Safe to spend opens in place on why it's that number (e2e/hero-tiles.spec.ts).
-  await expect(hero.getByRole("button", { name: /^Safe to spend/ })).toHaveAttribute(
-    "aria-expanded",
-    "false",
+  await expect(page.getByText(/safe[ -]to[ -]spend|money[ -]found|money jane found/i)).toHaveCount(
+    0,
   );
-  await expect(hero.getByRole("img", { name: /Safe to spend \d+%/ })).toBeVisible();
+  // The old figure page for it opens Home.
+  await page.goto("/figures/safe_to_spend");
+  await expect(page).toHaveURL(/\/home$/);
+  await page.goto("/home");
   await expect(hero.getByRole("link", { name: "Net worth" })).toHaveAttribute("href", "/net-worth");
 
   // No month-ahead strip on Home (founder 11-24): bills and paydays are on Coming up.

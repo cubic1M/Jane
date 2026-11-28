@@ -4,7 +4,6 @@ import { autopilotOf } from "@/lib/autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
 import { listLifeEvents } from "@/lib/life-events";
-import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
 import { flowReply } from "../flows/chat";
 import { timezoneOf } from "@/lib/today";
@@ -87,9 +86,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "help":
       return groupedHelpReply();
     case "greeting": {
-      if (intent.thanks) return greetingReply(true, null);
-      const home = await homeSummary(userId, { client, now });
-      return greetingReply(false, home?.safeToSpend ?? null, asOf);
+      return greetingReply(intent.thanks);
     }
     case "remember":
       return rememberReply(intent.draft);

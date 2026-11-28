@@ -28,24 +28,13 @@ const payload = {
 };
 
 describe("renderDigest", () => {
-  // Debugger 11-02: "Still to look at: $35.00 a year" above a list with Netflix at $275.88 a year.
-  it("says why a listed subscription isn't in the total", () => {
-    const sub = {
-      title: "Review your Netflix subscription",
-      annualSavingsCents: 27_588,
-      confidence: "medium" as const,
-      onlyOnceApproved: true as const,
-    };
-    const said = "Subscriptions count toward the total once you decide to cancel them.";
-    const email = renderDigest({ ...payload, moneyFoundCents: 3_500, newFindings: [sub] }, LINKS);
-    expect(email.text).toContain("Still to look at: $35.00 a year");
-    expect(email.text).toContain(said);
-    expect(email.html).toContain(said);
-    expect(renderDigest({ ...payload, newFindings: [] }, LINKS).text).not.toContain(said);
-    // With nothing in the total, no total to explain.
-    expect(
-      renderDigest({ ...payload, moneyFoundCents: 0, newFindings: [sub] }, LINKS).text,
-    ).not.toContain(said);
+  // Founder 11-28: the email carries no "money found" total: a figure that did nothing.
+  it("has no still-to-look-at total or money found line, with a total in the payload", () => {
+    const email = renderDigest({ ...payload, moneyFoundCents: 3_500 }, LINKS);
+    for (const text of [email.text, email.html, email.subject]) {
+      expect(text).not.toMatch(/still to look at|money found|safe[ -]to[ -]spend/i);
+    }
+    expect(email.text).not.toContain("$35.00 a year");
   });
 
   it("links the monthly close in every email, near the top", () => {
@@ -96,18 +85,9 @@ describe("renderDigest", () => {
       },
       LINKS,
     );
-    expect(email.text).toContain("Still to look at: $500.00 a year and $210.00 to get back");
+    expect(email.text).not.toContain("Still to look at");
     expect(email.text).toContain("Charged twice? $210.00 at Sunrise Dental (about $210.00 back)");
     expect(email.text).not.toContain("$210.00 a year");
-  });
-
-  // Night QA 10-30: an email whose only finding had no dollar estimate said "Still to look at:
-  // $0.00 a year".
-  it("leaves out what's still to look at when it has no dollar figure", () => {
-    const email = renderDigest({ ...payload, moneyFoundCents: 0 }, LINKS);
-    expect(email.text).not.toContain("Still to look at");
-    expect(email.html).not.toContain("$0.00");
-    expect(renderDigest(payload, LINKS).text).toContain("Still to look at: $500.00 a year");
   });
 
   it("uses a plain headline in a week with nothing finished", () => {

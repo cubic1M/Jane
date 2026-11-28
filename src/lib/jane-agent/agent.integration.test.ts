@@ -91,7 +91,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       // No first-run hello any more (founder, 2026-10-26): the agenda comes first.
       expect(messages.some((m) => m.dedupeKey === "welcome:hello")).toBe(false);
       expect(messages[0]).toMatchObject({ kind: "brief", dedupeKey: "brief:2026-10-18" });
-      expect(messages[0].body).toMatch(/^Good morning! You have \$[\d,]+\.\d\d safe to spend/);
+      expect(messages[0].body).toMatch(/^Good morning!\n/);
       expect(messages[0].body).toContain("need your yes:");
       expect(buttonIds(messages[0])).toEqual(
         expect.arrayContaining(["bundle.1", "plan.approve_safe", "open"]),

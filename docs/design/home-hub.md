@@ -141,14 +141,13 @@ phone, with its cards fixed to the bottom of the panel, which is where the brief
 
 Three bands, top to bottom.
 
-1. **Hero row.** Three cards, each a big number and one small graphic:
-   - *Safe to spend until payday*: the number, and a stacked bar of today's checking balance
-     split into bills before payday, budgets left, goals, yearly set-aside and what's safe.
-     Short shows in red with "Short by".
+1. **Hero row.** The net worth card, then, once anything is saved, the Saved card. (The Safe to
+   spend and Money found cards were removed on 11-28 at the founder's word: they did nothing.)
    - *Net worth*: today's number and a 12-month sparkline; the change over the year as an
      arrow, not a figure.
-   - *Saved so far* (once anything is saved; before then *Money found*): the yearly figure and
-     a bar of saved against found.
+   - *Saved so far* (only once anything is saved; nothing stands in for it before then): the
+     confirmed figure, what is still expected, and where it came from. "Your plan: N things"
+     stands alone under the chart when there is no saved card.
 2. **Cash flow, next 30 days.** A timeline from today to +30 days: bills hang below the line
    (▼, size by amount), paydays sit above it (▲), deadlines are small diamonds. Hover, focus or
    tap shows the name, date and amount. It's a list for screen readers ("Next 30 days: Rent,
@@ -164,10 +163,9 @@ only when there is something in it.
 
 | On the hub | Source (same as the page that shows it) |
 | --- | --- |
-| Safe to spend, its bar | `homeSummary().safeToSpend` (`src/lib/home.ts` → `src/planning/safe-to-spend.ts`) |
 | Net worth today | `netWorth()` (`src/insights/net-worth.ts`), as on `/net-worth` |
 | Net worth sparkline | `monthlyNetWorth(…, NET_WORTH_MONTHS)` from balance snapshots, as on `/net-worth` |
-| Saved so far / money found | `homeSummary().savedToDateCents` / `.moneyFoundCents` (`savedToDate`, `moneyFound`) |
+| Saved so far | `homeSummary().savedToDateCents` / `.confirmedSavedCents` |
 | Cash-flow strip | `loadComingUp()` (`src/lib/coming-up.ts`): bills, deposits and deadlines, one source |
 | Spending tile | this month's spending from `spendingInsights()` and the last six months for the bars, as on `/insights` |
 | Insurance tile | `loadInsurance()`: policies and gaps, as on the Money hub's tile |

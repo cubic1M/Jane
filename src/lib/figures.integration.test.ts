@@ -216,7 +216,8 @@ describe.runIf(url)("every figure explained and correctable", { timeout: 120_000
     expect(intent).toEqual({ kind: "figure_how", figure: "safe_to_spend" });
     const reply = await answerByRules(userId, intent, { client, now: NOW });
     expect(reply?.body).toMatch(/^Safe to spend is \$/);
-    expect(reply?.actions[0]).toMatchObject({ href: "/figures/safe_to_spend" });
+    // The figure page opens Home now, so the answer links to nothing.
+    expect(reply?.actions).toEqual([]);
     const which = await answerByRules(
       userId,
       parseIntent("how did you get that number", "2026-10-16"),

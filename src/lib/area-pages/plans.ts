@@ -43,7 +43,7 @@ export const DECISIONS: readonly { key: string; label: string; what: string; hre
   {
     key: "afford",
     label: "Can I afford this?",
-    what: "Check a purchase against your own numbers: safe to spend, your goals and the next 12 months.",
+    what: "Check a purchase against your own numbers: your checking balance, your goals and the next 12 months.",
     href: "/afford",
   },
   {

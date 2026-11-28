@@ -518,7 +518,7 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
       },
       {
         key: "held",
-        label: "Held back from Safe to spend",
+        label: "Held back for tax",
         sign: "=",
         cents: left - kept,
         source: "estimated",
@@ -548,7 +548,7 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
         return {
           ...l,
           label: "Still not covered after what you keep apart",
-          from: "Under the smallest amount Safe to spend holds back, so nothing is held.",
+          from: "Under the smallest amount held back, so nothing is held.",
         };
       return l;
     }),
