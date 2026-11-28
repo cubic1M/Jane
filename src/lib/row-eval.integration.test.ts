@@ -225,6 +225,10 @@ describe.runIf(url)("reads answered from rows in memory", { timeout: 120_000 }, 
     expect(
       ask("findMany", { where: { merchantName: { not: { equals: "x" }, mode: "insensitive" } } }),
     ).toBeNull();
+    // An empty filter in a group, and an order by an enum (declaration order, not labels).
+    expect(ask("findMany", { where: { OR: [{}, { pending: true }] } })).toBeNull();
+    expect(ask("findMany", { where: { NOT: {} } })).toBeNull();
+    expect(ask("findMany", { orderBy: { categorySource: "asc" } })).toBeNull();
     expect(ask("findMany", { take: -1 })).toBeNull();
     expect(ask("findMany", { where: { nope: 1, userId } })).toBeNull();
   });

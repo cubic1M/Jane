@@ -178,7 +178,11 @@ function where(model: ModelInfo, w: unknown, row: Row): Truth {
   for (const [key, value] of Object.entries(w)) {
     if (value === undefined) continue;
     if (key === "AND" || key === "OR" || key === "NOT") {
-      const list = (Array.isArray(value) ? value : [value]).map((x) => where(model, x, row));
+      // An empty filter in a group is left out of it by the database client, which no group
+      // here reproduces: that read is the database's.
+      const operands = Array.isArray(value) ? value : [value];
+      if (operands.some((x) => isObject(x) && Object.keys(x).length === 0)) no();
+      const list = operands.map((x) => where(model, x, row));
       if (key === "AND") parts.push(and(list));
       else if (key === "OR") parts.push(list.length === 0 ? false : or(list));
       // NOT: [a, b] is none of them: not a, and not b.
@@ -199,6 +203,8 @@ function orders(model: ModelInfo, orderBy: unknown): Order[] {
     if (!isObject(o)) no();
     for (const [name, dir] of Object.entries(o as Record<string, unknown>)) {
       const f = field(model, name);
+      // A native enum sorts by its declaration, not by its labels.
+      if (f.kind === "enum") no();
       // Text sorts by the database's collation; only an id (lower-case letters and digits) is safe.
       if (f.type === TEXT && name !== "id") no();
       if (dir !== "asc" && dir !== "desc") no();

@@ -104,6 +104,10 @@ function switchOf(config: Config): { step: "reading" | "writing"; to: Switch } |
 }
 
 const WRITE = /^\s*(INSERT|UPDATE|DELETE|TRUNCATE|MERGE|WITH\b[\s\S]*\b(INSERT|UPDATE|DELETE)\b)/i;
+const LEADING_COMMENTS = /^(?:\s*(?:--[^\n]*|\/\*[\s\S]*?\*\/))*/;
+
+// Whether a statement writes, by its first word after any comments in front of it.
+export const isWriteStatement = (text: string) => WRITE.test(text.replace(LEADING_COMMENTS, ""));
 
 export class RlsClient extends pg.Client {
   private state: State = { step: "idle" };
@@ -127,7 +131,7 @@ export class RlsClient extends pg.Client {
     if (!plain) return (super.query as (...a: unknown[]) => never)(config, values, callback);
     // A write by any route (the scoped helper, a system client, a raw statement) forgets what the
     // render or request shared (src/lib/read-memo.ts): a read after it asks the database again.
-    const writes = WRITE.test((config as Config).text);
+    const writes = isWriteStatement((config as Config).text);
     const run = () => {
       if (!writes) return this.next(config as Config);
       forgetReads();
