@@ -57,6 +57,14 @@ describe("rescanAfterAnswer", () => {
     expect(log.error).toHaveBeenCalled();
   });
 
+  it("a failed limit check never blocks the answer", async () => {
+    vi.mocked(mayRescan).mockRejectedValue(new Error("down"));
+    await expect(rescanAfterAnswer("trial_1")).resolves.toBeUndefined();
+    await flush();
+    expect(scanSuggestions).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalled();
+  });
+
   it("outside a request there is nothing to run after, and nothing throws", async () => {
     hoisted.outsideRequest = true;
     await expect(rescanAfterAnswer("u1")).resolves.toBeUndefined();

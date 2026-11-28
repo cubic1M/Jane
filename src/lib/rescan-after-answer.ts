@@ -16,7 +16,13 @@ export async function rescanAfterAnswer(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<void> {
-  if (!(await mayRescan(userId))) return;
+  // A rescan is optional: nothing here may stop the answer from being saved.
+  try {
+    if (!(await mayRescan(userId))) return;
+  } catch (error) {
+    log.error("Checking the rescan limit after an answer failed", { error: String(error) });
+    return;
+  }
   const run = async () => {
     try {
       const { scanSuggestions } = await import("@/lib/suggestions");
