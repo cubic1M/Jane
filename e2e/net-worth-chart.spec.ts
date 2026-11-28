@@ -649,6 +649,20 @@ test("the Changes view shows how big each period's move is: $9 and $138 differ w
   expect(Math.max(...quiet.list.map((b) => b.h))).toBeGreaterThan(quiet.plot * 0.2);
   await page.keyboard.press("0");
 
+  // A drag across bars zooms to exactly those bars (a computer).
+  if (!isMobile) {
+    const before = (await bars(chart)).list.length;
+    const box = (await plot.boundingBox())!;
+    await page.mouse.move(box.x + box.width * 0.3, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await expect(chart.locator("[data-net-worth-reset]")).toBeVisible();
+    await expect.poll(async () => (await bars(chart)).list.length).toBeLessThan(before / 2);
+    await chart.locator("[data-net-worth-reset]").click();
+    await expect.poll(async () => (await bars(chart)).list.length).toBe(before);
+  }
+
   // Arrow keys step bar by bar: the period, the change and the net worth at its end.
   await plot.focus();
   await page.keyboard.press("ArrowLeft");

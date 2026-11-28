@@ -603,6 +603,20 @@ export function NetWorthChart({
     const share = shareOf(clientX, rect);
     return Math.round(share * (shown.length - 1));
   };
+  // The day a drag-selection edge means: by the days in the line view; in the Changes view the
+  // first day of the bar under the left edge, the last day of the bar under the right (bars of
+  // months differ in length, so the day under the pointer is not the bar's).
+  const edgeDay = (clientX: number, edge: "start" | "end") => {
+    const rect = box.current?.getBoundingClientRect();
+    if (!changes || !rect || bars.length === 0) return dayAt(clientX);
+    const bar = bars[Math.min(bars.length - 1, Math.floor(shareOf(clientX, rect) * bars.length))];
+    return edge === "end"
+      ? bar.endIndex - win.from
+      : Math.max(
+          0,
+          shown.findIndex((p) => p.date === bar.from),
+        );
+  };
   // What a pointer scrubs to: the day under it, or in the Changes view the end of the bar under it.
   const indexAt = (clientX: number) => {
     const rect = box.current?.getBoundingClientRect();
@@ -874,7 +888,8 @@ export function NetWorthChart({
                 setSel(null);
                 if (drag?.moved && e.pointerType === "mouse") {
                   // The days under the drag, zoomed into (at least MIN_DAYS), the axis refit.
-                  const [i, j] = [dayAt(drag.x), dayAt(e.clientX)].sort((p, q) => p - q);
+                  const [x0, x1] = [drag.x, e.clientX].sort((p, q) => p - q);
+                  const [i, j] = [edgeDay(x0, "start"), edgeDay(x1, "end")];
                   justSelected.current = true;
                   // A drag at the last day keeps the day before it too.
                   const from = Math.min(win.from + i, total - MIN_DAYS);
