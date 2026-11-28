@@ -45,7 +45,6 @@ const KNOWN: readonly string[] = [
   "planning/family-taxes.ts: DEPENDENT_CARE_CREDIT, EDUCATION_CREDITS, PAYROLL_TAX",
   "planning/health-taxes.ts: ITEMIZED",
   "planning/home-taxes.ts: HOME_OFFICE_SIMPLIFIED",
-  "planning/home-taxes.ts: ITEMIZED",
   "planning/obbba-deductions.ts: OBBBA_DEDUCTIONS, ROTH_CATCH_UP",
   "planning/self-employed.ts: HOME_OFFICE_SIMPLIFIED",
   "planning/tax-savings.ts: DEPENDENT_CARE_CREDIT, EDUCATION_CREDITS, ITEMIZED, PAYROLL_TAX",
