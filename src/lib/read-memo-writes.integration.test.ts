@@ -62,6 +62,38 @@ describe.runIf(url)("what a request shared is forgotten by a write on the app's 
     expect(read).toHaveBeenCalledTimes(2);
   });
 
+  // pg accepts a statement as a string, as text with values, or with a callback: each is one door.
+  it.each([
+    ["a string", (c: RlsClient) => c.query("INSERT INTO shared_probe VALUES (1)")],
+    ["text and values", (c: RlsClient) => c.query("INSERT INTO shared_probe VALUES ($1)", [1])],
+    [
+      "a callback",
+      (c: RlsClient) =>
+        new Promise<void>((resolve) =>
+          c.query("INSERT INTO shared_probe VALUES (1)", [], () => resolve()),
+        ),
+    ],
+  ])("forgets it when a write is sent as %s", async (_form, send) => {
+    const read = vi.fn(async () => "rows");
+    await withRequestMemo(async () => {
+      await memoRead("probe", read);
+      await send(client);
+      await memoRead("probe", read);
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves it alone when a read is sent as a string or with values", async () => {
+    const read = vi.fn(async () => "rows");
+    await withRequestMemo(async () => {
+      await memoRead("probe", read);
+      await client.query("SELECT 1");
+      await client.query("SELECT $1::int", [1]);
+      await memoRead("probe", read);
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
   it("is the same on a connection of the pool", async () => {
     const pool = new pg.Pool({ connectionString: url!, Client: RlsClient as never });
     const mine = await pool.connect();

@@ -128,7 +128,7 @@ export class RlsClient extends pg.Client {
       config !== null &&
       typeof (config as Config).text === "string" &&
       typeof (config as { submit?: unknown }).submit !== "function";
-    if (!plain) return (super.query as (...a: unknown[]) => never)(config, values, callback);
+    if (!plain) return this.passThrough(config, values, callback);
     // A write by any route (the scoped helper, a system client, a raw statement) forgets what the
     // render or request shared (src/lib/read-memo.ts): a read after it asks the database again.
     const writes = isWriteStatement((config as Config).text);
@@ -139,6 +139,37 @@ export class RlsClient extends pg.Client {
     };
     const result = this.last.then(run, run);
     this.last = result.catch(() => undefined);
+    return result as never;
+  }
+
+  // The forms that go straight through (a string, text and values, a callback, pg's own queue
+  // entries): a write among them forgets what was shared too, so the rule holds for every form pg
+  // accepts. Before it is sent; and again when it settles, where the form tells us (a promise, a
+  // callback).
+  private passThrough(config: unknown, values: unknown, callback: unknown): never {
+    const text = typeof config === "string" ? config : (config as { text?: unknown } | null)?.text;
+    const send = super.query as (...a: unknown[]) => unknown;
+    if (typeof text !== "string" || !isWriteStatement(text)) {
+      return send.call(this, config, values, callback) as never;
+    }
+    forgetReads();
+    const done = typeof values === "function" ? values : callback;
+    if (typeof done === "function") {
+      const after = (...r: unknown[]) => {
+        forgetReads();
+        return (done as (...a: unknown[]) => unknown)(...r);
+      };
+      return (
+        typeof values === "function"
+          ? send.call(this, config, after, undefined)
+          : send.call(this, config, values, after)
+      ) as never;
+    }
+    const result = send.call(this, config, values, callback);
+    if (result instanceof Promise) {
+      const settled = () => forgetReads();
+      result.then(settled, settled);
+    }
     return result as never;
   }
 
