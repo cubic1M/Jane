@@ -87,7 +87,6 @@ function like(kind: string, value: string, term: string, insensitive: boolean): 
   if (insensitive) {
     // ILIKE folds case by the database's locale; only the plain ASCII letters fold the same
     // everywhere, so a text with anything else in it is the database's to match.
-    // eslint-disable-next-line no-control-regex
     if (!/^[\u0000-\u007f]*$/.test(term) || !/^[\u0000-\u007f]*$/.test(value)) no();
     text = text.toLowerCase();
     pattern = pattern.toLowerCase();
