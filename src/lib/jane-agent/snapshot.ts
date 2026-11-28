@@ -46,6 +46,7 @@ import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { localDate } from "@/lib/today";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
@@ -58,6 +59,21 @@ import { findingSure } from "@/lib/report-state";
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
 // standing rules and the alerts. Null when the person has no accounts yet.
+
+// The investing part reads the year's limits (401(k), IRA, HSA, a child's Roth room): in a year
+// with no IRS figures it throws NoTaxParamsError, and the chat goes on without the investing part
+// (absent, no figure) instead of failing whole, as the tax part does (snapshot-tax.ts).
+async function loadInvestmentSnapshotIfPriced(
+  userId: string,
+  options: { client: PrismaClient; now: Date },
+): Promise<InvestmentSnapshot | undefined> {
+  try {
+    return await loadInvestmentSnapshot(userId, options);
+  } catch (error) {
+    if (error instanceof NoTaxParamsError) return undefined;
+    throw error;
+  }
+}
 
 export type SnapshotFinding = {
   findingId: string;
@@ -394,7 +410,7 @@ async function loadSnapshotWork(
     light ? null : lastControllerRun(userId, { client, now }),
     light ? null : latestPaycheckPlan(userId, { client, now }),
     light ? undefined : loadUpkeep(userId, { client, now }),
-    light ? undefined : loadInvestmentSnapshot(userId, { client, now }),
+    light ? undefined : loadInvestmentSnapshotIfPriced(userId, { client, now }),
     chatWeek(userId, client, weekStart(now, user?.timezone)),
     loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     recentReport(userId, { client, now }),

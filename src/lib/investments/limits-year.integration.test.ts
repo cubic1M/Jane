@@ -12,6 +12,8 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { linkDemoHsa, loadHsa } from "./hsa";
 import { loadRetirement } from "./retirement";
+import { loadSnapshot } from "@/lib/jane-agent/snapshot";
+import { loadFamily } from "./family";
 import { loadRetirementAccounts } from "./retirement-accounts";
 
 // Tax T32c: the 401(k) room and the retirement accounts' limits are the limits of the year of the
@@ -25,6 +27,8 @@ const NEW_YEARS_EVE_3PM = new Date("2026-12-31T23:00:00Z");
 const NEW_YEARS_EVE_9PM = new Date("2027-01-01T05:00:00Z");
 const JAN_2 = new Date("2027-01-02T20:00:00Z");
 const JAN_2_2028 = new Date("2028-01-02T20:00:00Z");
+// 9pm on December 31 2027 in Los Angeles: already January 1 2028 in UTC, still 2027 for the person.
+const NEW_YEARS_EVE_2027_9PM = new Date("2028-01-01T05:00:00Z");
 
 describe.runIf(url)("the retirement limits on the person's own calendar", () => {
   let client: PrismaClient;
@@ -91,5 +95,42 @@ describe.runIf(url)("the retirement limits on the person's own calendar", () => 
     await expect(loadRetirementAccounts(userId, { client, now: JAN_2_2028 })).rejects.toMatchObject(
       { name: "NoTaxParamsError" },
     );
+  });
+
+  // A child's Roth room is priced with the year's IRA limit. The year is the person's own, not
+  // UTC's (it was UTC's): on the evening of December 31 2027 in Los Angeles the room is still
+  // 2027's, and from the person's January 2 2028 there are no figures.
+  it("reads a child's Roth room in the person's own year, not UTC's", async () => {
+    await client.familyChild.create({
+      data: { userId, name: "Sam", age: 16, earnedCents: 300_000 },
+    });
+    await client.account.create({
+      data: {
+        userId,
+        source: "csv",
+        name: "Sam Roth IRA",
+        type: "investment",
+        subtype: "child roth",
+        currentBalanceCents: 0,
+      },
+    });
+    const evening = await loadFamily(userId, { client, now: NEW_YEARS_EVE_2027_9PM });
+    expect(evening.children[0]?.roth?.roomCents).toBe(300_000);
+    const lastYear = await loadFamily(userId, { client, now: NEW_YEARS_EVE_3PM });
+    expect(lastYear.children[0]?.roth?.roomCents).toBe(300_000);
+    await expect(loadFamily(userId, { client, now: JAN_2_2028 })).rejects.toMatchObject({
+      name: "NoTaxParamsError",
+      year: 2028,
+    });
+  });
+
+  // The chat's snapshot goes on without its investing part for a year with no figures (the part
+  // throws NoTaxParamsError, as the tax part's sections do): absent, not a failed chat.
+  it("keeps the chat snapshot when the investing part has no figures for the year", async () => {
+    const priced = await loadSnapshot(userId, { client, now: JAN_2 });
+    expect(priced?.investments).toBeDefined();
+    const unpriced = await loadSnapshot(userId, { client, now: JAN_2_2028 });
+    expect(unpriced).not.toBeNull();
+    expect(unpriced?.investments).toBeUndefined();
   });
 });
