@@ -22,7 +22,7 @@ import { personTransaction } from "@/lib/db-scoped";
 
 type DeleteMany = {
   deleteMany(args: {
-    where: { plaidTransactionId: { in: string[] }; userId: string };
+    where: { plaidTransactionId: { in: string[] }; userId: string; updatedAt?: { lt: Date } };
   }): PromiseLike<{ count: number }>;
 };
 
@@ -32,10 +32,17 @@ export async function deleteRemoved(
   transactions: DeleteMany,
   userId: string,
   ids: readonly string[],
+  // The read from the start passes the day it began: a row changed since is left alone, checked in
+  // the same statement as the delete.
+  unchangedSince?: Date,
 ): Promise<number> {
   if (ids.length === 0) return 0;
   const { count } = await transactions.deleteMany({
-    where: { plaidTransactionId: { in: [...ids] }, userId },
+    where: {
+      plaidTransactionId: { in: [...ids] },
+      userId,
+      ...(unchangedSince ? { updatedAt: { lt: unchangedSince } } : {}),
+    },
   });
   return count;
 }
@@ -120,11 +127,18 @@ export async function removeWhatPlaidDropped(
         // A hold the bank dropped is gone, whatever hangs on it. A posted row the person has
         // edited, with no row of the same account, amount and day to take its place, stays:
         // nothing is shown twice, and the edit is not lost to a guess.
-        if (!r.pending && edited && same.length === 0) continue;
+        // Several rows to take its place (or several edited rows for one) is a guess too: it stays.
+        const edits = gone.filter((g) => g.categorySource === "user" && key(g) === key(r)).length;
+        if (
+          !r.pending &&
+          edited &&
+          (same.length !== 1 || (r.categorySource === "user" && edits > 1))
+        ) {
+          continue;
+        }
         // A reissued charge: exactly one new row of the same account, amount and day takes the
         // category the person set, as a posted charge takes it from its pending one.
         // Only when it is the one edited row for that new row: two edits to one row is a guess.
-        const edits = gone.filter((g) => g.categorySource === "user" && key(g) === key(r)).length;
         if (
           r.categorySource === "user" &&
           edits === 1 &&
@@ -145,7 +159,7 @@ export async function removeWhatPlaidDropped(
       }
       return {
         kind: "done",
-        removed: await deleteRemoved(tx.transaction, userId, remove),
+        removed: await deleteRemoved(tx.transaction, userId, remove, startedAt),
         carried,
       };
     },

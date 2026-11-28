@@ -360,6 +360,26 @@ describe.runIf(url)("a read from the start: what Plaid dropped is removed", () =
       where: { plaidTransactionId: `${l.acc}-new` },
     });
     expect(row.categorySource).not.toBe("user");
+    // Nor are the two edits lost: both old rows stay.
+    expect(await heldIds(l)).toEqual(expect.arrayContaining(["a", "b"]));
+  });
+
+  it("an edited row with two listed rows of its account, amount and day stays", async () => {
+    const l = await link("tworows");
+    await firstSync(l, [tx(l, "old", "2026-11-07", 70)]);
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${l.acc}-old` },
+      data: { pfcPrimary: "TRAVEL", pfcDetailed: "TRAVEL_OTHER", categorySource: "user" },
+    });
+    transactionsSync.mockResolvedValueOnce(
+      page(
+        l,
+        [...recent(l), ...older(l), tx(l, "n1", "2026-11-07", 70), tx(l, "n2", "2026-11-07", 70)],
+        "c2",
+      ),
+    );
+    await syncItem(l.itemId, { client, api, now: LATER });
+    expect(await heldIds(l)).toContain("old");
   });
 
   it("net worth and the real balances are the same to the cent; only the worked-back past moves", async () => {
