@@ -93,8 +93,16 @@ describe("a student loan's year of interest on the calendar", () => {
     );
   });
 
-  it("holds the card back in a year with no IRS figures yet (January 2027)", () => {
-    expect(card(data("2027-01-20", { cents: 1_450, asOf: "2027-01-20" }))).toBeUndefined();
+  it("holds the card back in a year with no IRS figures (January 2028)", () => {
+    // Every date a year later: 2028 has no parameter file, so nothing is priced with another year's law.
+    expect(card(data("2027-01-20", { cents: 1_450, asOf: "2027-01-20" }, -1))).toBeUndefined();
+  });
+
+  it("prices January 2027 with 2027's own phase-out ($90,000 to $105,000), not 2026's (T32b)", () => {
+    const s = card(data("2027-01-20", { cents: 1_450, asOf: "2027-01-20" }));
+    expect(s).toBeDefined();
+    expect(s.why).toContain("it shrinks from $90,000 to $105,000 of income");
+    expect(s.why).not.toContain("$85,000");
   });
 
   it("in January, works a year out from the balance and rate, not weeks of interest", () => {

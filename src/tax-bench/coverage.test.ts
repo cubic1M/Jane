@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { federalParams, SUPPORTED_TAX_YEARS } from "@/config/tax-params";
+import { federalParams, isAwaited, SUPPORTED_TAX_YEARS } from "@/config/tax-params";
 import { FIGURE_IDS } from "./figures";
 import { probePlan } from "./probes";
 import { ESTIMATOR_YEARS, loadCases } from "./serialize";
@@ -48,12 +48,23 @@ function leaves(value: unknown, path: string, out: [string, number][] = []): [st
 
 describe.each(ESTIMATOR_YEARS)("every figure of the %i parameters has a boundary probe", (year) => {
   const plan = probePlan(year);
-  const groups = Object.entries(federalParams(year))
-    .filter(([, g]) => typeof g === "object" && g !== null && "status" in g)
-    .map(([key, g]) => [key, (g as { value: unknown }).value] as const);
+  const all = Object.entries(federalParams(year)).filter(
+    ([, g]) => typeof g === "object" && g !== null && "status" in g,
+  ) as [string, { status: string; value: unknown }][];
+  // An awaited group (T32b) holds no value to probe: it must be exempt, with its step.
+  const awaitedKeys = all.filter(([, g]) => isAwaited(g)).map(([k]) => k);
+  const groups = all.filter(([, g]) => !isAwaited(g)).map(([key, g]) => [key, g.value] as const);
 
   it("plans exactly the groups the year has", () => {
-    expect(Object.keys(plan).sort()).toEqual(groups.map(([k]) => k).sort());
+    expect(Object.keys(plan).sort()).toEqual(all.map(([k]) => k).sort());
+  });
+
+  it("exempts every awaited group, saying why", () => {
+    for (const key of awaitedKeys) {
+      const entry = plan[key];
+      expect("exempt" in entry, `${key} is awaited: no probes`).toBe(true);
+    }
+    expect([...awaitedKeys].sort()).toEqual(year === 2027 ? ["mileage", "withholding"] : []);
   });
 
   it.each(groups)("%s", (key, value) => {

@@ -1,6 +1,6 @@
 import { CA_RENTERS_CREDIT, AOTC_FORM, SOURCES, TUITION_TIMING_FROM } from "@/config/student-taxes";
 import { federalParams } from "@/config/tax-params";
-import { EDUCATION_CREDITS, STUDENT_LOAN_INTEREST } from "@/config/tax-rates";
+import { EDUCATION_CREDITS } from "@/config/tax-rates";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -171,7 +171,10 @@ const studentLoanInterest: Detector = {
     // would be a resident's (CodeRabbit on #2367; belongs to T15).
     if (dependentOf(facts) === "yes" || onStudentVisa(facts)) return null;
     const status = filingStatusOf(facts);
-    const range = STUDENT_LOAN_INTEREST.phaseOut[status];
+    // The calendar year's own limit and phase-out (T32b: 2027's start at $90,000, 2026's at $85,000);
+    // a year with no figures throws NoTaxParamsError and the card is held back.
+    const loanInterest = federalParams(lawYearOf(data.today)).studentLoanInterest.value;
+    const range = loanInterest.phaseOut[status];
     if (!range) return null;
     const money = studentMoney(data);
     if (money.loanPayments.length === 0) return null;
@@ -231,7 +234,7 @@ const studentLoanInterest: Detector = {
         : found.from === "lender"
           ? found.cents
           : Math.min(paidYear, found.cents);
-    const deduct = Math.round(Math.min(STUDENT_LOAN_INTEREST.max, interest ?? paidYear) * left);
+    const deduct = Math.round(Math.min(loanInterest.max, interest ?? paidYear) * left);
     const worth = Math.round(deduct * rate);
     if (worth <= 0) return null;
     const basis =
@@ -247,7 +250,7 @@ const studentLoanInterest: Detector = {
       "",
     );
     return suggestion("taxes", "student_loan_interest", {
-      title: `Student loan interest can come off income, up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} (IRS Pub. 970)`,
+      title: `Student loan interest can come off income, up to ${formatWholeDollars(loanInterest.max)} (IRS Pub. 970)`,
       headline: headlineOf("Check the student loan interest", worth, "saves"),
       short: `${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}; its interest part lowers income.`,
       worthCents: worth,
@@ -267,7 +270,7 @@ const studentLoanInterest: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).${filingNoteOf(facts)}`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(loanInterest.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${basis === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `${basis}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).${filingNoteOf(facts)}`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });

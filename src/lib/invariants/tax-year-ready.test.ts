@@ -66,6 +66,49 @@ describe("taxYearReady on frozen days", () => {
   });
 });
 
+// Tax T32b: a supported year with a group its source has not published yet.
+describe("an awaited group of a supported year", () => {
+  const supported = [2025, 2026, 2027];
+  const mileage: PendingGroup[] = [
+    { year: 2027, key: "mileage", status: "awaited", checkedOn: "2026-11-27", note: "AWAITED: x" },
+  ];
+  const with2027 = { ...NOW_2026, supported, pending: mileage };
+
+  it("is a warning naming the group on 2026-12-01, never red, however long 2027 runs", () => {
+    const r = taxYearReady("2026-12-01", with2027);
+    expect(r.state).toBe("warning");
+    expect(r.messages).toEqual([
+      "2027 mileage is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
+    ]);
+    for (const day of ["2027-01-01", "2027-05-01", "2027-11-15"]) {
+      expect(
+        taxYearReady(day, { ...with2027, pending: [{ ...mileage[0]!, checkedOn: day }] }).state,
+        day,
+      ).toBe("warning");
+    }
+  });
+
+  it("says look again once it was last read more than TAX_DRAFT_MAX_DAYS ago (2026-11-27 + 60 = 2027-01-26)", () => {
+    expect(taxYearReady("2027-01-26", with2027).messages[0]).toContain("is awaited");
+    const late = taxYearReady("2027-01-27", with2027);
+    expect(late.state).toBe("warning");
+    expect(late.messages).toEqual([
+      "2027 mileage is still awaited, last read 2026-11-27: look again at its source",
+    ]);
+  });
+
+  it("is quiet again once the rate is filled (nothing pending)", () => {
+    expect(taxYearReady("2026-12-01", { ...with2027, pending: [] }).state).toBe("ok");
+    expect(taxYearReady("2027-01-01", { ...with2027, pending: [] }).state).toBe("ok");
+  });
+
+  it("stays red for a year people are in with no parameters at all, awaited group or not", () => {
+    const r = taxYearReady("2027-03-01", { ...NOW_2026, pending: mileage });
+    expect(r.state).toBe("red");
+    expect(r.messages[0]).toContain("No tax figures for 2027, the year people are in");
+  });
+});
+
 describe("a draft figure not looked at for too long", () => {
   const pending: PendingGroup[] = [
     { year: 2026, key: "dependentCare", status: "draft", checkedOn: "2026-11-27", note: "" },
@@ -103,8 +146,13 @@ describe("the real figures", () => {
     }
   });
 
-  it("is fine today (2026-11-27)", () => {
-    expect(taxYearReady("2026-11-27").state).toBe("ok");
+  it("today (2026-11-27) warns only that the 2027 withholding amounts and mileage rate are awaited: 2027 itself is supported", () => {
+    const r = taxYearReady("2026-11-27");
+    expect(r.state).toBe("warning");
+    expect(r.messages).toEqual([
+      "2027 withholding is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
+      "2027 mileage is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
+    ]);
   });
 });
 

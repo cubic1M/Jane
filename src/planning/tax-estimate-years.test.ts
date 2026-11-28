@@ -85,8 +85,8 @@ describe("one household, two tax years", () => {
 });
 
 describe("a year with no IRS figures", () => {
-  it("throws NoTaxParamsError for 2024 and for 2027, never a fallback to another year", () => {
-    for (const year of [2024, 2027]) {
+  it("throws NoTaxParamsError for 2024 and for 2028, never a fallback to another year", () => {
+    for (const year of [2024, 2028]) {
       expect(() => estimateTaxes(household(year))).toThrow(NoTaxParamsError);
       try {
         estimateTaxes(household(year));
@@ -101,15 +101,17 @@ describe("only a forward projection holds the law fixed; a year's own figure nev
   it("ownLawYear is the year itself or a refusal, never another year's law", () => {
     expect(ownLawYear(2025)).toBe(2025);
     expect(ownLawYear(2026)).toBe(2026);
-    expect(() => ownLawYear(2027)).toThrow(NoTaxParamsError);
+    expect(ownLawYear(2027)).toBe(2027);
+    expect(() => ownLawYear(2028)).toThrow(NoTaxParamsError);
     expect(() => ownLawYear(2024)).toThrow(NoTaxParamsError);
   });
 
   it("lawYearFor gives the newest year with figures at or before the year, and refuses an earlier one", () => {
     expect(lawYearFor(2025)).toBe(2025);
     expect(lawYearFor(2026)).toBe(2026);
-    expect(lawYearFor(2027)).toBe(2026);
-    expect(lawYearFor(2031)).toBe(2026);
+    expect(lawYearFor(2027)).toBe(2027);
+    expect(lawYearFor(2028)).toBe(2027);
+    expect(lawYearFor(2031)).toBe(2027);
     expect(() => lawYearFor(2024)).toThrow(NoTaxParamsError);
   });
 });
@@ -125,7 +127,8 @@ describe("the student-tax helpers take the year too", () => {
 
   it("the note and the rough-state line name the estimate's own year", () => {
     expect(estimateNote(2025)).toContain("Tax figures for 2025 are from the IRS");
-    expect(() => lawYearOf("2027-05-02")).toThrow(NoTaxParamsError);
+    expect(lawYearOf("2027-05-02")).toBe(2027);
+    expect(() => lawYearOf("2028-05-02")).toThrow(NoTaxParamsError);
     expect(lawYearOf("2025-03-01")).toBe(2025);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ASSUMED_BENCHMARK_MONTHLY_CENTS, fplFor } from "@/config/health-taxes";
+import { NoTaxParamsError } from "@/config/tax-params";
 import {
   applicablePercent,
   benchmarkYear,
@@ -133,9 +134,17 @@ describe("HSA deposits", () => {
   });
 
   it("use the family limit for a couple, plus the catch-up from 55", () => {
-    expect(hsaLimitFor(false, 40)).toBe($(4_400));
-    expect(hsaLimitFor(true, null)).toBe($(8_750));
-    expect(hsaLimitFor(false, 56)).toBe($(5_400));
+    expect(hsaLimitFor(false, 40, 2026)).toBe($(4_400));
+    expect(hsaLimitFor(true, null, 2026)).toBe($(8_750));
+    expect(hsaLimitFor(false, 56, 2026)).toBe($(5_400));
+  });
+
+  it("read the year's own limit: 2027 is $4,500 and $9,000 (Rev. Proc. 2026-24), plus $1,000 from 55", () => {
+    expect(hsaLimitFor(false, 40, 2027)).toBe($(4_500));
+    expect(hsaLimitFor(true, null, 2027)).toBe($(9_000));
+    expect(hsaLimitFor(false, 56, 2027)).toBe($(5_500));
+    // A year with no figures has no limit: refused, never another year's.
+    expect(() => hsaLimitFor(false, 40, 2028)).toThrow(NoTaxParamsError);
   });
 });
 

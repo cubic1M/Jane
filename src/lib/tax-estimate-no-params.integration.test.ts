@@ -25,7 +25,8 @@ const CREATED = new Date("2026-11-05T23:00:00Z");
 // still April 30 for the person, so the year gathered is still 2026 at both.
 const APR30_3PM = new Date("2027-04-30T22:00:00Z");
 const APR30_7PM = new Date("2027-05-01T02:00:00Z");
-const MAY1_NOON = new Date("2027-05-01T19:00:00Z");
+// From May 1, 2028 the usual year is 2028, which has no parameter file yet (2027 does, T32b).
+const MAY1_NOON = new Date("2028-05-01T19:00:00Z");
 // Either side of the new year in the person's day: the default year stays 2026.
 const DEC31 = new Date("2026-12-31T20:00:00Z");
 const JAN1 = new Date("2027-01-01T20:00:00Z");
@@ -45,16 +46,16 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
     await client.$disconnect();
   });
 
-  it("from May 1, 2027 the usual year is 2027 and has no figures: the estimate is refused, never priced with 2026 law", async () => {
+  it("from May 1, 2028 the usual year is 2028 and has no figures: the estimate is refused, never priced with 2027 law", async () => {
     await expect(loadTaxEstimate(id, { client, now: MAY1_NOON })).rejects.toMatchObject({
       name: "NoTaxParamsError",
-      year: 2027,
+      year: 2028,
     });
     await expect(loadTaxEstimate(id, { client, now: CREATED, year: 2024 })).rejects.toBeInstanceOf(
       NoTaxParamsError,
     );
-    expect(noParamsText(2027)).toBe(
-      "Jane doesn't have the IRS figures for 2027 yet, so it isn't estimating that year.",
+    expect(noParamsText(2028)).toBe(
+      "Jane doesn't have the IRS figures for 2028 yet, so it isn't estimating that year.",
     );
     expect(
       estimateState({ noParams: true, totalTaxCents: 1, withholdingKnown: true, refundCents: 5 }),
@@ -81,9 +82,9 @@ describe.runIf(url)("the estimate for a year with no IRS figures", { timeout: 18
 
   it("the page for that year says the sentence and shows no money", () => {
     const html = renderToStaticMarkup(
-      createElement(NoParamsPage, { user: {} as never, year: 2027 }),
+      createElement(NoParamsPage, { user: {} as never, year: 2028 }),
     );
-    expect(html).toContain("Jane doesn&#x27;t have the IRS figures for 2027 yet");
+    expect(html).toContain("Jane doesn&#x27;t have the IRS figures for 2028 yet");
     expect(html).not.toMatch(/\$\d/);
   });
 
