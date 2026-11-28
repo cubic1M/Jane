@@ -240,6 +240,13 @@ async function Transactions({
         </p>
       )}
 
+      {rows.length >= MOST_SHOWN && (
+        <p data-transactions-cap="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          Showing the latest {MOST_SHOWN.toLocaleString("en-US")}. Search, or pick a day from the
+          net worth chart, to see older ones.
+        </p>
+      )}
+
       {rules.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold">Your merchant rules</h2>
