@@ -170,7 +170,8 @@ export type ChatTurn = { role: "user" | "assistant"; content: string };
 export type ClaudeAnswer =
   | { kind: "answer"; reply: Reply }
   | { kind: "blocked"; reply: Reply; issues: GuardrailIssue[] }
-  | { kind: "unavailable"; reply: Reply };
+  // reason: why (a code, never text), so the caller can tell Claude being down from a cap.
+  | { kind: "unavailable"; reply: Reply; reason?: string };
 
 // What the person sees while Jane answers: what it's doing, the answer so far, or
 // "reset" when text so far turned out to lead into a lookup.
@@ -219,6 +220,7 @@ const STATUS: Record<string, string> = {
   // Loans and debt (spec Phase Y, ./debt-tools.ts).
   ...DEBT_TOOL_STATUS,
   search_transactions: "Searching your transactions…",
+  account_balances: "Checking your balances…",
   spending_by_category: "Adding up your spending…",
   monthly_totals: "Looking at your months…",
   upcoming_bills: "Looking at upcoming bills…",
@@ -273,9 +275,10 @@ const statusFor = (tool: string) =>
 export const CHAT_UNAVAILABLE_TEXT =
   "I couldn't look into that just now. Tap one of these and I'll answer it right away.";
 
-const unavailable = (): ClaudeAnswer => ({
+const unavailable = (reason?: string): ClaudeAnswer => ({
   kind: "unavailable",
   reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
+  ...(reason ? { reason } : {}),
 });
 
 // The API wants the first message from the person, and one turn per side.
@@ -1152,7 +1155,7 @@ async function askClaude(
   // Why Claude's answer isn't used goes in the timing line (a code, never text).
   const fail = (reason: string) => {
     timing.reason ??= reason;
-    return unavailable();
+    return unavailable(reason);
   };
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
   if (Date.now() < claudeDownUntil) return fail("cooldown");
@@ -1457,7 +1460,11 @@ async function askClaude(
         timing.reason ??= "partial";
         return partial;
       }
-      return fail(stopped ? "too_slow" : "api_error");
+      // The store turned the key down (401, 403): not the same as a blip, and the person is told
+      // the answering service is down (./service-down.ts).
+      const refusedKey =
+        error instanceof Anthropic.APIError && (error.status === 401 || error.status === 403);
+      return fail(stopped ? "too_slow" : refusedKey ? "key_refused" : "api_error");
     } finally {
       clearTimeout(timer);
     }

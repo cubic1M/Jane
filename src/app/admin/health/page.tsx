@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { JOB_STALE_HOURS } from "@/config/health";
 import { healthReport } from "@/lib/health";
+import { chatModelLine } from "@/lib/chat-model-health";
 import { opsCounts } from "@/lib/ops-alerts";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
@@ -15,7 +16,8 @@ async function Health() {
   const report = await healthReport(admin);
   const now = new Date();
   // Counts only, no one's data (src/lib/ops-alerts.ts); viewing the page is audit-logged above.
-  const [opsDay, opsWeek] = await Promise.all([
+  const [chatDown, opsDay, opsWeek] = await Promise.all([
+    chatModelLine({ now }),
     opsCounts(new Date(now.getTime() - 24 * 3_600_000), { now }),
     opsCounts(new Date(now.getTime() - 7 * 24 * 3_600_000), { now }),
   ]);
@@ -26,6 +28,16 @@ async function Health() {
     <>
       <AdminNav email={admin.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Health</h1>
+
+      {chatDown && (
+        <p
+          role="alert"
+          data-chat-model-down=""
+          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 font-semibold text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+        >
+          {chatDown}
+        </p>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Daily jobs</h2>

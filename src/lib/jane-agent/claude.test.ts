@@ -726,6 +726,7 @@ describe("askClaudeInChat", () => {
     const result = await askClaudeInChat("u1", [], "Hi", options);
     expect(result).toEqual({
       kind: "unavailable",
+      reason: "turn_cap",
       reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
     });
     expect(create).toHaveBeenCalledTimes(CHAT_CLAUDE_MAX_TURNS);

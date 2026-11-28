@@ -51,6 +51,12 @@ import { learnFromChat } from "@/lib/memory/learn";
 import { chatToday, timezoneOf } from "@/lib/today";
 import { DATA_ENDED_LINE, dataEndedOn } from "@/lib/data-ended";
 import { dayLabel } from "@/lib/day-label";
+import {
+  claudeIsDown,
+  noteChatModelDown,
+  SERVICE_DOWN_TEXT,
+  serviceDownReply,
+} from "./service-down";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -256,7 +262,7 @@ async function answer(
       ? { ...reply, body: `${DATA_ENDED_LINE(dayLabel(ended))} ${reply.body}` }
       : reply;
   };
-  const backup = async ({ note = null as string | null } = {}): Promise<Reply> => {
+  const backup = async ({ note = null as string | null, down = false } = {}): Promise<Reply> => {
     // First: "help me commit insurance fraud" isn't a question about their insurance (11-03).
     if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     const [byRules, payees] = await Promise.all([
@@ -282,7 +288,9 @@ async function answer(
     // Where the person stands answers "how am I doing / what should I do"; for a specific
     // question it would be an unrelated status, so say plainly that it wasn't finished.
     if (!STATUS_QUESTION.test(text) || questionParts(text).length > 1) {
-      return { body: note ?? UNFINISHED_TEXT, actions: [], refs: {} };
+      return down
+        ? serviceDownReply(text)
+        : { body: note ?? UNFINISHED_TEXT, actions: [], refs: {} };
     }
     const found = await answerByRules(
       userId,
@@ -318,6 +326,16 @@ async function answer(
   const scripted = claude ? null : fakeChatClaude(text);
   // No Claude (no key: dev, tests): the rules answer, as before.
   if (!llmEnabled() && !scripted) {
+    // Deployed for real with no key (or Claude paused): the same plain word and report as a refused
+    // key, not a rules answer to a different question.
+    if (process.env.VERCEL_ENV === "production") {
+      await noteChatModelDown("no_key", { userId, client, now }).catch(() => {});
+      return {
+        reply: await backup({ note: SERVICE_DOWN_TEXT, down: true }),
+        intent: intent.kind,
+        source: "claude_unavailable",
+      };
+    }
     const byRules = await rules();
     if (byRules) return { reply: byRules.reply, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
@@ -375,8 +393,14 @@ async function answer(
   // Claude failed twice, ran out of time, hit a cap or was blocked: a short answer from the
   // same data, and it doesn't count against the person's allowance.
   await refundClaudeUse(userId, { client, now });
+  // Claude itself not answering (a refused key, the provider down, too slow) is said plainly and
+  // reported, not "please ask again" (./service-down.ts).
+  const down = result.kind === "unavailable" && claudeIsDown(result.reason);
+  if (down) {
+    await noteChatModelDown(result.reason ?? "api_error", { userId, client, now }).catch(() => {});
+  }
   return {
-    reply: await backup(),
+    reply: await backup(down ? { note: SERVICE_DOWN_TEXT, down: true } : {}),
     intent: intent.kind,
     source: result.kind === "blocked" ? "claude_blocked" : "claude_unavailable",
     // Spec step 93: which guardrail rules blocked it, codes only, never the text.

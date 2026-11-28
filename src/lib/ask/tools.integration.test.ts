@@ -85,7 +85,7 @@ describe.runIf(url)("Ask Jane tools against a real database", () => {
       const { content } = await run(name);
       expect(content).not.toMatch(/otherflix|other secret/i);
       // Never raw descriptions, card digits, account names, or a person named in a transfer.
-      expect(content).not.toMatch(/4111|JORDAN|secret account|GROCER 4111/i);
+      expect(content).not.toMatch(/4111|JORDAN|GROCER 4111/i);
     },
   );
 

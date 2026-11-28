@@ -2,12 +2,9 @@
 // chat's Claude uses, and its fallback when an answer fails the guardrails.
 
 // Most transactions one search returns.
-export const ASK_SEARCH_LIMIT = 25;
+export const ASK_SEARCH_LIMIT = 20;
 // A search with no dates covers this many days back.
 export const ASK_DEFAULT_SEARCH_DAYS = 90;
-// A merchant with nothing in the dates asked is looked for this far back too (all the history
-// Jane keeps for a yearly charge), so a card's own charge is always found.
-export const ASK_WHOLE_HISTORY_DAYS = 800;
 // Furthest ahead the upcoming-bills tool looks.
 export const ASK_MAX_UPCOMING_DAYS = 31;
 // Shown instead of an answer that failed the guardrails.
