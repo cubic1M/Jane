@@ -395,6 +395,7 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     // Whether or not the record is copied for them yet, nothing differs.
     expect(tally(await run(), "tax_facts_residency").failed).toBe(0);
     await told("student_visa");
+    await markNeedsRepair(real, { client });
     await loadTaxHousehold(real, 2026, { client, now: NOW });
     const same = await run();
     expect(tally(same, "tax_facts_residency")).toMatchObject({ passed: 1, failed: 0 });
