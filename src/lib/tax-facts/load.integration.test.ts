@@ -381,6 +381,27 @@ describe.runIf(url)("the household fact record against a real database", () => {
     expect((await rowsOf(id)).length).toBeGreaterThan(0);
   });
 
+  it("keeps a newer answer when the copy cannot be written and the older stores are read instead", async () => {
+    const id = await person();
+    await told(id, "tax_residency", "citizen");
+    await loadTaxHousehold(id, YEAR, { client, now: NOW });
+    // A direct write after this read's own moment, then the record is marked to be copied again.
+    await recordTaxFact(
+      id,
+      { key: "residency.status", value: "student_visa", taxYear: YEAR, origin: "answer" },
+      { client, now: new Date("2026-11-27T19:00:00Z") },
+    );
+    await client.taxFact.updateMany({
+      where: { userId: id, key: "household.legacy_done" },
+      data: { value: { v: false } },
+    });
+    vi.mocked(personTransaction)
+      .mockRejectedValueOnce(new Error("the database blinked"))
+      .mockRejectedValueOnce(new Error("the database blinked"));
+    const h = await loadTaxHousehold(id, YEAR, { client, now: NOW });
+    expect(fact(h, "residency.status").value).toBe("student_visa");
+  });
+
   it("audits a sensitive write before making it, so no written fact lacks its entry", async () => {
     const id = await person();
     vi.mocked(personTransaction).mockRejectedValueOnce(new Error("the database blinked"));

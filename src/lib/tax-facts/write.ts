@@ -141,11 +141,14 @@ export async function writeFactRow(
     select: { id: true, value: true, status: true, recordedAt: true },
   });
   if (current && sameAnswer(current, data)) {
-    if (advance && current.recordedAt.getTime() < at.getTime())
-      await tx.taxFact.updateMany({
+    if (advance && current.recordedAt.getTime() < at.getTime()) {
+      const { count } = await tx.taxFact.updateMany({
         where: { id: current.id, userId, supersededAt: null, recordedAt: { lt: at } },
         data: { recordedAt: at },
       });
+      // The row moved under us (another save superseded it, or a repeat advanced it): look again.
+      if (count === 0) throw new Moved();
+    }
     return "unchanged";
   }
   if (current) {
@@ -172,7 +175,17 @@ export async function recordTaxFact(
   const data = storedFactData(userId, input, day);
   // A sensitive fact is audited before it is written, and only when it would change: an entry for a
   // write that then fails is a harmless extra, a write with no entry is not.
-  if (taxFactSpec(input.key).sensitive) {
+  const sensitive = taxFactSpec(input.key).sensitive;
+  let audited = false;
+  const audit = () =>
+    logAudit(
+      { type: "user", id: userId },
+      "tax_fact_recorded",
+      { type: "user", id: userId },
+      // Which fact and where from, never what it says.
+      { key: input.key, origin: input.origin },
+    );
+  if (sensitive) {
     const current = await scopedFor(userId, client).taxFacts.findFirst({
       where: {
         taxYear: data.taxYear,
@@ -184,18 +197,21 @@ export async function recordTaxFact(
       select: { value: true, status: true },
     });
     if (!current || !sameAnswer(current, data)) {
-      await logAudit(
-        { type: "user", id: userId },
-        "tax_fact_recorded",
-        { type: "user", id: userId },
-        // Which fact and where from, never what it says.
-        { key: input.key, origin: input.origin },
-      );
+      await audit();
+      audited = true;
     }
   }
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await personTransaction(userId, (tx) => writeFactRow(tx, userId, data, now), client);
+      const outcome = await personTransaction(
+        userId,
+        (tx) => writeFactRow(tx, userId, data, now),
+        client,
+      );
+      // The check above saw the same answer, but another save changed it before this write did:
+      // the change is audited here, so no sensitive change goes without its entry.
+      if (outcome === "recorded" && sensitive && !audited) await audit();
+      return outcome;
     } catch (error) {
       // Another write for the same fact got in between: look again.
       if (!(isUniqueClash(error) || error instanceof Moved) || attempt >= WRITE_TRIES) throw error;

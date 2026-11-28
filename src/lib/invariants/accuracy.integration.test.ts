@@ -408,6 +408,8 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     expect(JSON.stringify(off)).not.toContain("student_visa");
     // The record is copied again: it agrees.
     await markNeedsRepair(real, { client });
+    // Waiting to be copied again, it still shows as different.
+    expect(tally(await run(), "tax_facts_residency").failed).toBe(1);
     await loadTaxHousehold(real, 2026, { client, now: NOW });
     expect(tally(await run(), "tax_facts_residency")).toMatchObject({ passed: 1, failed: 0 });
   });

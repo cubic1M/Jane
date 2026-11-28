@@ -151,7 +151,10 @@ export async function loadTaxHousehold(
       // holds of theirs. A first copy only adds, so a fact written to the record alone stays.
       const copiedBefore = facts.some((f) => f.key === LEGACY_DONE_KEY && f.taxYear === taxYear);
       rows = [
-        ...(copiedBefore ? rows.filter((r) => !ownedByOldStores(r)) : rows),
+        // A row recorded after this read's own moment is a newer answer: it stays, as in a copy.
+        ...(copiedBefore
+          ? rows.filter((r) => !ownedByOldStores(r) || r.recordedAt.getTime() > now.getTime())
+          : rows),
         ...checked(copy.facts, today, now),
       ];
       const asStore = new Set(copy.members.map((m) => m.memberKey));

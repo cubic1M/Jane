@@ -43,12 +43,9 @@ export async function taxFactParity(
   const today = await todayOf(userId, { client, now });
   const year = defaultTaxYear(today);
   const { facts, members } = await readRows(userId, year, client);
-  const copied = facts.some(
-    (f) =>
-      f.key === LEGACY_DONE_KEY &&
-      f.taxYear === year &&
-      (f.value as { v?: unknown } | null)?.v === true,
-  );
+  // A record that was copied and is waiting to be copied again (a write did not land) is compared
+  // too: that is the difference this check is for. Only one never copied has nothing to compare.
+  const copied = facts.some((f) => f.key === LEGACY_DONE_KEY && f.taxYear === year);
   if (!copied) return null;
   const sources = await readLegacySources(userId, year, { client, now });
   const copy = legacyRows(sources);
