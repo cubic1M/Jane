@@ -245,12 +245,19 @@ describe("no other reader of an awaited group exists", () => {
           .map((g) => g.key),
       ),
     ];
-    expect(keys).toContain("mileage");
+    expect(keys.sort()).toEqual(["mileage", "withholding"]);
+    // Each awaited group has exactly one reader outside the params folder. withholding is read
+    // only by withheldPerCheck (src/detectors/student-withholding.ts), whose 2027 behaviour is
+    // proved where 2027 is switched on.
+    const readerOf: Record<string, string> = {
+      mileage: "config/tax-rates.ts",
+      withholding: "detectors/student-withholding.ts",
+    };
     for (const key of keys) {
       const readers = mentioning(new RegExp(`\\b${key}\\.value\\b`)).filter(
         (path) => !path.startsWith("config/tax-params/"),
       );
-      expect(readers, `readers of ${key}.value`).toEqual(["config/tax-rates.ts"]);
+      expect(readers, `readers of ${key}.value`).toEqual([readerOf[key]]);
     }
   });
 });
