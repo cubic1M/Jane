@@ -1,5 +1,7 @@
 import { personIsThere } from "../quiet-hours";
 import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { DATA_ENDED_LINE } from "@/lib/data-ended";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { inDays, things, type MessageSource } from "./source";
 import { rankedFor } from "../priorities";
@@ -17,6 +19,13 @@ export function greeting(hour: number): string {
   return hour < 17 ? "Good afternoon!" : "Good evening!";
 }
 
+// When the person's data stopped weeks ago (the snapshot's dataEnded, from their own day), the brief
+// and the day's agenda say so on a line of their own, so "no bills due, nothing waiting" is never
+// read as an all-clear (debug 3, 11-16; it rode on the safe to spend line until that went).
+export function dataEndedNotice(snapshot: Snapshot): string | null {
+  return snapshot.dataEnded ? DATA_ENDED_LINE(dayLabel(snapshot.dataEnded)) : null;
+}
+
 // Bills due in the next BRIEF_BILL_DAYS days.
 export const billsDueSoon = (snapshot: Snapshot) =>
   snapshot.comingUp.filter(
@@ -28,6 +37,8 @@ export const briefSource: MessageSource = {
   gather(snapshot, { now, local, trigger }) {
     if (local.hour < BRIEF_FROM_HOUR && !personIsThere(trigger)) return [];
     const lines = [greeting(local.hour)];
+    const ended = dataEndedNotice(snapshot);
+    if (ended) lines.push(ended);
     const week = lastWeekLine(snapshot, local, now);
     if (week) lines.push(week);
 

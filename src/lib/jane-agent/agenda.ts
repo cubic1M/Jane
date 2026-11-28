@@ -7,7 +7,7 @@ import {
 import { formatCents } from "@/lib/money";
 import type { LocalTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
-import { billsDueSoon, greeting } from "./sources/brief";
+import { billsDueSoon, dataEndedNotice, greeting } from "./sources/brief";
 import { shortName } from "./sources/findings";
 import { lastWeekLine } from "./sources/last-week";
 import { inDays } from "./sources/source";
@@ -110,6 +110,7 @@ export function agendaOf<T extends Planned>(
       : `Overnight I checked ${run.steps.length} areas; nothing needed you.`
     : null;
   const bills = billsDueSoon(snapshot);
+  const ended = dataEndedNotice(snapshot);
   // On the first day of the week, how last week went (the weekly review, in the brief).
   const week = lastWeekLine(snapshot, local, now);
 
@@ -118,9 +119,11 @@ export function agendaOf<T extends Planned>(
   if (quiet) {
     // A day with nothing to do: one short line.
     lines.push(`${greeting(local.hour)} Nothing needs you today.`);
+    if (ended) lines.push(ended);
     if (week) lines.push(week);
   } else {
     lines.push(greeting(local.hour));
+    if (ended) lines.push(ended);
     if (week) lines.push(week);
     if (overnight) lines.push(overnight);
     if (lead.length > 0) lines.push(cardsLine(lead.length));

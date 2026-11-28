@@ -442,7 +442,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "explain_figure",
     description:
-      'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it.',
+      'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it. Safe to spend has no such page: the result carries no page for it, so give no link.',
     input_schema: {
       type: "object",
       properties: { figure: { type: "string", enum: [...FIGURE_IDS] } },
@@ -1101,7 +1101,8 @@ async function runChatToolWork(
         })),
         rulesUsed: working.rules,
         canBeCorrected: working.corrections,
-        page: working.id === "safe_to_spend" ? "/home" : `/figures/${working.id}`,
+        // Safe to spend has no page to correct it on (Home has nothing to correct): no page for it.
+        ...(working.id === "safe_to_spend" ? {} : { page: `/figures/${working.id}` }),
       });
     }
     case "month_close": {
