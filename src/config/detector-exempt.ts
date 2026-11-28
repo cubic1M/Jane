@@ -63,6 +63,7 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   tax_accountant:
     "makes a read-only link when the person asks; a link is a credential, so Jane never makes one on its own",
   search_transactions: "looks up transactions the person asks about",
+  account_balances: "answers what an account holds; balances show on Home",
   spending_by_category: "answers what was spent where",
   monthly_totals: "answers month totals",
   list_actions: "lists what Jane did",

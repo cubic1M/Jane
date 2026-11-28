@@ -22,6 +22,9 @@ export const OPS_EVENT_KINDS = {
   // key is replaced. The background calls only logged it ("Explanation request failed { status:
   // 401 }", "Strategist failed") and answered 200 with a template, daily from 11-17.
   claude_key_refused: { label: "Claude refused Jane's API key", urgent: true },
+  // A typed question couldn't be sent to Claude (the key refused, the provider down, no answer in
+  // time), so the person was told the answering service is down. The code says which.
+  chat_model_unavailable: { label: "chat answers couldn't reach Claude", urgent: false },
 } as const;
 
 export type OpsEventKind = keyof typeof OPS_EVENT_KINDS;

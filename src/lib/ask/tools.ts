@@ -1,13 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import {
-  ASK_DEFAULT_SEARCH_DAYS,
-  ASK_MAX_UPCOMING_DAYS,
-  ASK_SEARCH_LIMIT,
-  ASK_WHOLE_HISTORY_DAYS,
-} from "@/config/ask";
+import { ASK_DEFAULT_SEARCH_DAYS, ASK_MAX_UPCOMING_DAYS, ASK_SEARCH_LIMIT } from "@/config/ask";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
+import { loadCounting, onlyCounted } from "@/lib/account-copies";
+import { nameMatcher, type NameMatch } from "./name-match";
 import { loadDetectionInput, loadTransactionsBetween } from "@/detection/input";
 import { comingUpBills } from "@/detection/forecast";
 import { addDays } from "@/detection/units";
@@ -36,20 +33,31 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
   {
     name: "search_transactions",
     description:
-      "Find the person's transactions. Filter by merchant name (partial match), spending category, and dates. Returns the matching transactions (newest first, up to 25), how many matched, and the total money out and in across all matches. When a merchant has none in those dates, outsideTheseDates lists its charges at other times: say those, never that there are none. Transfers show as Transfer, or Transfer to savings for money moved into savings.",
+      "Look anything up in the person's transactions across ALL the history Jane has (a name or amount with no dates searches all of it; otherwise the last 90 days). Filter by merchant (any way a bank writes it: 'california arts' also finds 'CA ARTS SUPPLY'; near matches come back as similarName: say 'a similar name'), category, dates, amount range, account, direction (out: spending; in: refunds, pay, deposits). Returns matched, firstDate, lastDate, totals, up to 20 rows (newest first, or largest with sort 'largest'), andMore when cut, dataStarts/dataEnds, and a note when nothing matches. When a merchant has none in those dates, outsideTheseDates lists its charges at other times: say those, never that there are none. Transfers show as Transfer, or Transfer to savings for money moved into savings.",
     input_schema: {
       type: "object",
       properties: {
-        merchant: { type: "string", description: "Part of a merchant name, e.g. 'netflix'." },
+        merchant: { type: "string", description: "Part of a name, e.g. 'netflix'." },
         category: {
           type: "string",
           description: "A category name as spending_by_category returns it, e.g. 'Food and drink'.",
         },
-        from: { type: "string", description: "First date, YYYY-MM-DD. Default: 90 days ago." },
+        from: { type: "string", description: "First date, YYYY-MM-DD." },
         to: { type: "string", description: "Last date, YYYY-MM-DD. Default: today." },
+        min_amount: { type: "number", description: "At least this many dollars (either way)." },
+        max_amount: { type: "number", description: "At most this many dollars (either way)." },
+        account: { type: "string", description: "Part of an account's name or last four digits." },
+        direction: { type: "string", enum: ["out", "in"] },
+        sort: { type: "string", enum: ["newest", "largest"] },
       },
       additionalProperties: false,
     },
+  },
+  {
+    name: "account_balances",
+    description:
+      "Each linked account's latest balance (what is owed, for a card or loan), by name and last four digits. Use for 'what's my balance in X'.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "spending_by_category",
@@ -142,6 +150,17 @@ export function displayMerchant(t: {
   return t.merchantName ?? normalizeMerchant(t.description)?.name ?? "Unknown merchant";
 }
 
+// Before any date Jane could hold: "all the history".
+const ALL_TIME = "1900-01-01";
+
+// The bank's line, for the person's eyes: long digit runs (card and reference numbers) cut.
+const bankText = (line: string) =>
+  line
+    .replace(/\d{4,}/g, "…")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+
 const CARD_PAYMENT_DETAILED = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
 
 // A card payment by the names Jane gives it elsewhere (src/detection/forecast.ts billName):
@@ -174,63 +193,150 @@ export async function runAskTool(
   switch (name) {
     case "search_transactions": {
       const to = DATE.test(str(args.to)) ? str(args.to) : today;
+      const merchant = str(args.merchant);
+      const category = str(args.category).toLowerCase();
+      const accountAsked = str(args.account).toLowerCase();
+      const direction = args.direction === "out" || args.direction === "in" ? args.direction : null;
+      const dollars = (v: unknown): number | null => {
+        if (v === undefined || v === null || v === "") return null;
+        const n = typeof v === "number" ? v : Number(String(v).replace(/[$,]/g, ""));
+        return Number.isFinite(n) ? Math.round(Math.abs(n) * 100) : null;
+      };
+      const minCents = dollars(args.min_amount);
+      const maxCents = dollars(args.max_amount);
+      // A name or an amount is looked for in all the history, not the last three months: "did I
+      // ever buy from X" is about every year Jane has.
+      const wholeHistory = merchant !== "" || minCents !== null || maxCents !== null;
       const from = DATE.test(str(args.from))
         ? str(args.from)
-        : addDays(to, -ASK_DEFAULT_SEARCH_DAYS);
-      const merchant = str(args.merchant).toLowerCase();
-      const category = str(args.category).toLowerCase();
+        : wholeHistory
+          ? ALL_TIME
+          : addDays(to, -ASK_DEFAULT_SEARCH_DAYS);
+      const accounts = await db.accounts.findMany({ select: { id: true, name: true, mask: true } });
+      const accountOf = new Map(
+        accounts.map((a) => [a.id, a.mask ? `${a.name} ····${a.mask}` : a.name]),
+      );
+      // A name that fits an account Jane counts under another (the same account linked twice)
+      // asks for the one counted, which is where its rows are read from.
+      const counting = await loadCounting(db);
+      const accountIds = new Set(
+        accounts
+          .filter(
+            (a) =>
+              !accountAsked || `${a.name} ${a.mask ?? ""}`.toLowerCase().includes(accountAsked),
+          )
+          .map((a) => counting.representativeOf(a.id)),
+      );
+      const nameMatch = nameMatcher(merchant);
       // Read as detection reads them (names from the merchant directory, an account linked twice
       // once), so what a card or page names is what this finds.
       const matching = async (from: string, to: string) =>
         (await loadTransactionsBetween(userId, { client, from, to }))
-          .map((t) => ({
-            date: t.date,
-            merchant: displayMerchant(t),
-            // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store"), and
-            // never shown. Transfers match on them too ("how much does my mom send me?" finds
-            // "MOM VENMO CASHOUT", desktop sweep 5's upload S1) while still shown only as Transfer.
-            words: t.description.toLowerCase(),
-            cardPayment: t.pfcDetailed === CARD_PAYMENT_DETAILED,
-            category: categoryLabel(t.pfcPrimary),
-            amountCents: t.amountCents,
-          }))
+          .filter((t) => accountIds.has(t.accountId))
+          .map((t) => {
+            const shown = displayMerchant(t);
+            // The bank's own words match too ("APPLE STORE R102" for "Apple Store"), and are shown
+            // (digits cut) only for what isn't a transfer. Transfers match on them as well ("how
+            // much does my mom send me?" finds "MOM VENMO CASHOUT", desktop sweep 5's upload S1)
+            // while still shown only as Transfer.
+            const kind: NameMatch = !merchant
+              ? "exact"
+              : t.pfcDetailed === CARD_PAYMENT_DETAILED &&
+                  cardPaymentAsked(merchant.toLowerCase(), t.description.toLowerCase())
+                ? "exact"
+                : nameMatch([shown, t.merchantName ?? "", t.description]);
+            const moved =
+              !!t.pfcPrimary &&
+              (NON_SPENDING_PRIMARIES as readonly string[]).includes(t.pfcPrimary);
+            return {
+              date: t.date,
+              merchant: shown,
+              bankText: moved ? null : bankText(t.description),
+              kind,
+              category: categoryLabel(t.pfcPrimary),
+              amountCents: t.amountCents,
+              account: accountOf.get(t.accountId) ?? "",
+            };
+          })
+          .filter((t) => t.kind !== null)
+          .filter((t) => !category || t.category.toLowerCase() === category)
+          .filter((t) => minCents === null || Math.abs(t.amountCents) >= minCents)
+          .filter((t) => maxCents === null || Math.abs(t.amountCents) <= maxCents)
           .filter(
-            (t) =>
-              !merchant ||
-              t.merchant.toLowerCase().includes(merchant) ||
-              t.words.includes(merchant) ||
-              (t.cardPayment && cardPaymentAsked(merchant, t.words)),
-          )
-          .filter((t) => !category || t.category.toLowerCase() === category);
-      const matches = await matching(from, to);
+            (t) => !direction || (direction === "out" ? t.amountCents > 0 : t.amountCents < 0),
+          );
+      const found = await matching(from, to);
+      const matches = found.filter((t) => t.kind === "exact");
+      const similar = found.filter((t) => t.kind === "similar");
+      const order = (rows: typeof found) =>
+        args.sort === "largest"
+          ? [...rows].sort((x, y) => Math.abs(y.amountCents) - Math.abs(x.amountCents))
+          : rows;
       // None in these dates: the merchant's charges from before (or after) them, so a card built
       // from a charge last December is never answered with "no charges" (founder's live
       // /deadlines, 10-29: the chat looked from Aug 1 for a December charge).
       const elsewhere =
-        merchant && matches.length === 0
-          ? (await matching(addDays(today, -ASK_WHOLE_HISTORY_DAYS), today)).filter(
-              (t) => t.date < from || t.date > to,
+        merchant && matches.length === 0 && (from !== ALL_TIME || to !== today)
+          ? (await matching(ALL_TIME, today)).filter(
+              (t) => t.kind === "exact" && (t.date < from || t.date > to),
             )
           : [];
-      const outTotal = matches
-        .filter((t) => t.amountCents > 0)
-        .reduce((s, t) => s + t.amountCents, 0);
-      const inTotal = matches
-        .filter((t) => t.amountCents < 0)
-        .reduce((s, t) => s + t.amountCents, 0);
+      const [first, last] = await Promise.all(
+        (["asc", "desc"] as const).map((dir) =>
+          db.transactions.findMany({
+            where: { pending: false },
+            orderBy: { date: dir },
+            take: 1,
+            select: { date: true },
+          }),
+        ),
+      );
+      const dataStarts = first[0]?.date.toISOString().slice(0, 10) ?? null;
+      const dataEnds = last[0]?.date.toISOString().slice(0, 10) ?? null;
+      const outOf = (rows: typeof found) =>
+        rows.filter((t) => t.amountCents > 0).reduce((s, t) => s + t.amountCents, 0);
+      const inOf = (rows: typeof found) =>
+        rows.filter((t) => t.amountCents < 0).reduce((s, t) => s + t.amountCents, 0);
+      const row = (t: (typeof found)[number]) => ({
+        date: t.date,
+        merchant: t.merchant,
+        ...(t.bankText ? { bankText: t.bankText } : {}),
+        category: t.category,
+        amount: money(t.amountCents),
+        direction: t.amountCents > 0 ? "out" : "in",
+        // Not "account": the answer guardrail reads that key as who a figure belongs to, and a
+        // purchase is not the checking account's.
+        inAccount: t.account,
+      });
+      const shownRows = order(matches).slice(0, ASK_SEARCH_LIMIT);
+      const dates = matches.map((t) => t.date).sort();
       return out({
-        from,
+        from: from === ALL_TIME ? (dataStarts ?? to) : from,
         to,
+        dataStarts,
+        dataEnds,
         matched: matches.length,
-        totalMoneyOut: money(outTotal),
-        totalMoneyIn: money(inTotal),
-        transactions: matches.slice(0, ASK_SEARCH_LIMIT).map((t) => ({
-          date: t.date,
-          merchant: t.merchant,
-          category: t.category,
-          amount: money(t.amountCents),
-          direction: t.amountCents > 0 ? "out" : "in",
-        })),
+        ...(matches.length > 0 ? { firstDate: dates[0], lastDate: dates[dates.length - 1] } : {}),
+        totalMoneyOut: money(outOf(matches)),
+        totalMoneyIn: money(inOf(matches)),
+        transactions: shownRows.map(row),
+        ...(matches.length > shownRows.length
+          ? { andMore: matches.length - shownRows.length }
+          : {}),
+        ...(similar.length > 0
+          ? {
+              // Written differently from what was asked: say "a similar name", never as certain.
+              similarName: {
+                matched: similar.length,
+                totalMoneyOut: money(outOf(similar)),
+                totalMoneyIn: money(inOf(similar)),
+                transactions: order(similar).slice(0, ASK_SEARCH_LIMIT).map(row),
+                ...(similar.length > ASK_SEARCH_LIMIT
+                  ? { andMore: similar.length - ASK_SEARCH_LIMIT }
+                  : {}),
+              },
+            }
+          : {}),
         ...(elsewhere.length > 0
           ? {
               outsideTheseDates: elsewhere.slice(0, ASK_SEARCH_LIMIT).map((t) => ({
@@ -241,6 +347,40 @@ export async function runAskTool(
               })),
             }
           : {}),
+        ...(matches.length === 0 && similar.length === 0 && elsewhere.length === 0
+          ? {
+              note: dataStarts
+                ? `Nothing matches in the data Jane has, which runs from ${dataStarts} to ${dataEnds}. Say so plainly, with those dates: it can't see before or after them, or an account that isn't linked. Don't guess.`
+                : "No transactions are on file at all, so nothing can be looked up yet.",
+            }
+          : {}),
+      });
+    }
+
+    case "account_balances": {
+      const rows = await db.accounts.findMany({
+        where: await onlyCounted(db),
+        select: { name: true, mask: true, type: true, subtype: true, currentBalanceCents: true },
+        orderBy: { name: "asc" },
+      });
+      return out({
+        accounts: rows.map((a) => {
+          // Signed as the bank gives it (an overdraft is negative); the figure allowed is its size.
+          const cents =
+            a.currentBalanceCents === null
+              ? null
+              : (money(a.currentBalanceCents), formatCents(a.currentBalanceCents));
+          return {
+            account: a.mask ? `${a.name} ····${a.mask}` : a.name,
+            type: a.subtype ?? a.type,
+            // A card or loan's balance is what is owed on it.
+            ...(a.type === "credit" || a.type === "loan" ? { owed: cents } : { balance: cents }),
+          };
+        }),
+        note:
+          rows.length === 0
+            ? "No accounts are linked."
+            : "Balances are the latest Jane read; a null one wasn't given by the bank or file.",
       });
     }
 
