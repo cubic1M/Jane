@@ -146,10 +146,11 @@ describe("the real figures", () => {
     }
   });
 
-  it("today (2026-11-27) warns only that the 2027 mileage rate is awaited: 2027 itself is supported", () => {
+  it("today (2026-11-27) warns only that the 2027 withholding amounts and mileage rate are awaited: 2027 itself is supported", () => {
     const r = taxYearReady("2026-11-27");
     expect(r.state).toBe("warning");
     expect(r.messages).toEqual([
+      "2027 withholding is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
       "2027 mileage is awaited: its source has not published it yet; 2027 is supported without it (last read 2026-11-27)",
     ]);
   });

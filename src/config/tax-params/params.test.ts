@@ -89,7 +89,11 @@ const EXPECTED_NOTES: Record<number, string[]> = {
 // The groups not read at a primary source (D6: a rule needing one shows no figure).
 const EXPECTED_UNCONFIRMED: Record<number, string[]> = { 2025: [], 2026: ["medical"], 2027: [] };
 // The groups awaited (not yet published by their source, holding no value), by year (Tax T32b).
-const EXPECTED_AWAITED: Record<number, string[]> = { 2025: [], 2026: [], 2027: ["mileage", "withholding"] };
+const EXPECTED_AWAITED: Record<number, string[]> = {
+  2025: [],
+  2026: [],
+  2027: ["mileage", "withholding"],
+};
 
 describe.each(SUPPORTED_TAX_YEARS)("federal parameters %i", (year) => {
   const params = federalParams(year);

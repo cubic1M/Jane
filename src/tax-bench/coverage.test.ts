@@ -64,7 +64,7 @@ describe.each(ESTIMATOR_YEARS)("every figure of the %i parameters has a boundary
       const entry = plan[key];
       expect("exempt" in entry, `${key} is awaited: no probes`).toBe(true);
     }
-    expect(awaitedKeys).toEqual(year === 2027 ? ["mileage"] : []);
+    expect([...awaitedKeys].sort()).toEqual(year === 2027 ? ["mileage", "withholding"] : []);
   });
 
   it.each(groups)("%s", (key, value) => {

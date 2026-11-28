@@ -5,11 +5,12 @@ import { NoTaxParamsError, pendingGroups } from "@/config/tax-params";
 import { businessMileageCentsOn, mileageRateNote, undatedMileageCentsIn } from "@/config/tax-rates";
 import { TAX_DETECTORS } from "@/detectors/taxes";
 import { runDetectors } from "@/detectors";
+import { STUDENT_WITHHOLDING_DETECTORS, withheldPerCheck } from "@/detectors/student-withholding";
 import type { SelfEmployedView } from "@/lib/self-employed";
 import { businessReply } from "@/lib/jane-agent/business-message";
 import { selfEmployedReply } from "@/lib/jane-agent/tax-replies";
 import { noParamsText } from "@/lib/tax-estimate-state";
-import { buildProfile } from "@/profile/build";
+import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { mileageDeduction, mileageFigure } from "./self-employed";
 
@@ -178,6 +179,115 @@ describe("every reader of the mileage group, for 2027", () => {
     const card = runDetectors({ profile: buildProfile(now), data: now }, vehicle);
     expect(card).toHaveLength(1);
     expect(card[0]!.why).toContain("Miles with no date are counted at 72.5 cents");
+  });
+});
+
+// The second awaited group of 2027 (Pub. 15-T). Its one reader, withheldPerCheck, serves two cards;
+// for a 2027 date each is held back (no number, no zero, no 2026 figure) and a year with no figures
+// at all is still told apart from an awaited group.
+describe("every reader of the withholding group, for 2027", () => {
+  const tx = (date: string, amountCents: number, description: string, pfc: string | null) => ({
+    date,
+    amountCents,
+    description,
+    pfc,
+    accountId: "checking",
+  });
+  const every = (from: string, to: string, days: number) => {
+    const out: string[] = [];
+    for (let t = Date.parse(from); t <= Date.parse(to); t += days * 86_400_000)
+      out.push(new Date(t).toISOString().slice(0, 10));
+    return out;
+  };
+  const input = (year: number): ProfileInput => {
+    const today = `${year}-11-17`;
+    const groceries = every(`${year}-09-01`, today, 14).map((d) =>
+      tx(d, 6_000, "SAFEWAY #1234 MOUNTAIN VIEW CA", "FOOD_AND_DRINK_GROCERIES"),
+    );
+    const job = (name: string, net: number, from: string) =>
+      every(from, today, 14).map((d) => tx(d, -net, `${name} PAYROLL`, "INCOME_SALARY"));
+    return {
+      today,
+      transactions: [
+        ...groceries,
+        ...job("ACME CORP", 90_000, `${year}-09-04`),
+        ...job("BLUE BOTTLE", 70_000, `${year}-09-05`),
+      ],
+      accounts: [
+        { id: "checking", type: "depository", subtype: "checking", balanceCents: 300_000 },
+      ],
+      liabilities: [],
+      told: {},
+    };
+  };
+  const topics = ["withholding_part_year", "withholding_two_jobs"];
+  const cards = (year: number, onError: (e: unknown) => void = () => {}) => {
+    const data = input(year);
+    return runDetectors(
+      { profile: buildProfile(data), data },
+      STUDENT_WITHHOLDING_DETECTORS,
+      (_, e) => onError(e),
+    );
+  };
+
+  it("1 withheldPerCheck: a 2027 wage year throws the group error, 2025 and 2026 still price", () => {
+    for (const status of ["single", "married_joint"] as const) {
+      expect(() => withheldPerCheck(100_000, 24, status, 2027)).toThrow(
+        expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group: "withholding" }),
+      );
+    }
+    expect(withheldPerCheck(100_000, 24, "single", 2026)).toBeGreaterThan(0);
+    expect(withheldPerCheck(100_000, 24, "single", 2025)).toBeGreaterThan(0);
+    // Only the awaited group is the withholding one: a year with no figures names no group.
+    expect(() => withheldPerCheck(100_000, 24, "single", 2028)).toThrow(NoTaxParamsError);
+    expect(() => withheldPerCheck(100_000, 24, "single", 2028)).not.toThrow(
+      expect.objectContaining({ group: "withholding" }),
+    );
+  });
+
+  it("2 the two-jobs card: shown for 2026, held back for a 2027 date with no figure and no bug report", () => {
+    expect(cards(2026).map((c) => c.topic)).toContain("withholding_two_jobs");
+    const errors: unknown[] = [];
+    const out = cards(2027, (e) => errors.push(e));
+    expect(out.map((c) => c.topic).filter((t) => topics.includes(t))).toEqual([]);
+    expect(errors).toEqual([]);
+    const data = input(2027);
+    const twoJobs = STUDENT_WITHHOLDING_DETECTORS.find((d) => d.topic === "withholding_two_jobs")!;
+    expect(() => twoJobs.detect({ profile: buildProfile(data), data })).toThrow(
+      expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group: "withholding" }),
+    );
+  });
+
+  it("3 the part-year card: held back for a 2027 wage year (it reads the same function)", () => {
+    const partYear = STUDENT_WITHHOLDING_DETECTORS.find(
+      (d) => d.topic === "withholding_part_year",
+    )!;
+    const pay = (year: number) =>
+      every(`${year}-08-01`, `${year}-11-17`, 15).map((d) =>
+        tx(d, -400_000, "STANFORD UNIVERSITY PAYROLL", "INCOME_SALARY"),
+      );
+    const data = (year: number): ProfileInput => ({
+      ...input(year),
+      transactions: [
+        ...every(`${year}-07-01`, `${year}-11-17`, 14).map((d) =>
+          tx(d, 6_000, "SAFEWAY #1234 MOUNTAIN VIEW CA", "FOOD_AND_DRINK_GROCERIES"),
+        ),
+        ...pay(year),
+      ],
+    });
+    const d2026 = data(2026);
+    expect(partYear.detect({ profile: buildProfile(d2026), data: d2026 })).not.toBeNull();
+    const d2027 = data(2027);
+    expect(() => partYear.detect({ profile: buildProfile(d2027), data: d2027 })).toThrow(
+      expect.objectContaining({ name: "NoTaxParamsError", year: 2027, group: "withholding" }),
+    );
+    const errors: unknown[] = [];
+    expect(
+      runDetectors({ profile: buildProfile(d2027), data: d2027 }, [partYear], (_, e) =>
+        errors.push(e),
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
   });
 });
 
