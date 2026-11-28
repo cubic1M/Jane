@@ -239,6 +239,18 @@ describe("PlaidDataSource", () => {
     ).toBe(false);
   });
 
+  it("returns Plaid's own word on the history, from the last page", async () => {
+    const pages = vi
+      .fn()
+      .mockResolvedValueOnce(
+        syncPage({ next_cursor: "c1", has_more: true, status: "INITIAL_UPDATE_COMPLETE" }),
+      )
+      .mockResolvedValueOnce(syncPage({ next_cursor: "c2" }));
+    expect(
+      (await new PlaidDataSource(apiWith(pages), "access-sandbox-x", null).load()).updateStatus,
+    ).toBe("HISTORICAL_UPDATE_COMPLETE");
+  });
+
   it("gives up after a few restarts, and other errors aren't retried", async () => {
     const mutating = vi
       .fn()

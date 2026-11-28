@@ -94,6 +94,7 @@ export type AuditEvent =
   // /admin/costs: counts and spend only, across people.
   | "admin_viewed_costs"
   | "admin_viewed_connectors"
+  | "admin_viewed_history"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"
@@ -101,6 +102,8 @@ export type AuditEvent =
   | "item_linked"
   // A bank signed in again (or its new accounts shared) through Link's update mode.
   | "item_relinked"
+  // How far back a linked bank's history goes, as counts and days (src/lib/plaid/history.ts).
+  | "plaid_history_checked"
   // Admin tools: every view of user data and every status change.
   | "admin_viewed_queue"
   | "admin_viewed_action"

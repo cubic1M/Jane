@@ -3,6 +3,7 @@ import { log } from "@/lib/log";
 import { recordOpsEvent } from "@/lib/ops-alerts";
 import { scrub } from "@/lib/scrub";
 import { rebuildPastBalances } from "@/lib/plaid/past-balances";
+import { heldHistory, latestNotes, recordHistory, rescanDue } from "@/lib/plaid/history";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -762,6 +763,7 @@ async function syncItemWork(
       plaidItemId: true,
       accessTokenEncrypted: true,
       transactionsCursor: true,
+      createdAt: true,
       liabilities: true,
       investments: true,
       demoExtras: true,
@@ -800,9 +802,40 @@ async function syncItemWork(
     ? demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras))
     : (given ?? (await plaid()));
   timing.mark("demo_setup");
+  // A link that holds less than it asked for and has had time to settle is read again from an empty
+  // cursor, once (src/lib/plaid/history.ts). The saves are upserts, so nothing doubles and a category
+  // the person set stays. Never for the demo bank.
+  // The history notes can't be read: no rescan and no new note (a note written without the old one would
+  // forget that the rescan was done).
+  const notes = isDemoToken(accessToken)
+    ? null
+    : await latestNotes([item.id], { client }).catch((error: unknown) => {
+        log.error("Reading a bank's history notes failed", { error: String(error) });
+        return null;
+      });
+  const realBank = notes !== null;
+  const previousNote = notes?.get(item.id) ?? null;
+  const rescan =
+    realBank &&
+    item.transactionsCursor !== null &&
+    (await heldHistory(db, item.id).then(
+      (held) =>
+        rescanDue({
+          held,
+          status: previousNote?.status ?? null,
+          linkedAt: item.createdAt,
+          rescannedAt: previousNote?.rescannedAt ?? null,
+          now,
+        }),
+      () => false,
+    ));
   let sync: PlaidSync;
   try {
-    sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+    sync = await new PlaidDataSource(
+      api,
+      accessToken,
+      rescan ? null : item.transactionsCursor,
+    ).load();
   } catch (error) {
     // The cursor stays where it was, so the next sync (a webhook, the daily job) resumes from it.
     await noteSyncFailure(db, item.id, error, now, client);
@@ -891,6 +924,22 @@ async function syncItemWork(
       lastErrorAt: null,
     },
   });
+
+  // How far back this link's history goes, written down for the person and the team. Never fails the sync.
+  if (realBank) {
+    await recordHistory(
+      db,
+      item,
+      {
+        status: sync.updateStatus,
+        cursorMoved: (sync.nextCursor || null) !== item.transactionsCursor,
+        rescanned: rescan,
+        previous: previousNote,
+        now,
+      },
+      { client },
+    ).catch((error) => log.error("Noting a bank's history failed", { error: String(error) }));
+  }
 
   // The chart's past, worked back from the transactions just saved (a later, older batch moves it
   // too). Never fails the sync; the demo bank writes its own year at its first scan.

@@ -35,6 +35,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/health" className="hover:underline">
           Health
         </Link>
+        <Link href="/admin/history" className="hover:underline">
+          Bank history
+        </Link>
         <Link href="/admin/accuracy" className="hover:underline">
           Accuracy
         </Link>
