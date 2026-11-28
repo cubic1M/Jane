@@ -296,6 +296,72 @@ describe.runIf(url)("a read from the start: what Plaid dropped is removed", () =
     expect(await heldIds(l)).toContain("b1");
   });
 
+  it("a read while Plaid has only the first 30 days removes nothing and is tried again", async () => {
+    const l = await link("pending30");
+    await firstSync(l, [tx(l, "gone", "2026-11-07", 9)]);
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [account(l)],
+        added: recent(l) as never,
+        next_cursor: "c2",
+        status: "INITIAL_UPDATE_COMPLETE",
+      }),
+    );
+    await syncItem(l.itemId, { client, api, now: LATER });
+    expect(await heldIds(l)).toContain("gone");
+    expect(await cursorOf(l)).toBe("c1");
+    expect((await latestNotes([l.itemId], { client })).get(l.itemId)!.rescannedAt).toBeNull();
+  });
+
+  it("a row saved after the read began (by a sync beside it) is not taken as dropped", async () => {
+    const l = await link("race");
+    await firstSync(l, [tx(l, "gone", "2026-11-07", 9)]);
+    const mine = await client.account.findFirstOrThrow({ where: { itemId: l.itemId } });
+    transactionsSync.mockImplementationOnce(async () => {
+      await client.transaction.create({
+        data: {
+          userId: l.userId,
+          accountId: mine.id,
+          source: "plaid",
+          plaidTransactionId: `${l.acc}-late`,
+          date: new Date("2026-11-08T00:00:00Z"),
+          amountCents: 777,
+          description: "Saved by a sync beside this one",
+        },
+      });
+      return page(l, [...recent(l), ...older(l)], "c2");
+    });
+    await syncItem(l.itemId, { client, api, now: LATER });
+    const ids = await heldIds(l);
+    expect(ids).toContain("late");
+    expect(ids).not.toContain("gone");
+  });
+
+  it("two edited rows for one new row: no category is carried on a guess", async () => {
+    const l = await link("twoedits");
+    await firstSync(l, [tx(l, "a", "2026-11-07", 70), tx(l, "b", "2026-11-07", 70)]);
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${l.acc}-a` },
+      data: {
+        pfcPrimary: "ENTERTAINMENT",
+        pfcDetailed: "ENTERTAINMENT_OTHER",
+        categorySource: "user",
+      },
+    });
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${l.acc}-b` },
+      data: { pfcPrimary: "TRAVEL", pfcDetailed: "TRAVEL_OTHER", categorySource: "user" },
+    });
+    transactionsSync.mockResolvedValueOnce(
+      page(l, [...recent(l), ...older(l), tx(l, "new", "2026-11-07", 70)], "c2"),
+    );
+    await syncItem(l.itemId, { client, api, now: LATER });
+    const row = await client.transaction.findFirstOrThrow({
+      where: { plaidTransactionId: `${l.acc}-new` },
+    });
+    expect(row.categorySource).not.toBe("user");
+  });
+
   it("net worth and the real balances are the same to the cent; only the worked-back past moves", async () => {
     const l = await link("money");
     const hold = { ...tx(l, "hold", "2026-11-09", 40), pending: true };

@@ -21,11 +21,13 @@ export async function finishRead(
   accountIds: ReadonlyMap<string, string>,
   sync: PlaidSync,
   client: PrismaClient,
+  startedAt: Date,
 ): Promise<RereadResult> {
   const retry = { removed: 0, keepCursor: true, spent: false, held: null } as const;
   // Plaid has nothing ready yet: not a set to compare against, so nothing is removed and the link
   // is read from the start again later.
-  if (sync.notReady) return retry;
+  // Plaid has only the first 30 days so far (historyPending): the list is not the whole set either.
+  if (sync.notReady || sync.historyPending) return retry;
   // A finished read that lists nothing is not trusted to say every row Jane holds is gone either:
   // nothing is removed (the ordinary sync's removals, if any, still come).
   if (sync.transactions.length === 0) {
@@ -38,7 +40,7 @@ export async function finishRead(
       const id = accountIds.get(t.accountRef);
       if (id && (!windows.has(id) || t.date < windows.get(id)!)) windows.set(id, t.date);
     }
-    const out = await removeWhatPlaidDropped(userId, windows, listed, client);
+    const out = await removeWhatPlaidDropped(userId, windows, listed, startedAt, client);
     if (out.kind === "done")
       return { removed: out.removed, keepCursor: false, spent: true, held: null };
     log.warn("A bank's read from the start would remove too many rows; nothing removed", {

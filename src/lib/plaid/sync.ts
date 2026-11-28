@@ -829,7 +829,7 @@ async function syncItemWork(
   let sync: PlaidSync;
   // Whether the read from the start was done, or refused for good, and so is not to be tried again.
   let rescanSpent = rescan;
-  let readFromStart = false;
+  let readFromStart: Date | null = null;
   try {
     sync = await (async () => {
       if (!rescan) return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
@@ -839,8 +839,9 @@ async function syncItemWork(
       // attempt counts, so it is never asked again. Any other failure (a time-out, an outage) goes on
       // from the saved cursor for this run too, but does not count: a later sync tries again.
       try {
+        const startedAt = new Date();
         const fromStart = await new PlaidDataSource(api, accessToken, null).load();
-        readFromStart = true;
+        readFromStart = startedAt;
         return fromStart;
       } catch (error) {
         const code = plaidErrorCode(error);
@@ -877,7 +878,7 @@ async function syncItemWork(
   // A finished read from the start: what Plaid no longer lists goes (src/lib/plaid/reread-finish.ts).
   let reread: RereadResult | null = null;
   if (readFromStart) {
-    reread = await finishRead(item.userId, accountIds, sync, client);
+    reread = await finishRead(item.userId, accountIds, sync, client, readFromStart);
     counts.removed += reread.removed;
     if (reread.spent === false) rescanSpent = false;
   }

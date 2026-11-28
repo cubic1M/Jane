@@ -56,6 +56,9 @@ export async function removeWhatPlaidDropped(
   userId: string,
   windows: ReadonlyMap<string, string>,
   listedIds: ReadonlySet<string>,
+  // When the read began: a row saved or changed since (by a sync running beside this one, or by the
+  // person) may be newer than the list, so it is never taken as dropped.
+  startedAt: Date,
   client?: PrismaClient,
 ): Promise<RereadOutcome> {
   return personTransaction(
@@ -73,6 +76,7 @@ export async function removeWhatPlaidDropped(
           plaidTransactionId: true,
           accountId: true,
           date: true,
+          updatedAt: true,
           amountCents: true,
           pending: true,
           pfcPrimary: true,
@@ -90,7 +94,9 @@ export async function removeWhatPlaidDropped(
       const held = all.filter(
         (r) => r.date.toISOString().slice(0, 10) >= windows.get(r.accountId)!,
       );
-      const gone = held.filter((r) => !listedIds.has(r.plaidTransactionId!));
+      const gone = held.filter(
+        (r) => !listedIds.has(r.plaidTransactionId!) && r.updatedAt < startedAt,
+      );
       const posted = gone.filter((r) => !r.pending);
       const pending = gone.length - posted.length;
       if (posted.length > postedCap(held.length)) {
@@ -117,7 +123,14 @@ export async function removeWhatPlaidDropped(
         if (!r.pending && edited && same.length === 0) continue;
         // A reissued charge: exactly one new row of the same account, amount and day takes the
         // category the person set, as a posted charge takes it from its pending one.
-        if (r.categorySource === "user" && same.length === 1 && same[0].categorySource !== "user") {
+        // Only when it is the one edited row for that new row: two edits to one row is a guess.
+        const edits = gone.filter((g) => g.categorySource === "user" && key(g) === key(r)).length;
+        if (
+          r.categorySource === "user" &&
+          edits === 1 &&
+          same.length === 1 &&
+          same[0].categorySource !== "user"
+        ) {
           const { count } = await tx.transaction.updateMany({
             where: { id: same[0].id, userId, NOT: { categorySource: "user" } },
             data: {
