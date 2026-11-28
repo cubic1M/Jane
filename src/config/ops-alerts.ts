@@ -25,6 +25,9 @@ export const OPS_EVENT_KINDS = {
   // A typed question couldn't be sent to Claude (the key refused, the provider down, no answer in
   // time), so the person was told the answering service is down. The code says which.
   chat_model_unavailable: { label: "chat answers couldn't reach Claude", urgent: false },
+  // A bank's read from the start would have removed too many rows: nothing was removed and the
+  // link goes on from its saved cursor (src/lib/plaid/reread-removals.ts).
+  plaid_reread_held: { label: "bank re-reads held back (too many rows would go)", urgent: false },
 } as const;
 
 export type OpsEventKind = keyof typeof OPS_EVENT_KINDS;

@@ -67,8 +67,13 @@ async function History() {
             when(h.note?.cursorMovedAt ?? null),
             when(h.note?.rescannedAt ?? null),
             h.webhookCodes.length > 0 ? h.webhookCodes.join(", ") : "none in 7 days",
-            [h.stuck ? "stuck" : null, h.offer ? "offer" : null].filter(Boolean).join(", ") ||
-              "none",
+            [
+              h.stuck ? "stuck" : null,
+              h.offer ? "offer" : null,
+              h.note?.rereadHeld ? `re-read held back (${h.note.rereadHeld})` : null,
+            ]
+              .filter(Boolean)
+              .join(", ") || "none",
           ],
         }))}
       />
