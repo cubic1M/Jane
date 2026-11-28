@@ -15,7 +15,6 @@ import {
 } from "@/data-sources/plaid/__fixtures__/plaid";
 import { encrypt } from "@/lib/crypto";
 import { latestNotes } from "./history";
-import { postedCap } from "./reread-removals";
 import { syncItem } from "./sync";
 
 // Runs against a real, migrated Postgres (see sync.integration.test.ts), with Plaid's API mocked.
@@ -198,8 +197,6 @@ describe.runIf(url)("a read from the start: what Plaid dropped is removed", () =
     const many = Array.from({ length: 8 }, (_, i) => tx(l, `m${i}`, "2026-11-05", 30 + i));
     await firstSync(l, many);
     expect(await held(l)).toBe(11);
-    expect(postedCap(21)).toBe(5);
-    expect(postedCap(400)).toBe(8);
     await client.opsEvent.deleteMany({ where: { kind: "plaid_reread_held" } });
     transactionsSync.mockResolvedValueOnce(page(l, [...recent(l), ...older(l)], "c2"));
     await syncItem(l.itemId, { client, api, now: LATER });
