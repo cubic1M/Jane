@@ -9,5 +9,41 @@
     "costCents": 0,
     "firstWordsMs": 15,
     "failed": []
+  },
+  {
+    "date": "2026-11-28",
+    "mode": "real_path",
+    "promptVersion": "chat-v35",
+    "score": 100,
+    "graded": 1473,
+    "skipped": 0,
+    "costCents": 0,
+    "firstWordsMs": null,
+    "failedCount": 0,
+    "failed": []
+  },
+  {
+    "date": "2026-11-28",
+    "mode": "rules_only",
+    "promptVersion": "chat-v35",
+    "score": 100,
+    "graded": 354,
+    "skipped": 26,
+    "costCents": 0,
+    "firstWordsMs": 120,
+    "metrics": {
+      "understoodPct": 100,
+      "figuresPct": 98,
+      "followUpsPct": 100,
+      "counts": {
+        "questions": 354,
+        "withFigures": 50,
+        "followUps": 17
+      },
+      "firstWordsMs": 120,
+      "fullAnswerMs": 120
+    },
+    "failedCount": 0,
+    "failed": []
   }
 ]
