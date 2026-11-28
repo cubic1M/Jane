@@ -20,6 +20,7 @@ import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { systemDb } from "@/lib/system-db";
 import { todayOf } from "@/lib/today";
 import { isTrialUser } from "@/lib/trial-ids";
+import { TAX_FACT_PARITY, taxFactParity } from "@/lib/tax-facts/parity";
 import { copiesToLeaveOut, reconcile } from "@/planning/books";
 
 // Beta accuracy (2026-11-12): what every figure Jane shows a real person must satisfy, checked on
@@ -64,6 +65,8 @@ export const ACCURACY_CHECKS = [
     about:
       "Home's net worth is the Money page's; Home's Money tile is the Money page's month; each month's categories and refunds add up to its spending",
   },
+  // Tax T9: the household record says what the older stores say (one check per fact).
+  ...TAX_FACT_PARITY,
 ] as const;
 
 type AccuracyCheckName = (typeof ACCURACY_CHECKS)[number]["name"];
@@ -287,6 +290,27 @@ export function addsUpChecks(input: AddsUpInput): Pick<Tallies, "areas_add_up_to
 
 const OPEN_FINDINGS = ["new", "shown", "approved", "in_progress"] as const;
 // Each month's parts are checked for the months the Money page and tile show.
+// The household record against the older stores: each fact is one pass or fail for the person, and
+// not applicable before the record has been copied for them. A read that fails is not applicable
+// either, so it never hides the other checks.
+async function taxFactChecks(
+  userId: string,
+  options: { client: PrismaClient; now: Date },
+): Promise<Partial<Tallies>> {
+  let parity: Awaited<ReturnType<typeof taxFactParity>> = null;
+  try {
+    parity = await taxFactParity(userId, options);
+  } catch {
+    parity = null;
+  }
+  return Object.fromEntries(
+    TAX_FACT_PARITY.map(({ name }) => [
+      name,
+      parity ? tally([parity[name]]) : { passed: 0, failed: 0, notApplicable: 1 },
+    ]),
+  );
+}
+
 const MONTHS_CHECKED = 3;
 
 async function checkPerson(
@@ -378,6 +402,7 @@ async function checkPerson(
       })),
     }),
   });
+  add(tallies, await taxFactChecks(userId, { client, now }));
   return tallies;
 }
 
