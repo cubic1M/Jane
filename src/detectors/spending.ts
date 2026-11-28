@@ -86,9 +86,13 @@ const duplicateSubscription: Detector = {
   detect({ profile, data }) {
     const dupCats: readonly string[] = S.duplicateCategories;
     const byCat = new Map<string, Series[]>();
+    let dropped = 0;
     for (const s of regular(data)) {
       // Only what the Subscriptions page lists as a subscription (founder 11-28).
-      if (!recurringRowFor(data, s.txs[s.txs.length - 1]!, true)) continue;
+      if (!recurringRowFor(data, s.txs[s.txs.length - 1]!, true)) {
+        if (s.pfc && dupCats.includes(s.pfc)) dropped += 1;
+        continue;
+      }
       if (s.pfc && dupCats.includes(s.pfc)) byCat.set(s.pfc, [...(byCat.get(s.pfc) ?? []), s]);
     }
     const groups = [...byCat.values()].filter((g) => g.length >= 2);
@@ -97,8 +101,9 @@ const duplicateSubscription: Detector = {
     const cheapest = groups.map((g) => g.sort((a, b) => last(a) - last(b))[0]);
     // What the report's findings say when it has them: each group at its own frequency, a yearly
     // plan once a year, not twelve times (gate B).
+    // Not when a series was left out: the report's sum may include it (CodeRabbit).
     const worth =
-      reportsWorth(data, "duplicate_subscription") ??
+      (dropped === 0 ? reportsWorth(data, "duplicate_subscription") : null) ??
       cheapest.reduce((s, c) => s + last(c) * 12, 0);
     // Named as the subscriptions list names them ("Spotify", not the statement's "Spotify Usa").
     const names = groups.flat().map((s) => {
@@ -145,10 +150,12 @@ const priceIncrease: Detector = {
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    const rises = regular(data)
-      .filter((s) => s.txs.length >= S.priceRiseMinCharges)
-      // Only a charge the Subscriptions and regular bills page lists (founder 11-28).
-      .filter((s) => recurringRowFor(data, s.txs[s.txs.length - 1]!, false) !== null)
+    const seen = regular(data).filter((s) => s.txs.length >= S.priceRiseMinCharges);
+    // Only a charge the Subscriptions and regular bills page lists (founder 11-28).
+    const listed = seen.filter(
+      (s) => recurringRowFor(data, s.txs[s.txs.length - 1]!, false) !== null,
+    );
+    const rises = listed
       .filter((s) => !s.txs.some((t) => S.priceRiseNot.includes(t.pfc ?? "")))
       .flatMap((s) => {
         const earlier = s.txs.slice(0, -1).map((t) => t.amountCents);
@@ -168,8 +175,9 @@ const priceIncrease: Detector = {
     if (rises.length === 0) return null;
     // The report's figure when it has one: the rise against the earlier average, as often as the
     // charge comes (gate B).
+    // Not when a series was left out: the report's sum may include it (CodeRabbit).
     const worth =
-      reportsWorth(data, "price_increase") ??
+      (listed.length === seen.length ? reportsWorth(data, "price_increase") : null) ??
       rises.reduce((n, r) => n + (r.now - r.before) * 12, 0);
     const top = rises.sort((a, b) => b.now - b.before - (a.now - a.before))[0];
     return suggestion("subscriptions", "price_increase", {
@@ -369,6 +377,7 @@ const trialConversion: Detector = {
     for (const t of tx(data, (x) => x.amountCents > 0 && canBeATrial(x.pfc))) {
       by.set(t.description, [...(by.get(t.description) ?? []), t]);
     }
+    const counted = new Set<object>();
     const converted = [...by.entries()].flatMap(([description, list]) => {
       const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
       const trial = sorted.find((t) => t.amountCents <= S.trialMaxCents);
@@ -386,7 +395,9 @@ const trialConversion: Detector = {
         (primary && S.everydayPrimaries.includes(primary)) ||
         S.everydayDetailed.includes(lastPaid.pfc ?? "");
       const row = recurringRowFor(data, lastPaid, everyday);
-      if (!row) return [];
+      // Each page row once, whatever the number of statement lines that name it.
+      if (!row || counted.has(row)) return [];
+      counted.add(row);
       return [
         {
           description,

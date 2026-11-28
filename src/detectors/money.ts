@@ -91,7 +91,19 @@ const subscriptions: Detector = {
       );
     const average = (list: { cents: number }[]) =>
       list.reduce((a, c) => a + c.cents, 0) / list.length;
-    const payees = regular.map(([description, list]) => ({
+    // The charges the total counts: the page's subscriptions when it gave them (CodeRabbit).
+    const counted =
+      given === undefined
+        ? regular
+        : regular.filter(
+            ([description]) =>
+              recurringRowFor(
+                data,
+                { description, merchantName: merchantNames.get(description) },
+                true,
+              ) !== null,
+          );
+    const payees = counted.map(([description, list]) => ({
       description,
       amountCents: Math.round(average(list)),
       perYear: 12,
