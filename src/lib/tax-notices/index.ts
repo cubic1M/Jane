@@ -276,7 +276,8 @@ async function noticeFacts(
   fields: Fields,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<NoticeFacts> {
-  const year = Number(fields.taxYear) || now.getUTCFullYear() - 1;
+  const year =
+    Number(fields.taxYear) || Number((await todayOf(userId, { client, now })).slice(0, 4)) - 1;
   const db = scopedFor(userId, client);
   const [docs, income, payments] = await Promise.all([
     loadTaxDocuments(userId, year, { client, now }),

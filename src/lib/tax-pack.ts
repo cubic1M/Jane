@@ -1,6 +1,7 @@
 import { loadCounting, reconcileLiabilities } from "@/lib/account-copies";
 import { INTEREST_LOAN_KINDS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { todayOf } from "@/lib/today";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadOverrides, loadTaxForms } from "@/lib/tax-organizer";
@@ -65,7 +66,7 @@ export async function loadTaxPack(
   const rental = side.year === year ? side.rental : null;
   return buildTaxPack({
     year,
-    today: iso(now),
+    today: await todayOf(userId, { client, now }),
     transactions: transactions.map((t) => ({ ...t, date: iso(t.date) })),
     loans: loans.map((l) => ({
       name: l.account.name,

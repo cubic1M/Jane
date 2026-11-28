@@ -51,7 +51,13 @@ import {
   projectOther,
   scheduledTakeHome,
   takeHomePay,
+  taxPaymentNotes,
+  type PriorYearPayments,
   taxPaymentsFor,
+  taxPaymentsIn,
+  taxPaymentsInYear,
+  sumPayments,
+  type TaxPayment,
   propertyTaxFor,
   yearCovered,
   type PayPicture,
@@ -74,6 +80,7 @@ import {
   type ProfileField,
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { TAX_PAYMENT_WINDOW } from "@/config/tax-payments";
 import { todayOf } from "@/lib/today";
 import { loadToldPartner } from "@/lib/filing-status";
 import { yearInterest } from "@/planning/lender-interest";
@@ -379,8 +386,13 @@ async function loadTaxEstimateFrom(
   const cash = investmentCash
     .filter((c) => taxable.has(c.accountId))
     .map((c) => ({ date: iso(c.date), amountCents: c.amountCents, subtype: c.subtype }));
+  // Only pay dated inside the tax year, by the line's own calendar date: the query reaches into
+  // February for the January payments, and a 2026 estimate read in 2027 must not hold a January 2027
+  // paycheck (T7; the 2027 estimate does hold it).
+  const inTaxYear = (date: string) => Number(date.slice(0, 4)) === year;
   const paychecks = rows.filter(
     (t) =>
+      inTaxYear(t.date) &&
       t.amountCents < 0 &&
       t.pfcDetailed !== null &&
       (INCOME_KINDS.w2.categories as readonly string[]).includes(t.pfcDetailed),
@@ -402,7 +414,13 @@ async function loadTaxEstimateFrom(
       today,
     );
     assumptions.push("Your pay and withholding come from the demo bank's sample pay stubs.");
-  } else if (stored?.payAsOf && stored.payGrossYtdCents !== null) {
+  } else if (
+    stored?.payAsOf &&
+    stored.payGrossYtdCents !== null &&
+    // A stub's year-to-date figures are for the year they were read in: a stub from another year
+    // says nothing about this one (T7).
+    iso(stored.payAsOf).startsWith(String(year))
+  ) {
     pay = payFromYtd(
       {
         asOf: iso(stored.payAsOf),
@@ -444,7 +462,11 @@ async function loadTaxEstimateFrom(
   // unknown.
   // A bonus marked as other income (src/categorize/regular-payers.ts) is still wages.
   const bonuses = rows.filter(
-    (t) => t.amountCents < 0 && t.pfcDetailed === "INCOME_OTHER" && ONE_OFF_PAY.test(t.description),
+    (t) =>
+      inTaxYear(t.date) &&
+      t.amountCents < 0 &&
+      t.pfcDetailed === "INCOME_OTHER" &&
+      ONE_OFF_PAY.test(t.description),
   );
   // Regular pay that has stopped, by where the data ends: an old statement isn't a lost job.
   // The same answer the profile gives (src/profile/stopped-payers.ts); nothing in the data, nothing
@@ -671,8 +693,17 @@ async function loadTaxEstimateFrom(
     );
   }
   const other = { ...paced, selfEmploymentCents: paced.selfEmploymentCents - homeOffice };
+  const seenList = taxPaymentsIn(rows);
+  const typedList = enteredTaxPayments(stored?.taxPayments);
   const seen = taxPaymentsFor(rows, year);
-  const typed = enteredTaxPayments(stored?.taxPayments, year);
+  const typed = sumPayments(taxPaymentsInYear(typedList, year));
+  assumptions.push(
+    ...taxPaymentNotes(
+      [...seenList, ...typedList],
+      year,
+      await priorYearPayments(db, year, seenList, typedList),
+    ),
+  );
   const payments = {
     federalCents: seen.federalCents + typed.federalCents + fixes.paid.federalCents,
     stateCents: seen.stateCents + typed.stateCents + fixes.paid.stateCents,
@@ -1043,12 +1074,63 @@ export function parseTaxPayments(value: unknown): EnteredTaxPayment[] {
   );
 }
 
-function enteredTaxPayments(value: unknown, year: number) {
-  const inYear = parseTaxPayments(value).filter(
-    (p) => p.date >= `${year}-02-01` && p.date <= `${year + 1}-01-31`,
+// What the year before left, read only when this year has a federal payment dated before the first
+// installment's due date (the one that may be last year's balance): whether estimates were paid in
+// the year before (its June to January installments, seen or told) and the year before's balance
+// due from a confirmed prior return (its refund line, negative when the person owed). Never
+// borrowed from anywhere else: no return, no known balance, no flag.
+async function priorYearPayments(
+  db: ReturnType<typeof scopedFor>,
+  year: number,
+  seen: readonly TaxPayment[],
+  typed: readonly TaxPayment[],
+): Promise<PriorYearPayments> {
+  const none = { paidEstimates: false, balanceDueCents: null };
+  const W = TAX_PAYMENT_WINDOW;
+  const mayBeBalance = [...seen, ...typed].some(
+    (p) =>
+      p.to === "federal" &&
+      p.date >= `${year}-${W.yearFrom}` &&
+      p.date <= `${year}-${W.firstEstimateDue}`,
   );
-  return {
-    federalCents: inYear.filter((p) => p.to === "federal").reduce((s, p) => s + p.cents, 0),
-    stateCents: inYear.filter((p) => p.to === "state").reduce((s, p) => s + p.cents, 0),
-  };
+  if (!mayBeBalance) return none;
+  const from = `${year - 1}-${W.priorEstimatesFrom}`;
+  const to = `${year}-${W.nextYearTo}`;
+  const [earlier, returns] = await Promise.all([
+    db.transactions.findMany({
+      where: {
+        pending: false,
+        pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+        amountCents: { gt: 0 },
+        date: { gte: new Date(`${from}T00:00:00Z`), lt: new Date(Date.UTC(year, 0, 1)) },
+      },
+      select: {
+        date: true,
+        amountCents: true,
+        pfcDetailed: true,
+        description: true,
+        merchantName: true,
+      },
+    }),
+    db.priorReturns.findMany({ where: { status: "confirmed" }, select: { fields: true } }),
+  ]);
+  const inRange = (p: TaxPayment) => p.to === "federal" && p.date >= from && p.date <= to;
+  const paidEstimates = [
+    ...taxPaymentsIn(earlier.map((t) => ({ ...t, date: iso(t.date) }))),
+    ...seen,
+    ...typed,
+  ].some(inRange);
+  let balanceDueCents: number | null = null;
+  for (const r of returns) {
+    const f = (r.fields ?? {}) as Record<string, unknown>;
+    const refund = Number(f.refund);
+    if (Number(f.taxYear) === year - 1 && Number.isFinite(refund) && refund < 0) {
+      balanceDueCents = Math.round(-refund * 100);
+    }
+  }
+  return { paidEstimates, balanceDueCents };
+}
+
+function enteredTaxPayments(value: unknown): TaxPayment[] {
+  return parseTaxPayments(value).map((p) => ({ date: p.date, cents: p.cents, to: p.to }));
 }

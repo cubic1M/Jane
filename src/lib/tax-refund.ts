@@ -20,6 +20,7 @@ import {
   type RefundPlanItem,
 } from "@/planning/tax-refund";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 import { onlyCounted, onlyCountedRows } from "@/lib/account-copies";
 
 // Tax refunds (spec step 125): spotted when they land, matched to the estimate for their
@@ -89,12 +90,16 @@ export async function loadRefunds(
   { client = defaultClient, now = new Date(), days = 400 }: Options & { days?: number } = {},
 ): Promise<{ advice: boolean; refunds: RefundView[] }> {
   const db = scopedFor(userId, client);
+  // The window counts back from the person's own day, not the UTC clock's.
+  const since = new Date(
+    Date.parse(`${await todayOf(userId, { client, now })}T00:00:00Z`) - days * DAY_MS,
+  );
   const [deposits, profile, advice] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
         amountCents: { lt: 0 },
-        date: { gte: new Date(now.getTime() - days * DAY_MS) },
+        date: { gte: since },
       },
       select: {
         id: true,
@@ -168,7 +173,9 @@ export async function applyRefundPlan(
   const view = refunds.find((r) => r.refund.transactionId === transactionId);
   if (!view || !view.plan) throw new RefundError("That refund isn't there anymore.");
   if (view.handled) throw new RefundError("You've already set this one up.");
-  const due = iso(new Date(now.getTime() + 3 * DAY_MS));
+  const today = await todayOf(userId, { client, now });
+  const dayZero = Date.parse(`${today}T00:00:00Z`);
+  const due = iso(new Date(dayZero + 3 * DAY_MS));
   const goals = await listGoals(userId, { client, now });
   let reminders = 0;
   for (const item of view.plan.items) {
@@ -179,7 +186,7 @@ export async function applyRefundPlan(
         {
           name: EMERGENCY_GOAL,
           target: centsToInput(inputs.emergency.targetCents),
-          targetDate: iso(new Date(now.getTime() + 365 * DAY_MS)),
+          targetDate: iso(new Date(dayZero + 365 * DAY_MS)),
           accountId: "",
           saved: "",
         },

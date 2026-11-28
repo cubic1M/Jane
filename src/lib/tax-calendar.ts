@@ -408,7 +408,7 @@ export async function payEstimate(
     expectedCents,
   }: Options & { via: "autopilot" | "tap"; expectedCents?: number },
 ): Promise<{ cents: number; confirmation: string }> {
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const partner = await taxPaymentPartnerFor(userId, { client });
   if (!partner) {
     throw new TaxCalendarError("Pay this one at IRS Direct Pay, then tell me what you paid.");

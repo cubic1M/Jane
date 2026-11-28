@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { saveTaxAnswers } from "@/lib/tax-profile";
 import { localitiesIn, spotMove, type Move, type Residency } from "@/planning/tax-states";
 import { isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Where the person lived and worked in a tax year (spec step 165): moves, an out-of-state
 // employer and a city or county income tax. Loaded from what they told Jane, and a move
@@ -138,7 +139,8 @@ export async function saveMoves(
   moves: Move[],
   options: Options & { via: "chat" | "page" },
 ): Promise<void> {
-  const today = iso(options.now ?? new Date());
+  // The person's day: a move on the 31st is not "in the future" at 7pm in Los Angeles.
+  const today = await todayOf(userId, { client: options.client, now: options.now });
   for (const m of moves) {
     if (!isStateCode(m.from) || !isStateCode(m.to)) {
       throw new ResidencyError("Pick both states from the list.");
