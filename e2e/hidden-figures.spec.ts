@@ -58,7 +58,7 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   // Shown: that figure and its scale, and no other figure.
   await show.click();
   await expect(netWorth).toHaveText(/^-?\$[\d,]+$/);
-  await expect(chart.locator('[data-net-worth-scale="high"]')).toBeVisible();
+  await expect(chart.locator('[data-net-worth-scale="tick"]').first()).toBeVisible();
   await expect(chart.locator("[data-net-worth-change]")).toContainText(dollars);
   await expect(safe).toContainText("•••••");
   await expect(saved).toContainText("•••••");

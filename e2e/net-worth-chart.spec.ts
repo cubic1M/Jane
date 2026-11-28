@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
-import { STEP_PERSON, seedHistory, type HistoryShape } from "./chart-people";
+import { SMALL_MOVES_PERSON, seedHistory } from "./chart-people";
 import { signInWith } from "./session";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
@@ -257,161 +257,156 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   await expect(details).toHaveCount(0);
 });
 
-// The line's vertical extent as a share of the chart's height, for each piece of it (a big step
-// taken out of the scale splits it in two), and whether today's dot is on the chart.
-async function linePieces(chart: Locator): Promise<{ shares: number[]; todayOnChart: boolean }> {
+// The line's vertical extent as a share of the plot's height, the labels on the vertical axis (as
+// dollars), and whether today's dot is on the chart.
+async function axis(chart: Locator): Promise<{ share: number; ticks: number[]; texts: string[] }> {
   return chart.locator("[data-net-worth-plot]").evaluate((plot) => {
     const h = plot.getBoundingClientRect().height;
     const d = plot.querySelector("path.nw-line")?.getAttribute("d") ?? "";
-    const shares = d
-      .split("M")
-      .filter(Boolean)
-      .map((piece) => {
-        const ys = [...piece.matchAll(/,([\d.-]+)/g)].map((m) => Number(m[1]));
-        return (Math.max(...ys) - Math.min(...ys)) / h;
-      });
-    const dot = plot.querySelector("svg circle.fill-current");
-    const cy = Number(dot?.getAttribute("cy") ?? NaN);
-    return { shares, todayOnChart: cy >= 0 && cy <= h };
+    const ys = [...d.matchAll(/,([\d.-]+)/g)].map((m) => Number(m[1]));
+    const texts = [...plot.querySelectorAll('[data-net-worth-scale="tick"]')].map(
+      (t) => t.textContent ?? "",
+    );
+    return {
+      share: (Math.max(...ys) - Math.min(...ys)) / h,
+      ticks: texts.map((t) => Number(t.replace(/[^\d-]/g, ""))),
+      texts,
+    };
   });
 }
 
-test("one big step does not flatten the rest: both sides keep their shape, a break says the step, Fit all brings it back, zooming out restores", async ({
+// Founder, Nov 28: "when I zoom into a part where there's not much change, it's just like the
+// entire line is flat, even though I'm spending like $45, $128": the vertical axis fits what is on
+// screen, however the chart got there, with no break marks.
+test("the axis fits what is on screen: ranges, zoom buttons, keys and the wheel all refit it, and there are no break marks", async ({
   context,
   page,
   baseURL,
   isMobile,
 }) => {
   if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
-  // Months of moves of $20 to $300 around $6,000, and one +$5,120 day 60 days ago.
+  // Ordinary days of $12 to $128 around $30,000, a -$18,000 day 100 days ago, +$9,000 45 days ago.
   const user = await signedInUser("user");
   userId = user.userId;
   await signInWith(context, user.sessionToken, baseURL);
-  await seedHistory(user.userId, STEP_PERSON);
+  await seedHistory(user.userId, SMALL_MOVES_PERSON);
   await page.goto("/home");
 
   const chart = page.locator("[data-net-worth-chart]");
   await expect(chart).toBeVisible();
   await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
-  const label = chart.locator("[data-net-worth-step]");
-  const breaks = chart.locator("[data-net-worth-break]");
-  const control = chart.locator("[data-net-worth-fit]");
-
-  // Hidden figures: the break's label says what happened and when, with no figure, and the
-  // scale's labels are hidden too.
-  await expect(label).toHaveText(/^A big rise on [A-Z][a-z]{2} \d{1,2}$/);
-  await expect(label).not.toContainText("$");
-  await expect(chart.locator("[data-net-worth-scale]")).toHaveCount(0);
   await chart.locator("[data-show-value]").click();
+  const ranges = chart.getByRole("group", { name: "Range" });
+  const noMarks = async () => {
+    for (const mark of ["break", "step", "fit"]) {
+      await expect(page.locator(`[data-net-worth-${mark}]`)).toHaveCount(0);
+    }
+  };
+  const fitsView = async () => {
+    await expect.poll(async () => (await axis(chart)).share).toBeGreaterThan(0.5);
+    const { ticks, texts } = await axis(chart);
+    expect(ticks.length).toBeGreaterThanOrEqual(3);
+    expect(ticks.length).toBeLessThanOrEqual(5);
+    expect(new Set(texts).size).toBe(texts.length);
+    return ticks;
+  };
 
-  // The step is out of the scale: both sides of the break each take at least a third of the
-  // chart's height, today's dot is on the chart, and the break says the step.
-  await expect(label).toHaveText(/^\+\$[45],\d{3} on [A-Z][a-z]{2} \d{1,2}$/);
-  await expect(breaks).toHaveCount(1);
-  await expect(control).toHaveText("Fit all");
+  // The whole history: the axis covers the big drop, honestly.
+  await noMarks();
+  const all = await fitsView();
+  expect(Math.max(...all) - Math.min(...all)).toBeGreaterThan(9_000);
+
+  // 1M holds only ordinary days: they fill the height, over a small range of labels.
+  await ranges.getByRole("button", { name: /^1M/ }).click();
+  await noMarks();
   await expect
     .poll(async () => {
-      const { shares, todayOnChart } = await linePieces(chart);
-      return shares.length === 2 && shares.every((s) => s >= 0.33) && todayOnChart;
+      const t = (await axis(chart)).ticks;
+      return Math.max(...t) - Math.min(...t);
     })
-    .toBe(true);
-  // Each edge's labels are true for the days next to it: the days before the step near $5,000 to
-  // $7,000 on the left, the days after it near $10,000 to $12,000 on the right.
-  const dollarsOf = async (el: Locator) =>
-    Number(((await el.textContent()) ?? "").replace(/\D/g, ""));
-  const scale = (name: string) => chart.locator(`[data-net-worth-scale="${name}"]`);
-  await expect.poll(() => dollarsOf(scale("high"))).toBeLessThan(8_000);
-  await expect.poll(() => dollarsOf(scale("low-right"))).toBeGreaterThan(9_000);
-  expect(await dollarsOf(scale("high-right"))).toBeGreaterThan(await dollarsOf(scale("high")));
+    .toBeLessThan(2_000);
+  const month = await fitsView();
+  expect(Math.max(...month) - Math.min(...month)).toBeLessThan(2_000);
+  // 1W: tighter or equal again.
+  await ranges.getByRole("button", { name: /^1W/ }).click();
+  await fitsView();
+  await ranges.getByRole("button", { name: /^ALL/ }).click();
+  await expect
+    .poll(async () => {
+      const t = (await axis(chart)).ticks;
+      return Math.max(...t) - Math.min(...t);
+    })
+    .toBeGreaterThan(9_000);
 
-  // Fit all: the one true scale, the step back in the line, no break.
-  await control.click();
-  await expect(control).toHaveText("Focus");
-  await expect(label).toHaveCount(0);
-  await expect(breaks).toHaveCount(0);
-  await expect.poll(() => dollarsOf(scale("high"))).toBeGreaterThan(10_000);
-  await expect.poll(async () => (await linePieces(chart)).shares[0]).toBeGreaterThanOrEqual(0.9);
-  await control.click();
-  await expect(label).toBeVisible();
-  await expect(control).toHaveText("Fit all");
-
-  // Zoomed in on today with the brush, the step leaves the view: no break, and the small moves
-  // still have shape (the plain fitted scale with the adaptive floor).
+  // The brush's + and keys: zoomed in on the last stretch, the axis follows, then out again.
   const brush = chart.getByRole("slider", { name: "Days in view" });
   await brush.focus();
-  await page.keyboard.press("+");
-  await page.keyboard.press("+");
-  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
-  await expect(label).toHaveCount(0);
-  await expect(breaks).toHaveCount(0);
-  await expect(control).toHaveCount(0);
-  await expect.poll(async () => (await linePieces(chart)).shares[0]).toBeGreaterThanOrEqual(0.33);
-  expect(await dollarsOf(scale("high"))).toBeLessThan(13_000);
+  for (let i = 0; i < 3; i++) await page.keyboard.press("+");
+  await page.keyboard.press("End");
+  for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowRight");
+  await noMarks();
+  await expect
+    .poll(async () => {
+      const t = (await axis(chart)).ticks;
+      return Math.max(...t) - Math.min(...t);
+    })
+    .toBeLessThan(2_000);
+  await fitsView();
+  await chart.getByRole("button", { name: "Zoom in" }).click();
+  await fitsView();
+  for (let i = 0; i < 6; i++) await chart.getByRole("button", { name: "Zoom out" }).click();
+  await expect
+    .poll(async () => {
+      const t = (await axis(chart)).ticks;
+      return Math.max(...t) - Math.min(...t);
+    })
+    .toBeGreaterThan(9_000);
 
-  // Zoomed out again: the whole picture, with the same rules.
-  for (let i = 0; i < 4; i++) await page.keyboard.press("-");
-  await expect(label).toHaveText(/^\+\$[45],\d{3} on /);
-  await expect(breaks).toHaveCount(1);
-  // The range chips still work.
-  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
-  await expect(label).toHaveCount(0);
-  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^ALL/ }).click();
-  await expect(label).toBeVisible();
+  // The wheel (a computer): zooming in on the right edge refits to the small moves.
+  if (!isMobile) {
+    const plot = (await chart.locator("[data-net-worth-plot]").boundingBox())!;
+    await page.mouse.move(plot.x + plot.width - 4, plot.y + plot.height / 2);
+    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -120);
+    await expect
+      .poll(async () => {
+        const t = (await axis(chart)).ticks;
+        return Math.max(...t) - Math.min(...t);
+      })
+      .toBeLessThan(2_000);
+    await fitsView();
+    await noMarks();
+  }
+
+  // Phone width: nothing runs past the screen sideways.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
 
-// The same person with the big step two days before today (a walk of main: the break's label was
-// printed over the corner figure, so "$17,522" read ",522" on a computer and "22" on a phone).
-const STEP_NEAR_EDGE_PERSON: HistoryShape = { ...STEP_PERSON, stepDaysAgo: 2 };
-
-test("a big step in the last days: the break's label never covers a scale label", async ({
+test("a stretch with no change at all draws a line in the middle, with labels that differ", async ({
   context,
   page,
   baseURL,
-  isMobile,
 }) => {
-  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   const user = await signedInUser("user");
   userId = user.userId;
   await signInWith(context, user.sessionToken, baseURL);
-  await seedHistory(user.userId, STEP_NEAR_EDGE_PERSON);
+  await seedHistory(user.userId, { ...SMALL_MOVES_PERSON, moveMinCents: 0, moveMaxCents: 0 });
   await page.goto("/home");
-
   const chart = page.locator("[data-net-worth-chart]");
-  await expect(chart).toBeVisible();
-  await chart.getByRole("button", { name: /^Expand the net worth chart/ }).click();
-  const label = chart.locator("[data-net-worth-step]");
-  const scales = chart.locator(
-    '[data-net-worth-scale="high"], [data-net-worth-scale="low"], [data-net-worth-scale="high-right"], [data-net-worth-scale="low-right"]',
-  );
-  const chartBox = async () => (await chart.locator("svg").first().boundingBox())!;
-  const boxesOf = async (els: Locator) => {
-    const out = [];
-    for (const el of await els.all()) out.push((await el.boundingBox())!);
-    return out;
-  };
-  const touch = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
-    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-
-  // Figures hidden first (its words are longer): the label is inside the chart.
-  await expect(label).toHaveText(/^A big rise on /);
-  await expect
-    .poll(async () => {
-      const [step] = await boxesOf(label);
-      const area = await chartBox();
-      return !!step && step.x >= area.x - 1 && step.x + step.width <= area.x + area.width + 1;
-    })
-    .toBe(true);
-  // Figures shown: the label is never over a scale label, and always inside the chart.
   await chart.locator("[data-show-value]").click();
-  await expect(label).toHaveText(/^\+\$[45],\d{3} on [A-Z][a-z]{2} \d{1,2}$/);
-  await expect(scales).toHaveCount(4);
-  await expect
-    .poll(async () => {
-      const [step] = await boxesOf(label);
-      const area = await chartBox();
-      if (!step || step.x < area.x - 1 || step.x + step.width > area.x + area.width + 1)
-        return false;
-      return (await boxesOf(scales)).every((s) => !touch(step, s));
-    })
-    .toBe(true);
+  // The last month has no move at all (the big days are older).
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
+  await expect.poll(async () => (await axis(chart)).texts.length).toBeGreaterThanOrEqual(3);
+  const { texts } = await axis(chart);
+  expect(new Set(texts).size).toBe(texts.length);
+  const mid = await chart.locator("[data-net-worth-plot]").evaluate((plot) => {
+    const h = plot.getBoundingClientRect().height;
+    const circle = plot.querySelector("svg circle.fill-current");
+    return Number(circle?.getAttribute("cy")) / h;
+  });
+  expect(mid).toBeGreaterThan(0.1);
+  expect(mid).toBeLessThan(0.9);
 });
