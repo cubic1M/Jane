@@ -159,7 +159,7 @@ describe.runIf(url)("a year's estimate keeps to the year", { timeout: 180_000 },
     const now = new Date("2026-11-20T20:00:00Z");
     const line = (v: { assumptions: string[] }) => v.assumptions.find((a) => /^Jane took/.test(a));
 
-    async function withReturn(email: string, owed: number, payments = apr) {
+    async function withReturn(email: string, owed: number, payments = apr, refund = String(-owed)) {
       const id = await person(email, {
         first: "2025-11-14",
         pay: fridays("2025-11-14", "2026-11-13"),
@@ -180,7 +180,7 @@ describe.runIf(url)("a year's estimate keeps to the year", { timeout: 180_000 },
           userId: id,
           documentId: doc.id,
           status: "confirmed",
-          fields: { taxYear: "2025", refund: String(-owed) },
+          fields: { taxYear: "2025", refund },
           sources: {},
           notes: {},
         },
@@ -195,6 +195,12 @@ describe.runIf(url)("a year's estimate keeps to the year", { timeout: 180_000 },
       expect(line(v)).toBe(
         "Jane took the $2,000.00 paid on Apr 14 as a 2026 estimate; it may be last year's balance.",
       );
+    });
+
+    it('the balance as confirmed with a comma, "-2,000.00": the same line', async () => {
+      const id = await withReturn("t7-april-comma@example.com", 2000, apr, "-2,000.00");
+      const v = await loadTaxEstimate(id, { client, now, year: 2026 });
+      expect(line(v)).toMatch(/^Jane took the \$2,000\.00 paid on Apr 14 as a 2026 estimate/);
     });
 
     it("estimates were paid last year: counted, no line", async () => {

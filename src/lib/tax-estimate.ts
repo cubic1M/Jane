@@ -34,7 +34,7 @@ import { homeOfficeDeduction, mileageFigure } from "@/planning/self-employed";
 import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
-import { formatCents } from "@/lib/money";
+import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
 import { loadToldDependency, loadToldSpouseItemizes } from "@/lib/tax-dependency";
@@ -1123,9 +1123,10 @@ async function priorYearPayments(
   let balanceDueCents: number | null = null;
   for (const r of returns) {
     const f = (r.fields ?? {}) as Record<string, unknown>;
-    const refund = Number(f.refund);
-    if (Number(f.taxYear) === year - 1 && Number.isFinite(refund) && refund < 0) {
-      balanceDueCents = Math.round(-refund * 100);
+    // The field is dollars as the person confirmed it, possibly "-2,000.00".
+    const refund = typeof f.refund === "string" ? parseMoneyToCents(f.refund) : null;
+    if (Number(f.taxYear) === year - 1 && refund !== null && refund < 0) {
+      balanceDueCents = -refund;
     }
   }
   return { paidEstimates, balanceDueCents };
