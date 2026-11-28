@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
 import { preferenceRef, recordFact, type FactDraft, type FactValue } from "@/lib/memory/facts";
 
 // What Jane remembers about the person (spec step 91), in jane_preferences. Only ever saved
@@ -122,15 +123,28 @@ export async function deletePreference(
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
   const db = scopedFor(userId, client);
-  const row = await db.janePreferences.findFirst({
-    where: { id },
-    select: { kind: true, key: true },
-  });
-  // What Jane knew from it goes with it, in one transaction: both happen or neither does.
+  // What Jane knew from it goes with it, in one transaction: both happen or neither does. So does
+  // the copy of a told answer in another table (how they file on the tax profile), or the
+  // forgotten answer would still be used there (src/lib/told-mirrors.ts). The row is read inside
+  // the transaction and deleted only while it still says what was read, so the copy taken back is
+  // always the copy of the answer that went (a new answer saved in between is read again).
   const count = await db.transaction(async (tx) => {
-    if (row)
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const row = await tx.janePreferences.findFirst({
+        where: { id },
+        select: { kind: true, key: true, value: true },
+      });
+      if (!row) return 0;
+      const gone = await tx.janePreferences.deleteMany({
+        where: { id, value: { equals: row.value ?? {} } },
+      });
+      if (gone.count === 0) continue;
       await tx.userFacts.deleteMany({ where: { sourceRef: preferenceRef(row.kind, row.key) } });
-    return (await tx.janePreferences.deleteMany({ where: { id } })).count;
+      const told = row.kind === "fact" ? toldKeyOf(row.key) : null;
+      if (told) await takeBackMirrors(tx, [{ key: told, value: toldValueOf(row.value) }]);
+      return gone.count;
+    }
+    throw new Error("The preference kept changing while it was deleted");
   });
   if (count > 0) {
     await logAudit(

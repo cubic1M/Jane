@@ -156,6 +156,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
       run: (tx: {
         // A record reminder and the list of years it covers (src/lib/audit-records.ts).
         taxProfiles: typeof inTransaction.taxProfile;
+        // The copies of a told answer, taken back with it (src/lib/told-mirrors.ts).
+        investorProfiles: typeof inTransaction.investorProfile;
+        insuranceProfiles: typeof inTransaction.insuranceProfile;
         deadlines: typeof inTransaction.deadline;
         findings: typeof inTransaction.finding;
         decisions: typeof inTransaction.decision;
@@ -188,6 +191,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
       asUserTransaction(inTransaction, userId, (tx) =>
         run({
           taxProfiles: tx.taxProfile,
+          investorProfiles: tx.investorProfile,
+          insuranceProfiles: tx.insuranceProfile,
           deadlines: tx.deadline,
           findings: tx.finding,
           decisions: tx.decision,

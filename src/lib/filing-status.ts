@@ -160,56 +160,49 @@ export async function saveToldFiling(
 const WRITE_TRIES = 4;
 
 // The told answer, written to the tax profile's row and marked answered, like the children mirror.
+// With `whileTold` (the writer that just saved the told answer) the copy is written only while that
+// told answer is still there: its preference row is locked first, so a Forget that runs between the
+// two saves either finishes before (nothing is written) or waits for this write and then takes it
+// back. A forgotten answer is never put back; a new answer saved afterwards writes its own copy.
 export async function mirrorFilingToProfile(
   userId: string,
   status: FilingStatus,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, whileTold = false }: Options & { whileTold?: boolean } = {},
 ): Promise<void> {
-  const db = scopedFor(userId, client);
-  for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
-    const existing = await db.taxProfiles.findUnique({
-      where: { userId },
-      select: { answered: true },
-    });
-    if (!existing) {
-      const made = await db.taxProfiles.createMany({
-        data: [{ userId, filingStatus: status, answered: ["filingStatus"] }],
-        skipDuplicates: true,
+  await scopedFor(userId, client).transaction(async (tx) => {
+    if (whileTold) {
+      const pref = await tx.janePreferences.findFirst({
+        where: { kind: "fact", key: TOLD_FILING_KEY },
+        select: { label: true, value: true },
       });
-      if (made.count > 0) return;
-      continue;
+      if (!pref || valueOf(pref.value) !== status) return;
+      // A write that changes nothing, to take the row's lock: Forget's delete waits for it.
+      const held = await tx.janePreferences.updateMany({
+        where: { kind: "fact", key: TOLD_FILING_KEY, label: pref.label },
+        data: { label: pref.label },
+      });
+      if (held.count === 0) return;
     }
-    const answered = [...new Set([...existing.answered, "filingStatus"])];
-    const saved = await db.taxProfiles.updateMany({
-      where: { answered: { equals: existing.answered } },
-      data: { filingStatus: status, answered },
-    });
-    if (saved.count > 0) return;
-  }
-  throw new Error("The tax profile kept changing while the filing status was saved");
+    for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
+      const existing = await tx.taxProfiles.findFirst({ select: { answered: true } });
+      if (!existing) {
+        const made = await tx.taxProfiles.createMany({
+          data: [{ userId, filingStatus: status, answered: ["filingStatus"] }],
+          skipDuplicates: true,
+        });
+        if (made.count > 0) return;
+        continue;
+      }
+      const answered = [...new Set([...existing.answered, "filingStatus"])];
+      const saved = await tx.taxProfiles.updateMany({
+        where: { answered: { equals: existing.answered } },
+        data: { filingStatus: status, answered },
+      });
+      if (saved.count > 0) return;
+    }
+    throw new Error("The tax profile kept changing while the filing status was saved");
+  });
 }
 
-// The reverse of the mirror: the person took back what they told Jane, so the tax profile's copy
-// of that same answer goes with it. A profile answer that says something else stays.
-export async function unmirrorFilingFromProfile(
-  userId: string,
-  was: unknown,
-  { client = defaultClient }: Options = {},
-): Promise<void> {
-  if (!isFilingStatus(was)) return;
-  const db = scopedFor(userId, client);
-  for (let attempt = 0; attempt < WRITE_TRIES; attempt += 1) {
-    const row = await db.taxProfiles.findUnique({
-      where: { userId },
-      select: { filingStatus: true, answered: true },
-    });
-    if (!row || row.filingStatus !== was || !row.answered.includes("filingStatus")) return;
-    // Only while the row still says what was read: an answer saved a moment ago stays.
-    const cleared = await db.taxProfiles.updateMany({
-      where: { filingStatus: was, answered: { equals: row.answered } },
-      data: { filingStatus: null, answered: row.answered.filter((f) => f !== "filingStatus") },
-    });
-    if (cleared.count > 0) return;
-  }
-  throw new Error("The tax profile kept changing while the filing status was taken back");
-}
+// The reverse of the mirror, taken back with the told answer, is src/lib/told-mirrors.ts: every way a
+// person forgets it (Settings, a deleted preference, a cleared correction) goes through it.

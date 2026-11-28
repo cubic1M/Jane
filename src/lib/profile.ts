@@ -10,12 +10,7 @@ import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadCounting, onlyCountedRows, reconcileLiabilities } from "@/lib/account-copies";
 import { isFilingStatus } from "@/config/tax";
-import {
-  loadFiling,
-  mirrorFilingToProfile,
-  saveToldFiling,
-  unmirrorFilingFromProfile,
-} from "@/lib/filing-status";
+import { loadFiling, mirrorFilingToProfile, saveToldFiling } from "@/lib/filing-status";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
@@ -578,7 +573,7 @@ export async function correctFact(
   // the card, the Taxes page, the estimate and the chat read one answer (src/lib/filing-status.ts).
   if (key === "filing_status" && typeof value === "string" && isFilingStatus(value)) {
     await saveToldFiling(userId, value, { client, now });
-    await mirrorFilingToProfile(userId, value, { client });
+    await mirrorFilingToProfile(userId, value, { client, whileTold: true });
     return;
   }
   await savePreference(
@@ -629,17 +624,10 @@ export async function clearCorrection(
 ): Promise<boolean> {
   const row = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
-    select: { id: true, value: true },
+    select: { id: true },
   });
-  // Taking back how they file takes back the tax profile's copy of it too, so Jane goes back to
-  // what it sees and not to the answer they just took back (src/lib/filing-status.ts). The copy
-  // goes first: if the delete then fails the told answer is still there and still wins, and
-  // taking it back again finishes the job.
-  if (row && key === "filing_status") {
-    await unmirrorFilingFromProfile(userId, (row.value as { value?: unknown } | null)?.value, {
-      client,
-    });
-  }
+  // Deleting the preference takes the copy of it in another table back too, in the same transaction
+  // (src/lib/told-mirrors.ts), so Jane goes back to what it sees and not to what they took back.
   const gone = row ? await deletePreference(userId, row.id, { client }) : false;
   if (gone) await markPrimerStale(userId, { client });
   return gone;
