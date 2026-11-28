@@ -3,7 +3,6 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { sandboxChartPartner } from "@/lib/connectors/chart/partner";
 import { ConsentError, consentCovers, usableConnector } from "@/lib/connectors/consent";
 import { db as defaultClient } from "@/lib/db";
-import { todayOf } from "@/lib/today";
 import { adviceMode } from "@/lib/advice-mode";
 import { parseTranscript, type Transcript } from "@/lib/connectors/irs-transcript/parse";
 import { demoTranscriptPartner } from "./demo";
@@ -21,11 +20,12 @@ export async function transcriptPartnerFor(
 ): Promise<TranscriptPartner | null> {
   // Chart's sandbox twin for a sample person who allowed it, with connectors on (never in
   // production yet). There's no real Chart connector until counsel answers (src/lib/connectors/chart/).
-  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   if (connectorsOn() && (await allowedChart(userId, client))) {
-    return sandboxChartPartner(year, userId);
+    return sandboxChartPartner(now.getUTCFullYear(), userId);
   }
-  return (await adviceMode(userId, { client })) ? demoTranscriptPartner(year) : null;
+  return (await adviceMode(userId, { client }))
+    ? demoTranscriptPartner(now.getUTCFullYear())
+    : null;
 }
 
 async function allowedChart(userId: string, client: PrismaClient): Promise<boolean> {
