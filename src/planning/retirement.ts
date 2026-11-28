@@ -1,13 +1,11 @@
 import { INFLATION, RETURN_HIGH, RETURN_LOW } from "@/config/market-assumptions";
 import {
   CATCH_UP_AGE,
-  CATCH_UP_CENTS,
-  EMPLOYEE_DEFERRAL_LIMIT_CENTS,
   MAX_SUGGESTED_RAISE,
   RETIREMENT_AGE,
+  retirementLimits,
   ROTH_BELOW_PAY_CENTS,
   SUPER_CATCH_UP_AGES,
-  SUPER_CATCH_UP_CENTS,
   TARGET_TIMES_PAY,
   TRADITIONAL_ABOVE_PAY_CENTS,
   WITHDRAWAL_RATE,
@@ -31,6 +29,8 @@ export type EmployerPlan = {
 
 export type RetirementInput = {
   age: number;
+  // The calendar year the contributions are for (the person's own day): the limits are that year's.
+  year: number;
   balanceCents: number;
   // Over the last 12 months.
   employeeCents: number;
@@ -59,6 +59,10 @@ export type RetirementPlan = {
     // Put in this share of pay to get all of it.
     fullMatchRate: number;
   } | null;
+  // The year the limit is for, the limit and where it was read.
+  limitYear: number;
+  limitCents: number;
+  limitSource: string;
   // How much more the person may put in this year, with any catch-up.
   roomCents: number;
   catchUpCents: number;
@@ -85,12 +89,14 @@ export function yearlyToClose(gap: number, years: number, r: number) {
   return Math.ceil(gap / annuity);
 }
 
-export const catchUpFor = (age: number) =>
-  age >= SUPER_CATCH_UP_AGES[0] && age <= SUPER_CATCH_UP_AGES[1]
-    ? SUPER_CATCH_UP_CENTS
+export const catchUpFor = (age: number, year: number) => {
+  const limits = retirementLimits(year);
+  return age >= SUPER_CATCH_UP_AGES[0] && age <= SUPER_CATCH_UP_AGES[1]
+    ? limits.superCatchUpCents
     : age >= CATCH_UP_AGE
-      ? CATCH_UP_CENTS
+      ? limits.catchUpCents
       : 0;
+};
 
 export function rothOrTraditional(payCents: number | null): RetirementPlan["rothOrTraditional"] {
   if (payCents === null) return null;
@@ -129,8 +135,11 @@ export function retirementPlan(input: RetirementInput): RetirementPlan {
       })()
     : null;
 
-  const catchUpCents = catchUpFor(input.age);
-  const roomCents = Math.max(0, EMPLOYEE_DEFERRAL_LIMIT_CENTS + catchUpCents - input.employeeCents);
+  const catchUpCents = catchUpFor(input.age, input.year);
+  const roomCents = Math.max(
+    0,
+    retirementLimits(input.year).employeeDeferralCents + catchUpCents - input.employeeCents,
+  );
 
   const changes: RetirementPlan["changes"] = [];
   if (match && !match.captured && plan) {
@@ -187,6 +196,9 @@ export function retirementPlan(input: RetirementInput): RetirementPlan {
     targetCents,
     status,
     match,
+    limitYear: input.year,
+    limitCents: retirementLimits(input.year).employeeDeferralCents,
+    limitSource: retirementLimits(input.year).source,
     roomCents,
     catchUpCents,
     rothOrTraditional: rothOrTraditional(plan?.payCents ?? null),

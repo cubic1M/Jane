@@ -10,7 +10,7 @@ import {
 import { CORE_FUNDS, FUND_NAMES } from "@/config/funds";
 import { TARGET_MIXES } from "@/config/investing";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
-import { CAPITAL_GAINS_BRACKETS } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { HoldingView } from "@/insights/investments";
 import { isEmployer } from "@/insights/portfolio-review";
@@ -138,7 +138,10 @@ export async function loadCompanyStock(
   const rates =
     taxable !== null && estimate
       ? {
-          longTerm: marginalRateOf(taxable, CAPITAL_GAINS_BRACKETS[status]),
+          longTerm: marginalRateOf(
+            taxable,
+            federalParams(ownLawYear(estimate.year)).capitalGains.value[status],
+          ),
           shortTerm: estimate.estimate.marginalRate,
           fromEstimate: true,
         }

@@ -8,7 +8,7 @@ import {
   type AccountKind,
 } from "@/config/location";
 import { CORE_FUNDS, FUND_FACTS, FUND_NAMES } from "@/config/funds";
-import { CAPITAL_GAINS_BRACKETS } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { HoldingView } from "@/insights/investments";
 import { adviceMode } from "@/lib/advice-mode";
@@ -73,7 +73,9 @@ export async function loadLocation(
     estimate?.estimate.taxableCents != null
       ? marginalRateOf(
           estimate.estimate.taxableCents,
-          CAPITAL_GAINS_BRACKETS[estimate.estimate.filingStatus ?? "single"],
+          federalParams(ownLawYear(estimate.year)).capitalGains.value[
+            estimate.estimate.filingStatus ?? "single"
+          ],
         )
       : DEFAULT_GAIN_RATE;
   const accounts: PlanAccount[] = investments.accounts.flatMap((a) => {

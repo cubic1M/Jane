@@ -1,16 +1,25 @@
-import { CONTRIBUTION_LIMITS, TAX_RATES_YEAR } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 
-// The HSA as an investment (spec step 159). Limits are the taxes lane's (IRS Rev. Proc.
-// 2025-19 for 2026, in src/config/tax-rates.ts); the rest are Jane's own rules.
+// The HSA as an investment (spec step 159). Limits are the year's own (Tax T32c: the tax-params
+// table; IRS Rev. Proc. 2024-25 for 2025, 2025-19 for 2026, 2026-24 for 2027); the rest are Jane's
+// own rules. A year without figures throws NoTaxParamsError.
+const HSA_REV_PROC: Readonly<Record<number, string>> = {
+  2025: "IRS Rev. Proc. 2024-25",
+  2026: "IRS Rev. Proc. 2025-19",
+  2027: "IRS Rev. Proc. 2026-24",
+};
 
-export const HSA_LIMITS = {
-  year: TAX_RATES_YEAR,
-  selfCents: CONTRIBUTION_LIMITS.hsaSelf,
-  familyCents: CONTRIBUTION_LIMITS.hsaFamily,
-  catchUpCents: CONTRIBUTION_LIMITS.hsaCatchUp55,
-  catchUpAge: 55,
-  source: "IRS Rev. Proc. 2025-19 (2026 HSA limits)",
-} as const;
+export function hsaLimits(year: number) {
+  const l = federalParams(ownLawYear(year)).contributionLimits.value;
+  return {
+    year,
+    selfCents: l.hsaSelf,
+    familyCents: l.hsaFamily,
+    catchUpCents: l.hsaCatchUp55,
+    catchUpAge: 55,
+    source: `${HSA_REV_PROC[year] ?? "IRS"} (${year} HSA limits)`,
+  };
+}
 
 // Cash kept in the HSA for this year's health costs before the rest is invested: about a
 // typical deductible.

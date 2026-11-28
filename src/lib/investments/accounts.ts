@@ -1,4 +1,4 @@
-import { EMPLOYEE_DEFERRAL_LIMIT_CENTS } from "@/config/retirement";
+import { orNull } from "@/config/tax-params/or-null";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
@@ -14,6 +14,7 @@ import {
   type LocationMove,
 } from "@/planning/account-order";
 import type { ProfileSummary } from "@/planning/investor-profile";
+import { todayOf } from "@/lib/today";
 import { loadInvestments, type Investments } from "./holdings";
 import { loadRetirement } from "./retirement";
 
@@ -50,6 +51,8 @@ export async function loadAccountPlan(
     scopedFor(userId, client).accounts.count({ where: { subtype: "hsa" } }),
   ]);
   const marginalRate = estimate?.estimate.marginalRate ?? null;
+  // The limits are the calendar year's of the person's own day.
+  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   const profile = retirement.profile;
   const plan = retirement.retirement;
   return {
@@ -57,19 +60,21 @@ export async function loadAccountPlan(
     profile,
     marginalRate,
     rothOrTraditional: rothOrTraditionalByRate(marginalRate),
+    // A year without IRS limits has no order to show (held back, never the last year's limits).
     order: profile.complete
-      ? accountOrder({
-          age: profile.age,
-          horizon: profile.horizon,
-          goals: profile.goals,
-          marginalRate,
-          match: plan?.match ?? null,
-          employeeCents: plan
-            ? EMPLOYEE_DEFERRAL_LIMIT_CENTS + plan.catchUpCents - plan.roomCents
-            : 0,
-          catchUpCents: plan?.catchUpCents ?? 0,
-          hasHsa: hsa > 0,
-        })
+      ? orNull(() =>
+          accountOrder({
+            age: profile.age,
+            year,
+            horizon: profile.horizon,
+            goals: profile.goals,
+            marginalRate,
+            match: plan?.match ?? null,
+            employeeCents: plan ? plan.limitCents + plan.catchUpCents - plan.roomCents : 0,
+            catchUpCents: plan?.catchUpCents ?? 0,
+            hasHsa: hsa > 0,
+          }),
+        )
       : null,
     location: assetLocation(investments.accounts, marginalRate),
     gains: unrealisedGains(investments.accounts),

@@ -2,8 +2,8 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
-import { LIMITS_SOURCE, LIMITS_YEAR } from "@/config/retirement";
 import { ROTH_IRA_PHASEOUT_SOURCE, ROTH_RULE_SOURCE } from "@/config/retirement-accounts";
+import { orNoParams } from "@/app/taxes/no-params";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -40,7 +40,9 @@ async function Content({
   const user = await requireUser();
   await connection();
   const { done } = await searchParams;
-  const v = await loadRetirementAccounts(user.id);
+  const loaded = await orNoParams(user, () => loadRetirementAccounts(user.id), false);
+  if (loaded.page) return loaded.page;
+  const v = loaded.value;
   const access = v.roth.access;
 
   return (
@@ -50,8 +52,7 @@ async function Content({
         <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Retirement accounts, used fully</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Every limit and every dollar of match, across your accounts. {LIMITS_YEAR} limits:{" "}
-          {LIMITS_SOURCE}.
+          Every limit and every dollar of match, across your accounts. Limits: {v.limitsSource}.
         </p>
       </div>
       {typeof done === "string" && Object.hasOwn(DONE, done) && (

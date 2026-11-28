@@ -4,13 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { Assumptions } from "@/components/assumptions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
-  LIMITS_SOURCE,
-  LIMITS_YEAR,
   RETIREMENT_AGE_SOURCE,
   TARGET_SOURCE,
   WITHDRAWAL_RATE,
   WITHDRAWAL_SOURCE,
-  EMPLOYEE_DEFERRAL_LIMIT_CENTS,
   RETIREMENT_AGE,
   TARGET_TIMES_PAY,
 } from "@/config/retirement";
@@ -138,8 +135,8 @@ async function RetirementContent() {
             )}
             {retirement.years > 0 && (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Room left this year: {formatCents(retirement.roomCents)} (the {LIMITS_YEAR} limit is{" "}
-                {formatCents(EMPLOYEE_DEFERRAL_LIMIT_CENTS)}
+                Room left this year: {formatCents(retirement.roomCents)} (the {retirement.limitYear}{" "}
+                limit is {formatCents(retirement.limitCents)}
                 {retirement.catchUpCents > 0
                   ? `, plus ${formatCents(retirement.catchUpCents)} catch-up at your age`
                   : ""}
@@ -164,8 +161,8 @@ async function RetirementContent() {
               },
               {
                 label: "Limits",
-                value: formatCents(EMPLOYEE_DEFERRAL_LIMIT_CENTS),
-                source: LIMITS_SOURCE,
+                value: formatCents(retirement.limitCents),
+                source: retirement.limitSource,
               },
               {
                 label: "Contributions",

@@ -3,7 +3,7 @@ import { FILING_STATUSES, INCOME_KINDS, whatJaneDoes, type FilingStatus } from "
 import { stateName, type FieldStatus, type TaxProfileView } from "@/planning/tax-profile";
 import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { STANDARD_DEDUCTION } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { WithholdingView } from "@/lib/tax-withholding";
@@ -511,6 +511,8 @@ export function fileReply(f: {
 export function standardDeductionReply(view: TaxEstimateView): Reply {
   const d = view.estimate.deduction;
   const status = FILING_STATUSES[view.estimate.filingStatus].toLowerCase();
+  // The year's own amounts (Tax T32c), never another year's.
+  const STANDARD_DEDUCTION = federalParams(ownLawYear(view.year)).standardDeduction.value;
   const yours =
     d.kind === "itemized"
       ? ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, but I estimate itemizing gives you more (about ${formatWholeDollars(d.itemizedCents)}).`

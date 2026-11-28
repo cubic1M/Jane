@@ -18,6 +18,7 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { childRothRoom, giftOk, percentFunded } from "@/planning/family";
 import { systemDb, systemTransaction } from "@/lib/system-db";
 import { onlyCounted } from "@/lib/account-copies";
+import { todayOf } from "@/lib/today";
 
 const WHY = "A link's token is the key: nobody is signed in";
 
@@ -54,7 +55,9 @@ export async function loadFamily(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<FamilyView> {
   const db = scopedFor(userId, client);
-  const year = now.getUTCFullYear();
+  // The person's own day and year (src/lib/today.ts), not UTC's: at 9pm in Los Angeles on
+  // December 31 it is already January 1 in UTC, and the child's Roth room would read next year's limit.
+  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   const countedWhere = await onlyCounted(db);
   const [advice, kids, plans, goals, links, accounts, demo] = await Promise.all([
     adviceMode(userId, { client }),
@@ -124,7 +127,7 @@ export async function loadFamily(
                 accountId: rothAccount.id,
                 name: rothAccount.name,
                 usedCents: rothUsed,
-                roomCents: childRothRoom(k.earnedCents, rothUsed),
+                roomCents: childRothRoom(k.earnedCents, rothUsed, year),
               }
             : null,
         college:

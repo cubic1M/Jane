@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MIN_TAX_DRAG_CENTS, QUALIFIED_DIVIDEND_RATE } from "@/config/investing";
-import { IRA_CATCH_UP_CENTS, IRA_LIMIT_CENTS } from "@/config/retirement";
-import { CONTRIBUTION_LIMITS } from "@/config/tax-rates";
+import { hsaLimits } from "@/config/hsa";
+import { retirementLimits } from "@/config/retirement";
 import { demoInvestments } from "@/lib/investments/__fixtures__/demo";
 import {
   accountOrder,
@@ -17,6 +17,7 @@ import {
 
 const BASE: OrderInput = {
   age: 45,
+  year: 2026,
   horizon: "over_20",
   goals: ["retirement"],
   marginalRate: 0.22,
@@ -34,8 +35,8 @@ describe("accountOrder", () => {
     expect(match.why).toBe(
       "You put in 4%; the rest of the match is about $816 a year of free money.",
     );
-    expect(hsa.roomCents).toBe(CONTRIBUTION_LIMITS.hsaSelf);
-    expect(ira.roomCents).toBe(IRA_LIMIT_CENTS);
+    expect(hsa.roomCents).toBe(hsaLimits(2026).selfCents);
+    expect(ira.roomCents).toBe(retirementLimits(2026).iraCents);
     expect(workplace.roomCents).toBe(2_450_000 - 326_400);
     for (const s of accountOrder(BASE)) expect(s.why.length).toBeGreaterThan(20);
   });
@@ -58,10 +59,10 @@ describe("accountOrder", () => {
   it("changes with age and the tax bracket", () => {
     const older = accountOrder({ ...BASE, age: 58, catchUpCents: 800_000 });
     expect(older.find((s) => s.key === "ira")?.roomCents).toBe(
-      IRA_LIMIT_CENTS + IRA_CATCH_UP_CENTS,
+      retirementLimits(2026).iraCents + retirementLimits(2026).iraCatchUpCents,
     );
     expect(older.find((s) => s.key === "hsa")?.roomCents).toBe(
-      CONTRIBUTION_LIMITS.hsaSelf + CONTRIBUTION_LIMITS.hsaCatchUp55,
+      hsaLimits(2026).selfCents + hsaLimits(2026).catchUpCents,
     );
     expect(accountOrder({ ...BASE, marginalRate: 0.12 })[2].title).toBe("A Roth IRA");
     expect(accountOrder({ ...BASE, marginalRate: 0.35 })[2].title).toBe("A traditional IRA");

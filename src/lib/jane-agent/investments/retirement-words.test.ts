@@ -27,6 +27,7 @@ const reply = (input: Partial<RetirementInput>) =>
       accounts: ["Demo 401(k)"],
       retirement: retirementPlan({
         age: 45,
+        year: 2026,
         balanceCents: 197_333,
         employeeCents: 0,
         employerCents: 0,
@@ -61,6 +62,7 @@ describe("whether to keep going as you are", () => {
     // At the deferral limit already, so no step to put in more; the match is all taken.
     const plan = retirementPlan({
       age: 45,
+      year: 2026,
       balanceCents: 100_000,
       employeeCents: 2_400_000,
       employerCents: 300_000,

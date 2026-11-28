@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LIMITS_SOURCE, LIMITS_YEAR } from "@/config/retirement";
+import { retirementLimits } from "@/config/retirement";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { limitRows, matchGap, rothAccess, rothByBracket } from "./retirement-accounts";
 
 // Spec step 210: every limit tracked, the match in dollars, Roth by bracket, the backdoor.
@@ -7,11 +8,9 @@ import { limitRows, matchGap, rothAccess, rothByBracket } from "./retirement-acc
 describe("limitRows", () => {
   it("tracks the workplace and IRA limits with catch-up from 50 and 60 to 63", () => {
     const at = (age: number) =>
-      limitRows({ age, workplaceUsedCents: 1_632_000, iraUsedCents: 200_000 }).map((l) => [
-        l.limitCents,
-        l.catchUpCents,
-        l.roomCents,
-      ]);
+      limitRows({ age, year: 2026, workplaceUsedCents: 1_632_000, iraUsedCents: 200_000 }).map(
+        (l) => [l.limitCents, l.catchUpCents, l.roomCents],
+      );
     expect(at(45)).toEqual([
       [2_450_000, 0, 818_000],
       [750_000, 0, 550_000],
@@ -25,10 +24,23 @@ describe("limitRows", () => {
   });
   it("never shows negative room, and the limits carry their year and source", () => {
     expect(
-      limitRows({ age: 30, workplaceUsedCents: 9_000_000, iraUsedCents: 0 })[0].roomCents,
+      limitRows({ age: 30, year: 2026, workplaceUsedCents: 9_000_000, iraUsedCents: 0 })[0]
+        .roomCents,
     ).toBe(0);
-    expect(LIMITS_YEAR).toBe(2026);
-    expect(LIMITS_SOURCE).toMatch(/IRS Notice/);
+    expect(retirementLimits(2026).year).toBe(2026);
+    expect(retirementLimits(2026).source).toMatch(/IRS Notice 2025-67/);
+  });
+  // Notice 2026-66 for 2027: 25,500 dollars, catch-up 8,500 and 11,750 at 60 to 63, IRA 7,500 and
+  // 1,100. Each year reads its own; a year without figures has none.
+  it("reads the year's own limits", () => {
+    const at = (age: number, year: number) =>
+      limitRows({ age, year, workplaceUsedCents: 0, iraUsedCents: 0 }).map((l) => l.limitCents);
+    expect(at(45, 2027)).toEqual([2_550_000, 750_000]);
+    expect(at(52, 2027)).toEqual([2_550_000 + 850_000, 750_000 + 110_000]);
+    expect(at(61, 2027)[0]).toBe(2_550_000 + 1_175_000);
+    expect(at(45, 2025)).toEqual([2_350_000, 700_000]);
+    expect(retirementLimits(2027).source).toMatch(/Notice 2026-66/);
+    expect(() => at(45, 2028)).toThrow(NoTaxParamsError);
   });
 });
 

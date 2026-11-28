@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
-import { HSA_LIMITS } from "@/config/hsa";
 import { loadHsa } from "@/lib/investments/hsa";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -66,9 +65,10 @@ async function HsaContent({
                 year&apos;s health costs.
               </p>
               <p className="text-sm">
-                The {HSA_LIMITS.year} limit for {hsa.coverage === "family" ? "family" : "self-only"}{" "}
-                cover is {formatCents(hsa.plan.limitCents)}; there&apos;s{" "}
-                {formatCents(hsa.plan.roomCents)} of room left
+                The {hsa.plan.limitYear} limit for{" "}
+                {hsa.coverage === "family" ? "family" : "self-only"} cover is{" "}
+                {formatCents(hsa.plan.limitCents)}; there&apos;s {formatCents(hsa.plan.roomCents)}{" "}
+                of room left
                 {hsa.plan.roomCents > 0
                   ? `, about ${formatCents(hsa.plan.perPaycheckCents)} a paycheck`
                   : ""}
@@ -91,7 +91,7 @@ async function HsaContent({
               )}
             </>
           )}
-          <p className="text-xs text-zinc-500">Limits: {HSA_LIMITS.source}.</p>
+          <p className="text-xs text-zinc-500">Limits: {hsa.plan?.limitSource}.</p>
         </section>
       )}
 

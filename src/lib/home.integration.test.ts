@@ -202,6 +202,40 @@ describe.runIf(url)("home summary against a real database", () => {
     );
   });
 
+  it("hands a year with no IRS figures to Safe to spend as that year, and no year when there are figures (T32c)", async () => {
+    // The checking balance and the budget above are in place. A day in 2026 has figures.
+    const priced = await homeSummary(userId, { client, now: NOW });
+    expect(priced?.safeToSpend).not.toBeNull();
+    expect(priced?.safeToSpend?.taxNoParamsYear).toBeUndefined();
+    // A day in 2028 has none. A person with pay that year has a tax to count, so the tax is not
+    // counted and the line names that year (W-N). (With no income there is nothing to price.)
+    const account = await client.account.findFirstOrThrow({ where: { userId } });
+    await client.transaction.createMany({
+      data: ["2028-07-15", "2028-07-31", "2028-08-15"].map((day) => ({
+        userId,
+        accountId: account.id,
+        source: "csv" as const,
+        dedupeKey: `t32c-pay-${day}`,
+        date: new Date(`${day}T00:00:00Z`),
+        amountCents: -400_000,
+        description: "ACME PAYROLL",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_WAGES",
+        categorySource: "rule" as const,
+      })),
+    });
+    try {
+      const later = new Date("2028-09-10T20:00:00Z");
+      const unpriced = await homeSummary(userId, { client, now: later });
+      expect(unpriced?.safeToSpend?.taxNoParamsYear).toBe(2028);
+      expect(unpriced?.safeToSpend?.taxStatus).toBe("unknown");
+    } finally {
+      await client.transaction.deleteMany({
+        where: { userId, dedupeKey: { startsWith: "t32c-pay-" } },
+      });
+    }
+  });
+
   it("counts goals only up to what the year plan has room to save this month (books QA)", async () => {
     // A kept plan for October with $60.00 of room after dated payments and extra debt.
     const targets = {

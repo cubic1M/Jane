@@ -1,11 +1,7 @@
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { FAMILY_MIN_SAVING_CENTS, FAMILY_RULES } from "@/config/family-taxes";
 import { STATE_529 } from "@/config/college";
-import {
-  CONTRIBUTION_LIMITS,
-  DEPENDENT_CARE_CREDIT,
-  EDUCATION_CREDITS,
-  PAYROLL_TAX,
-} from "@/config/tax-rates";
+import { DEPENDENT_CARE_CREDIT, EDUCATION_CREDITS, PAYROLL_TAX } from "@/config/tax-rates";
 import type { FilingStatus } from "@/config/tax";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare, phaseOut } from "@/planning/tax-savings";
@@ -202,10 +198,12 @@ export function careChoice(input: {
     (c) => !c.ageUnknown && c.ageAtYearEnd < FAMILY_RULES.careUnderAge,
   ).length;
   const costLimit = DEPENDENT_CARE_CREDIT.costLimit[kids > 1 ? 1 : 0];
+  // The estimate's own year's limit (Tax T32c); a year without IRS figures throws here.
+  const limits = federalParams(ownLawYear(base.year)).contributionLimits.value;
   const fsaLimit =
     base.filingStatus === "married_separate"
-      ? CONTRIBUTION_LIMITS.dependentCareFsaMarriedSeparate
-      : CONTRIBUTION_LIMITS.dependentCareFsa;
+      ? limits.dependentCareFsaMarriedSeparate
+      : limits.dependentCareFsa;
   const jointly = base.filingStatus === "married_joint";
   const payrollRate = PAYROLL_TAX.socialSecurityRate + PAYROLL_TAX.medicareRate;
 

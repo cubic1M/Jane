@@ -6,14 +6,14 @@ import { childRothRoom, giftOk, percentFunded } from "./family";
 
 describe("childRothRoom", () => {
   it("is the lower of what they earned and the IRA limit, less what's gone in", () => {
-    expect(childRothRoom(300_000, 0)).toBe(300_000);
-    expect(childRothRoom(300_000, 100_000)).toBe(200_000);
-    expect(childRothRoom(2_000_000, 0)).toBe(750_000);
-    expect(childRothRoom(2_000_000, 750_000)).toBe(0);
+    expect(childRothRoom(300_000, 0, 2026)).toBe(300_000);
+    expect(childRothRoom(300_000, 100_000, 2026)).toBe(200_000);
+    expect(childRothRoom(2_000_000, 0, 2026)).toBe(750_000);
+    expect(childRothRoom(2_000_000, 750_000, 2026)).toBe(0);
   });
   it("is nothing without earned income, however much is put in elsewhere", () => {
-    expect(childRothRoom(0, 0)).toBe(0);
-    expect(childRothRoom(100_000, 300_000)).toBe(0);
+    expect(childRothRoom(0, 0, 2026)).toBe(0);
+    expect(childRothRoom(100_000, 300_000, 2026)).toBe(0);
   });
 });
 

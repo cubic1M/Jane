@@ -10,7 +10,7 @@ import {
   SUDDEN_MIN_CENTS,
   type SuddenKind,
 } from "@/config/sudden-money";
-import { CAPITAL_GAINS_BRACKETS } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -136,7 +136,9 @@ export async function loadSuddenMoney(
     estimate?.estimate.taxableCents != null
       ? marginalRateOf(
           estimate.estimate.taxableCents,
-          CAPITAL_GAINS_BRACKETS[estimate.estimate.filingStatus ?? "single"],
+          federalParams(ownLawYear(estimate.year)).capitalGains.value[
+            estimate.estimate.filingStatus ?? "single"
+          ],
         )
       : 0.15;
   const savings = cash.places

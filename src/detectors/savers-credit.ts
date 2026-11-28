@@ -2,12 +2,18 @@ import { DETECTOR_RATES } from "@/config/detectors";
 import { filingNoteOf, filingStatusOf } from "@/planning/student-tax";
 import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
 import { federalParams } from "@/config/tax-params";
-import { SAVERS_CREDIT, SAVERS_MATCH } from "@/config/tax-rates";
+import { SAVERS_MATCH } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestion } from "./contract";
 import { factEvidence, headlineOf, incomeYearOf, weakest, yearIncomeOf } from "./helpers";
 import { dayLabel } from "@/lib/day-label";
+
+// The credit's own tax year: the card is for the Saver's Credit's last year (2026), whatever day it
+// is read on, so December 31 2026 and January 2 2027 both show the 2026 figures (Tax T32c). They come
+// from that year's parameters, not a shim that follows "the current year".
+const CREDIT_YEAR = 2026;
+const SAVERS_CREDIT = federalParams(CREDIT_YEAR).savers.value;
 
 // The Saver's Credit in its last year (connectors roadmap round 17, savers_credit_2026): someone
 // whose income looks to be under the limit may get at least 10% back on up to $2,000 each of IRA or

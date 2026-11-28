@@ -1,15 +1,13 @@
 import { FSA_SUGGEST_FROM_CENTS, OPEN_ENROLLMENT_BY, TAX_SAVINGS_MIN_CENTS } from "@/config/tax";
 import {
-  CONTRIBUTION_LIMITS,
   DEPENDENT_CARE_CREDIT,
   EDUCATION_CREDITS,
   ENERGY_CREDITS_2025,
   ITEMIZED,
   PAYROLL_TAX,
-  SELF_EMPLOYMENT_TAX,
 } from "@/config/tax-rates";
+import { federalParams, ownLawYear } from "@/config/tax-params";
 import { formatWholeDollars } from "@/lib/money";
-import { federalParams } from "@/config/tax-params";
 import {
   estimateTaxes,
   nonItemizerGift,
@@ -116,13 +114,16 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   const before = total(s.residentOnlyAllowed === true ? s.estimate : estimateTaxes(base));
   const saved = (change: (i: EstimateInput) => EstimateInput) =>
     before - total(estimateTaxes(change(base)));
+  // The year's own limits and wage base (Tax T32c); a year without IRS figures throws here.
+  const law = federalParams(ownLawYear(s.year));
+  const limits = law.contributionLimits.value;
   // Payroll tax saved on pre-tax payroll deductions, under the Social Security wage base.
   // Only on wages that exist: a $3,000 FSA on $2,000 of pay saves payroll tax on $2,000.
   const payroll = (cents: number) =>
     Math.round(
       Math.min(cents, Math.max(0, base.income.wagesCents)) *
         (PAYROLL_TAX.medicareRate +
-          (base.income.socialSecurityWagesCents < SELF_EMPLOYMENT_TAX.wageBase
+          (base.income.socialSecurityWagesCents < law.selfEmployment.value.wageBase
             ? PAYROLL_TAX.socialSecurityRate
             : 0)),
     );
@@ -135,7 +136,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
 
   // Workplace retirement plan: room under the limit.
   if (s.pay.hasPlan) {
-    const room = Math.max(0, CONTRIBUTION_LIMITS.workplace - s.pay.projectedRetirementCents);
+    const room = Math.max(0, limits.workplace - s.pay.projectedRetirementCents);
     if (room > 0) {
       const thisYear = s.pay.paychecksLeft > 0;
       const extra = thisYear
@@ -147,7 +148,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
         title: thisYear
           ? `Put about ${formatWholeDollars(perPaycheck)} more a paycheck into your 401(k)`
           : "Raise your 401(k) contribution from January",
-        why: `You're on course to put ${formatWholeDollars(s.pay.projectedRetirementCents)} into your workplace plan this year, and the ${s.year} limit is ${formatWholeDollars(CONTRIBUTION_LIMITS.workplace)} (more from age 50). Pre-tax contributions come off your taxable pay${thisYear ? `: ${formatWholeDollars(extra)} more over your last ${s.pay.paychecksLeft} paychecks` : ""}.`,
+        why: `You're on course to put ${formatWholeDollars(s.pay.projectedRetirementCents)} into your workplace plan this year, and the ${s.year} limit is ${formatWholeDollars(limits.workplace)} (more from age 50). Pre-tax contributions come off your taxable pay${thisYear ? `: ${formatWholeDollars(extra)} more over your last ${s.pay.paychecksLeft} paychecks` : ""}.`,
         estimateCents: saved(lessWages(extra)),
         action: {
           kind: "task",
@@ -166,7 +167,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     // self-employment loss is not taken off the wages (IRS Publication 590-A).
     const earned =
       Math.max(0, base.income.wagesCents) + Math.max(0, base.income.selfEmploymentCents);
-    const room = Math.min(CONTRIBUTION_LIMITS.ira, earned);
+    const room = Math.min(limits.ira, earned);
     if (room > 0) {
       out.push({
         key: "ira",
@@ -187,10 +188,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   }
 
   if (s.hasHsa) {
-    const limit =
-      jointly || base.childrenUnder17 > 0
-        ? CONTRIBUTION_LIMITS.hsaFamily
-        : CONTRIBUTION_LIMITS.hsaSelf;
+    const limit = jointly || base.childrenUnder17 > 0 ? limits.hsaFamily : limits.hsaSelf;
     out.push({
       key: "hsa",
       title: "Use your HSA's room",
@@ -219,11 +217,11 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   // retired, was told to sign up at open enrollment).
   // Nor for someone who has one: Insurance tracks what's left in it (debugger 11-13).
   if (s.medicalCents >= FSA_SUGGEST_FROM_CENTS && base.income.wagesCents > 0 && !s.hasFsa) {
-    const amount = Math.min(s.medicalCents, CONTRIBUTION_LIMITS.healthFsa);
+    const amount = Math.min(s.medicalCents, limits.healthFsa);
     out.push({
       key: "health_fsa",
       title: `Pay about ${formatWholeDollars(amount)} of medical costs from a health FSA`,
-      why: `You spend about ${formatWholeDollars(s.medicalCents)} a year on medical costs. Paid from a health FSA (up to ${formatWholeDollars(CONTRIBUTION_LIMITS.healthFsa)}), that money skips income and payroll tax. Most employers let you sign up at open enrollment.`,
+      why: `You spend about ${formatWholeDollars(s.medicalCents)} a year on medical costs. Paid from a health FSA (up to ${formatWholeDollars(limits.healthFsa)}), that money skips income and payroll tax. Most employers let you sign up at open enrollment.`,
       estimateCents: saved(lessWages(amount)) + payroll(amount),
       action: {
         kind: "task",
@@ -242,8 +240,8 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
   ) {
     const limit =
       base.filingStatus === "married_separate"
-        ? CONTRIBUTION_LIMITS.dependentCareFsaMarriedSeparate
-        : CONTRIBUTION_LIMITS.dependentCareFsa;
+        ? limits.dependentCareFsaMarriedSeparate
+        : limits.dependentCareFsa;
     const amount = Math.min(s.childcareCents, limit);
     const fsa = saved(lessWages(amount)) + payroll(amount);
     const costs = Math.min(

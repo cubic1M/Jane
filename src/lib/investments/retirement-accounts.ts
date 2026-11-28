@@ -1,6 +1,6 @@
 import { foldCopiesInto, loadCounting, onlyCounted } from "@/lib/account-copies";
 import { randomUUID } from "node:crypto";
-import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
+import { EMPLOYER_CONTRIBUTION, retirementLimits } from "@/config/retirement";
 import {
   CONTRIBUTION_TX_SUBTYPES,
   DEMO_IRA_FUND,
@@ -49,6 +49,8 @@ export type RetirementAccountsView = {
   advice: boolean;
   age: number | null;
   limits: LimitRow[];
+  // Where the year's limits were read ("IRS Notice 2026-66 (2027 limits)").
+  limitsSource: string;
   match: (ReturnType<typeof matchGap> & { matchRate: number }) | null;
   roth: {
     choice: ReturnType<typeof rothByBracket>;
@@ -126,8 +128,10 @@ export async function loadRetirementAccounts(
           (employer === null || EMPLOYER_CONTRIBUTION.test(t.name) === employer),
       )
       .reduce((s, t) => s - t.amountCents, 0);
+  const year = Number(today.slice(0, 4));
   const limits = limitRows({
     age: age ?? 40,
+    year,
     workplaceUsedCents: Math.max(0, paidIn(workplace, false)),
     iraUsedCents: Math.max(0, paidIn(iras, null)),
   });
@@ -161,6 +165,7 @@ export async function loadRetirementAccounts(
     advice,
     age,
     limits,
+    limitsSource: retirementLimits(year).source,
     match,
     roth: {
       choice: rothByBracket(marginalRate),

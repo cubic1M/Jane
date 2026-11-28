@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INFLATION, RETURN_HIGH, RETURN_LOW } from "@/config/market-assumptions";
-import {
-  CATCH_UP_CENTS,
-  EMPLOYEE_DEFERRAL_LIMIT_CENTS,
-  RETIREMENT_AGE,
-  SUPER_CATCH_UP_CENTS,
-  TARGET_TIMES_PAY,
-} from "@/config/retirement";
+import { RETIREMENT_AGE, retirementLimits, TARGET_TIMES_PAY } from "@/config/retirement";
+import { NoTaxParamsError } from "@/config/tax-params";
 import { checkGuardrails } from "@/lib/guardrails";
 import {
   catchUpFor,
@@ -19,8 +14,13 @@ import {
 
 // Spec step 132: on track for retirement? Assumptions in config; a range, never a promise.
 
+const CATCH_UP_CENTS = retirementLimits(2026).catchUpCents;
+const SUPER_CATCH_UP_CENTS = retirementLimits(2026).superCatchUpCents;
+const EMPLOYEE_DEFERRAL_LIMIT_CENTS = retirementLimits(2026).employeeDeferralCents;
+
 const DEMO: RetirementInput = {
   age: 45,
+  year: 2026,
   balanceCents: 8_425_040,
   employeeCents: 326_400,
   employerCents: 163_200,
@@ -43,7 +43,7 @@ describe("the math", () => {
   });
 
   it("knows the catch-up at each age", () => {
-    expect([49, 50, 59, 60, 63, 64].map(catchUpFor)).toEqual([
+    expect([49, 50, 59, 60, 63, 64].map((age) => catchUpFor(age, 2026))).toEqual([
       0,
       CATCH_UP_CENTS,
       CATCH_UP_CENTS,
@@ -51,6 +51,19 @@ describe("the math", () => {
       SUPER_CATCH_UP_CENTS,
       CATCH_UP_CENTS,
     ]);
+  });
+
+  // Notice 2026-66: 2027's catch-up is 8,500 dollars, 11,750 at 60 to 63, and the limit 25,500. The room
+  // a card shows in 2027 uses them, and a year without figures has no room to show.
+  it("reads the year's own limit and catch-up", () => {
+    expect([50, 61].map((age) => catchUpFor(age, 2027))).toEqual([850_000, 1_175_000]);
+    expect(retirementPlan({ ...DEMO, year: 2027, employeeCents: 0 }).roomCents).toBe(2_550_000);
+    expect(retirementPlan({ ...DEMO, year: 2027, age: 52, employeeCents: 0 })).toMatchObject({
+      limitYear: 2027,
+      limitCents: 2_550_000,
+      roomCents: 3_400_000,
+    });
+    expect(() => retirementPlan({ ...DEMO, year: 2028 })).toThrow(NoTaxParamsError);
   });
 
   it("picks Roth at lower pay, traditional at higher, a mix between", () => {
