@@ -1,4 +1,5 @@
 import { BOOKS_KIND_LABELS, BOOKS_LOOKBACK_DAYS, BOOKS_WORRYING_KINDS } from "@/config/books";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -186,6 +187,7 @@ export async function runBooksCheck(
       },
     }),
     db.plaidItems.findMany({
+      where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
       select: {
         id: true,
         institutionName: true,

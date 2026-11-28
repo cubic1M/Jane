@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import {
   PENDING_DISCONNECT_DAYS,
   SIGN_IN_PLAID_CODES,
@@ -70,9 +71,11 @@ export async function planWebhook(
   // Finds the item's owner; every write after this is scoped to them.
   const item = await systemDb(WHY, client).plaidItem.findUnique({
     where: { plaidItemId: body.item_id },
-    select: { id: true, userId: true, createdAt: true },
+    select: { id: true, userId: true, createdAt: true, status: true },
   });
   if (!item) return null;
+  // A link that a fuller one replaced (src/lib/plaid/replace.ts) is never synced again.
+  if ((HIDDEN_ITEM_STATUSES as readonly string[]).includes(item.status)) return null;
   const scoped = scopedFor(item.userId, client);
   const update = (data: Record<string, unknown>) =>
     scoped.plaidItems.updateMany({ where: { id: item.id }, data });
@@ -108,7 +111,10 @@ export async function planWebhook(
     (code === "ERROR" && errorCode && SIGN_IN_PLAID_CODES.includes(errorCode))
   ) {
     const { count } = await scoped.plaidItems.updateMany({
-      where: { id: item.id, status: { not: ITEM_STATUS.loginRequired } },
+      where: {
+        id: item.id,
+        status: { notIn: [ITEM_STATUS.loginRequired, ...HIDDEN_ITEM_STATUSES] },
+      },
       data: { status: ITEM_STATUS.loginRequired },
     });
     if (count > 0) {
@@ -128,8 +134,12 @@ export async function planWebhook(
     return { itemId: item.id, sync: false };
   }
   if (code === "LOGIN_REPAIRED") {
-    await update({ status: ITEM_STATUS.active, lastErrorCode: null, lastErrorAt: null });
-    return { itemId: item.id, sync: true };
+    // Not a link that was replaced meanwhile (src/lib/plaid/replace.ts).
+    const { count } = await scoped.plaidItems.updateMany({
+      where: { id: item.id, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
+      data: { status: ITEM_STATUS.active, lastErrorCode: null, lastErrorAt: null },
+    });
+    return { itemId: item.id, sync: count > 0 };
   }
   // The bank has accounts the person hasn't shared: they're asked (Link's update mode with
   // account selection) and nothing else changes.

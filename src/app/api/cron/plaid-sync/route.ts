@@ -15,6 +15,7 @@ import { freshSwitches } from "@/lib/ops-switches";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { itemsStillCatchingUp } from "@/lib/plaid/history";
+import { removeLeftoverReplaced } from "@/lib/plaid/replace";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { ROBINHOOD_LIMITS } from "@/config/robinhood";
 import { refreshAllRobinhood } from "@/lib/robinhood/refresh";
@@ -169,6 +170,19 @@ async function syncBanks(startedAt: number) {
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
   // Banks whose history Plaid has not called complete are read every night, whatever their last
   // sync, for HISTORY_CATCH_UP_MAX_DAYS after linking (a missed webhook, a cursor that sits short).
+  // A link a fuller one replaced (src/lib/plaid/replace.ts) that Plaid would not remove at once.
+  // With its own deadline, in flight too: a removal that hangs must not eat the time of the banks.
+  let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    removeLeftoverReplaced(),
+    new Promise<void>((resolve) => {
+      cleanupTimer = setTimeout(resolve, 40_000);
+    }),
+  ])
+    .catch((error: unknown) =>
+      log.error("Removing replaced bank links failed", { error: String(error) }),
+    )
+    .finally(() => clearTimeout(cleanupTimer));
   const catchingUp = await itemsStillCatchingUp({}, STAYING).catch((error: unknown) => {
     log.error("Finding banks still catching up on history failed", { error: String(error) });
     return [] as string[];

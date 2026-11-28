@@ -94,4 +94,21 @@ describe("what a bank needs from the person", () => {
     );
     expect(bankNotices([bank({ lastErrorCode: "RATE_LIMIT" })], NOW)[0].title).toMatch(/slow down/);
   });
+
+  it("offers the full history as its own notice, never for a bank that needs a sign-in", () => {
+    const [offer] = bankNotices([bank()], NOW, "UTC", new Set(["i1"]));
+    expect(offer).toMatchObject({
+      kind: "full_history",
+      title: "Get my full history from First Platypus Bank",
+      action: "Get my full history",
+      fullHistory: true,
+    });
+    expect(offer.words).toContain("nothing is counted twice");
+    expect(bankNotices([bank()], NOW)).toEqual([]);
+    expect(
+      bankNotices([bank({ status: "login_required" })], NOW, "UTC", new Set(["i1"])).map(
+        (n) => n.kind,
+      ),
+    ).toEqual(["sign_in"]);
+  });
 });

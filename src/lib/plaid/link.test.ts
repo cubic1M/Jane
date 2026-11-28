@@ -190,7 +190,7 @@ describe("Plaid Link", () => {
   it("stops asking once update mode is done, and says so in the audit log", async () => {
     await markItemRepaired("user_1", "item_row_1");
     expect(scoped.plaidItems.updateMany).toHaveBeenCalledWith({
-      where: { id: "item_row_1" },
+      where: { id: "item_row_1", status: { notIn: ["replaced", "replacing"] } },
       data: {
         status: "active",
         newAccountsAvailable: false,

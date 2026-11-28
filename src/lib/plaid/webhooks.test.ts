@@ -80,7 +80,7 @@ describe("planWebhook", () => {
 
     expect(scopedFor).toHaveBeenCalledWith("user_1", client);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: "item_1", status: { not: "login_required" } },
+      where: { id: "item_1", status: { notIn: ["login_required", "replaced", "replacing"] } },
       data: { status: "login_required" },
     });
     // The founders' daily email counts it, with the code and no one's id in the row.
@@ -135,7 +135,7 @@ describe("planWebhook", () => {
       sync: true,
     });
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: "item_1" },
+      where: { id: "item_1", status: { notIn: ["replaced", "replacing"] } },
       data: { status: "active", lastErrorCode: null, lastErrorAt: null },
     });
   });

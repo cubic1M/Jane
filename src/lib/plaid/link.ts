@@ -1,4 +1,5 @@
 import { CountryCode, Products, type PlaidApi } from "plaid";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { TRANSACTION_DAYS_REQUESTED } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -64,7 +65,7 @@ export async function createLinkToken(
   }
   if (itemId) {
     const item = await scopedFor(userId, client).plaidItems.findFirst({
-      where: { id: itemId },
+      where: { id: itemId, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
       select: { accessTokenEncrypted: true, newAccountsAvailable: true },
     });
     if (!item) throw new ItemNotFoundError();
@@ -115,7 +116,7 @@ export async function markItemRepaired(
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<void> {
   const { count } = await scopedFor(userId, client).plaidItems.updateMany({
-    where: { id: itemId },
+    where: { id: itemId, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
     data: {
       status: "active",
       newAccountsAvailable: false,
@@ -184,7 +185,7 @@ async function accountsAllLinked(
 ): Promise<boolean> {
   const sameBank = { equals: institutionName, mode: "insensitive" as const };
   const before = await db.plaidItems.findFirst({
-    where: { institutionName: sameBank },
+    where: { institutionName: sameBank, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
     select: { id: true },
   });
   if (!before) return false;

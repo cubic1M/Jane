@@ -1,4 +1,5 @@
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { betaPeople, computeBetaMetrics, loadBetaRows } from "@/lib/beta-metrics";
 import { db as defaultClient } from "@/lib/db";
@@ -82,6 +83,9 @@ export async function betaCosts({
         AND created_at >= ${activityFrom} AND created_at < ${now}`,
   ]);
   const real = items.filter((i) => mine(i.userId) && !isDemoItemId(i.plaidItemId));
+  // What the person has: a link made for a replacement, or taken over by one, is billed (so it is in
+  // billedThisMonth) but is not a bank they have.
+  const shown = real.filter((i) => !(HIDDEN_ITEM_STATUSES as readonly string[]).includes(i.status));
   const removedThisMonth = removed.filter((r) => {
     const meta = r.metadata as { demo?: unknown; user_id?: unknown };
     return (
@@ -108,11 +112,11 @@ export async function betaCosts({
   return {
     month: start.toISOString().slice(0, 7),
     plaid: {
-      connected: real.length,
+      connected: shown.length,
       needSignIn: real.filter((i) => i.status === ITEM_STATUS.loginRequired).length,
-      linkedThisMonth: real.filter((i) => i.createdAt >= start).length,
-      withLiabilities: real.filter((i) => i.liabilities).length,
-      withInvestments: real.filter((i) => i.investments).length,
+      linkedThisMonth: shown.filter((i) => i.createdAt >= start).length,
+      withLiabilities: shown.filter((i) => i.liabilities).length,
+      withInvestments: shown.filter((i) => i.investments).length,
       removedThisMonth,
       billedThisMonth: real.length + removedThisMonth,
     },

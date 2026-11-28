@@ -1,4 +1,5 @@
 import { ACTIVITY_EVENTS, INACTIVE_ITEM_DAYS, REMOVAL_WARNING_DAYS } from "@/config/retention";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -110,7 +111,10 @@ export async function runInactiveCleanup({
   // A system job across users: reads who has linked banks and when they were last active.
   const people = await systemDb(WHY, client).user.findMany({
     where: {
-      OR: [{ plaidItems: { some: {} } }, { robinhoodConnection: { isNot: null } }],
+      OR: [
+        { plaidItems: { some: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } } } },
+        { robinhoodConnection: { isNot: null } },
+      ],
       ...peopleIn(userIds),
     },
     select: {

@@ -1,4 +1,5 @@
 import { SCAN_MAX_MINUTES } from "@/config/scan";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -21,7 +22,9 @@ export async function scanInProgress(
   if (!user || user.firstScanDoneAt) return false;
   const since = new Date(now.getTime() - SCAN_MAX_MINUTES * 60_000);
   return (
-    (await scopedFor(userId, client).plaidItems.count({ where: { createdAt: { gt: since } } })) > 0
+    (await scopedFor(userId, client).plaidItems.count({
+      where: { createdAt: { gt: since }, status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
+    })) > 0
   );
 }
 

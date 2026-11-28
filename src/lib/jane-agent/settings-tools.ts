@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import {
@@ -77,6 +78,7 @@ export async function runSettingsTool(
     const day = (d: Date | null) => (d ? localDate(d, timezone) : null);
     const [items, csv] = await Promise.all([
       db.plaidItems.findMany({
+        where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
         select: {
           plaidItemId: true,
           institutionName: true,

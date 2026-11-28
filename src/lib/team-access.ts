@@ -120,6 +120,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   item_linked: own,
   item_relinked: own,
   plaid_history_checked: automatic,
+  plaid_history_replaced: own,
+  plaid_history_refused: own,
   admin_viewed_queue: {
     shown: true,
     whose: "queue",

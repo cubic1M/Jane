@@ -87,6 +87,15 @@ export function normalizeTransaction(t: Transaction): NormalizedTransaction {
   };
 }
 
+// A read that was given a deadline and ran past it (the one-tap replacement of a link, which has a
+// route's time limit to keep).
+export class ReadDeadlineError extends Error {
+  constructor() {
+    super("The read ran past its deadline");
+    this.name = "ReadDeadlineError";
+  }
+}
+
 export class PlaidDataSource implements DataSource {
   readonly kind = "plaid" as const;
 
@@ -97,7 +106,14 @@ export class PlaidDataSource implements DataSource {
     // Waits between retries; the tests pass one that doesn't.
     private readonly sleep: (ms: number) => Promise<void> = (ms) =>
       new Promise((resolve) => setTimeout(resolve, ms)),
+    // A time (ms since the epoch) after which no more is asked of Plaid: checked before every page and
+    // every retry, so a long read stops at once instead of finishing the whole thing.
+    private readonly deadline: number | null = null,
   ) {}
+
+  private checkDeadline() {
+    if (this.deadline !== null && Date.now() > this.deadline) throw new ReadDeadlineError();
+  }
 
   // Reads every page since the cursor. A failed page restarts the whole run from the original
   // cursor, as Plaid requires: at once if Plaid's data changed mid-way, after a growing wait
@@ -106,9 +122,11 @@ export class PlaidDataSource implements DataSource {
     let restarts = 0;
     let retries = 0;
     for (;;) {
+      this.checkDeadline();
       try {
         return await this.readAllPages();
       } catch (error) {
+        if (error instanceof ReadDeadlineError) throw error;
         if (plaidErrorCode(error) === "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION") {
           if (restarts >= SYNC_MAX_RESTARTS) throw error;
           restarts += 1;
@@ -130,6 +148,7 @@ export class PlaidDataSource implements DataSource {
     let updateStatus: string | null = null;
 
     for (;;) {
+      this.checkDeadline();
       const data = await plaidCall(
         this.api.transactionsSync({
           access_token: this.accessToken,
@@ -156,6 +175,8 @@ export class PlaidDataSource implements DataSource {
         data.transactions_update_status === ("INITIAL_UPDATE_COMPLETE" as TransactionsUpdateStatus);
       if (!data.has_more) break;
     }
+    // A page that came back after the deadline is not taken either.
+    this.checkDeadline();
 
     const kept = [...accounts.values()]
       .map(normalizeAccount)

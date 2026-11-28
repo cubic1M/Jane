@@ -5,6 +5,8 @@ const { findMany } = vi.hoisted(() => ({ findMany: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { plaidItem: { findMany } } }));
 const { catchingUp } = vi.hoisted(() => ({ catchingUp: vi.fn() }));
 vi.mock("@/lib/plaid/history", () => ({ itemsStillCatchingUp: catchingUp }));
+const { leftovers } = vi.hoisted(() => ({ leftovers: vi.fn() }));
+vi.mock("@/lib/plaid/replace", () => ({ removeLeftoverReplaced: leftovers }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "active" } }));
 vi.mock("@/lib/robinhood/refresh", () => ({ refreshAllRobinhood: vi.fn(async () => null) }));
 vi.mock("@/lib/plaid/inactive", () => ({
@@ -103,6 +105,7 @@ describe("GET /api/cron/plaid-sync", () => {
     vi.stubEnv("PLAID_SECRET", "secret");
     findMany.mockReset().mockResolvedValue([{ id: "a" }, { id: "b" }]);
     catchingUp.mockReset().mockResolvedValue([]);
+    leftovers.mockReset().mockResolvedValue(0);
     vi.mocked(syncItem).mockReset();
   });
 
@@ -169,6 +172,13 @@ describe("GET /api/cron/plaid-sync", () => {
     await call("Bearer cron-secret");
     const where = findMany.mock.calls[0][0].where;
     expect(where.OR).toContainEqual({ id: { in: ["slow-bank"] } });
+  });
+
+  it("tries again to remove a replaced link, and a failure there does not stop the banks", async () => {
+    leftovers.mockRejectedValue(new Error("plaid down"));
+    await call("Bearer cron-secret");
+    expect(leftovers).toHaveBeenCalledTimes(1);
+    expect(syncItem).toHaveBeenCalledWith("a");
   });
 
   it("still reads the banks when the history check itself fails", async () => {

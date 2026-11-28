@@ -89,6 +89,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/still-here/route.ts": "signed-in",
   "src/app/api/paper/signals/route.ts": "signed-in",
   "src/app/api/plaid/exchange/route.ts": "signed-in",
+  "src/app/api/plaid/full-history/route.ts": "signed-in",
   "src/app/api/plaid/link-token/route.ts": "signed-in",
   "src/app/api/plaid/repaired/route.ts": "signed-in",
   "src/app/api/plaid/webhook/route.ts": "webhook",

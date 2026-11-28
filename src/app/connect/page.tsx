@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HIDDEN_ITEM_STATUSES } from "@/config/plaid";
 import { AppHeader } from "@/components/app-header";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
@@ -30,6 +31,7 @@ async function ConnectContent() {
   const uploadFirst = canImportCsv(user);
   const [items, uploadedAccounts, link, accounts] = await Promise.all([
     db.plaidItems.findMany({
+      where: { status: { notIn: [...HIDDEN_ITEM_STATUSES] } },
       select: {
         id: true,
         institutionName: true,
@@ -61,6 +63,12 @@ async function ConnectContent() {
     now,
     // A disconnect's day is the person's own (rare, so read only then).
     items.some((i) => i.reconnectBy) ? await timezoneOf(user.id) : "UTC",
+    new Set([...histories.values()].filter((h) => h.offer).map((h) => h.itemId)),
+    new Map(
+      [...histories.values()].flatMap((h) =>
+        h.waitingUntil ? [[h.itemId, h.waitingUntil] as const] : [],
+      ),
+    ),
   );
 
   return (
@@ -144,7 +152,7 @@ async function ConnectContent() {
                       <p className="text-zinc-600 dark:text-zinc-400">{n.words}</p>
                       {n.action && (
                         <LinkButton
-                          itemId={item.id}
+                          {...(n.fullHistory ? { fullHistoryFor: item.id } : { itemId: item.id })}
                           label={n.action}
                           className={SECONDARY_BUTTON}
                         />
