@@ -230,5 +230,17 @@ describe.runIf(url)("every figure explained and correctable", { timeout: 120_000
     );
     expect(tool.page).toBe("/figures/net_worth");
     expect(tool.rows.length).toBeGreaterThan(0);
+    // Safe to spend has nothing to correct on Home: the tool names no page for it.
+    const safe = JSON.parse(
+      (
+        await runChatTool(
+          userId,
+          "explain_figure",
+          { figure: "safe_to_spend" },
+          { client, now: NOW },
+        )
+      ).content,
+    );
+    expect(safe.page).toBeUndefined();
   });
 });
