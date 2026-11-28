@@ -877,7 +877,7 @@ async function syncItemWork(
   // A finished read from the start: what Plaid no longer lists goes (src/lib/plaid/reread-finish.ts).
   let reread: RereadResult | null = null;
   if (readFromStart) {
-    reread = await finishRead(item.userId, [...accountIds.values()], sync, client);
+    reread = await finishRead(item.userId, accountIds, sync, client);
     counts.removed += reread.removed;
     if (reread.spent === false) rescanSpent = false;
   }

@@ -50,21 +50,21 @@ export function postedCap(rows: number): number {
 
 const EDITED_PLACEMENT = new Set(["edited", "declined"]);
 
-// `listedIds`: every Plaid transaction id the finished read from the start returned. `accountIds`:
-// this link's accounts that read covered. One transaction as the person.
+// `listedIds`: every Plaid transaction id the finished read from the start returned. `windows`:
+// each account that read listed rows for (Jane's account id) with the earliest day listed for it. One transaction as the person.
 export async function removeWhatPlaidDropped(
   userId: string,
-  accountIds: readonly string[],
+  windows: ReadonlyMap<string, string>,
   listedIds: ReadonlySet<string>,
   client?: PrismaClient,
 ): Promise<RereadOutcome> {
   return personTransaction(
     userId,
     async (tx): Promise<RereadOutcome> => {
-      const held = await tx.transaction.findMany({
+      const all = await tx.transaction.findMany({
         where: {
           userId,
-          accountId: { in: [...accountIds] },
+          accountId: { in: [...windows.keys()] },
           source: "plaid",
           plaidTransactionId: { not: null },
         },
@@ -83,6 +83,13 @@ export async function removeWhatPlaidDropped(
           _count: { select: { taxTags: true } },
         },
       });
+      // Only rows dated on or after the earliest day the read lists for their own account are
+      // candidates: older ones lie outside what an empty-cursor read covers, so they are not "one
+      // Plaid dropped", and they do not count toward the cap either. An account the read lists
+      // nothing for has no window, so none of its rows is touched.
+      const held = all.filter(
+        (r) => r.date.toISOString().slice(0, 10) >= windows.get(r.accountId)!,
+      );
       const gone = held.filter((r) => !listedIds.has(r.plaidTransactionId!));
       const posted = gone.filter((r) => !r.pending);
       const pending = gone.length - posted.length;

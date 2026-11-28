@@ -261,6 +261,44 @@ describe.runIf(url)("a read from the start: what Plaid dropped is removed", () =
     expect(await held(l)).toBe(4);
   });
 
+  it("rows older than the earliest day the read lists are outside it: kept, and not counted toward the cap", async () => {
+    const l = await link("window");
+    await client.opsEvent.deleteMany({ where: { kind: "plaid_reread_held" } });
+    const old = Array.from({ length: 8 }, (_, i) => tx(l, `y${i}`, "2023-06-15", 50 + i));
+    await firstSync(l, old);
+    transactionsSync.mockResolvedValueOnce(page(l, [...recent(l), ...older(l)], "c2"));
+    await syncItem(l.itemId, { client, api, now: LATER });
+    const ids = await heldIds(l);
+    for (let i = 0; i < 8; i++) expect(ids).toContain(`y${i}`);
+    // Not held back: the read finished and moved the cursor.
+    expect(await cursorOf(l)).toBe("c2");
+    expect(await client.opsEvent.count({ where: { kind: "plaid_reread_held" } })).toBe(0);
+  });
+
+  it("an account the read lists nothing for is untouched", async () => {
+    const l = await link("twoacc");
+    const acc2 = `${l.acc}-two`;
+    const other = { ...tx(l, "b1", "2026-11-03", 5), account_id: acc2 };
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [account(l), plaidAccount({ account_id: acc2 })],
+        added: [...recent(l), other] as never,
+        next_cursor: "c1",
+      }),
+    );
+    await syncItem(l.itemId, { client, api, now: NOW });
+    expect(await held(l)).toBe(4);
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [account(l), plaidAccount({ account_id: acc2 })],
+        added: [...recent(l), ...older(l)] as never,
+        next_cursor: "c2",
+      }),
+    );
+    await syncItem(l.itemId, { client, api, now: LATER });
+    expect(await heldIds(l)).toContain("b1");
+  });
+
   it("net worth and the real balances are the same to the cent; only the worked-back past moves", async () => {
     const l = await link("money");
     const hold = { ...tx(l, "hold", "2026-11-09", 40), pending: true };

@@ -18,7 +18,7 @@ export type RereadResult = {
 // reread-removals.ts). Never throws: a failure keeps the cursor, so the next sync starts from it.
 export async function finishRead(
   userId: string,
-  accountIds: readonly string[],
+  accountIds: ReadonlyMap<string, string>,
   sync: PlaidSync,
   client: PrismaClient,
 ): Promise<RereadResult> {
@@ -33,7 +33,12 @@ export async function finishRead(
   }
   try {
     const listed = new Set(sync.transactions.map((t) => t.externalId));
-    const out = await removeWhatPlaidDropped(userId, accountIds, listed, client);
+    const windows = new Map<string, string>();
+    for (const t of sync.transactions) {
+      const id = accountIds.get(t.accountRef);
+      if (id && (!windows.has(id) || t.date < windows.get(id)!)) windows.set(id, t.date);
+    }
+    const out = await removeWhatPlaidDropped(userId, windows, listed, client);
     if (out.kind === "done")
       return { removed: out.removed, keepCursor: false, spent: true, held: null };
     log.warn("A bank's read from the start would remove too many rows; nothing removed", {
