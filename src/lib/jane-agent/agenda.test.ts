@@ -81,7 +81,7 @@ const busy = snapshot({
 const shown = <T extends { hidden?: boolean }>(messages: T[]) => messages.filter((m) => !m.hidden);
 
 describe("the day's agenda", () => {
-  it("is one message: safe to spend, what needs a yes with a Yes each, what's coming up", () => {
+  it("is one message: the greeting, what needs a yes with a Yes each, what's coming up", () => {
     const out = plan(busy, NONE, MORNING, AGENDA);
     const visible = shown(out);
     expect(visible.map((m) => m.kind)).toEqual(["brief"]);

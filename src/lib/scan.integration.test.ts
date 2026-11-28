@@ -179,23 +179,17 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(chat.messages.some((m) => /^Hi, I'm Jane\./.test(m.body))).toBe(false);
   });
 
-  it("says the same safe to spend in the first brief as the hub, for someone with goals", async () => {
+  it("has no safe to spend line in the first brief, for someone with goals", async () => {
     const trial = await startTrial({ client, now: NOW, defer: true, person: "preretire" });
     created.push(trial.userId);
     await syncItem(trial.itemId, { client, now: NOW, progressive: true });
-    const { homeSummary } = await import("@/lib/home");
-    const { formatCents } = await import("@/lib/money");
-    const safe = (await homeSummary(trial.userId, { client, now: NOW }))!.safeToSpend!;
     const brief = await client.janeMessage.findFirstOrThrow({
-      where: { userId: trial.userId, kind: "brief", body: { contains: "payday" } },
+      where: { userId: trial.userId, kind: "brief" },
       orderBy: { createdAt: "asc" },
     });
-    // Goals capped at the year plan's room in both (phone walk: "short by $920.96" vs $1,182).
-    const said =
-      safe.safeCents < 0
-        ? `short by ${formatCents(-safe.safeCents)}`
-        : `${formatCents(safe.safeCents)} safe to spend`;
-    expect(brief.body).toContain(said);
+    // The figure is gone from the brief (founder 11-27); the brief itself still comes, as the day's agenda.
+    expect(brief.body).not.toMatch(/safe to spend|short by|until payday/i);
+    expect(brief.body).toMatch(/^Good (morning|afternoon|evening)!\n/);
   });
 
   it("builds the first brief from a light snapshot, the whole one right after", async () => {
