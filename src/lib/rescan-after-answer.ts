@@ -12,27 +12,34 @@ import { mayRescan } from "@/lib/trial-rescans";
 // reply has gone out. It is the existing scan (src/lib/suggestions.ts), not a second engine, and a
 // scan that fails does not undo what the person said. Outside a request (a script, a test) there is
 // nothing to run after, and the nightly scan stands.
+//
+// The scan does not learn from the data again (`learn: false`): the person may have just deleted
+// memory, and the nightly scan does that. Rescans of one person in this server run one after the
+// other, so a scan that started on an older answer cannot finish after, and overwrite, a newer one.
+const lastScan = new Map<string, Promise<void>>();
+
 export async function rescanAfterAnswer(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<void> {
-  // A rescan is optional: nothing here may stop the answer from being saved.
-  try {
-    if (!(await mayRescan(userId))) return;
-  } catch (error) {
-    log.error("Checking the rescan limit after an answer failed", { error: String(error) });
-    return;
-  }
   const run = async () => {
     try {
+      // The limit is counted only for a scan that is going to run.
+      if (!(await mayRescan(userId))) return;
       const { scanSuggestions } = await import("@/lib/suggestions");
-      await scanSuggestions(userId, { client, now });
+      await scanSuggestions(userId, { client, now, learn: false });
     } catch (error) {
       log.error("Scanning after an answer failed", { error: String(error) });
     }
   };
   try {
-    after(run);
+    after(() => {
+      const turn = (lastScan.get(userId) ?? Promise.resolve()).then(run);
+      lastScan.set(userId, turn);
+      return turn.finally(() => {
+        if (lastScan.get(userId) === turn) lastScan.delete(userId);
+      });
+    });
   } catch {
     // Not inside a request: nothing to run it after.
   }

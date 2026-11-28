@@ -69,5 +69,22 @@ describe("rescanAfterAnswer", () => {
     hoisted.outsideRequest = true;
     await expect(rescanAfterAnswer("u1")).resolves.toBeUndefined();
     expect(scanSuggestions).not.toHaveBeenCalled();
+    // And no try-out allowance was spent on a scan that could not run.
+    expect(mayRescan).not.toHaveBeenCalled();
+  });
+
+  it("scans of one person run one after the other, and without learning from the data again", async () => {
+    const order: string[] = [];
+    vi.mocked(scanSuggestions).mockImplementation(async () => {
+      order.push("start");
+      await new Promise((r) => setTimeout(r, 5));
+      order.push("end");
+      return { fired: 0, selected: [] };
+    });
+    await rescanAfterAnswer("u1");
+    await rescanAfterAnswer("u1");
+    await Promise.all(hoisted.later.splice(0).map((run) => run()));
+    expect(order).toEqual(["start", "end", "start", "end"]);
+    expect(scanSuggestions).toHaveBeenCalledWith("u1", expect.objectContaining({ learn: false }));
   });
 });
