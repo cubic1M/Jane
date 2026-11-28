@@ -14,3 +14,9 @@ export const POSTHOG_RETRIES = 0;
 
 // The most of an events feed or page that's read. They're read with regular expressions.
 export const EVENTS_MAX_BODY_CHARS = 2_000_000;
+
+// After the store refuses the key (401), how long calls to it are answered with the same
+// refusal at once, before one goes through to see whether it works again (src/lib/anthropic.ts).
+export const CLAUDE_REFUSED_PAUSE_MS = 5 * 60_000;
+// While that one call is out, the others are still answered with the refusal.
+export const CLAUDE_REFUSED_PROBE_MS = 10_000;
