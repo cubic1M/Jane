@@ -30,6 +30,7 @@ import { listPolicies } from "@/lib/insurance/policies";
 import { loadMatchPace } from "@/lib/investments/match-pace";
 import { subscriptionYear } from "@/lib/jane-agent/recurring";
 import { taxSetAsideForDetector } from "@/lib/tax-set-aside";
+import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
 import { HOLDINGS_ORDER } from "@/lib/investments/holdings-order";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
@@ -569,6 +570,8 @@ export async function correctFact(
 ): Promise<void> {
   const value = parseAnswer(key, raw);
   const spec = factSpec(key)!;
+  // The cards follow the answer at once: the scan runs after the reply, when the answer is saved.
+  await rescanAfterAnswer(userId, { client, now });
   // How they file: saved with the time it was said and mirrored into the tax profile (below), so
   // the card, the Taxes page, the estimate and the chat read one answer (src/lib/filing-status.ts).
   if (key === "filing_status" && typeof value === "string" && isFilingStatus(value)) {
@@ -622,6 +625,7 @@ export async function clearCorrection(
   key: string,
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
+  await rescanAfterAnswer(userId, { client });
   const row = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
     select: { id: true },

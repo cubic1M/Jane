@@ -21,6 +21,7 @@ import type { Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { oneLine } from "@/lib/untrusted-text";
 import { TOLD_PREFIX, takeBackMirrors, toldKeyOf, toldValueOf } from "@/lib/told-mirrors";
+import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
 import { isSensitiveFact } from "./sensitive";
 
 // What Jane knows about the person (user_facts), refined by every interaction: uploads and the
@@ -404,6 +405,8 @@ export async function forgetFact(
     { type: "user", id: userId },
     { family: familyOf(row.key), source: row.source },
   );
+  // What was forgotten may have decided a card: the cards are worked out again after the reply.
+  await rescanAfterAnswer(userId, { client, now });
   return true;
 }
 
@@ -545,5 +548,6 @@ export async function forgetEverything(
     { type: "user", id: userId },
     counts,
   );
+  await rescanAfterAnswer(userId, { client });
   return counts;
 }

@@ -16,6 +16,7 @@ import { logAudit } from "@/lib/audit";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { loadFiling, saveToldFiling } from "@/lib/filing-status";
+import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { readPeople } from "@/lib/insurance/family-rules";
@@ -189,6 +190,8 @@ export async function saveTaxAnswers(
 ): Promise<void> {
   const checked = answers.map(check);
   if (checked.length === 0) return;
+  // The cards follow the answer at once: the scan runs after the reply (src/lib/rescan-after-answer.ts).
+  await rescanAfterAnswer(userId, { client, now });
   const db = scopedFor(userId, client);
   const existing = await db.taxProfiles.findFirst({ select: { answered: true } });
   const fields = checked.map((a) => a.field);

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { lengthDraft, voiceDraft } from "@/lib/jane-agent/style";
+import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
 import { requireUser } from "@/lib/session";
 
 // "Forget" on something Jane remembers (spec step 91), in Settings. Only the signed-in
@@ -11,6 +12,8 @@ import { requireUser } from "@/lib/session";
 export async function forgetPreference(formData: FormData): Promise<void> {
   const user = await requireUser();
   await deletePreference(user.id, String(formData.get("preferenceId") ?? ""));
+  // A forgotten answer or a "don't suggest again" can change the cards.
+  await rescanAfterAnswer(user.id);
   revalidatePath("/settings");
 }
 
