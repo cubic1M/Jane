@@ -25,7 +25,7 @@ const moves = [
 
 describe("workBackBalances", () => {
   it("undoes each day's transactions, bank accounts one way and cards the other", () => {
-    expect(workBackBalances([checking, card], moves)).toEqual([
+    expect(workBackBalances([checking, card], moves, "2000-01-01")).toEqual([
       { accountId: "chk", date: "2026-11-17", balanceCents: 55000 },
       { accountId: "chk", date: "2026-11-18", balanceCents: 52000 },
       { accountId: "chk", date: "2026-11-19", balanceCents: 102000 },
@@ -38,12 +38,20 @@ describe("workBackBalances", () => {
   it("leaves investments and loans alone, and an account whose transactions don't explain it", () => {
     const loan = { id: "loan", type: "loan", anchorDay: "2026-11-20", anchorCents: 500000 };
     expect(
-      workBackBalances([loan], [{ accountId: "loan", date: "2026-11-19", amountCents: 1 }]),
+      workBackBalances(
+        [loan],
+        [{ accountId: "loan", date: "2026-11-19", amountCents: 1 }],
+        "2000-01-01",
+      ),
     ).toEqual([]);
     // A card that would have owed less than nothing at a month end: no history.
     const overpaid = { id: "c2", type: "credit", anchorDay: "2026-12-05", anchorCents: 1000 };
     expect(
-      workBackBalances([overpaid], [{ accountId: "c2", date: "2026-12-01", amountCents: 900_000 }]),
+      workBackBalances(
+        [overpaid],
+        [{ accountId: "c2", date: "2026-12-01", amountCents: 900_000 }],
+        "2000-01-01",
+      ),
     ).toEqual([]);
   });
 
@@ -51,7 +59,7 @@ describe("workBackBalances", () => {
     const rows = workBackBalances(
       [checking],
       [{ accountId: "chk", date: "2020-01-01", amountCents: 100 }],
-      10,
+      "2026-11-10",
     );
     expect(rows[0].date).toBe("2026-11-10");
     expect(rows.at(-1)?.date).toBe("2026-11-19");

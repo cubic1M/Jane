@@ -892,8 +892,8 @@ async function syncItemWork(
 
   // The chart's past, worked back from the transactions just saved (a later, older batch moves it
   // too). Never fails the sync; the demo bank writes its own year at its first scan.
-  const changed = counts.added + counts.updated + counts.removed > 0;
-  if (!isDemoToken(accessToken) && (changed || !item.transactionsCursor)) {
+  // Every sync, so a failed one is made good by the next, even one that brings nothing new.
+  if (!isDemoToken(accessToken)) {
     await rebuildPastBalances(item.userId, { client, now }).catch((error) =>
       log.error("Working back past balances failed", { error: String(error) }),
     );

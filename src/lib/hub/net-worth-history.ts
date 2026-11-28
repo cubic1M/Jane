@@ -54,17 +54,20 @@ export async function netWorthHistoryWithNote(
     asOf,
     todayCents,
   });
-  // The first day each flat kind has a value of its own; the line starts before it.
-  const known = (id: string, created: Date) =>
-    [day(created), ...snapshots.filter((s) => s.accountId === id).map((s) => s.date)].reduce(
-      (first, d) => (d < first ? d : first),
-    );
+  // The day an account's own values begin: its first snapshot, else the day it was added. Before it
+  // the line carries that value back. A kind is named when any one of its accounts is carried, and
+  // dated by the last of them to begin.
+  const known = (id: string, created: Date) => {
+    const own = snapshots.filter((s) => s.accountId === id).map((s) => s.date);
+    return own.length > 0 ? own.reduce((a, b) => (a < b ? a : b)) : day(created);
+  };
   const flat = FLAT_KINDS.flatMap(([words, is]) => {
-    const from = accounts
+    const carried = accounts
       .filter((a) => is(a.type) && a.currentBalanceCents !== null)
       .map((a) => known(a.id, a.createdAt))
-      .sort()[0];
-    return from && points[0] && points[0].date < from ? [{ words, from }] : [];
+      .filter((from) => points[0] && points[0].date < from)
+      .sort();
+    return carried.length > 0 ? [{ words, from: carried[carried.length - 1] }] : [];
   });
   const first = flat.map((f) => f.from).sort()[0];
   return {

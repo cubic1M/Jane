@@ -6,9 +6,9 @@ import {
 import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { personTransaction } from "@/lib/db-scoped";
 import { isoDay } from "@/lib/dates";
-import { todayFor } from "@/lib/today";
+import { todayOf } from "@/lib/today";
 
 // A linked bank's past balances, so net worth's ALL reaches back as far as the transactions do.
 // Plaid gives today's balance, not past ones, and the daily job's snapshots only begin the day the
@@ -38,11 +38,13 @@ const credible = (balances: readonly PastBalance[], debt: boolean) =>
     .every((b) => b.balanceCents >= (debt ? 0 : DEMO_HISTORY_LOWEST_BANK_CENTS));
 
 // Each account's balance at the end of every day from the day before its first transaction to the
-// day before its anchor (the first day it has a real balance), oldest first. Pure.
+// day before its anchor (the first day it has a real balance), oldest first. `oldest` is the first
+// day worth keeping: the daily job deletes snapshots older than the retention period counted back
+// from today, so older rows would only be made and removed again. Pure.
 export function workBackBalances(
   accounts: readonly PastAccount[],
   transactions: readonly PastTransaction[],
-  maxDays = PAST_BALANCES_MAX_DAYS,
+  oldest: string,
 ): PastBalance[] {
   const out: PastBalance[] = [];
   for (const a of accounts) {
@@ -55,9 +57,8 @@ export function workBackBalances(
     }
     const days = [...byDay.keys()].filter((d) => d <= a.anchorDay).sort();
     if (days.length === 0) continue;
-    const floor = addDays(a.anchorDay, -maxDays);
     // The day before the first transaction holds the balance before any of them.
-    const first = addDays(days[0], -1) < floor ? floor : addDays(days[0], -1);
+    const first = addDays(days[0], -1) < oldest ? oldest : addDays(days[0], -1);
     const worked: PastBalance[] = [];
     let balance = a.anchorCents;
     for (let day = a.anchorDay; day > first;) {
@@ -70,62 +71,80 @@ export function workBackBalances(
   return out;
 }
 
-// Makes the person's worked-back rows again from what is stored (after a sync that changed
-// transactions): only this module's own rows are replaced, and only for the days before each
-// account's first real snapshot. Returns how many rows it wrote.
+// Makes the person's worked-back rows again from what is stored (after any sync, so a failed one
+// is made good by the next): only this module's own rows are replaced, and only for the days before
+// each account's first real snapshot. One transaction per person: the read, the delete and the
+// write happen together under a lock, so two banks syncing at once can't leave an older read's
+// result behind, and a failed write leaves the earlier history as it was. Returns rows written.
 export async function rebuildPastBalances(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<number> {
-  const db = scopedFor(userId, client);
-  const today = await todayFor(db, now);
-  const accounts = await db.accounts.findMany({
-    where: { source: "plaid", type: { in: [...WORKED_TYPES] }, currentBalanceCents: { not: null } },
-    select: { id: true, type: true, currentBalanceCents: true },
-  });
-  if (accounts.length === 0) return 0;
-  const ids = accounts.map((a) => a.id);
-  const [real, rows] = await Promise.all([
-    db.balanceSnapshots.findMany({
-      where: { accountId: { in: ids }, source: null },
-      orderBy: { date: "asc" },
-      select: { accountId: true, date: true, balanceCents: true },
-    }),
-    db.transactions.findMany({
-      where: { accountId: { in: ids }, pending: false },
-      select: { accountId: true, date: true, amountCents: true },
-    }),
-  ]);
-  const earliest = new Map<string, { day: string; cents: number }>();
-  for (const s of real) {
-    if (!earliest.has(s.accountId))
-      earliest.set(s.accountId, { day: isoDay(s.date), cents: s.balanceCents });
-  }
-  const anchored = accounts.map((a) => {
-    const first = earliest.get(a.id);
-    // No daily snapshot yet: today's balance, as of today (the daily job writes that row).
-    return first
-      ? { id: a.id, type: a.type, anchorDay: first.day, anchorCents: first.cents }
-      : { id: a.id, type: a.type, anchorDay: today, anchorCents: a.currentBalanceCents ?? 0 };
-  });
-  const balances = workBackBalances(
-    anchored,
-    rows.map((t) => ({ accountId: t.accountId, date: isoDay(t.date), amountCents: t.amountCents })),
+  const today = await todayOf(userId, { client, now });
+  const oldest = addDays(today, -PAST_BALANCES_MAX_DAYS);
+  return personTransaction(
+    userId,
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`past-balances:${userId}`}))`;
+      const accounts = await tx.account.findMany({
+        where: {
+          userId,
+          source: "plaid",
+          type: { in: [...WORKED_TYPES] },
+          currentBalanceCents: { not: null },
+        },
+        select: { id: true, type: true, currentBalanceCents: true },
+      });
+      const ids = accounts.map((a) => a.id);
+      const [real, rows] = await Promise.all([
+        tx.balanceSnapshot.findMany({
+          where: { userId, accountId: { in: ids }, source: null },
+          orderBy: { date: "asc" },
+          select: { accountId: true, date: true, balanceCents: true },
+        }),
+        tx.transaction.findMany({
+          where: { userId, accountId: { in: ids }, pending: false },
+          select: { accountId: true, date: true, amountCents: true },
+        }),
+      ]);
+      const earliest = new Map<string, { day: string; cents: number }>();
+      for (const s of real) {
+        if (!earliest.has(s.accountId))
+          earliest.set(s.accountId, { day: isoDay(s.date), cents: s.balanceCents });
+      }
+      const anchored = accounts.map((a) => {
+        const first = earliest.get(a.id);
+        // No daily snapshot yet: today's balance, as of today (the daily job writes that row).
+        return first
+          ? { id: a.id, type: a.type, anchorDay: first.day, anchorCents: first.cents }
+          : { id: a.id, type: a.type, anchorDay: today, anchorCents: a.currentBalanceCents ?? 0 };
+      });
+      const balances = workBackBalances(
+        anchored,
+        rows.map((t) => ({
+          accountId: t.accountId,
+          date: isoDay(t.date),
+          amountCents: t.amountCents,
+        })),
+        oldest,
+      );
+      await tx.balanceSnapshot.deleteMany({
+        where: { userId, source: PAST_BALANCE_SOURCE, account: { source: "plaid" } },
+      });
+      if (balances.length === 0) return 0;
+      const { count } = await tx.balanceSnapshot.createMany({
+        data: balances.map((b) => ({
+          userId,
+          accountId: b.accountId,
+          date: new Date(`${b.date}T00:00:00Z`),
+          balanceCents: b.balanceCents,
+          source: PAST_BALANCE_SOURCE,
+        })),
+        // A day that already has a real balance keeps it.
+        skipDuplicates: true,
+      });
+      return count;
+    },
+    client,
   );
-  await db.balanceSnapshots.deleteMany({
-    where: { accountId: { in: ids }, source: PAST_BALANCE_SOURCE },
-  });
-  if (balances.length === 0) return 0;
-  const { count } = await db.balanceSnapshots.createMany({
-    data: balances.map((b) => ({
-      userId,
-      accountId: b.accountId,
-      date: new Date(`${b.date}T00:00:00Z`),
-      balanceCents: b.balanceCents,
-      source: PAST_BALANCE_SOURCE,
-    })),
-    // A day that already has a real balance keeps it.
-    skipDuplicates: true,
-  });
-  return count;
 }
