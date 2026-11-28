@@ -119,6 +119,7 @@ export function anthropic(): Anthropic {
 
 export function resetAnthropicForTests(): void {
   client = undefined;
+  resetClaudeRefusalForTests();
 }
 
 // The text of a finished JSON answer, or null when Claude stopped early or refused.
