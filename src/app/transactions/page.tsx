@@ -19,6 +19,8 @@ import { RepeatMark as RepeatMarkTag } from "@/components/repeat-mark";
 import { loadRecurringMarks } from "@/lib/recurring-marks";
 
 const SHOWN = 100;
+// "Show more" adds this many at a time, up to what one page may hold.
+const MOST_SHOWN = 5000;
 
 async function Transactions({
   searchParams,
@@ -27,7 +29,11 @@ async function Transactions({
 }) {
   const user = await requireUser();
   const db = await scopedDb();
-  const { q, day, from, to, category, fees } = await searchParams;
+  const { q, day, from, to, category, fees, limit } = await searchParams;
+  // How many to list: the latest 100, and "Show more" asks for 100 more each time, so the whole
+  // history Jane holds can be read here, not only its latest page.
+  const asked = typeof limit === "string" ? Number(limit) : SHOWN;
+  const shown = Number.isInteger(asked) ? Math.min(Math.max(asked, SHOWN), MOST_SHOWN) : SHOWN;
   // The bank-fees card's "See the fees" (src/detectors/bank-fees-of.ts): the fees it counts.
   if (fees === "1") {
     const list = await loadFeeList(user.id);
@@ -83,7 +89,7 @@ async function Transactions({
         categorySource: true,
       },
       orderBy: [{ date: "desc" }, { id: "asc" }],
-      take: SHOWN,
+      take: shown,
     }),
     listMerchantRules(user.id),
     db.accounts.findMany({ select: { id: true, type: true, name: true } }),
@@ -215,6 +221,30 @@ async function Transactions({
             );
           })}
         </ul>
+      )}
+
+      {rows.length >= shown && shown < MOST_SHOWN && (
+        <p>
+          <Link
+            data-transactions-more=""
+            href={`/transactions?${new URLSearchParams([
+              ...Object.entries({ q: search, day, from, to, category }).flatMap(([k, v]) =>
+                typeof v === "string" && v ? [[k, v]] : [],
+              ),
+              ["limit", String(shown + SHOWN)],
+            ])}`}
+            className="font-medium underline"
+          >
+            Show {SHOWN} more
+          </Link>
+        </p>
+      )}
+
+      {rows.length >= MOST_SHOWN && (
+        <p data-transactions-cap="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          Showing the latest {MOST_SHOWN.toLocaleString("en-US")}. Search, or pick a day from the
+          net worth chart, to see older ones.
+        </p>
       )}
 
       {rules.length > 0 && (
