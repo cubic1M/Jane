@@ -1,3 +1,4 @@
+import { noParamsText } from "@/lib/tax-estimate-state";
 import { sinceStatementNote } from "@/planning/since-statement";
 import { oneLine } from "@/lib/untrusted-text";
 import { adviceMode } from "@/lib/advice-mode";
@@ -670,7 +671,9 @@ async function runChatToolWork(
         ...(safe.taxStatus === "unknown"
           ? {
               taxNote:
-                "Tax isn't held back because what's withheld from pay isn't known. That isn't the same as none being due: say so.",
+                safe.taxNoParamsYear !== undefined
+                  ? `${noParamsText(safe.taxNoParamsYear)} Tax isn't held back for that reason; give no tax figure and don't guess one from another year.`
+                  : "Tax isn't held back because what's withheld from pay isn't known. That isn't the same as none being due: say so.",
             }
           : {}),
         // Say this beside the figure: no balance on file, so their bills aren't counted either.

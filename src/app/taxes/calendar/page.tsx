@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { orNoParams } from "../no-params";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -27,11 +28,11 @@ const STATUS = {
 async function Content() {
   const user = await requireUser();
   await connection();
-  const [v, found, actsForYou] = await Promise.all([
-    loadTaxCalendar(user.id),
-    loadTaxFound(user.id),
-    conciergeMode(user.id),
-  ]);
+  const loaded = await orNoParams(user, () =>
+    Promise.all([loadTaxCalendar(user.id), loadTaxFound(user.id), conciergeMode(user.id)]),
+  );
+  if (loaded.page) return loaded.page;
+  const [v, found, actsForYou] = loaded.value;
   const of = (month: number) => found.filter((f) => f.month === month);
   return (
     <>

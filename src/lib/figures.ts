@@ -1,3 +1,4 @@
+import { noParamsText } from "@/lib/tax-estimate-state";
 import {
   FIGURE_CORRECTIONS,
   FIGURE_LABELS,
@@ -160,7 +161,10 @@ async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
             {
               label: "Not counted: tax",
               value: "Not known",
-              note: "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
+              note:
+                safe.taxNoParamsYear !== undefined
+                  ? noParamsText(safe.taxNoParamsYear)
+                  : "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
             },
           ]
         : []),

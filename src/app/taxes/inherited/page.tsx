@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { orNoParams } from "../no-params";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -19,7 +20,9 @@ const LINK = "font-medium text-emerald-700 underline";
 async function Content() {
   const user = await requireUser();
   await connection();
-  const v = await loadInheritance(user.id);
+  const loaded = await orNoParams(user, () => loadInheritance(user.id));
+  if (loaded.page) return loaded.page;
+  const v = loaded.value;
   const spread = v.advice && v.inherited.some((i) => i.spread?.worthRaising);
   return (
     <>

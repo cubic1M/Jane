@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { orNoParams } from "../no-params";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -23,7 +24,9 @@ async function Content() {
   await connection();
   const now = new Date();
   const today = await todayOf(user.id, { now });
-  const v = await loadSelfEmployed(user.id, { now });
+  const loaded = await orNoParams(user, () => loadSelfEmployed(user.id, { now }));
+  if (loaded.page) return loaded.page;
+  const v = loaded.value;
   // Every date a federal or a state payment is due (the state plan can have one when the federal
   // plan has none).
   const dueDates = [

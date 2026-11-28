@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { orNoParams } from "../no-params";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -18,7 +19,9 @@ const LINK = "font-medium text-emerald-700 underline";
 async function Content() {
   const user = await requireUser();
   await connection();
-  const { lines, tuned } = retirementLines(await loadRetirementTaxes(user.id));
+  const loaded = await orNoParams(user, () => loadRetirementTaxes(user.id));
+  if (loaded.page) return loaded.page;
+  const { lines, tuned } = retirementLines(loaded.value);
   return (
     <>
       <AppHeader user={user} />

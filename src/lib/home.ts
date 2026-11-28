@@ -184,7 +184,14 @@ export async function homeSummary(
                 keptApartCents: taxAside.keptApartCents,
                 confidencePercent: taxAside.confidence.percent,
               }
-            : { holdCents: 0, status: "unknown", keptApartCents: 0, confidencePercent: 0 },
+            : {
+                holdCents: 0,
+                status: "unknown",
+                keptApartCents: 0,
+                confidencePercent: 0,
+                // No IRS figures for this year: the tax is not counted, and the card says so (W-N).
+                noParamsYear: Number(asOf.slice(0, 4)),
+              },
         })
       : null,
     waitingOnYou: waiting.map((a) => ({

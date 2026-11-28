@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { orNoParams } from "../no-params";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadHealthTaxes } from "@/lib/health-taxes";
@@ -18,7 +19,9 @@ const LINK = "font-medium text-emerald-700 underline";
 async function Content() {
   const user = await requireUser();
   await connection();
-  const v = await loadHealthTaxes(user.id);
+  const loaded = await orNoParams(user, () => loadHealthTaxes(user.id));
+  if (loaded.page) return loaded.page;
+  const v = loaded.value;
   const c = v.marketplace.check;
   const h = v.hsa;
   const m = v.medical;

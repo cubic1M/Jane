@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { orNoParams } from "../no-params";
 import { AppHeader } from "@/components/app-header";
 import { dayLabel } from "@/lib/day-label";
 import { loadAccountantPage } from "@/lib/accountant";
@@ -21,7 +22,9 @@ const STATE_WORDS = {
 async function Content() {
   const user = await requireUser();
   await connection();
-  const v = await loadAccountantPage(user.id);
+  const loaded = await orNoParams(user, () => loadAccountantPage(user.id));
+  if (loaded.page) return loaded.page;
+  const v = loaded.value;
   return (
     <>
       <AppHeader user={user} />
