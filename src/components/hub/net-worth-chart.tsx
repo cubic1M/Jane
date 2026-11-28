@@ -45,6 +45,7 @@ import {
   fitScale,
   linePath,
   niceTicks,
+  gutterFor,
   scaleAt,
   type ChartScale,
 } from "./net-worth-geometry";
@@ -391,7 +392,14 @@ export function NetWorthChart({
   const fit = fitScale(values);
   const eased = useEasedRange({ lo: fit.lo, hi: fit.hi });
   const { lo, hi } = eased;
-  const { x, y } = scaleAt(eased, values.length, width, H);
+  // The axis labels (the target fit's, so the line does not shift as the scale eases), and the
+  // room at the left they need while the figures are shown.
+  const ticks = niceTicks(fit.lo, fit.hi);
+  const gutter = figureShown ? gutterFor(ticks.map(dollars)) : 0;
+  // A pointer's place across the days (0 to 1), left of the gutter being the first day.
+  const shareOf = (clientX: number, r: { left: number; width: number }) =>
+    Math.min(1, Math.max(0, (clientX - r.left - gutter) / Math.max(1, r.width - gutter)));
+  const { x, y } = scaleAt(eased, values.length, width, H, gutter);
   const scale: ChartScale = { ...fit, lo, hi, x, y };
   const yDay = (i: number) => y(shown[i].cents);
 
@@ -408,7 +416,7 @@ export function NetWorthChart({
       count: moves.filter((m) => inView.has(m.date)).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow]);
+  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow, gutter]);
 
   // The wheel's handler, with this render's window; the page scrolls again once the chart can't
   // zoom further that way.
@@ -416,7 +424,7 @@ export function NetWorthChart({
     onWheel.current = (e: WheelEvent) => {
       if (!box.current) return;
       const r = box.current.getBoundingClientRect();
-      const share = (e.clientX - r.left) / r.width;
+      const share = shareOf(e.clientX, r);
       // A sideways swipe (a trackpad, shift and the wheel) moves the days in view, so a big step
       // can be dragged out of them without the brush.
       const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
@@ -492,10 +500,6 @@ export function NetWorthChart({
   })();
 
   const path = linePath(values, scale, width);
-  // The axis labels: round whole-dollar ticks over the range on screen (the target fit, drawn on
-  // the eased scale, so they slide with the line).
-  const ticks = niceTicks(fit.lo, fit.hi);
-
   const place = open
     ? placeBoxes({
         dot: open.at,
@@ -510,7 +514,7 @@ export function NetWorthChart({
   const indexAt = (clientX: number) => {
     const rect = box.current?.getBoundingClientRect();
     if (!rect || shown.length < 2) return shown.length - 1;
-    const share = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const share = shareOf(clientX, rect);
     return Math.round(share * (shown.length - 1));
   };
   // Zooming: by hand from here on (the chips stop showing as chosen), boxes shut.
@@ -695,7 +699,11 @@ export function NetWorthChart({
                 if (drag && e.pointerType === "mouse") {
                   const r = e.currentTarget.getBoundingClientRect();
                   if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
-                  if (drag.moved) setSel({ a: drag.x - r.left, b: e.clientX - r.left });
+                  if (drag.moved)
+                    setSel({
+                      a: Math.max(gutter, drag.x - r.left),
+                      b: Math.max(gutter, e.clientX - r.left),
+                    });
                 }
                 if (e.pointerType !== "mouse" && fingers.current.has(e.pointerId)) {
                   fingers.current.set(e.pointerId, e.clientX);
@@ -703,7 +711,7 @@ export function NetWorthChart({
                     const [a, b] = [...fingers.current.values()];
                     const r = e.currentTarget.getBoundingClientRect();
                     const factor = pinch.current.distance / Math.max(1, Math.abs(a - b));
-                    const share = ((a + b) / 2 - r.left) / r.width;
+                    const share = shareOf((a + b) / 2, r);
                     zoomTo(zoomWindow(pinch.current.view, total, factor, share));
                     return;
                   }
@@ -795,7 +803,7 @@ export function NetWorthChart({
                 <g clipPath={`url(#${clipId})`}>
                   {/* Where the range started. */}
                   <line
-                    x1={0}
+                    x1={gutter}
                     x2={width}
                     y1={yDay(0)}
                     y2={yDay(0)}

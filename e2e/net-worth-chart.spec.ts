@@ -475,6 +475,17 @@ test("zooming into the quiet stretch between two big moves refits the axis; Rese
   expect(ticks.length).toBeGreaterThanOrEqual(3);
   expect(new Set(texts).size).toBe(texts.length);
   await expect(page.locator("[data-net-worth-break]")).toHaveCount(0);
+  // The line never runs under an axis label: it starts to the right of the widest one.
+  const clear = await plot.evaluate((el) => {
+    const left = el.getBoundingClientRect().left;
+    const d = el.querySelector("path.nw-line")?.getAttribute("d") ?? "";
+    const firstX = Number(/^M([\d.-]+),/.exec(d)?.[1]);
+    const rights = [...el.querySelectorAll('[data-net-worth-scale="tick"]')].map(
+      (t) => t.getBoundingClientRect().right - left,
+    );
+    return firstX - Math.max(...rights);
+  });
+  expect(clear).toBeGreaterThanOrEqual(0);
 
   // Reset: the range's whole history again.
   await reset.click();

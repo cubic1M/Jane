@@ -6,7 +6,9 @@ import {
   chartScale,
   fitScale,
   linePath,
+  gutterFor,
   niceTicks,
+  scaleAt,
 } from "./net-worth-geometry";
 import { formatWholeDollars } from "@/lib/money";
 
@@ -160,5 +162,16 @@ describe("the line", () => {
 
   it("is empty with no days", () => {
     expect(linePath([], chartScale([], 300, 200), 300)).toBe("");
+  });
+});
+
+describe("the room for the axis labels", () => {
+  it("starts the line after the widest label, and has none with no labels", () => {
+    const g = gutterFor(["$11,700", "$12,100"]);
+    expect(g).toBeGreaterThan(7 * 6);
+    expect(gutterFor([])).toBe(0);
+    const s = scaleAt({ lo: 0, hi: 10 }, 5, 400, 200, g);
+    expect(s.x(0)).toBe(g);
+    expect(s.x(4)).toBe(400);
   });
 });

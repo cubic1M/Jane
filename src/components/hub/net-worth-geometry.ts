@@ -51,10 +51,12 @@ export function scaleAt(
   n: number,
   width: number,
   height: number,
+  // Room kept clear at the left for the axis labels, in pixels: the line starts after it.
+  gutter = 0,
 ): Pick<ChartScale, "x" | "y"> {
   const span = range.hi - range.lo;
   return {
-    x: (i) => (n < 2 ? width : (i / (n - 1)) * width),
+    x: (i) => (n < 2 ? width : gutter + (i / (n - 1)) * (width - gutter)),
     y: (v) => PAD_Y + (1 - (v - range.lo) / span) * (height - PAD_Y * 2),
   };
 }
@@ -109,4 +111,10 @@ export function linePath(values: readonly number[], scale: ChartScale, width: nu
     .sort((a, b) => a - b)
     .map((i, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(values[i]).toFixed(1)}`)
     .join(" ");
+}
+
+// The room the axis labels need at the left, in pixels: the widest of them (10px text, about 6.3px
+// a character, a little padding), so the line never runs under one. 0 with no labels.
+export function gutterFor(texts: readonly string[]): number {
+  return texts.length ? Math.ceil(Math.max(...texts.map((t) => t.length)) * 6.3) + 10 : 0;
 }
