@@ -375,10 +375,6 @@ export async function forgetFact(
       })),
       ...(await tx.janePreferences.findMany({ where: { OR: prefs }, select: { value: true } })),
     ];
-    await takeBackMirrors(
-      tx,
-      said.map((s) => ({ key: row.key, value: toldValueOf(s.value) })),
-    );
     await tx.userFacts.deleteMany({ where: { key: row.key } });
     await tx.userFacts.create({
       data: {
@@ -393,6 +389,12 @@ export async function forgetFact(
       },
     });
     await tx.janePreferences.deleteMany({ where: { OR: prefs } });
+    // After the delete, which waits for a save that holds the preference: a copy that save wrote is
+    // read here, committed, and taken back (the copy is read only once the preference is gone).
+    await takeBackMirrors(
+      tx,
+      said.map((s) => ({ key: row.key, value: toldValueOf(s.value) })),
+    );
   });
   // The chat's stored numbers were worked out with what is now forgotten.
   await (await import("@/lib/jane-agent/primer-store")).markPrimerStale(userId, { client, now });
@@ -514,6 +516,10 @@ export async function forgetEverything(
       where: { kind: "fact", key: { startsWith: TOLD_PREFIX } },
       select: { key: true, value: true },
     });
+    const facts = await tx.userFacts.deleteMany({});
+    const preferences = await tx.janePreferences.deleteMany({});
+    // After the delete, which waits for a save that holds the preference, so a copy it just wrote
+    // is read here and taken back too.
     await takeBackMirrors(
       tx,
       told.flatMap((p) => {
@@ -521,8 +527,6 @@ export async function forgetEverything(
         return key ? [{ key, value: toldValueOf(p.value) }] : [];
       }),
     );
-    const facts = await tx.userFacts.deleteMany({});
-    const preferences = await tx.janePreferences.deleteMany({});
     const messages = await tx.janeMessages.deleteMany({
       where: { kind: { in: ["user", "reply"] } },
     });

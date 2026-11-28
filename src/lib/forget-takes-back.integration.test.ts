@@ -39,8 +39,8 @@ describe.runIf(url)("forgetting takes the copies back", { timeout: 300_000 }, ()
     });
   });
   afterAll(async () => {
-    await deleteCheckPerson(id, { client }).catch(() => {});
-    await deleteCheckPerson(other, { client }).catch(() => {});
+    if (id) await deleteCheckPerson(id, { client }).catch(() => {});
+    if (other) await deleteCheckPerson(other, { client }).catch(() => {});
     await client.$disconnect();
   });
   beforeEach(async () => {
