@@ -1,8 +1,14 @@
-import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
+import {
+  CLAUDE_CALL_RETRIES,
+  CLAUDE_CALL_TIMEOUT_MS,
+  CLAUDE_REFUSED_PAUSE_MS,
+  CLAUDE_REFUSED_PROBE_MS,
+} from "@/config/outside-calls";
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { freshSwitches } from "@/lib/ops-switches";
 import { recordOpsEvent } from "@/lib/ops-alerts";
+import { log } from "@/lib/log";
 import { redactRequestBody } from "@/lib/person-payees";
 
 // One shared client for the explanation and subscription calls. Everything that calls
@@ -30,15 +36,52 @@ export function chatModel(): string {
 // Every request to Claude's last step, so the store's switch holds whichever path made it, so no
 // path sends a person's name from a payment app's merchant text (src/lib/person-payees.ts), and so
 // a refused key raises the team's alarm whichever path met it (claude_key_refused).
+//
+// A refused key (the store says 401 or 403 to every call) is remembered for a few minutes in this
+// function instance: the next calls get the same refusal at once, without a round trip to Claude
+// and without waiting for it (every chat turn used to ask, be refused, and only then answer from
+// Jane's own words), and then one call goes through to see whether the key works again. Only the
+// refusal's code is kept, never the key.
+let refused: { until: number; status: number } | null = null;
+
 export const claudeFetch: typeof fetch = async (input, init) => {
   await freshSwitches();
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
+  if (refused) {
+    if (Date.now() < refused.until) return refusal(refused.status);
+    // The pause is over: this call is the one that tries again, and the rest wait for its answer.
+    refused = { ...refused, until: Date.now() + CLAUDE_REFUSED_PROBE_MS };
+  }
   const response = await send(input, init);
   if (response.status === 401 || response.status === 403) {
+    // Only the first refusal of a pause is logged and raised; the probe after it starts another.
+    log.warn("Claude refused the key; calls to it are paused for a few minutes", {
+      status: response.status,
+    });
+    refused = { until: Date.now() + CLAUDE_REFUSED_PAUSE_MS, status: response.status };
     await recordOpsEvent("claude_key_refused", { code: `HTTP_${response.status}` });
+  } else {
+    refused = null;
   }
   return response;
 };
+
+// The answer the store gives a refused key, as the client library reads it (it throws the same
+// error as for the real one, and does not retry a refusal).
+function refusal(status: number): Response {
+  return new Response(
+    JSON.stringify({
+      type: "error",
+      error: { type: "authentication_error", message: "Claude calls are paused after a refusal" },
+    }),
+    { status, headers: { "content-type": "application/json", "x-jane-paused": "1" } },
+  );
+}
+
+// For tests: forget a remembered refusal.
+export function resetClaudeRefusalForTests() {
+  refused = null;
+}
 
 function send(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) {
   if (typeof init?.body !== "string") return fetch(input, init);

@@ -12,6 +12,7 @@ import { track } from "@/lib/analytics";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { memoRead } from "@/lib/read-memo";
 import { log } from "@/lib/log";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { changesFor } from "./cover-change-rules";
@@ -82,6 +83,19 @@ export type CoverEventFound = {
 export async function coverEvents(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
+): Promise<CoverEventFound[]> {
+  // Each of Home's area trees asks for these with a clock of its own, a few milliseconds apart, which
+  // no shared read can tell from a new question: one answer for the render (a write forgets it).
+  if (client !== defaultClient) return coverEventsFrom(userId, client, now);
+  return (await memoRead(`${userId}|coverEvents`, () =>
+    coverEventsFrom(userId, client, now),
+  )) as CoverEventFound[];
+}
+
+async function coverEventsFrom(
+  userId: string,
+  client: PrismaClient,
+  now: Date,
 ): Promise<CoverEventFound[]> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - COVER_EVENT_WINDOW_DAYS * DAY);

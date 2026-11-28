@@ -4,7 +4,7 @@ vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/jane-agent/popup-stack", () => ({ loadPopupStack: vi.fn() }));
 
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
-import { inReadCache } from "@/lib/read-cache";
+import { sharing } from "@/lib/read-memo";
 import { getCurrentUser } from "@/lib/session";
 import { GET } from "./route";
 
@@ -28,24 +28,20 @@ describe("GET /api/chat/cards", () => {
     const response = await GET(req());
     expect(await response.json()).toEqual({ cards: [{ id: "m1" }] });
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(loadPopupStack).toHaveBeenCalledWith(
-      "user_1",
-      expect.objectContaining({ client: expect.anything() }),
-    );
+    expect(loadPopupStack).toHaveBeenCalledWith("user_1");
   });
 
   // Not a page render, so nothing else shares what the card checks read: the stack is loaded
-  // inside a read cache for the request (24 reads of one user row and two of every transaction).
-  it("loads the stack inside a read cache, once per request", async () => {
+  // with the request's reads shared (24 reads of one user row and two of every transaction).
+  it("loads the stack with its reads shared for the request", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: "user_1" } as never);
-    let cached = false;
+    let shared = false;
     vi.mocked(loadPopupStack).mockImplementation(async () => {
-      cached = inReadCache();
+      shared = sharing();
       return [];
     });
     await GET(req());
-    expect(cached).toBe(true);
-    expect(inReadCache()).toBe(false);
+    expect(shared).toBe(true);
   });
 
   // Founder: a card followed to its page came straight back there. An answer may still be on its

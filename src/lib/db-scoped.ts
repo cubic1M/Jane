@@ -2,7 +2,16 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
 import { inReadCache } from "@/lib/read-cache";
-import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
+import {
+  currentStore,
+  forgetReads,
+  sharing,
+  memoKey,
+  memoRead,
+  READ_OPERATIONS,
+} from "@/lib/read-memo";
+import { answerFromSnapshot } from "@/lib/row-snapshots";
+import { WHOLE_TABLES } from "@/config/fast-reads";
 import {
   asUser,
   asUserTransaction,
@@ -91,6 +100,9 @@ function scopedQueries(
   userId: string,
   run: (query: () => Prisma.PrismaPromise<unknown>, operation: string) => Promise<unknown>,
   shareReads = true,
+  // One read of the person's rows of a table (src/lib/row-snapshots.ts), for the questions it can
+  // answer; absent, every question goes to the database.
+  rowsOf?: (model: string, where: Args | undefined, take: number) => Promise<Args[]>,
 ) {
   return client.$extends({
     query: {
@@ -116,7 +128,21 @@ function scopedQueries(
           // Inside a read cache (src/lib/read-cache.ts) every read must reach it, which notes the
           // tables each cached value came from; it shares repeated reads itself.
           if (inReadCache() || !shareReads) return send();
-          return memoRead(memoKey(userId, model, operation, scopedArgs), send);
+          return memoRead(memoKey(userId, model, operation, scopedArgs), async () => {
+            if (rowsOf && sharing()) {
+              const answered = await answerFromSnapshot({
+                client,
+                userId,
+                model,
+                operation,
+                args: scopedArgs as Args,
+                held: currentStore(),
+                fetch: (where, take) => rowsOf(model, where, take),
+              }).catch(() => null);
+              if (answered) return answered.value;
+            }
+            return send();
+          });
         },
       },
     },
@@ -135,7 +161,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
   // One flight: the switch to this person, then whatever goes with it.
   const asUserFlight = <T extends Prisma.PrismaPromise<unknown>[]>(statements: [...T]) =>
     client.$transaction(statements, SCOPED_QUERY_TRANSACTION);
-  const scoped = scopedQueries(client, userId, (query, operation) =>
+  const runScoped = (query: () => Prisma.PrismaPromise<unknown>, operation: string) =>
     withRls(
       (rls) =>
         rls
@@ -147,8 +173,21 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
       // Unmarked: a marked switch is answered by the pool itself (src/lib/rls-pg.ts), so it could never
       // fail, and a role really missing would never be seen.
       () => rlsSwitchFails(asUserFlight([asUser(client, userId)])),
-    ),
-  );
+    );
+  // The reads that fetch a table's rows for the snapshots: each its own query, none shared.
+  // Made when first needed: most callers never ask for a snapshot.
+  let plain: Record<string, { findMany: (args: Args) => Promise<Args[]> }> | undefined;
+  const scoped = scopedQueries(client, userId, runScoped, true, (model, where, take) => {
+    plain ??= scopedQueries(client, userId, runScoped, false) as unknown as NonNullable<
+      typeof plain
+    >;
+    const hidden = Object.fromEntries((WHOLE_TABLES[model]?.hidden ?? []).map((f) => [f, true]));
+    return plain[model[0].toLowerCase() + model.slice(1)].findMany({
+      ...(where ? { where } : {}),
+      ...(Object.keys(hidden).length > 0 ? { omit: hidden } : {}),
+      take: take + 1,
+    });
+  });
   // Only user-owned tables are exposed; users, audit_log and analytics have their own helpers.
   return {
     // An interactive transaction over the same scoped tables.
