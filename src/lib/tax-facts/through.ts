@@ -89,7 +89,18 @@ export async function forgetToldRecord(
   }
   await syncRecord(userId, options);
   // What said they have children leaves no row behind, not even one marked removed.
-  if (what === "all" || what === "has_children") {
+  if (what === "all" || what === "has_children") await purgeMembers(userId, options);
+}
+
+const PURGE_TRIES = 3;
+
+// Deletes the members that say the person had a child, then brings the record in line with the
+// stores again: the purge works from a reading of the stores taken a moment earlier, so a member
+// that a save made in that gap is written back by the second sync. A purge that fails is tried
+// again; if it still fails the forget fails (it is not reported as done while a row is left).
+async function purgeMembers(userId: string, options: Options): Promise<void> {
+  const { client = defaultClient, now = new Date() } = options;
+  for (let attempt = 1; ; attempt += 1) {
     try {
       const year = defaultTaxYear(await todayOf(userId, { client, now }));
       const sources = await readLegacySources(userId, year, { client, now });
@@ -98,10 +109,13 @@ export async function forgetToldRecord(
         legacyRows(sources).members.map((m) => m.memberKey),
         { client },
       );
+      break;
     } catch (error) {
       log.error("tax household: the removed members were not deleted", {
         error: error instanceof Error ? error.message : "unknown",
       });
+      if (attempt >= PURGE_TRIES) throw error;
     }
   }
+  await syncRecord(userId, options);
 }

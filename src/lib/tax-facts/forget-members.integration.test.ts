@@ -161,6 +161,23 @@ describe.runIf(url)("forgetting leaves no row of the household record behind", (
     expect(await memberRows(id)).toBe(0);
   });
 
+  it("Forget on the children fact keeps the children the tax profile itself still gives", async () => {
+    const id = await person();
+    await client.taxProfile.create({
+      data: { userId: id, childrenUnder17: 2, answered: ["dependants"] },
+    });
+    await correctFact(id, "has_children", "yes", options);
+    await household(id);
+    await forgetByKey(id, "has_children");
+    await readAgain(id);
+    const keys = (await client.taxHouseholdMember.findMany({ where: { userId: id } })).map((m) => [
+      m.memberKey,
+      m.removedAt === null,
+    ]);
+    expect(keys).toContainEqual(["child:count-1", true]);
+    expect(keys).toContainEqual(["child:count-2", true]);
+  });
+
   // Every fact a person can tell that mirrors into the record: tell it, forget it, no row says it.
   const TOLD: [string, string][] = [
     ["filing_status", "single"],
