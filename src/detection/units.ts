@@ -67,8 +67,28 @@ export function nextOccurrence(date: string, frequency: string, anchorDay?: numb
 }
 
 // Day numbers (days since 1970-01-01, UTC), for date math in tight loops.
-export const dayNumber = (date: string) => toUtc(date) / MS_PER_DAY;
-export const fromDayNumber = (day: number) => isoDate(new Date(day * MS_PER_DAY));
+// The two conversions are pure and asked for the same few hundred days thousands of times (the
+// pay schedules score every candidate rule over the year): each answer is kept, up to a few days'
+// worth, so a page's detection does not spend a tenth of its time making date strings.
+const KEPT_DAYS = 20_000;
+const days = new Map<string, number>();
+const dates = new Map<number, string>();
+export const dayNumber = (date: string) => {
+  let n = days.get(date);
+  if (n === undefined) {
+    n = toUtc(date) / MS_PER_DAY;
+    if (days.size < KEPT_DAYS) days.set(date, n);
+  }
+  return n;
+};
+export const fromDayNumber = (day: number) => {
+  let d = dates.get(day);
+  if (d === undefined) {
+    d = isoDate(new Date(day * MS_PER_DAY));
+    if (dates.size < KEPT_DAYS) dates.set(day, d);
+  }
+  return d;
+};
 
 // Days in a month (1-12), and the most a month has: "the 31st" is a month's last day.
 export const LAST_DAY_OF_MONTH = 31;

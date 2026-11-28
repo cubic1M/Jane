@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { cache } from "react";
 
 // One server render reads the same rows over and over: /home asked for a person's accounts 94
@@ -22,7 +23,21 @@ export const READ_OPERATIONS: ReadonlySet<string> = new Set([
 export type Store = Map<string, Promise<unknown>>;
 
 // The render's own store: React's cache gives each server render a fresh one.
-const renderStore = cache((): Store => new Map());
+const reactStore = cache((): Store => new Map());
+// A route handler is no render, so React's cache shares nothing there: it runs its reads inside
+// withRequestMemo and gets a store of its own for the length of the request (the card dock).
+const requestStore = new AsyncLocalStorage<Store>();
+const renderStore = (): Store => requestStore.getStore() ?? reactStore();
+export const currentStore = renderStore;
+// Whether reads are being shared right now: inside a render or a withRequestMemo.
+export const sharing = (): boolean =>
+  requestStore.getStore() !== undefined || reactStore() === reactStore();
+
+// Runs `work` with reads shared for the length of the request, as a render shares them. Nested
+// calls share the outer request's store.
+export function withRequestMemo<T>(work: () => Promise<T>): Promise<T> {
+  return requestStore.getStore() ? work() : requestStore.run(new Map(), work);
+}
 
 // The question, as a string. null when it can't be told apart safely (a bigint, or an object
 // that isn't plain data, like a Prisma null marker): that read just isn't shared.

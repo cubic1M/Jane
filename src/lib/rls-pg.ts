@@ -9,6 +9,7 @@ import {
   AS_USER_WRITE_SQL,
 } from "@/lib/rls";
 import { connectStarted, roundTripStarted } from "@/lib/render-timing";
+import { forgetReads } from "@/lib/read-memo";
 
 // The fast path for a scoped read (src/lib/rls.ts, docs/security/rls.md). Prisma runs it as
 // four statements, each a network round trip to the database: BEGIN, the switch to the person,
@@ -102,6 +103,12 @@ function switchOf(config: Config): { step: "reading" | "writing"; to: Switch } |
   return null;
 }
 
+const WRITE = /^\s*(INSERT|UPDATE|DELETE|TRUNCATE|MERGE|WITH\b[\s\S]*\b(INSERT|UPDATE|DELETE)\b)/i;
+const LEADING_COMMENTS = /^(?:\s*(?:--[^\n]*|\/\*[\s\S]*?\*\/))*/;
+
+// Whether a statement writes, by its first word after any comments in front of it.
+export const isWriteStatement = (text: string) => WRITE.test(text.replace(LEADING_COMMENTS, ""));
+
 export class RlsClient extends pg.Client {
   private state: State = { step: "idle" };
   // The statement before, on this connection. Prisma loads a read's relations side by side
@@ -122,7 +129,14 @@ export class RlsClient extends pg.Client {
       typeof (config as Config).text === "string" &&
       typeof (config as { submit?: unknown }).submit !== "function";
     if (!plain) return (super.query as (...a: unknown[]) => never)(config, values, callback);
-    const run = () => this.next(config as Config);
+    // A write by any route (the scoped helper, a system client, a raw statement) forgets what the
+    // render or request shared (src/lib/read-memo.ts): a read after it asks the database again.
+    const writes = isWriteStatement((config as Config).text);
+    const run = () => {
+      if (!writes) return this.next(config as Config);
+      forgetReads();
+      return this.next(config as Config).finally(() => forgetReads());
+    };
     const result = this.last.then(run, run);
     this.last = result.catch(() => undefined);
     return result as never;
