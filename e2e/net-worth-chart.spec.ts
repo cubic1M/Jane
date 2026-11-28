@@ -508,3 +508,162 @@ test("zooming into the quiet stretch between two big moves refits the axis; Rese
   const action = await plot.evaluate((el) => getComputedStyle(el).touchAction);
   expect(action).toContain("pan-y");
 });
+
+// Founder, Nov 28 (third look): "9 dollar spending and 138 looks the same because compared to
+// networth it's only a flat line". The Changes view draws one bar per period of how much net worth
+// moved, on a compressed scale with the real amounts as labels, so a $9 bar and a $138 bar differ
+// without zooming and an $18,000 day does not flatten them.
+type BarBox = { change: number; h: number; top: number; bottom: number };
+async function bars(chart: Locator): Promise<{ list: BarBox[]; plot: number; period: string }> {
+  return chart.locator("[data-net-worth-plot]").evaluate((plot) => {
+    const top = plot.getBoundingClientRect().top;
+    const list = [...plot.querySelectorAll("rect[data-net-worth-bar]")].map((r) => {
+      const b = r.getBoundingClientRect();
+      return {
+        change: Number(r.getAttribute("data-change")),
+        h: b.height,
+        top: b.top - top,
+        bottom: b.bottom - top,
+      };
+    });
+    const period = plot.querySelector("[data-net-worth-bars]")?.getAttribute("data-period") ?? "";
+    return { list, plot: plot.getBoundingClientRect().height, period };
+  });
+}
+
+// Every pair of bars where one changed 12 times or more than the other: the bigger one is at least
+// 3 times taller (12 ** 0.45 is 3.06, the scale's own promise).
+function expectOrdered(list: BarBox[]) {
+  const real = list.filter((b) => b.change !== 0);
+  for (const a of real) {
+    for (const b of real) {
+      if (Math.abs(a.change) >= 12 * Math.abs(b.change)) {
+        expect(a.h).toBeGreaterThanOrEqual(3 * b.h * 0.97);
+      }
+    }
+  }
+}
+
+test("the Changes view shows how big each period's move is: $9 and $138 differ with an $18,000 day in view", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, SMALL_MOVES_PERSON);
+  await page.goto("/home");
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  await chart.locator("[data-show-value]").click();
+  const view = chart.getByRole("group", { name: "Chart view" });
+  // The line is the default.
+  await expect(view.getByRole("button", { name: "Net worth" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(chart.locator("path.nw-line")).toHaveCount(1);
+  await expect(chart.locator("rect[data-net-worth-bar]")).toHaveCount(0);
+
+  await view.getByRole("button", { name: "Changes" }).click();
+  await expect(view.getByRole("button", { name: "Changes" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(chart.locator("path.nw-line")).toHaveCount(0);
+  await expect(chart.locator("[data-net-worth-caption]")).toContainText(
+    "labels are the real amounts",
+  );
+
+  // ALL (150 days): a bar a week. The -$18,000 week is the tallest and inside the plot; every week
+  // with a real move is visible; no break marks, no clipping.
+  await expect.poll(async () => (await bars(chart)).list.length).toBeGreaterThan(15);
+  const all = await bars(chart);
+  expect(all.period).toBe("week");
+  const tallest = all.list.reduce((a, b) => (b.h > a.h ? b : a));
+  expect(tallest.change).toBeLessThan(-1_700_000);
+  expect(tallest.top).toBeGreaterThanOrEqual(0);
+  expect(tallest.bottom).toBeLessThanOrEqual(all.plot);
+  for (const b of all.list.filter((x) => Math.abs(x.change) >= 500)) {
+    expect(b.h).toBeGreaterThanOrEqual(3);
+  }
+  expectOrdered(all.list);
+  await expect(page.locator("[data-net-worth-break]")).toHaveCount(0);
+  // The labels are real dollar amounts, powers of ten, both sides of zero.
+  const texts = await chart.locator('[data-net-worth-scale="tick"]').allTextContents();
+  expect(texts.length).toBeGreaterThanOrEqual(3);
+  for (const t of texts) expect(t).toMatch(/^[-−]?\$(10|100|1,000|10,000|100,000)$/);
+  expect(texts.some((t) => /^[-−]/.test(t))).toBe(true);
+  expect(texts.some((t) => !/^[-−]/.test(t))).toBe(true);
+
+  // 3M: a bar a day (the +$9,000 day is in view, the -$18,000 one is not): every real day is
+  // plain, and the dollar-sized days differ by size.
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^3M/ }).click();
+  await expect.poll(async () => (await bars(chart)).period).toBe("day");
+  const days = await bars(chart);
+  for (const b of days.list.filter((x) => Math.abs(x.change) >= 500)) {
+    expect(b.h).toBeGreaterThanOrEqual(3);
+  }
+  expectOrdered(days.list);
+
+  // Zoomed in the scale refits: the biggest day there fills much of the height.
+  const plot = chart.locator("[data-net-worth-plot]");
+  await plot.focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("+");
+  await expect(chart.locator("[data-net-worth-reset]")).toBeVisible();
+  await expect.poll(async () => (await bars(chart)).list.length).toBeLessThan(25);
+  const quiet = await bars(chart);
+  expect(Math.max(...quiet.list.map((b) => b.h))).toBeGreaterThan(quiet.plot * 0.2);
+  await page.keyboard.press("0");
+
+  // Arrow keys step bar by bar: the period, the change and the net worth at its end.
+  await plot.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(chart.locator("[data-net-worth-step]")).toContainText(/[+−]\$[\d,]+ that day/);
+  await expect(chart.locator("[data-net-worth-change]")).toContainText(
+    /[A-Z][a-z]{2} \d{1,2}, \d{4}/,
+  );
+  await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText(/^-?\$[\d,]+$/);
+
+  // The choice is remembered on this device.
+  await page.reload();
+  await expect(chart).toBeVisible();
+  await expect(
+    chart.getByRole("group", { name: "Chart view" }).getByRole("button", { name: "Changes" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(async () => (await bars(chart)).list.length).toBeGreaterThan(15);
+  // And back to the line.
+  await chart.getByRole("button", { name: "Net worth", exact: true }).click();
+  await expect(chart.locator("path.nw-line")).toHaveCount(1);
+  await page.reload();
+  await expect(chart.locator("path.nw-line")).toHaveCount(1);
+  // No horizontal scroll on the page.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// Founder, Nov 28: the line's readout shows the day's change as well as the level.
+test("scrubbing the net worth line shows that day's change", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, SMALL_MOVES_PERSON);
+  await page.goto("/home");
+  const chart = page.locator("[data-net-worth-chart]");
+  await chart.locator("[data-show-value]").click();
+  const plot = chart.locator("[data-net-worth-plot]");
+  await plot.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(chart.locator("[data-net-worth-step]")).toContainText(/[+−]\$[\d,]+ that day/);
+});
