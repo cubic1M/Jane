@@ -119,6 +119,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   decision_undone: own,
   item_linked: own,
   item_relinked: own,
+  plaid_history_checked: automatic,
   admin_viewed_queue: {
     shown: true,
     whose: "queue",
@@ -135,6 +136,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   },
   admin_viewed_costs: notOnePerson,
   admin_viewed_connectors: notOnePerson,
+  admin_viewed_history: notOnePerson,
   admin_viewed_stuck_actions: notOnePerson,
   admin_viewed_activity: {
     shown: true,

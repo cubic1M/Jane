@@ -5,6 +5,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { demoBankEnabled } from "@/lib/plaid/demo";
 import { bankNotices, updatedAgo } from "@/lib/plaid/bank-status";
+import { historyForPerson } from "@/lib/plaid/history";
 import { timezoneOf } from "@/lib/today";
 import { linkAvailability } from "@/lib/plaid/item-slots";
 import { requireUser } from "@/lib/session";
@@ -46,6 +47,13 @@ async function ConnectContent() {
     db.accounts.count(),
   ]);
   const now = new Date();
+  // How far back each bank's history goes, in plain words (src/lib/plaid/history.ts).
+  const histories = new Map(
+    (items.length > 0 ? await historyForPerson(user.id).catch(() => []) : []).map((h) => [
+      h.itemId,
+      h,
+    ]),
+  );
   // Someone's own statement in a temporary try: no bank links and no demo bank beside it.
   const uploadOnly = isStatementTrialUser(user.id);
   const notices = bankNotices(
@@ -114,6 +122,14 @@ async function ConnectContent() {
                     {item.accounts
                       .map((a) => (a.mask ? `${a.name} ····${a.mask}` : a.name))
                       .join(", ")}
+                  </p>
+                )}
+                {histories.get(item.id) && (
+                  <p
+                    data-history={histories.get(item.id)!.line.state}
+                    className="text-sm text-zinc-600 dark:text-zinc-400"
+                  >
+                    {histories.get(item.id)!.line.text}
                   </p>
                 )}
                 {notices

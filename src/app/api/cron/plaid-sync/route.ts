@@ -14,6 +14,7 @@ import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
+import { itemsStillCatchingUp } from "@/lib/plaid/history";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { ROBINHOOD_LIMITS } from "@/config/robinhood";
 import { refreshAllRobinhood } from "@/lib/robinhood/refresh";
@@ -166,6 +167,12 @@ const stepRunner = (failed: string[], startedAt: number) => {
 // syncItem scopes each one.
 async function syncBanks(startedAt: number) {
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
+  // Banks whose history Plaid has not called complete are read every night, whatever their last
+  // sync, for HISTORY_CATCH_UP_MAX_DAYS after linking (a missed webhook, a cursor that sits short).
+  const catchingUp = await itemsStillCatchingUp({}, STAYING).catch((error: unknown) => {
+    log.error("Finding banks still catching up on history failed", { error: String(error) });
+    return [] as string[];
+  });
   const items = await systemDb("Cron: finds every bank connection due a sync").plaidItem.findMany({
     where: {
       status: ITEM_STATUS.active,
@@ -176,6 +183,7 @@ async function syncBanks(startedAt: number) {
         // A bank linked lately is read again whatever its last sync: its older history may have
         // arrived since, and a missed webhook must not leave it at 30 days.
         { createdAt: { gt: new Date(Date.now() - HISTORY_CATCH_UP_DAYS * 86_400_000) } },
+        ...(catchingUp.length > 0 ? [{ id: { in: catchingUp } }] : []),
       ],
     },
     select: { id: true },

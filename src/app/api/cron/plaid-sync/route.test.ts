@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { findMany } = vi.hoisted(() => ({ findMany: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({ db: { plaidItem: { findMany } } }));
+const { catchingUp } = vi.hoisted(() => ({ catchingUp: vi.fn() }));
+vi.mock("@/lib/plaid/history", () => ({ itemsStillCatchingUp: catchingUp }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "active" } }));
 vi.mock("@/lib/robinhood/refresh", () => ({ refreshAllRobinhood: vi.fn(async () => null) }));
 vi.mock("@/lib/plaid/inactive", () => ({
@@ -100,6 +102,7 @@ describe("GET /api/cron/plaid-sync", () => {
     vi.stubEnv("PLAID_CLIENT_ID", "client");
     vi.stubEnv("PLAID_SECRET", "secret");
     findMany.mockReset().mockResolvedValue([{ id: "a" }, { id: "b" }]);
+    catchingUp.mockReset().mockResolvedValue([]);
     vi.mocked(syncItem).mockReset();
   });
 
@@ -159,6 +162,19 @@ describe("GET /api/cron/plaid-sync", () => {
     const recent = where.OR[2].createdAt.gt as Date;
     expect(Date.now() - recent.getTime()).toBeGreaterThanOrEqual(3 * 86_400_000);
     expect(Date.now() - recent.getTime()).toBeLessThan(3 * 86_400_000 + 60_000);
+  });
+
+  it("reads a bank whose history is not complete at every run, whatever its last sync", async () => {
+    catchingUp.mockResolvedValue(["slow-bank"]);
+    await call("Bearer cron-secret");
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.OR).toContainEqual({ id: { in: ["slow-bank"] } });
+  });
+
+  it("still reads the banks when the history check itself fails", async () => {
+    catchingUp.mockRejectedValue(new Error("down"));
+    await call("Bearer cron-secret");
+    expect(syncItem).toHaveBeenCalledWith("a");
   });
 
   it("still snapshots balances when Plaid isn't set up", async () => {

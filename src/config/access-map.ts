@@ -274,6 +274,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/admin/costs/page.tsx": "admin",
   "src/app/admin/errors/page.tsx": "admin",
   "src/app/admin/health/page.tsx": "admin",
+  "src/app/admin/history/page.tsx": "admin",
   "src/app/admin/accuracy/page.tsx": "admin",
   "src/app/admin/invites/page.tsx": "admin",
   "src/app/admin/jobs/page.tsx": "admin",

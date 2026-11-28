@@ -115,3 +115,21 @@ export const FIRST_SYNC_TRIES = 6;
 
 // A webhook that came while a sync ran has that sync run again, this many times at most.
 export const SYNC_AGAIN_MAX = 3;
+
+// How far back a link is held to be (src/lib/plaid/history.ts). Links made before #2398 deployed
+// asked Plaid for 365 days, later ones for TRANSACTION_DAYS_REQUESTED; the link's own day says which.
+export const DAYS_REQUESTED_BEFORE_MAX = 365;
+export const MAX_DAYS_REQUESTED_FROM = "2026-11-28T04:16:00Z";
+// The oldest transaction may sit this many days after the first day asked for (a bank's first
+// posted day, a weekend) and the link still counts as holding all that was asked.
+export const HISTORY_SLACK_DAYS = 10;
+// A link that is not complete at Plaid is read at every nightly run, whatever its last sync, until
+// it is this many days old; past that it only shows as stuck on /admin/history.
+export const HISTORY_CATCH_UP_MAX_DAYS = 45;
+// A link is given this long before its history is judged short (Plaid's first pull and the older
+// history arrive over minutes to hours: plaid.com/docs/transactions/webhooks/, read 2026-11-28).
+export const HISTORY_GRACE_HOURS = 24;
+// Without Plaid saying "complete", a short link is read again from the start once, after this many days.
+export const HISTORY_RESCAN_AFTER_DAYS = 3;
+// Plaid's last word on a link's history (/transactions/sync's transactions_update_status).
+export const HISTORY_COMPLETE = "HISTORICAL_UPDATE_COMPLETE";
