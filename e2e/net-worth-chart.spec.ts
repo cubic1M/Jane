@@ -364,6 +364,11 @@ test("the axis fits what is on screen: ranges, zoom buttons, keys and the wheel 
 
   // The wheel (a computer): zooming in on the right edge refits to the small moves.
   if (!isMobile) {
+    // The pointer has to be over the plot on screen: expanded, the plot can sit above the fold (at
+    // y = -187 once Home's hero row lost two tiles), where the pointer lands on the header instead.
+    await chart
+      .locator("[data-net-worth-plot]")
+      .evaluate((el) => el.scrollIntoView({ block: "center" }));
     const plot = (await chart.locator("[data-net-worth-plot]").boundingBox())!;
     await page.mouse.move(plot.x + plot.width - 4, plot.y + plot.height / 2);
     for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -120);
