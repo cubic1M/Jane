@@ -89,7 +89,8 @@ describe.runIf(url)(
       });
     }, 240_000);
     afterAll(async () => {
-      await client.user.deleteMany({ where: { id: userId } });
+      // Only when the person was made: an undefined id would match every user.
+      if (userId) await client.user.deleteMany({ where: { id: userId } });
       await client.$disconnect();
       vi.unstubAllEnvs();
     });
