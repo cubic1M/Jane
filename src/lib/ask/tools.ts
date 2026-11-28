@@ -154,8 +154,8 @@ export function displayMerchant(t: {
 const ALL_TIME = "1900-01-01";
 
 // The bank's line, for the person's eyes: long digit runs (card and reference numbers) cut.
-const bankText = (description: string) =>
-  description
+const bankText = (line: string) =>
+  line
     .replace(/\d{4,}/g, "…")
     .replace(/\s+/g, " ")
     .trim()

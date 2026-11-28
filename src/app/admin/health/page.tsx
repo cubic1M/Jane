@@ -33,7 +33,7 @@ async function Health() {
         <p
           role="alert"
           data-chat-model-down=""
-          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 font-semibold text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+          className="rounded-xl border-2 border-zinc-900 bg-zinc-100 px-4 py-3 font-semibold dark:border-zinc-100 dark:bg-zinc-900"
         >
           {chatDown}
         </p>
