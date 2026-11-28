@@ -20,7 +20,6 @@ import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { runJaneAgent } from "@/lib/jane-agent/run";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { savedToDate } from "@/lib/membership/service";
-import { formatCents } from "@/lib/money";
 import { monthlyReportFor, renderMonthlyReportEmail } from "@/lib/monthly-report";
 import { syncItem } from "@/lib/plaid/sync";
 import { autopilotFor } from "@/lib/sector-autopilot";
@@ -141,14 +140,9 @@ describe.runIf(url)("the merges, on the eight sample people", { timeout: 240_000
       found.push(`Home saved ${home.savedToDateCents} vs /jane ${saved}`);
     }
 
-    // Safe to spend: the brief says Home's figure.
-    const safe = home?.safeToSpend;
-    if (
-      safe &&
-      safe.safeCents >= 0 &&
-      !briefs.some((b) => b.body.includes(formatCents(safe.safeCents)))
-    ) {
-      found.push(`the brief doesn't say Home's safe to spend (${formatCents(safe.safeCents)})`);
+    // Safe to spend is gone from the brief (#2396): it carries no such line.
+    if (briefs.some((b) => /safe to spend/i.test(b.body))) {
+      found.push("the brief still carries a safe-to-spend line");
     }
 
     // One alert per charge (cluster 10): a charge is never both "much more than usual" or
