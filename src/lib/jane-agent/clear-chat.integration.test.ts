@@ -182,6 +182,9 @@ describe.runIf(url)("Clear chat", { timeout: 60_000 }, () => {
   });
 
   it("does not leave an answer alone in the emptied chat when it was cleared mid-answer", async () => {
+    // Its own key, so it passes alone as well as after the test before it.
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "1000000000");
     const lone = await client.user.create({
       data: { email: `clear-flight-${crypto.randomUUID()}@example.com`, timezone: "UTC" },
     });
