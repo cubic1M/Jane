@@ -28,6 +28,7 @@ import type { WorthKind } from "@/detectors/contract";
 import type { Relief } from "@/config/disasters";
 import type { DraftFinding } from "@/planning/draft-return";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
+import type { TaxHousehold } from "@/planning/tax-engine/facts";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
@@ -276,6 +277,10 @@ export type ProfileInput = {
     coinsurance: number;
   } | null;
   fsaElectionCents?: number | null;
+  // The household's tax facts (src/lib/tax-facts/), by tax year: the year the person is working on
+  // (defaultTaxYear of their day) and, from January to April, the calendar year just begun. Absent
+  // when not loaded (the sample people).
+  taxHouseholds?: Readonly<Record<number, TaxHousehold>>;
   // The latest credit score pulled (spec step 116), so detectors price loans by the same band
   // as the chat and the pages; null before a pull, absent when not loaded (the sample people).
   creditScore?: number | null;

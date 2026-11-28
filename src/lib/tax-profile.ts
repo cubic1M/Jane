@@ -17,6 +17,7 @@ import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { loadFiling, saveToldFiling } from "@/lib/filing-status";
 import { rescanAfterAnswer } from "@/lib/rescan-after-answer";
+import { syncRecord } from "@/lib/tax-facts/through";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { readPeople } from "@/lib/insurance/family-rules";
@@ -208,6 +209,9 @@ export async function saveTaxAnswers(
     if (answer.field === "filingStatus")
       await saveToldFiling(userId, answer.value, { client, now });
   }
+  // The household record follows what the profile now says (src/lib/tax-facts/).
+  if (checked.some((a) => ["state", "filingStatus", "dependants"].includes(a.field)))
+    await syncRecord(userId, { client, now });
   await logAudit(
     { type: "user", id: userId },
     "tax_profile_changed",

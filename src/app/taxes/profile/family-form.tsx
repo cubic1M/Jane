@@ -10,7 +10,7 @@ import { CARD_ROOMY } from "@/components/card";
 
 export type FamilyValues = {
   year: number;
-  children: { age: string; ssn: boolean; months: string }[];
+  children: { id?: string; age: string; ssn: boolean; months: string }[];
   spouseWages: string;
   paysOverHalfHome: boolean;
   studentYears: string;
@@ -35,6 +35,7 @@ export function FamilyForm({ values }: { values: FamilyValues }) {
       {values.children.map((c, i) => (
         <fieldset key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="text-sm font-medium">Child {i + 1}</legend>
+          {c.id ? <input type="hidden" name={`childId${i}`} value={c.id} /> : null}
           <label className="flex flex-col gap-1">
             <span className="text-sm">Age on December 31</span>
             <input

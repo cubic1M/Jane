@@ -3,6 +3,7 @@ import { parseMoneyToCents } from "@/lib/money";
 import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-profile";
 import { ResidencyError } from "@/lib/tax-states";
 import { FamilyTaxesError, type FamilyDetails } from "@/lib/family-taxes";
+import { CHILD_ID } from "@/planning/family-taxes";
 import { HomeTaxesError, type HomeAnswers } from "@/lib/home-taxes";
 import { SideIncomeError, type SideIncomeAnswers } from "@/lib/side-income";
 
@@ -105,7 +106,10 @@ export function familyFrom(formData: FormData): FamilyDetails {
     const age = text(formData, `childAge${i}`);
     if (!age) continue;
     const months = text(formData, `childMonths${i}`);
+    // Who this row is: the id the form was shown with (saveFamilyDetails keeps only a real one).
+    const id = text(formData, `childId${i}`);
     children.push({
+      ...(CHILD_ID.test(id) ? { id } : {}),
       ageAtYearEnd: Number(age),
       hasSsn: Boolean(formData.get(`childSsn${i}`)),
       monthsLivedWithYou: months ? Number(months) : 12,
