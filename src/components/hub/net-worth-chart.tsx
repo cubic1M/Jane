@@ -216,6 +216,7 @@ export function NetWorthChart({
   notCounting,
   loansLeft,
   covers,
+  flatNote,
   maybeSame,
   maybeSameHref = "/import",
 }: {
@@ -227,6 +228,8 @@ export function NetWorthChart({
   loansLeft?: string | null;
   // What the figure covers (netWorthCovers), said under it.
   covers?: string | null;
+  // What stands at its first known value before that day (investments, loans), said under it.
+  flatNote?: string | null;
   // Accounts that may be one account counted twice (maybeSameWords), said under it.
   maybeSame?: string | null;
   // Where one of them is removed: the import page for an upload, else the bank links in Settings.
@@ -598,6 +601,11 @@ export function NetWorthChart({
       {covers && (
         <p data-net-worth-covers="" className="text-sm text-zinc-600 dark:text-zinc-400">
           {covers}
+        </p>
+      )}
+      {flatNote && (
+        <p data-net-worth-flat-note="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          {flatNote}
         </p>
       )}
       {notCounting && (

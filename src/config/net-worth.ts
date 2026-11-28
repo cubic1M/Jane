@@ -2,6 +2,12 @@
 
 // Daily balance snapshots are kept this long: two years.
 export const SNAPSHOT_RETENTION_DAYS = 730;
+// A real bank's past balances (src/lib/plaid/past-balances.ts): worked back from the first day
+// the daily snapshot has, through its posted transactions, no further back than snapshots are
+// kept (the daily job deletes older rows).
+export const PAST_BALANCES_MAX_DAYS = SNAPSHOT_RETENTION_DAYS;
+// The tag on a worked-back balance row; the daily snapshot's own rows have none.
+export const PAST_BALANCE_SOURCE = "derived";
 // Months shown on /net-worth.
 export const NET_WORTH_MONTHS = 12;
 // A sample person's past balances (src/lib/plaid/demo-history.ts): working back through an
