@@ -103,6 +103,7 @@ export async function loadHomeTaxes(
   // only for a reading taken in that same year (the estimate's rule, src/lib/tax-estimate.ts). One
   // form 1098 belongs to one loan, so it is used only for a person with one mortgage.
   const mortgage = loans.length > 0 ? loans : null;
+  const ownReading = new Map(loansAll.map((l) => [l.accountId, iso(l.updatedAt)]));
   const form1098 =
     loans.length === 1
       ? documents.forms.find((f) => f.formKey === "mortgage" && f.document && f.usable)
@@ -141,9 +142,12 @@ export async function loadHomeTaxes(
           ytdInterestCents: mortgage.some((l) => l.ytdInterestPaidCents !== null)
             ? mortgage.reduce((s, l) => s + (l.ytdInterestPaidCents ?? 0), 0)
             : null,
+          // The balance is on the account, dated by that row's own reading (a copy's reading can have
+          // replaced `updatedAt` on the reconciled row).
           balanceCents: mortgage.every(
             (l) =>
-              l.account.currentBalanceCents !== null && iso(l.updatedAt).startsWith(`${year}-`),
+              l.account.currentBalanceCents !== null &&
+              (ownReading.get(l.accountId) ?? "").startsWith(`${year}-`),
           )
             ? mortgage.reduce((s, l) => s + Math.abs(l.account.currentBalanceCents ?? 0), 0)
             : null,
