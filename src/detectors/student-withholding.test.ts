@@ -59,9 +59,19 @@ const passes = (s: Suggestion) => {
 describe("Pub. 15-T withholding on a paycheck", () => {
   it("withholds nothing on a year's pay up to $16,100, then 10%", () => {
     // $670.83 twice a month is $16,099.92 a year.
-    expect(withheldPerCheck(67_083, 24)).toBe(0);
+    expect(withheldPerCheck(67_083, 24, "single", 2026)).toBe(0);
     // $1,000 twice a month: $24,000 a year, $7,900 over: $790 / 24.
-    expect(withheldPerCheck(100_000, 24)).toBe(Math.round(79_000 / 24));
+    expect(withheldPerCheck(100_000, 24, "single", 2026)).toBe(Math.round(79_000 / 24));
+  });
+});
+
+describe("the single W-4's no-withholding band follows the year (Tax T5)", () => {
+  it("is $16,100 in 2026 and $15,000 in 2025 (both amounts from the year's parameters)", () => {
+    // $1,000 twice a month is $24,000 a year: 2026 withholds on $7,900, 2025 on $9,000, at 10%.
+    expect(withheldPerCheck(100_000, 24, "single", 2026)).toBe(Math.round(79_000 / 24));
+    expect(withheldPerCheck(100_000, 24, "single", 2025)).toBe(Math.round(90_000 / 24));
+    // $15,000 a year pays nothing in 2025; in 2026 it is under $16,100 too.
+    expect(withheldPerCheck(62_500, 24, "single", 2025)).toBe(0);
   });
 });
 
@@ -101,7 +111,8 @@ describe("a job that started this year", () => {
     const check = Math.round(400_000 * 1.3);
     const checks = Math.floor(152 / 15) + 1;
     expect(s.worthCents).toBe(
-      withheldPerCheck(check, 24) * checks - federalTaxOf(check * checks, "single", false),
+      withheldPerCheck(check, 24, "single", 2026) * checks -
+        federalTaxOf(check * checks, "single", false, check * checks, 2026),
     );
     expect(s.why).not.toContain("Exempt from withholding");
   });

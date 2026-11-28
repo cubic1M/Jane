@@ -169,6 +169,14 @@ export const US_2025: FederalParams = {
         "Rev. Proc. 2024-40 section 2.15(2): the greater of $1,350 or earned income plus $450 (not changed by Rev. Proc. 2025-32; read 2026-11-27); Pub. 501 (2025) Table 8 and its Examples 1 to 4",
     },
   ),
+  withholding: cited(
+    { adjustment: $(8_600), zeroBand: $(6_400) },
+    {
+      source: "https://www.irs.gov/pub/irs-prior/p15t--2025.pdf",
+      where:
+        "Pub. 15-T (2025): Worksheet 1A line 1g ($8,600 if the taxpayer is not married filing jointly, page 9) and the 2025 Percentage Method Tables, STANDARD Withholding Rate Schedules, Single or Married Filing Separately: 0% on $0 to $6,400, 10% from $6,400 to $18,325 (page 11). Read 2026-11-27 from the PDF's text (macOS PDFKit). The two add to $15,000, the 2025 standard deduction in Rev. Proc. 2024-40, which is what the publication's tables were built on (the later law raised the 2025 standard deduction to $15,750; Pub. 15-T 2025 was not reissued with it)",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     { source: code("1211"), where: "26 USC 1211(b)(1) (statute, not indexed)" },

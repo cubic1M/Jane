@@ -32,6 +32,7 @@ A window is general knowledge unless the row says it was read at the source.
 | Key | Source | Usual window | Read at the source |
 |---|---|---|---|
 | `inflation_rev_proc` | https://www.irs.gov/newsroom (the Revenue Procedure with next year's inflation-adjusted amounts) | October to early November | 2027: Rev. Proc. 2026-35, news release IR-2026-133, 2026-11-05 |
+| `pub_15t` | https://www.irs.gov/publications/p15t (the withholding adjustment and the percentage-method tables; an early draft is posted at the IRS drafts page first) | December of the year before, usually | 2027: the final is not out (the page says For use in 2026); the early draft p15t--dft.pdf, read 2026-11-27, still carries 2026's $8,600 and $7,500 band (16,100), not the 2027 standard deduction of 16,600, so it is not used |
 | `retirement_notice` | https://www.irs.gov/retirement-plans/cola-increases-for-dollar-limitations-on-benefits-and-contributions | late October to mid November | 2027: Notice 2026-66, news release IR-2026-136, 2026-11-12 |
 | `hsa_rev_proc` | https://www.irs.gov/irb | spring (May or June of the year before) | 2027: Rev. Proc. 2026-24, Internal Revenue Bulletin 2026-25, 2026-06-15 |
 | `ss_wage_base` | https://www.ssa.gov/oact/cola/cbb.html | mid October, with the cost-of-living announcement | 2027: $192,300, press release of 2026-10-14 |
@@ -47,7 +48,7 @@ A window is general knowledge unless the row says it was read at the source.
 ## The yearly checklist
 
 1. October to November: read `inflation_rev_proc`, `retirement_notice`, `ss_wage_base`; in
-   December `mileage_notice`. Write `us-<year>.ts` following `us-2026.ts`: one `Cited` group per
+   December `mileage_notice` and `pub_15t`. Write `us-<year>.ts` following `us-2026.ts`: one `Cited` group per
    figure with its source address, the place in it, the day read and the status. A figure that is
    not published yet is `unconfirmed` with a note saying what is awaited; it is never copied from
    the year before.

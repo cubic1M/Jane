@@ -142,6 +142,14 @@ export const US_2026: FederalParams = {
         "section 4.14(2), dependent: the greater of $1,350 or earned income plus $450 (read 2026-11-27; Pub. 501 (2025) says earned income includes a taxable scholarship or fellowship)",
     },
   ),
+  withholding: cited(
+    { adjustment: $(8_600), zeroBand: $(7_500) },
+    {
+      source: "https://www.irs.gov/publications/p15t",
+      where:
+        "Pub. 15-T (2026), Worksheet 1A line 1g ($8,600 for a W-4 with the Step 2 box not checked, other than married filing jointly) and the 2026 Percentage Method Tables, standard withholding rate schedule for single: 0% from $0 to $7,500, 10% from $7,500 (read 2026-11-27)",
+    },
+  ),
   capitalLoss: cited(
     { normal: $(3_000), marriedSeparate: $(1_500) },
     { source: code("1211"), where: "26 USC 1211(b)(1) (statute, not indexed)" },
