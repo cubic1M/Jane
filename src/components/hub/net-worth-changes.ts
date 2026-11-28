@@ -3,11 +3,13 @@
 // $18,000 bar both readable. Changes are differences of the same daily points the line uses.
 import {
   CHANGE_EXPONENT,
+  CHANGE_EXPONENT_MAX,
   CHANGE_FLOOR_CENTS,
+  MEDIAN_BAR_SHARE,
   DAY_BARS_MAX_DAYS,
   WEEK_BARS_MAX_DAYS,
 } from "@/config/net-worth-changes";
-import { PAD_Y } from "./net-worth-geometry";
+import { PAD_Y, niceTicks } from "./net-worth-geometry";
 
 export type Period = "day" | "week" | "month";
 type Point = { date: string; cents: number };
@@ -73,49 +75,90 @@ export function bucketChanges(
 }
 
 // A change as a signed distance from zero on the power scale: the same each side, 0 at 0.
-export const squash = (cents: number): number =>
-  Math.sign(cents) * Math.pow(Math.abs(cents) / 100, CHANGE_EXPONENT);
+export const squash = (cents: number, exponent: number = CHANGE_EXPONENT): number =>
+  Math.sign(cents) * Math.pow(Math.abs(cents) / 100, exponent);
 
 // The least room between two axis labels, and between one and the zero line, in pixels.
-const TICK_GAP_PX = 14;
+const TICK_GAP_PX = 18;
 
 export type ChangeScale = {
+  // The power the amounts are raised to: 1 is a plain linear scale.
+  exponent: number;
   // The pixel row of a change, and of zero.
   y: (cents: number) => number;
   zero: number;
-  // Axis labels, in cents, both sides of zero: $10, $100, $1,000 ... (the real amounts).
+  // Axis labels, in cents, both sides of zero, the real amounts: even steps when linear, powers of
+  // ten ($10, $100, $1,000 ...) when compressed.
   ticks: number[];
 };
 
-// The vertical scale for these bars: from the biggest drop to the biggest rise, on the power
-// scale, over the height inside the padding, at least CHANGE_FLOOR_CENTS wide so a quiet stretch
-// is not stretched into cliffs.
-export function changeScale(bars: readonly Bar[], height: number): ChangeScale {
+// The two extents (the biggest rise and the biggest drop, on the scale) and the span, with the
+// floor so a quiet stretch is not stretched into cliffs.
+function extents(bars: readonly Bar[], exponent: number) {
   let up = 0;
   let down = 0;
   for (const b of bars) {
-    up = Math.max(up, squash(b.change));
-    down = Math.max(down, squash(-b.change));
+    up = Math.max(up, squash(b.change, exponent));
+    down = Math.max(down, squash(-b.change, exponent));
   }
-  const slack = Math.max(0, squash(CHANGE_FLOOR_CENTS) - (up + down)) / 2;
-  const top = up + slack;
-  const span = up + down + slack * 2;
+  const slack = Math.max(0, squash(CHANGE_FLOOR_CENTS, exponent) - (up + down)) / 2;
+  return { up, down, top: up + slack, span: up + down + slack * 2 };
+}
+
+// How strongly to compress: as little as possible. Linear (1) whenever the typical bar (the median
+// of the bars that moved) still gets MEDIAN_BAR_SHARE of the plot's half-height; otherwise the
+// highest power, down to CHANGE_EXPONENT, that gets it there.
+export function changeExponent(bars: readonly Bar[], height: number): number {
+  const sizes = bars
+    .map((b) => Math.abs(b.change))
+    .filter((c) => c > 0)
+    .sort((p, q) => p - q);
+  if (sizes.length === 0) return CHANGE_EXPONENT_MAX;
+  const median = sizes[Math.floor(sizes.length / 2)];
+  const half = (height - PAD_Y * 2) / 2;
+  for (
+    let e = CHANGE_EXPONENT_MAX;
+    e > CHANGE_EXPONENT + 1e-9;
+    e = Math.round((e - 0.01) * 100) / 100
+  ) {
+    const bar = (squash(median, e) / extents(bars, e).span) * half * 2;
+    if (bar >= MEDIAN_BAR_SHARE * half) return e;
+  }
+  return CHANGE_EXPONENT;
+}
+
+// The vertical scale for these bars, from the biggest drop to the biggest rise, over the height
+// inside the padding. The power is chosen from the bars (changeExponent) unless one is given (the
+// chart passes an eased one while it slides to a new fit).
+export function changeScale(
+  bars: readonly Bar[],
+  height: number,
+  exponent: number = changeExponent(bars, height),
+): ChangeScale {
+  const { up, down, top, span } = extents(bars, exponent);
   const room = height - PAD_Y * 2;
-  const y = (cents: number) => PAD_Y + ((top - squash(cents)) / span) * room;
-  // Powers of ten that fit on either side, from $10 ($1 only when nothing reaches $10), leaving
-  // out any that would sit on the zero line or on the label next to it.
+  const y = (cents: number) => PAD_Y + ((top - squash(cents, exponent)) / span) * room;
   const ticks: number[] = [];
-  let last = 0;
-  for (const dollars of [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000]) {
-    const reach = squash(dollars * 100);
-    if (dollars === 1 && Math.max(up, down) >= squash(1_000)) continue;
-    const row = Math.abs(y(dollars * 100) - y(0));
-    if (row - last < TICK_GAP_PX) continue;
-    if (up >= reach) ticks.push(dollars * 100);
-    if (down >= reach) ticks.push(-dollars * 100);
-    last = row;
+  if (exponent >= CHANGE_EXPONENT_MAX - 1e-9) {
+    // Linear: ordinary even steps across the range on screen.
+    for (const t of niceTicks(-(span - top) * 100, top * 100)) {
+      if (t !== 0 && Math.abs(y(t) - y(0)) >= TICK_GAP_PX) ticks.push(t);
+    }
+  } else {
+    // Powers of ten that fit on either side, from $10 ($1 only when nothing reaches $10), leaving
+    // out any that would sit on the zero line or on the label next to it.
+    let last = 0;
+    for (const dollars of [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000]) {
+      const reach = squash(dollars * 100, exponent);
+      if (dollars === 1 && Math.max(up, down) >= squash(1_000, exponent)) continue;
+      const row = Math.abs(y(dollars * 100) - y(0));
+      if (row - last < TICK_GAP_PX) continue;
+      if (up >= reach) ticks.push(dollars * 100);
+      if (down >= reach) ticks.push(-dollars * 100);
+      last = row;
+    }
   }
-  return { y, zero: y(0), ticks: ticks.sort((a, b) => b - a) };
+  return { exponent, y, zero: y(0), ticks: ticks.sort((p, q) => q - p) };
 }
 
 // The words for a bar: "Nov 3, 2026", "Week of Nov 2, 2026" or "November 2026".

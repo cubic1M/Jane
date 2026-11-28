@@ -445,8 +445,12 @@ export function NetWorthChart({
   // in view), each in a slot of the width after the axis labels.
   const changes = mode === "changes";
   const bars: Bar[] = changes ? bucketChanges(points, win.from, win.to) : [];
-  const barScale = changes ? changeScale(bars, H) : null;
-  const barTicks = barScale?.ticks ?? [];
+  // The power of the bar scale follows the bars on screen (linear unless one huge bar would flatten
+  // the rest) and eases to each new fit; the labels are the target fit's.
+  const barFit = changes ? changeScale(bars, H) : null;
+  const barEase = useEasedRange({ lo: barFit?.exponent ?? 1, hi: barFit?.exponent ?? 1 });
+  const barScale = changes ? changeScale(bars, H, barEase.lo) : null;
+  const barTicks = barFit?.ticks ?? [];
   // The bars keep the left edge for "$0" even when the figures are hidden.
   const gutter = changes
     ? gutterFor(["$0", ...(figureShown ? barTicks.map(dollars) : [])])
@@ -953,7 +957,12 @@ export function NetWorthChart({
                   {changes && barScale && (
                     // One bar per period: up from the zero line, down below it. Each carries its
                     // change in cents (data-change) and the period it covers.
-                    <g data-net-worth-bars="" data-period={bars[0]?.period}>
+                    <g
+                      data-net-worth-bars=""
+                      data-period={bars[0]?.period}
+                      data-exponent={barScale.exponent.toFixed(3)}
+                      data-fit={barFit?.exponent.toFixed(3)}
+                    >
                       {bars.map((b, k) => {
                         const gap = slot > 4 ? 1.5 : 0;
                         const top = Math.min(barScale.y(b.change), barScale.zero);
@@ -1154,9 +1163,10 @@ export function NetWorthChart({
 
           {changes && (
             <p data-net-worth-caption="" className="text-xs text-zinc-600 dark:text-zinc-400">
-              One bar per {bars[0]?.period ?? "day"}: how much net worth went up or down. Bar
-              heights are compressed so small and large changes both show; the labels are the real
-              amounts.
+              One bar per {bars[0]?.period ?? "day"}: how much net worth went up or down.
+              {barFit &&
+                barFit.exponent < 1 &&
+                " Bar heights are compressed so small and large changes both show; the labels are the real amounts."}
             </p>
           )}
 

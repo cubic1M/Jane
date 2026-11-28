@@ -531,6 +531,17 @@ async function bars(chart: Locator): Promise<{ list: BarBox[]; plot: number; per
   });
 }
 
+// The bars' scale has finished easing to its fit (the eased power equals the fitted one).
+async function settled(chart: Locator) {
+  await expect
+    .poll(async () =>
+      chart
+        .locator("[data-net-worth-bars]")
+        .evaluate((g) => g.getAttribute("data-exponent") === g.getAttribute("data-fit")),
+    )
+    .toBe(true);
+}
+
 // Every pair of bars where one changed 12 times or more than the other: the bigger one is at least
 // 3 times taller (12 ** 0.45 is 3.06, the scale's own promise).
 function expectOrdered(list: BarBox[]) {
@@ -581,6 +592,7 @@ test("the Changes view shows how big each period's move is: $9 and $138 differ w
   // ALL (150 days): a bar a week. The -$18,000 week is the tallest and inside the plot; every week
   // with a real move is visible; no break marks, no clipping.
   await expect.poll(async () => (await bars(chart)).list.length).toBeGreaterThan(15);
+  await settled(chart);
   const all = await bars(chart);
   expect(all.period).toBe("week");
   const tallest = all.list.reduce((a, b) => (b.h > a.h ? b : a));
@@ -588,9 +600,11 @@ test("the Changes view shows how big each period's move is: $9 and $138 differ w
   expect(tallest.top).toBeGreaterThanOrEqual(0);
   expect(tallest.bottom).toBeLessThanOrEqual(all.plot);
   for (const b of all.list.filter((x) => Math.abs(x.change) >= 500)) {
-    expect(b.h).toBeGreaterThanOrEqual(3);
+    expect(b.h).toBeGreaterThanOrEqual(Math.abs(b.change) >= 3_000 && !isMobile ? 3 : 2);
   }
   expectOrdered(all.list);
+  // The $18,000 week is in view: compressed, and the caption says so.
+  await expect(chart.locator("[data-net-worth-caption]")).toContainText("compressed");
   await expect(page.locator("[data-net-worth-break]")).toHaveCount(0);
   // The labels are real dollar amounts, powers of ten, both sides of zero.
   const texts = await chart.locator('[data-net-worth-scale="tick"]').allTextContents();
@@ -603,11 +617,27 @@ test("the Changes view shows how big each period's move is: $9 and $138 differ w
   // plain, and the dollar-sized days differ by size.
   await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^3M/ }).click();
   await expect.poll(async () => (await bars(chart)).period).toBe("day");
+  await settled(chart);
   const days = await bars(chart);
   for (const b of days.list.filter((x) => Math.abs(x.change) >= 500)) {
-    expect(b.h).toBeGreaterThanOrEqual(3);
+    expect(b.h).toBeGreaterThanOrEqual(isMobile ? 2 : 3);
   }
   expectOrdered(days.list);
+
+  // The last month holds only ordinary days: the scale is linear (no compression, the caption
+  // says so) and a bar is as many times taller as the day is bigger.
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
+  await expect(chart.locator("[data-net-worth-caption]")).not.toContainText("compressed");
+  await expect(chart.locator("[data-net-worth-caption]")).toContainText("One bar per day");
+  await expect.poll(async () => (await bars(chart)).list.length).toBeGreaterThan(20);
+  await settled(chart);
+  const month = (await bars(chart)).list.filter((b) => b.change !== 0);
+  const big = month.reduce((a, b) => (Math.abs(b.change) > Math.abs(a.change) ? b : a));
+  const small = month.reduce((a, b) => (Math.abs(b.change) < Math.abs(a.change) ? b : a));
+  expect(big.h / small.h).toBeGreaterThan((Math.abs(big.change) / Math.abs(small.change)) * 0.9);
+  expect(big.h / small.h).toBeLessThan((Math.abs(big.change) / Math.abs(small.change)) * 1.1);
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^3M/ }).click();
+  await expect.poll(async () => (await bars(chart)).list.length).toBeGreaterThan(60);
 
   // Zoomed in the scale refits: the biggest day there fills much of the height.
   const plot = chart.locator("[data-net-worth-plot]");

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { DAY_BARS_MAX_DAYS, WEEK_BARS_MAX_DAYS } from "@/config/net-worth-changes";
-import { bucketChanges, changeScale, periodFor, squash, barLabel } from "./net-worth-changes";
+import { CHANGE_EXPONENT, DAY_BARS_MAX_DAYS, WEEK_BARS_MAX_DAYS } from "@/config/net-worth-changes";
+import {
+  bucketChanges,
+  changeExponent,
+  changeScale,
+  periodFor,
+  squash,
+  barLabel,
+} from "./net-worth-changes";
 
 // The Changes view (founder, Nov 28: "9 dollar spending and 138 looks the same because compared to
 // net worth it's only a flat line"): one bar per period, on a compressed scale.
@@ -105,14 +112,43 @@ describe("the changes scale", () => {
     expect(s.zero - s.y(5_000)).toBeCloseTo(s.y(-5_000) - s.zero, 6);
   });
 
-  it("labels real amounts, both sides, and stops where the bars do", () => {
-    // $10 and $100 would sit on the zero line here: only the labels with room are kept.
+  it("labels real amounts: powers of ten with room when compressed, even steps when linear", () => {
     const big = changeScale(all, 260);
-    expect(big.ticks).toEqual([100_000, -100_000, -1_000_000]);
-    for (const t of big.ticks) expect(Math.abs(big.y(t) - big.zero)).toBeGreaterThanOrEqual(14);
-    // A quiet stretch: $10 and $100 only.
-    const quiet = changeScale([-900, 13_800, 6_000].map(bar), 260).ticks;
-    expect(quiet).toEqual([10_000, 1_000]);
+    expect(big.exponent).toBeLessThan(1);
+    expect(big.ticks.length).toBeGreaterThanOrEqual(2);
+    for (const t of big.ticks) {
+      expect(Math.log10(Math.abs(t) / 100) % 1).toBeCloseTo(0, 9);
+      expect(Math.abs(big.y(t) - big.zero)).toBeGreaterThanOrEqual(18);
+    }
+    // A quiet stretch is linear: even steps, in the range of the bars.
+    const quiet = changeScale([-900, 13_800, 6_000].map(bar), 260);
+    expect(quiet.exponent).toBe(1);
+    expect(quiet.ticks).toEqual([12_000, 8_000, 4_000]);
+  });
+
+  it("picks the exponent from the bars: linear when the typical bar reads, down to the floor when not", () => {
+    // Two quiet weeks of $18 to $126 days: linear, a $126 bar is 7 times an $18 bar.
+    const quiet = [7_726, 3_582, 3_168, -5_945, 12_652, -7_752, -3_423, -1_800].map(bar);
+    expect(changeExponent(quiet, 260)).toBe(1);
+    const q = changeScale(quiet, 260);
+    const ratio = Math.abs(q.y(12_652) - q.zero) / Math.abs(q.y(1_800) - q.zero);
+    expect(ratio).toBeCloseTo(12_652 / 1_800, 5);
+    // With an $18,000 day in view, ordinary days are compressed, between the floor and linear, and a
+    // $9 bar is still 3px.
+    const e = changeExponent(all, 260);
+    expect(e).toBeGreaterThanOrEqual(CHANGE_EXPONENT);
+    expect(e).toBeLessThan(0.6);
+    // A far bigger outlier hits the floor and goes no lower.
+    const wild = [...all, bar(-900_000_000)];
+    expect(changeExponent(wild, 260)).toBe(CHANGE_EXPONENT);
+    // Nothing moved: linear.
+    expect(changeExponent([bar(0)], 260)).toBe(1);
+    expect(changeExponent([], 260)).toBe(1);
+    // In between: some outlier compresses a little, not all the way.
+    const some = [...quiet, bar(400_000)];
+    const mid = changeExponent(some, 260);
+    expect(mid).toBeGreaterThan(CHANGE_EXPONENT);
+    expect(mid).toBeLessThan(1);
   });
 
   it("does not stretch a tiny wobble into a cliff, and keeps zero when nothing moved", () => {
