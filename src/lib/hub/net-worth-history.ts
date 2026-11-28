@@ -56,7 +56,8 @@ export async function netWorthHistoryWithNote(
   });
   // The day an account's own values begin: its first snapshot, else the day it was added. Before it
   // the line carries that value back. A kind is named when any one of its accounts is carried, and
-  // dated by the last of them to begin.
+  // dated by the first of them to begin: before that day every one of them is carried back, so the
+  // sentence is true of all (some are carried back further than others).
   const known = (id: string, created: Date) => {
     const own = snapshots.filter((s) => s.accountId === id).map((s) => s.date);
     return own.length > 0 ? own.reduce((a, b) => (a < b ? a : b)) : day(created);
@@ -67,8 +68,14 @@ export async function netWorthHistoryWithNote(
       .map((a) => known(a.id, a.createdAt))
       .filter((from) => points[0] && points[0].date < from)
       .sort();
-    return carried.length > 0 ? [{ words, from: carried[carried.length - 1] }] : [];
+    return carried.length > 0 ? [{ words, from: carried[0] }] : [];
   });
+  // What the person owns counts across the whole line at its entered value.
+  const lateOwned = owned
+    .map((o) => o.valuedOn)
+    .filter((from) => points[0] && points[0].date < from)
+    .sort();
+  if (lateOwned.length > 0) flat.push({ words: "things you own", from: lateOwned[0] });
   const first = flat.map((f) => f.from).sort()[0];
   return {
     points,

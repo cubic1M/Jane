@@ -91,7 +91,6 @@ export async function rebuildPastBalances(
           userId,
           source: "plaid",
           type: { in: [...WORKED_TYPES] },
-          currentBalanceCents: { not: null },
         },
         select: { id: true, type: true, currentBalanceCents: true },
       });
@@ -100,32 +99,47 @@ export async function rebuildPastBalances(
         tx.balanceSnapshot.findMany({
           where: { userId, accountId: { in: ids }, source: null },
           orderBy: { date: "asc" },
-          select: { accountId: true, date: true, balanceCents: true },
+          select: { accountId: true, date: true, balanceCents: true, createdAt: true },
         }),
         tx.transaction.findMany({
           where: { userId, accountId: { in: ids }, pending: false },
-          select: { accountId: true, date: true, amountCents: true },
+          select: { accountId: true, date: true, amountCents: true, createdAt: true },
         }),
       ]);
-      const earliest = new Map<string, { day: string; cents: number }>();
+      const earliest = new Map<string, { day: string; cents: number; takenAt: Date }>();
       for (const s of real) {
         if (!earliest.has(s.accountId))
-          earliest.set(s.accountId, { day: isoDay(s.date), cents: s.balanceCents });
+          earliest.set(s.accountId, {
+            day: isoDay(s.date),
+            cents: s.balanceCents,
+            takenAt: s.createdAt,
+          });
       }
-      const anchored = accounts.map((a) => {
+      // An account with a real balance keeps its history even if its balance is unknown now; one
+      // with neither has nothing to work back from. No daily snapshot yet: today's balance, as of
+      // today (the daily job writes that row).
+      const anchored = accounts.flatMap((a) => {
         const first = earliest.get(a.id);
-        // No daily snapshot yet: today's balance, as of today (the daily job writes that row).
-        return first
-          ? { id: a.id, type: a.type, anchorDay: first.day, anchorCents: first.cents }
-          : { id: a.id, type: a.type, anchorDay: today, anchorCents: a.currentBalanceCents ?? 0 };
+        if (first)
+          return [{ id: a.id, type: a.type, anchorDay: first.day, anchorCents: first.cents }];
+        return a.currentBalanceCents === null
+          ? []
+          : [{ id: a.id, type: a.type, anchorDay: today, anchorCents: a.currentBalanceCents }];
       });
       const balances = workBackBalances(
         anchored,
-        rows.map((t) => ({
-          accountId: t.accountId,
-          date: isoDay(t.date),
-          amountCents: t.amountCents,
-        })),
+        rows
+          // A transaction of the anchor day that Jane first saw after the snapshot was taken is
+          // not in that snapshot's balance, so it is not undone from it.
+          .filter((t) => {
+            const first = earliest.get(t.accountId);
+            return !first || isoDay(t.date) !== first.day || t.createdAt <= first.takenAt;
+          })
+          .map((t) => ({
+            accountId: t.accountId,
+            date: isoDay(t.date),
+            amountCents: t.amountCents,
+          })),
         oldest,
       );
       await tx.balanceSnapshot.deleteMany({

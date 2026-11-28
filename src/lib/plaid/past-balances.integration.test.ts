@@ -192,13 +192,79 @@ describe.runIf(url)("rebuildPastBalances against a real database", () => {
         createdAt: new Date("2026-11-27T10:00:00Z"),
       },
     });
+    // A home entered on Nov 25: the chart counts it all the way back, so the note says so too.
+    await client.ownedAsset.create({
+      data: {
+        userId,
+        kind: "home",
+        name: "Home",
+        valueCents: 50000000,
+        valuedOn: day("2026-11-25"),
+      },
+    });
     const { points, flatNote } = await netWorthHistoryWithNote(userId, 1023456, {
       client,
       now: new Date("2026-11-28T12:00:00Z"),
     });
     expect(points[0].date).toBe("2026-11-17");
     expect(points.at(-1)).toEqual({ date: "2026-11-28", cents: 1023456 });
-    expect(flatNote).toBe("Before Nov 27, 2026, investments are shown at their first known value.");
+    expect(flatNote).toBe(
+      "Before Nov 25, 2026, investments and things you own are shown at their first known value.",
+    );
+  });
+
+  it("leaves out a charge of the first real day that arrived after the snapshot, and keeps history when the balance is unknown", async () => {
+    const other = (await client.user.create({ data: { email: `past3-${suffix}@example.com` } })).id;
+    const acc = (
+      await client.account.create({
+        data: {
+          userId: other,
+          source: "plaid",
+          plaidAccountId: `past3-${suffix}`,
+          name: "Checking",
+          type: "depository",
+          currentBalanceCents: null,
+        },
+      })
+    ).id;
+    // Taken at 06:00 on Nov 20 with $1,000.00; a $20.00 charge dated Nov 20 is first seen at 18:00
+    // (not in that balance), a $5.00 one dated Nov 19 was seen before.
+    await client.balanceSnapshot.create({
+      data: {
+        userId: other,
+        accountId: acc,
+        date: day("2026-11-20"),
+        balanceCents: 100000,
+        createdAt: new Date("2026-11-20T06:00:00Z"),
+      },
+    });
+    const charge = (id: string, date: string, cents: number, seen: string) =>
+      client.transaction.create({
+        data: {
+          userId: other,
+          accountId: acc,
+          source: "plaid",
+          plaidTransactionId: `past3-${suffix}-${id}`,
+          date: day(date),
+          amountCents: cents,
+          description: id,
+          createdAt: new Date(seen),
+        },
+      });
+    await charge("late", "2026-11-20", 2000, "2026-11-20T18:00:00Z");
+    await charge("early", "2026-11-19", 500, "2026-11-19T20:00:00Z");
+    await rebuildPastBalances(other, { client, now: new Date("2026-11-28T12:00:00Z") });
+    const worked = await client.balanceSnapshot.findMany({
+      where: { accountId: acc, source: "derived" },
+      orderBy: { date: "asc" },
+    });
+    // Nov 19 is the balance before the Nov 20 snapshot: 100000, the late charge not undone.
+    // Nov 18 undoes the Nov 19 charge: 100500.
+    expect(worked.map((r) => [r.date.toISOString().slice(0, 10), r.balanceCents])).toEqual([
+      ["2026-11-18", 100500],
+      ["2026-11-19", 100000],
+    ]);
+    await client.user.deleteMany({ where: { id: other } });
   });
 
   it("uses the person's own day when no snapshot exists yet (evening in Los Angeles)", async () => {
