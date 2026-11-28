@@ -13,7 +13,7 @@ import { loadComingUp } from "@/lib/coming-up";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { practiceCards } from "@/lib/practice/cards";
-import { withReadCache } from "@/lib/read-cache";
+import { withRequestMemo } from "@/lib/read-memo";
 import { openChat } from "./open";
 import { runJaneAgent } from "./run";
 import { pinnedMessages } from "./messages";
@@ -26,16 +26,18 @@ import { loadPopupStack } from "./popup-stack";
 // one of them grows past its budget: add a loader that asks again for what a page already has and
 // this goes red, not the founder's afternoon.
 //
-// Counted as Prisma queries on a person's rows, outside a page render (no shared reads between
-// loaders), so the numbers are a little above what a render makes. The budgets are the measured
-// counts (11-28, main at 7ed6bd772, with the dock read cache) plus about a sixth, never to be raised without
-// saying why in the pull request. Measured: dock 65, chat 183, Home's top 188 (in queries).
+// Counted as Prisma queries on a person's rows, each load inside withRequestMemo (a page render shares
+// its reads the same way, src/lib/read-memo.ts), so a small table or the year's transactions read
+// once for all that ask of them is one query (src/lib/row-snapshots.ts). The budgets are the counts
+// measured on 11-28 (dock 38, chat 56, Home's top 86) plus about a tenth; before the fast-pages work
+// they were 65, 183 and 188 without sharing, and the founder's Home made 352 round trips. Never
+// to be raised without saying why in the pull request.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date();
 
 // What each load may ask the database, in queries.
-const BUDGET = { dock: 75, chat: 210, homeTop: 215 } as const;
+const BUDGET = { dock: 42, chat: 62, homeTop: 95 } as const;
 
 describe.runIf(url)(
   "what the dock, the chat and Home ask the database",
@@ -106,7 +108,7 @@ describe.runIf(url)(
     // The route behind the dock (src/app/api/chat/cards/route.ts) loads the stack inside a read cache.
     it("loads the dock's cards inside the budget", async () => {
       const { used, result } = await count(() =>
-        withReadCache(client, (c) => loadPopupStack(userId, { client: c, now: NOW })),
+        withRequestMemo(() => loadPopupStack(userId, { client, now: NOW })),
       );
       console.info(`dock: ${used} queries, ${result.length} cards`);
       expect(result.length).toBeGreaterThan(5);
@@ -117,12 +119,14 @@ describe.runIf(url)(
     // The side chat's page loads these four together (src/app/chat/page.tsx).
     it("opens the chat inside the budget", async () => {
       const { used } = await count(() =>
-        Promise.all([
-          openChat(userId, { client: client, now: NOW, pages: 1 }),
-          pinnedMessages(userId, { client: client }),
-          loadPopupStack(userId, { client: client, now: NOW }),
-          practiceCards(userId, { client: client, now: NOW }),
-        ]),
+        withRequestMemo(() =>
+          Promise.all([
+            openChat(userId, { client: client, now: NOW, pages: 1 }),
+            pinnedMessages(userId, { client: client }),
+            loadPopupStack(userId, { client: client, now: NOW }),
+            practiceCards(userId, { client: client, now: NOW }),
+          ]),
+        ),
       );
       console.info(`chat: ${used} queries`);
       expect(used).toBeGreaterThan(0);
@@ -130,7 +134,9 @@ describe.runIf(url)(
     });
 
     it("loads Home's top inside the budget", async () => {
-      const { used } = await count(() => loadHubTop(userId, { client: client, now: NOW }));
+      const { used } = await count(() =>
+        withRequestMemo(() => loadHubTop(userId, { client: client, now: NOW })),
+      );
       console.info(`home top: ${used} queries`);
       expect(used).toBeGreaterThan(0);
       expect(used).toBeLessThanOrEqual(BUDGET.homeTop);
