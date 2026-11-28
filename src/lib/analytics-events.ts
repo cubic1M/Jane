@@ -61,6 +61,7 @@ export const POSTHOG_EVENTS: ReadonlySet<string> = new Set([
   "suggestion_answered",
   "chat_message_sent",
   "chat_action_taken",
+  "chat_cleared",
   "digest_sent",
   "digest_opened",
   "digest_clicked",

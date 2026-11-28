@@ -12,6 +12,7 @@ import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { chatRedirect } from "@/lib/side-chat";
 import { currentChatStart } from "@/lib/chat-start";
+import { ClearChat } from "./clear-chat";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
@@ -98,6 +99,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       {/* Every message counts here, the cards too: the pulse counts them all, so a card posted by the
           scan reloads the page and the dock beside it. */}
       {chat.scanning && <ScanRefresher shown={chat.pulseCount} />}
+
+      {/* Clear chat: deletes this chat for good, after one confirm (src/lib/jane-agent/clear-chat.ts). */}
+      {!chat.scanning && <ClearChat />}
 
       {/* What the person pinned (spec step 96). */}
       {pinned.length > 0 && (

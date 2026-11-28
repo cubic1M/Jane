@@ -255,6 +255,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   support_contact_confirmed: notOnePerson,
   proposal_answered: own,
   chat_action_taken: own,
+  chat_cleared: own,
   preference_saved: own,
   preference_deleted: own,
   memory_fact_corrected: own,
