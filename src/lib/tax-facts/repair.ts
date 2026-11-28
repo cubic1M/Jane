@@ -210,6 +210,42 @@ export async function repairRecord(
   );
 }
 
+// The person took back what said they have children (or erased all memory): a member the family
+// form removed earlier is still a row that says they had a child, so every member marked removed
+// goes for good, in every year, with what was said about them. So does a member of another year the
+// stores no longer give (a store change brings only the working year in line at once). `given` are
+// the member keys the stores still give. Not for a forget of anything else: a child removed on the
+// family form stays marked removed (never deleted, never renumbered) while the person keeps their
+// memory.
+export async function purgeRemovedMembers(
+  userId: string,
+  given: readonly string[],
+  { client = defaultClient }: Options = {},
+): Promise<void> {
+  await personTransaction(
+    userId,
+    async (tx) => {
+      const rows = await tx.taxHouseholdMember.findMany({
+        where: { userId },
+        select: { id: true, memberKey: true, removedAt: true },
+      });
+      const gone = rows.filter(
+        (m) =>
+          m.removedAt !== null || (isProfileMember(m.memberKey) && !given.includes(m.memberKey)),
+      );
+      if (gone.length === 0) return;
+      const keys = [...new Set(gone.map((m) => m.memberKey))].filter((k) => !given.includes(k));
+      await tx.taxFact.deleteMany({
+        where: { userId, memberKey: { in: keys }, origin: { in: [...OWN_WORD_ORIGINS] } },
+      });
+      await tx.taxHouseholdMember.deleteMany({
+        where: { userId, id: { in: gone.map((m) => m.id) } },
+      });
+    },
+    client,
+  );
+}
+
 // The older store changed, or a writer could not update the record after it did: the marker of every
 // year (but `exceptYear`, which was just copied) is set to "not copied". The marker stays, so the
 // next copy knows it is a second one, and the next read of that year's household copies the stores

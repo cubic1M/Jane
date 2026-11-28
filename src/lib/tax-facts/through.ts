@@ -4,7 +4,7 @@ import { log } from "@/lib/log";
 import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { legacyRows, readLegacySources, type LegacySources } from "@/lib/tax-facts/legacy";
 import { readRows } from "@/lib/tax-facts/load";
-import { markNeedsRepair, repairRecord } from "@/lib/tax-facts/repair";
+import { markNeedsRepair, purgeRemovedMembers, repairRecord } from "@/lib/tax-facts/repair";
 import { KEYS_OF_TOLD } from "@/lib/tax-facts/told";
 import { forgetTaxFacts } from "@/lib/tax-facts/write";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -73,7 +73,7 @@ export async function forgetToldRecord(
   const keys =
     what === "all" ? [...new Set(Object.values(KEYS_OF_TOLD).flat())] : KEYS_OF_TOLD[what];
   if (!keys) return;
-  const { client = defaultClient } = options;
+  const { client = defaultClient, now = new Date() } = options;
   try {
     await forgetTaxFacts(userId, { keys }, { client });
   } catch (error) {
@@ -88,4 +88,20 @@ export async function forgetToldRecord(
     return;
   }
   await syncRecord(userId, options);
+  // What said they have children leaves no row behind, not even one marked removed.
+  if (what === "all" || what === "has_children") {
+    try {
+      const year = defaultTaxYear(await todayOf(userId, { client, now }));
+      const sources = await readLegacySources(userId, year, { client, now });
+      await purgeRemovedMembers(
+        userId,
+        legacyRows(sources).members.map((m) => m.memberKey),
+        { client },
+      );
+    } catch (error) {
+      log.error("tax household: the removed members were not deleted", {
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
 }
