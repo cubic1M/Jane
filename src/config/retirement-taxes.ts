@@ -13,7 +13,7 @@ const $ = (d: number) => Math.round(d * 100);
 // Social Security is taxable once "provisional income" (other income, tax-exempt interest and half
 // the benefits) passes the first base amount: up to 50% of benefits, then up to 85% past the
 // second. The base amounts are in the statute and not indexed (26 USC 86(c)); read at IRS Publication
-// 915 (2026), https://www.irs.gov/publications/p915, 2026-11-27: $25,000 single, head of household,
+// 915 (2026), https://www.irs.gov/publications/p915, 2026-11-28 (Worksheet 1 lines 7 to 9 and the skip rule): $25,000 single, head of household,
 // qualifying surviving spouse, or married filing separately and apart from the spouse all year;
 // $32,000 married filing jointly; $0 married filing separately and living with the spouse at any time
 // in the year (then 85% of the benefits count, Worksheet 1 lines 9 to 17 skipped).

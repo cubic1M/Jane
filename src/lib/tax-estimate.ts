@@ -39,6 +39,7 @@ import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-state
 import { loadToldResidency } from "@/lib/tax-residency";
 import {
   loadToldDependency,
+  loadToldChoice,
   loadToldLivedWithSpouse,
   loadToldSpouseItemizes,
   loadToldYesNo,
@@ -248,7 +249,9 @@ export const SPOUSE_ITEMIZES_UNKNOWN_LINE =
 export const LIVED_WITH_SPOUSE_UNKNOWN_LINE =
   "Jane doesn't know whether you lived with your spouse at any time this year, so it counted Social Security benefits as if you did: on a separate return that way up to 85% of them count.";
 export const OVER_25_ONLY_LINE =
-  "You said you're 25 or older. Jane used that for the earned income credit's age test and doesn't know whether you're 65 or older.";
+  "Jane knows you're 25 or older but not your exact age. It used that for the earned income credit's age test and doesn't know whether you're 65 or older.";
+export const UNDER_25_ONLY_LINE =
+  "You said you're under 25. Jane used that for the earned income credit's age test and doesn't know your exact age.";
 export const birthdayLine = (year: number, extraCents: number) =>
   `Jane took your age as 64 at the end of ${year} from the age you gave. If your birthday is January 1, the IRS counts you as 65 for ${year}, which adds ${formatCents(extraCents)} to the standard deduction.`;
 const extraStandardCents = (year: number, status: FilingStatus) =>
@@ -777,11 +780,20 @@ async function loadTaxEstimateFrom(
   // The age they told Jane (on the investor profile), at the year's end.
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
   const statedAge = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
-  // "25 or older" is an answer to the childless earned income credit's age test (25 to 64), the one
-  // the student card reads (age25to64): yes counts as 25, no as 24. It does not say whether they are
-  // 65 or older, and the line below says so.
+  // The age range and "25 or older" are answers to the childless earned income credit's age test (25
+  // to 64), read as the student card reads them (age25to64 in src/planning/student-tax.ts): a range
+  // under 58 or yes counts as 25, no as 24. A range from 58 up is not "25 or older" for this test (it
+  // may be past 64), so it gives no age here. None of these says whether they are 65 or older, and
+  // the line below says so.
+  const band = statedAge === null ? await loadToldChoice(userId, "age_band", { client }) : null;
   const toldOver25 =
-    statedAge === null ? await loadToldYesNo(userId, "age_25_plus", { client }) : null;
+    statedAge !== null
+      ? null
+      : band === "30_to_49" || band === "50_to_57"
+        ? true
+        : band === "58_to_65" || band === "66_to_72" || band === "73_plus"
+          ? null
+          : await loadToldYesNo(userId, "age_25_plus", { client });
   const age = statedAge ?? (toldOver25 === true ? 25 : toldOver25 === false ? 24 : null);
   // Whether someone else can claim them as a dependent: it limits the standard deduction. Not said (or
   // "not sure") is the full deduction, and said so when it could matter (someone under 24).
@@ -919,7 +931,7 @@ async function loadTaxEstimateFrom(
     assumptions.push(birthdayLine(year, extraStandardCents(year, filingStatus)));
   }
   if (toldOver25 !== null && statedAge === null) {
-    assumptions.push(OVER_25_ONLY_LINE);
+    assumptions.push(toldOver25 ? OVER_25_ONLY_LINE : UNDER_25_ONLY_LINE);
   }
   // Spec step 219: crypto, ESPP and ISO income, said plainly.
   if (equity.ordinaryCents > 0) {

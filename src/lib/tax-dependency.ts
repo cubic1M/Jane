@@ -8,11 +8,11 @@ import type { FactKey } from "@/profile/facts";
 // What the person told Jane as a yes or a no, read the way the profile reads it (a correction made on
 // the profile or by the question card wins over what Jane remembers from the chat). "unsure" and not
 // said both read as null: unknown.
-export async function loadToldYesNo(
+export async function loadToldChoice(
   userId: string,
   key: FactKey,
   { client = defaultClient }: { client?: PrismaClient } = {},
-): Promise<boolean | null> {
+): Promise<string | null> {
   const pref = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PROFILE_FACT_PREFIX}${key}` },
     select: { value: true },
@@ -20,6 +20,15 @@ export async function loadToldYesNo(
   const said = (pref?.value as { value?: unknown } | null)?.value;
   const value =
     typeof said === "string" ? said : toldFromFacts(await listFacts(userId, { client }))[key];
+  return typeof value === "string" ? value : null;
+}
+
+export async function loadToldYesNo(
+  userId: string,
+  key: FactKey,
+  options: { client?: PrismaClient } = {},
+): Promise<boolean | null> {
+  const value = await loadToldChoice(userId, key, options);
   return value === "yes" ? true : value === "no" ? false : null;
 }
 

@@ -13,6 +13,7 @@ import {
   LIVED_WITH_SPOUSE_UNKNOWN_LINE,
   loadTaxEstimate,
   OVER_25_ONLY_LINE,
+  UNDER_25_ONLY_LINE,
 } from "./tax-estimate";
 
 // Tax T6 through the loader: Social Security on a separate return reads whether the person lived
@@ -73,8 +74,11 @@ describe.runIf(url)("Social Security, age and the loader", { timeout: 120_000 },
   });
 
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
-    await client.$disconnect();
+    try {
+      if (userId) await client.user.deleteMany({ where: { id: userId } });
+    } finally {
+      await client.$disconnect();
+    }
   });
 
   it("counts 85% of the benefits, base $0, for a separate return unless they lived apart all year", async () => {
@@ -126,6 +130,26 @@ describe.runIf(url)("Social Security, age and the loader", { timeout: 120_000 },
     expect(age25to64({ age_25_plus: { value: "no" } })).toBe(false);
     expect(under.input.age).toBe(24);
     expect(under.estimate.credits.earnedIncomeCreditCents).toBe(0);
+    expect(under.assumptions).toContain(UNDER_25_ONLY_LINE);
+    expect(under.assumptions).not.toContain(OVER_25_ONLY_LINE);
+  });
+
+  it("does not turn '25 or older' into age 25 for a person whose age range is 58 or more", async () => {
+    await client.investorProfile.deleteMany({ where: { userId } });
+    await say("age_25_plus", "yes");
+    for (const band of ["58_to_65", "66_to_72", "73_plus"]) {
+      await say("age_band", band);
+      const v = await view();
+      // The card says the same: 66 and over is outside 25 to 64, 58 to 65 is not known.
+      expect(age25to64({ age_band: { value: band }, age_25_plus: { value: "yes" } })).not.toBe(
+        true,
+      );
+      expect(v.input.age).toBeNull();
+      expect(v.assumptions).not.toContain(OVER_25_ONLY_LINE);
+    }
+    // A range under 58 is 25 to 64 for the card, and for the estimate.
+    await say("age_band", "30_to_49");
+    expect((await view()).input.age).toBe(25);
   });
 
   it("says what a January 1 birthday would change for someone told as 64", async () => {
