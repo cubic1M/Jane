@@ -6,6 +6,11 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+// The household record's copy audits what it writes; the audit log itself is not under test here.
+vi.mock("@/lib/audit", async (original) => ({
+  ...(await original<typeof import("@/lib/audit")>()),
+  logAudit: vi.fn(),
+}));
 
 import { PRODUCTION_NOW, productionBank } from "@/data-sources/plaid/__fixtures__/production";
 import { encrypt } from "@/lib/crypto";
