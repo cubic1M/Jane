@@ -272,6 +272,11 @@ export function NetWorthChart({
   // (passive, so it couldn't stop the page scrolling); it reads this render's state through a ref.
   const onWheel = useRef<(e: WheelEvent) => void>(() => {});
   const wheelRemainder = useRef(0);
+  // A mouse drag across the chart selects the days to zoom into: where it started, whether it has
+  // moved far enough to be a selection (not a click), and its two edges in px for the highlight.
+  const selecting = useRef<{ x: number; moved: boolean } | null>(null);
+  const justSelected = useRef(false);
+  const [sel, setSel] = useState<{ a: number; b: number } | null>(null);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -409,12 +414,15 @@ export function NetWorthChart({
   // zoom further that way.
   useEffect(() => {
     onWheel.current = (e: WheelEvent) => {
-      if (!expanded || !box.current) return;
+      if (!box.current) return;
       const r = box.current.getBoundingClientRect();
       const share = (e.clientX - r.left) / r.width;
       // A sideways swipe (a trackpad, shift and the wheel) moves the days in view, so a big step
       // can be dragged out of them without the brush.
       const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      // Inline, the page keeps its wheel: a trackpad pinch (Ctrl + wheel) zooms, and a sideways
+      // swipe pans once zoomed. Expanded, the wheel zooms.
+      if (sideways ? !(expanded || view) : !(expanded || e.ctrlKey || e.metaKey)) return;
       let next: ViewWindow;
       if (sideways) {
         // Nothing to pan that way: leave the swipe to the page.
@@ -509,6 +517,13 @@ export function NetWorthChart({
   const zoomTo = (next: ViewWindow) => {
     if (next.from === win.from && next.to === win.to) return;
     setView(next);
+    setScrub(null);
+    setFocusDot(null);
+    shut();
+  };
+  // Back to the chosen range.
+  const resetView = () => {
+    setView(null);
     setScrub(null);
     setFocusDot(null);
     shut();
@@ -650,7 +665,7 @@ export function NetWorthChart({
               onPointerDown={(e) => {
                 if (e.pointerType !== "mouse") {
                   fingers.current.set(e.pointerId, e.clientX);
-                  if (expanded && fingers.current.size === 2) {
+                  if (fingers.current.size === 2) {
                     // Two fingers: a pinch zooms instead of scrubbing.
                     const [a, b] = [...fingers.current.values()];
                     pinch.current = { distance: Math.max(1, Math.abs(a - b)), view: win };
@@ -665,9 +680,23 @@ export function NetWorthChart({
                     // Capture is a nicety: the drag still follows inside the chart.
                   }
                 }
+                if (e.pointerType === "mouse" && e.button === 0) {
+                  selecting.current = { x: e.clientX, moved: false };
+                  try {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  } catch {
+                    // The drag still follows inside the chart.
+                  }
+                }
                 setScrub(indexAt(e.clientX));
               }}
               onPointerMove={(e) => {
+                const drag = selecting.current;
+                if (drag && e.pointerType === "mouse") {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
+                  if (drag.moved) setSel({ a: drag.x - r.left, b: e.clientX - r.left });
+                }
                 if (e.pointerType !== "mouse" && fingers.current.has(e.pointerId)) {
                   fingers.current.set(e.pointerId, e.clientX);
                   if (pinch.current && fingers.current.size === 2) {
@@ -682,6 +711,18 @@ export function NetWorthChart({
                 if (e.pointerType === "mouse" || dragging.current) setScrub(indexAt(e.clientX));
               }}
               onPointerUp={(e) => {
+                const drag = selecting.current;
+                selecting.current = null;
+                setSel(null);
+                if (drag?.moved && e.pointerType === "mouse") {
+                  // The days under the drag, zoomed into (at least MIN_DAYS), the axis refit.
+                  const [i, j] = [indexAt(drag.x), indexAt(e.clientX)].sort((p, q) => p - q);
+                  justSelected.current = true;
+                  zoomTo({
+                    from: win.from + i,
+                    to: Math.min(total - 1, win.from + Math.max(j, i + MIN_DAYS - 1)),
+                  });
+                }
                 fingers.current.delete(e.pointerId);
                 if (fingers.current.size < 2) pinch.current = null;
                 if (e.pointerType !== "mouse") {
@@ -690,6 +731,8 @@ export function NetWorthChart({
                 }
               }}
               onPointerCancel={(e) => {
+                selecting.current = null;
+                setSel(null);
                 fingers.current.delete(e.pointerId);
                 pinch.current = null;
                 dragging.current = false;
@@ -699,6 +742,11 @@ export function NetWorthChart({
                 if (e.pointerType === "mouse") setScrub(null);
               }}
               onClick={(e) => {
+                // A drag that selected days is not a click on a dot.
+                if (justSelected.current) {
+                  justSelected.current = false;
+                  return;
+                }
                 // A tap or click on a movement's dot opens it.
                 if (!layout) return;
                 const r = e.currentTarget.getBoundingClientRect();
@@ -708,18 +756,26 @@ export function NetWorthChart({
                 setFocusDot(i);
                 setOpened({ kind: "dot", index: i, key: `dot:${i}` });
               }}
+              onDoubleClick={() => {
+                if (view) resetView();
+              }}
               onBlur={() => setScrub(null)}
               onKeyDown={(e) => {
                 const from = scrub ?? shown.length - 1;
                 const jump = e.shiftKey ? 7 : 1;
-                if (e.key === "ArrowLeft") setScrub(Math.max(0, from - jump));
+                // Zoomed in, Alt + an arrow moves the days in view (a quarter of them).
+                if (view && e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+                  const quarter = Math.max(1, Math.round((win.to - win.from) / 4));
+                  zoomTo(panWindow(win, total, e.key === "ArrowLeft" ? -quarter : quarter));
+                } else if (e.key === "ArrowLeft") setScrub(Math.max(0, from - jump));
                 else if (e.key === "ArrowRight") {
                   const next = from + jump;
                   setScrub(next >= shown.length - 1 ? null : next);
                 } else if (e.key === "Home") setScrub(0);
                 else if (e.key === "End" || e.key === "Escape") setScrub(null);
-                else if (expanded && (e.key === "+" || e.key === "=")) zoomBy(0.5);
-                else if (expanded && e.key === "-") zoomBy(2);
+                else if (e.key === "+" || e.key === "=") zoomBy(0.5);
+                else if (e.key === "-") zoomBy(2);
+                else if (e.key === "0" && view) resetView();
                 else return;
                 e.preventDefault();
               }}
@@ -786,6 +842,14 @@ export function NetWorthChart({
                   )}
                 </g>
               </svg>
+              {sel && (
+                <div
+                  aria-hidden="true"
+                  data-net-worth-selection=""
+                  className="pointer-events-none absolute inset-y-0 bg-zinc-950/10 dark:bg-zinc-50/10"
+                  style={{ left: Math.min(sel.a, sel.b), width: Math.abs(sel.b - sel.a) }}
+                />
+              )}
               {layout && (
                 <MovementDots
                   ref={dotsRef}
@@ -936,6 +1000,17 @@ export function NetWorthChart({
                 </button>
               );
             })}
+            {zoomed && (
+              <button
+                type="button"
+                data-net-worth-reset=""
+                onClick={resetView}
+                className="ml-auto inline-flex min-h-11 items-center px-3 text-sm font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+              >
+                Reset
+                <span className="sr-only"> the zoom to the range</span>
+              </button>
+            )}
           </div>
         </>
       )}

@@ -87,13 +87,26 @@ export function niceTicks(lo: number, hi: number): number[] {
   return ticks;
 }
 
-// The line's SVG path: at most one vertex per pixel, the last point always kept.
+// The line's SVG path: about one vertex per pixel. Where several days share a pixel, the lowest
+// and the highest of them are kept (in order), so an isolated drop or spike is never thinned away;
+// the first and last day are always kept.
 export function linePath(values: readonly number[], scale: ChartScale, width: number): string {
   const { x, y } = scale;
-  const step = Math.max(1, Math.floor(values.length / Math.max(1, width)));
-  return values
-    .map((cents, i) => ({ cents, i }))
-    .filter(({ i }) => i % step === 0 || i === values.length - 1)
-    .map(({ cents, i }, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(cents).toFixed(1)}`)
+  const n = values.length;
+  const step = Math.max(1, Math.floor(n / Math.max(1, width)));
+  const keep = new Set<number>(n ? [0, n - 1] : []);
+  for (let start = 0; start < n; start += step) {
+    let lo = start;
+    let hi = start;
+    for (let i = start; i < Math.min(n, start + step); i++) {
+      if (values[i] < values[lo]) lo = i;
+      if (values[i] > values[hi]) hi = i;
+    }
+    keep.add(lo);
+    keep.add(hi);
+  }
+  return [...keep]
+    .sort((a, b) => a - b)
+    .map((i, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(values[i]).toFixed(1)}`)
     .join(" ");
 }

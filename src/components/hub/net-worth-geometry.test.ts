@@ -140,10 +140,22 @@ describe("the line", () => {
     expect(path.match(/M/g)).toHaveLength(1);
   });
 
-  it("keeps one vertex per pixel, and always the last day", () => {
-    const values = Array.from({ length: 10 }, (_, i) => i * 10_000);
-    const path = linePath(values, chartScale(values, 3, 128), 3);
-    expect(path.split(" ")).toHaveLength(4);
+  it("keeps the first and last day, and thins a long history to about two vertices a pixel", () => {
+    const values = Array.from({ length: 1_000 }, (_, i) => i * 10_000);
+    const path = linePath(values, chartScale(values, 100, 128), 100);
+    expect(path.split(" ").length).toBeLessThanOrEqual(2 * 100 + 2);
+    expect(path.startsWith("M0.0,")).toBe(true);
+    expect(path.split(" ").at(-1)).toMatch(/^L100\.0,/);
+  });
+
+  it("never thins away an isolated drop", () => {
+    const values = Array(1_200).fill(3_000_000);
+    values[601] = 1_200_000;
+    const scale = chartScale(values, 600, 260);
+    const ys = linePath(values, scale, 600)
+      .split(" ")
+      .map((p) => Number(p.split(",")[1]));
+    expect(Math.max(...ys)).toBeCloseTo(scale.y(1_200_000), 1);
   });
 
   it("is empty with no days", () => {

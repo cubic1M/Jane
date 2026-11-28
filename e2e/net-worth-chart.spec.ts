@@ -410,3 +410,85 @@ test("a stretch with no change at all draws a line in the middle, with labels th
   expect(mid).toBeGreaterThan(0.1);
   expect(mid).toBeLessThan(0.9);
 });
+
+// Founder, Nov 28 (second look): the quiet stretch between two big moves must be zoomable by hand,
+// and the axis must follow it. Drag across the chart on a computer, pinch on a phone, Reset goes
+// back to the range.
+test("zooming into the quiet stretch between two big moves refits the axis; Reset goes back", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await signInWith(context, user.sessionToken, baseURL);
+  await seedHistory(user.userId, SMALL_MOVES_PERSON);
+  await page.goto("/home");
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  await chart.locator("[data-show-value]").click();
+  const reset = chart.locator("[data-net-worth-reset]");
+  const spread = async () => {
+    const t = (await axis(chart)).ticks;
+    return Math.max(...t) - Math.min(...t);
+  };
+
+  // The whole history: two big moves, the axis covers them, no Reset yet.
+  await expect.poll(spread).toBeGreaterThan(9_000);
+  await expect(reset).toHaveCount(0);
+  const plot = chart.locator("[data-net-worth-plot]");
+  await plot.scrollIntoViewIfNeeded();
+  const box = (await plot.boundingBox())!;
+  const y = box.y + box.height / 2;
+
+  if (isMobile) {
+    // Two fingers start together in the quiet stretch and move apart (a pinch out).
+    const touch = (type: string, pointerId: number, share: number) =>
+      plot.dispatchEvent(type, {
+        pointerType: "touch",
+        pointerId,
+        clientX: box.x + box.width * share,
+        clientY: y,
+      });
+    await touch("pointerdown", 1, 0.5);
+    await touch("pointerdown", 2, 0.54);
+    await touch("pointermove", 1, 0.32);
+    await touch("pointermove", 2, 0.72);
+    await touch("pointerup", 1, 0.32);
+    await touch("pointerup", 2, 0.72);
+  } else {
+    await page.mouse.move(box.x + box.width * 0.4, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.52, y, { steps: 6 });
+    await expect(chart.locator("[data-net-worth-selection]")).toBeVisible();
+    await page.mouse.move(box.x + box.width * 0.64, y, { steps: 6 });
+    await page.mouse.up();
+  }
+
+  // Only the quiet days are in view: the moves of $12 to $128 fill the height, the labels differ.
+  await expect(reset).toBeVisible();
+  await expect.poll(spread).toBeLessThan(2_000);
+  await expect.poll(async () => (await axis(chart)).share).toBeGreaterThan(0.5);
+  const { ticks, texts } = await axis(chart);
+  expect(ticks.length).toBeGreaterThanOrEqual(3);
+  expect(new Set(texts).size).toBe(texts.length);
+  await expect(page.locator("[data-net-worth-break]")).toHaveCount(0);
+
+  // Reset: the range's whole history again.
+  await reset.click();
+  await expect(reset).toHaveCount(0);
+  await expect.poll(spread).toBeGreaterThan(9_000);
+
+  // Keyboard: + zooms in on the chart, 0 resets (the chart has focus).
+  await plot.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("+");
+  await expect(reset).toBeVisible();
+  await page.keyboard.press("0");
+  await expect(reset).toHaveCount(0);
+
+  // Page scrolling stays: a vertical swipe is not taken by the chart (touch-action).
+  const action = await plot.evaluate((el) => getComputedStyle(el).touchAction);
+  expect(action).toContain("pan-y");
+});
