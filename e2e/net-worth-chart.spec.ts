@@ -623,6 +623,12 @@ test("the Changes view shows how big each period's move is: $9 and $138 differ w
   await plot.focus();
   await page.keyboard.press("ArrowLeft");
   await expect(chart.locator("[data-net-worth-step]")).toContainText(/[+−]\$[\d,]+ that day/);
+  // One more to the right is the last bar (still selected); one more is back to today.
+  await page.keyboard.press("ArrowRight");
+  await expect(chart.locator("[data-net-worth-step]")).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(chart.locator("[data-net-worth-step]")).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
   await expect(chart.locator("[data-net-worth-change]")).toContainText(
     /[A-Z][a-z]{2} \d{1,2}, \d{4}/,
   );

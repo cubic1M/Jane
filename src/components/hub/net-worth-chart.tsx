@@ -277,7 +277,14 @@ export function NetWorthChart({
   const mode = useSyncExternalStore(subscribeView, viewNow, () => "line" as const);
   // Zoomed by hand (the wheel, a pinch, the brush): the days in view; null follows the range.
   const [view, setView] = useState<ViewWindow | null>(null);
-  const [scrub, setScrub] = useState<number | null>(null);
+  // The day or bar under the pointer or the keys; it belongs to the view it was made in, so a view
+  // changed from outside (another window) starts with none.
+  const [picked, setPicked] = useState<{ at: number | null; mode: ChartView }>({
+    at: null,
+    mode: "line",
+  });
+  const scrub = picked.mode === mode ? picked.at : null;
+  const setScrub = (at: number | null) => setPicked({ at, mode });
   const [expanded, setExpanded] = useState(false);
   const clipId = useId();
   // What's open: a day (collapsed, a significant day's dot) or one of every movement's dots
@@ -734,11 +741,18 @@ export function NetWorthChart({
               )}
             </span>{" "}
             <span className="text-zinc-600 dark:text-zinc-400">
-              {scrub === null ? windowWords : stepWords}
+              {scrub === null
+                ? windowWords
+                : changes
+                  ? `through ${point ? dayLabel(point.date, { year: true }) : ""}`
+                  : stepWords}
             </span>
           </p>
           {scrub !== null && (
             <span data-net-worth-step="" className="font-semibold">
+              {activeBar && (
+                <span className="font-normal text-zinc-600 dark:text-zinc-400">{stepWords}: </span>
+              )}
               {figureShown ? signed(stepCents) : arrow(stepCents)}
               <span className="font-normal text-zinc-600 dark:text-zinc-400">
                 {activeBar && activeBar.period !== "day" ? " in the period" : " that day"}
@@ -912,7 +926,7 @@ export function NetWorthChart({
                 } else if (e.key === "ArrowLeft") setScrub(Math.max(0, stepFrom(from, -jump)));
                 else if (e.key === "ArrowRight") {
                   const next = stepFrom(from, jump);
-                  setScrub(next >= shown.length - 1 ? null : next);
+                  setScrub(next >= (changes ? shown.length : shown.length - 1) ? null : next);
                 } else if (e.key === "Home")
                   setScrub(changes && bars.length ? bars[0].endIndex - win.from : 0);
                 else if (e.key === "End" || e.key === "Escape") setScrub(null);
