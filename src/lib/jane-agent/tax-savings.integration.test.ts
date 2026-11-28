@@ -75,7 +75,9 @@ describe.runIf(url)("the tax savings finder against a real database", () => {
   it("finds the demo bank's 401(k) room, itemizing and student loan interest", async () => {
     const view = await loadTaxSavings(demoId, { client, now: LINKED });
     expect(view.advice).toBe(true);
-    expect(view.savings.map((s) => s.key)).toEqual(["retirement", "itemize", "student_loan"]);
+    // Itemizing now ranks by what it beats: the standard deduction plus the gifts taken beside it
+    // (Tax T6), a smaller margin than before, so it sorts after the student loan interest.
+    expect(view.savings.map((s) => s.key)).toEqual(["retirement", "student_loan", "itemize"]);
     expect(view.savings[0].title).toBe("Put about $1,975 more a paycheck into your 401(k)");
     expect(view.savings.every((s) => s.estimateCents > 0)).toBe(true);
   });

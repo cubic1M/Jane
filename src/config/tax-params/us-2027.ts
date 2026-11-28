@@ -28,6 +28,7 @@ const IRB48 = "https://www.irs.gov/irb/2026-48_irb";
 const N2666 = "https://www.irs.gov/pub/irs-drop/n-26-66.pdf";
 const N2648 = "https://www.irs.gov/pub/irs-drop/n-26-48.pdf";
 const RP2624 = "https://www.irs.gov/pub/irs-drop/rp-26-24.pdf";
+const P936 = "https://www.irs.gov/publications/p936";
 const RP1313 = "https://www.irs.gov/pub/irs-drop/rp-13-13.pdf";
 const SSA_NOTICE = "https://www.federalregister.gov/d/2026-21796";
 const SSA_NOTICE_PDF = "https://public-inspection.federalregister.gov/2026-21796.pdf";
@@ -437,6 +438,15 @@ export const US_2027: FederalParams = {
       source: code("164"),
       where:
         "26 USC 164(b)(7)(A)(iii): for taxable years after 2026 and before 2030, 101 percent of the preceding year's amount, so $40,400 x 1.01 = $40,804; (b)(7)(B)(ii)(III): the threshold is 101 percent of the preceding year's, $505,000 x 1.01 = $510,050; 30 percent phase-down, never below $10,000, half of each amount for a separate return ((b)(6)(B), (b)(7)(B)(i)). Computed by the builder from the statute; Rev. Proc. 2026-35 does not list it. Read 2026-11-27.",
+    },
+  ),
+  mortgageDebt: cited(
+    { normal: $(750_000), marriedSeparate: $(375_000) },
+    {
+      source: code("163"),
+      alsoSources: [P936],
+      where:
+        "26 USC 163(h)(3)(F)(i)(II): $750,000 ($375,000 married filing separately), not indexed and with no end year since Pub. L. 119-21 section 70108(a); there is no 2027 Publication 936 yet, so the statute is the source. Read 2026-11-27.",
     },
   ),
   charity: cited(

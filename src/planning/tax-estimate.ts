@@ -3,6 +3,7 @@ import type { FilingStatus } from "@/config/tax";
 import { ADDITIONAL_STANDARD_AGE, federalParams, type FederalParams } from "@/config/tax-params";
 import { TAX_RATES_YEAR, type Bracket } from "@/config/tax-rates";
 import { amt } from "@/planning/equity-tax";
+import { deductibleMortgageInterest, saltCap } from "@/planning/home-taxes";
 import { bracketTax, bracketTaxExact } from "@/planning/tax-brackets";
 import {
   residentTax,
@@ -96,6 +97,16 @@ export type EstimateInput = {
   // every caller that does not know keeps today's figure.
   residentCreditsAllowed?: boolean;
   mortgageInterestCents: number;
+  // What the mortgages total, for the debt limit (deductibleMortgageInterest): only the interest on
+  // the first $750,000 counts ($375,000 married filing separately). Null or absent: the size is not
+  // known for this year, so all of the interest counts.
+  mortgageBalanceCents?: number | null;
+  // Married filing separately only. Whether the spouse itemizes: when they do, the person's standard
+  // deduction is zero and they itemize too (26 USC 63(c)(6)(A)). Null or absent: not said, and the
+  // estimate then takes the better of the two deductions as for anyone else.
+  spouseItemizes?: boolean | null;
+  // Cash gifts and medical costs PAID SO FAR this year, not projected to the year's end: both are
+  // lumpy, so pacing them would invent a gift or a bill. (The high end of the range, T23, paces.)
   charityCents: number;
   medicalCents: number;
   // Property and other state and local taxes the person paid (not withholding).
@@ -303,19 +314,6 @@ function studentLoanDeduction(
   return round(base * (1 - (magiCents - from) / (to - from)));
 }
 
-function stateLocalCap(agiCents: number, status: FilingStatus, year: number): number {
-  const salt = federalParams(year).salt.value;
-  const separate = status === "married_separate";
-  const cap = separate ? salt.cap.marriedSeparate : salt.cap.normal;
-  const from = separate ? salt.phaseDownFrom.marriedSeparate : salt.phaseDownFrom.normal;
-  const floor = separate ? salt.floor.marriedSeparate : salt.floor.normal;
-  // 26 USC 164(b)(7)(B) cuts the whole-return limit by 30% of the excess over the threshold (halved
-  // for a separate return), never below $10,000; (b)(6)(B) then halves the result for a separate
-  // return. The halving comes after the cut, so a separate return loses 15 cents of cap per dollar.
-  const rate = separate ? salt.phaseDownRate / 2 : salt.phaseDownRate;
-  return Math.max(floor, cap - round(clamp0(agiCents - from) * rate));
-}
-
 // The state (and local) estimate: every state's part, totalled, against what was withheld
 // and paid to the states. Named after the state lived in at the year's end.
 function stateEstimate(input: EstimateInput, agiCents: number): StateEstimate | null {
@@ -407,6 +405,17 @@ export function standardDeductionFor(
   return base + boxes * per;
 }
 
+// The cash gifts a person who does not itemize may deduct beside the standard deduction (26 USC
+// 170(p): $1,000, $2,000 on a joint return; none before 2026). What the itemized total has to beat is
+// the standard deduction plus this (Tax T6), so every reader of the choice adds it.
+export function nonItemizerGift(p: FederalParams, status: FilingStatus, charityCents: number) {
+  const cap =
+    status === "married_joint"
+      ? p.charity.value.nonItemizer.marriedJoint
+      : p.charity.value.nonItemizer.normal;
+  return Math.min(clamp0(charityCents), cap);
+}
+
 // Prices the year in input.year with that year's law; throws NoTaxParamsError for a year Jane has no
 // figures for (never another year's figures).
 export function estimateTaxes(input: EstimateInput): TaxEstimate {
@@ -447,15 +456,19 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
   const stateTaxSeen =
     input.stateWithheldCents + input.stateEstimatedPaidCents + input.otherStateLocalTaxCents;
   const itemized = {
-    stateLocalTaxCents: Math.min(stateTaxSeen, stateLocalCap(agi, status, input.year)),
-    mortgageInterestCents: input.mortgageInterestCents,
+    stateLocalTaxCents: Math.min(stateTaxSeen, saltCap(agi, status, input.year)),
+    mortgageInterestCents: deductibleMortgageInterest(P, {
+      status,
+      interestCents: input.mortgageInterestCents,
+      balanceCents: input.mortgageBalanceCents ?? null,
+    }).cents,
     charityCents: clamp0(input.charityCents - round(clamp0(agi) * P.charity.value.floorShare)),
     medicalCents: clamp0(input.medicalCents - round(clamp0(agi) * P.medical.value.floorShare)),
   };
   const itemizedTotal = Object.values(itemized).reduce((a, b) => a + b, 0);
   // Earned income for a dependent's limit: pay plus net self-employment (a loss comes off) less half the
   // self-employment tax (Pub. 501 Table 8; the scholarship is added inside standardDeductionFor).
-  const standard = standardDeductionFor(P, {
+  const fullStandard = standardDeductionFor(P, {
     status,
     age: input.age,
     spouseAge: input.spouseAge,
@@ -465,15 +478,17 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     earnedCents: inc.wagesCents + inc.selfEmploymentCents - halfSe,
     taxableScholarshipCents: input.taxableScholarshipCents,
   });
-  const itemizes = itemizedTotal > standard;
-  const nonItemizerCharity = itemizes
-    ? 0
-    : Math.min(
-        input.charityCents,
-        status === "married_joint"
-          ? P.charity.value.nonItemizer.marriedJoint
-          : P.charity.value.nonItemizer.normal,
-      );
+  // A person who files separately from a spouse who itemizes has no standard deduction: they itemize
+  // too, whatever it comes to (26 USC 63(c)(6)(A); Pub. 501, Standard Deduction).
+  const forced = status === "married_separate" && input.spouseItemizes === true;
+  const standard = forced ? 0 : fullStandard;
+  // Like with like: what a person who does not itemize deducts is the full standard deduction PLUS
+  // the cash gifts they may take beside it (26 USC 170(p); none before 2026), so that whole amount
+  // is what the itemized total has to beat. Comparing it with the standard deduction alone chose
+  // itemizing for a person whose standard deduction and gifts together were larger (audit 4.5.3).
+  const standardGift = forced ? 0 : nonItemizerGift(P, status, input.charityCents);
+  const itemizes = forced || itemizedTotal > standard + standardGift;
+  const nonItemizerCharity = itemizes ? 0 : standardGift;
   const beforeClamp = agi - (itemizes ? itemizedTotal : standard) - nonItemizerCharity;
   const afterDeduction = clamp0(beforeClamp);
   // QBI: 20% of self-employment income less half the SE tax, capped at 20% of taxable

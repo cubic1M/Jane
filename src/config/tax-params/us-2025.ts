@@ -17,6 +17,7 @@ const $ = (dollars: number) => Math.round(dollars * 100);
 // The day the sources below were read for this file.
 const READ = "2026-11-27";
 
+const P936 = "https://www.irs.gov/publications/p936";
 const RP2440 = "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf";
 const RP2532 = "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf";
 const RP2425 = "https://www.irs.gov/pub/irs-drop/rp-24-25.pdf";
@@ -424,6 +425,15 @@ export const US_2025: FederalParams = {
       alsoSources: [I1040],
       where:
         "26 USC 164(b)(7)(A)(i): $40,000 for 2025; (b)(7)(B): 30 percent over $500,000 for 2025 (half for separate), never below $10,000; (b)(6) halves the limit for separate returns; the 2025 Form 1040 instructions ($40,000, $20,000 if married filing separately; phase-down over $500,000, $250,000)",
+    },
+  ),
+  mortgageDebt: cited(
+    { normal: $(750_000), marriedSeparate: $(375_000) },
+    {
+      source: code("163"),
+      alsoSources: [P936],
+      where:
+        "26 USC 163(h)(3)(F)(i)(II) (the $750,000 / $375,000 limit on acquisition debt for taxable years beginning after December 31, 2017, made permanent by Pub. L. 119-21 section 70108(a)) and Publication 936 (2025), Reminders and Part II worksheet line 8, page last reviewed 2026-04-30; debt incurred on or before December 15, 2017 keeps $1,000,000 / $500,000 (163(h)(3)(F)(i)(IV)). Read 2026-11-27.",
     },
   ),
   // Not in the 2025 law: the 0.5 percent floor and the non-itemizer deduction both start with tax

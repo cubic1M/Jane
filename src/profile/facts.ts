@@ -100,6 +100,9 @@ export const FACT_SPECS = [
   F("claimed_as_dependent", "Someone can claim you as a dependent", "choice", {
     choices: ["yes", "no", "unsure"],
   }),
+  // Married filing separately only (Tax T6): whether the spouse itemizes (then the person has no
+  // standard deduction, 26 USC 63(c)(6)(A)). Told only; "unsure" reads as not known.
+  F("spouse_itemizes", "Your spouse itemizes", "choice", { choices: ["yes", "no", "unsure"] }),
   // At least half time decides the American opportunity credit; an undergraduate is in the first
   // four years it covers. Either is a student for the Saver's Credit.
   F("enrollment", "How you're enrolled in school", "choice", {

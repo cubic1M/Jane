@@ -78,6 +78,8 @@ const INPUT_KEY_FLAGS: Record<keyof EstimateInput, true> = {
   amtPreferenceCents: true,
   residentCreditsAllowed: true,
   mortgageInterestCents: true,
+  mortgageBalanceCents: true,
+  spouseItemizes: true,
   charityCents: true,
   medicalCents: true,
   otherStateLocalTaxCents: true,

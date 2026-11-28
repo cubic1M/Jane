@@ -60,7 +60,7 @@ describe("homeowner taxes", () => {
     );
     expect(big.mortgageInterest!.cents).toBe(2_250_000);
     expect(big.mortgageInterest!.note).toBe(
-      "Only the interest on the first $750,000 of the loan counts.",
+      "Only the interest on the first $750,000 of the loan counts. A loan taken out before December 16, 2017 has a higher limit.",
     );
     const withForm = homeTaxes(
       base({

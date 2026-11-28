@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { tilesView, type AreasInput } from "@/lib/hub/view";
+import { homeTaxes } from "@/planning/home-taxes";
+import { estimateTaxes } from "@/planning/tax-estimate";
+import { inputOf } from "@/tax-bench/serialize";
 import { taxesTree, type TaxesTreeInput } from "./taxes";
 
 // Gate B, debugger 11-16 (a Plaid sandbox student with no pay, only $0.84 of interest): Home's
@@ -97,5 +100,42 @@ describe("this year's tax estimate, on Home and on Taxes", () => {
     expect(home(t).caption).toBe("Refund, estimated");
     expect(home(t).value).toBe("+$1.2k");
     expect(page(t).figure).toBe("$1.2k back");
+  });
+});
+
+// Tax T6: the same loan reads the same in the estimate's itemized deduction and in the Taxes page's
+// home section (a $1,000,000 loan with $40,000 of interest: 750,000 / 1,000,000 of it, $30,000, on
+// both; 26 USC 163(h)(3)(F)(i)(II), Publication 936 (2025)).
+describe("mortgage interest, in the estimate and in the home section", () => {
+  const loan = { interest: 4_000_000, balance: 100_000_000 };
+
+  it("counts $30,000 of $40,000 on a $1,000,000 loan on both", () => {
+    const estimate = estimateTaxes(
+      inputOf(
+        2026,
+        "single",
+        { wagesCents: 30_000_000 },
+        { mortgageInterestCents: loan.interest, mortgageBalanceCents: loan.balance },
+      ),
+    );
+    const section = homeTaxes({
+      year: 2026,
+      status: "single",
+      agiCents: estimate.agiCents,
+      mortgage: {
+        name: "Home loan",
+        ytdInterestCents: loan.interest,
+        balanceCents: loan.balance,
+        form1098: null,
+      },
+      propertyTax: [],
+      stateIncomeTaxCents: 0,
+      points: null,
+      homeOfficeSqFt: null,
+      energy: [],
+      sale: null,
+    });
+    expect(estimate.deduction.itemized.mortgageInterestCents).toBe(3_000_000);
+    expect(section.mortgageInterest!.cents).toBe(3_000_000);
   });
 });

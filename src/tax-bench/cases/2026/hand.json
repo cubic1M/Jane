@@ -569,12 +569,238 @@
       "taxable": 8290000,
       "nonItemizerCharity": 100000
     },
-    "expectedFailure": {
-      "steps": ["T6"],
-      "figures": ["taxable", "nonItemizerCharity"],
-      "reason": "The estimate compares itemized with the standard deduction alone (audit 4.5.3), so it itemizes at 16,400 where standard plus gifts is 17,100; T6 fixes the comparison."
+    "note": "Itemized 15,900 + (1,000 - 0.5% x 100,000 = 500) = 16,400. Standard path 16,100 + 1,000 = 17,100 is larger. Taxable 100,000 - 17,100 = 82,900 (before T6 the estimate itemized at 16,400 and read 83,600)."
+  },
+  {
+    "id": "he4-roadmap-itemized-16500",
+    "title": "HE-4 (roadmap numbers): single, itemized $16,500 against standard $16,100 plus $1,000 of gifts: $17,100",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p) with Rev. Proc. 2025-32 section 4.14(1): the standard deduction plus up to $1,000 of gifts"
     },
-    "note": "Itemized 15,900 + (1,000 - 0.5% x 100,000 = 500) = 16,400. Standard path 16,100 + 1,000 = 17,100 is larger. Taxable 100,000 - 17,100 = 82,900 (today 83,600)."
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "mortgageInterestCents": 1600000,
+      "charityCents": 100000
+    },
+    "expected": {
+      "standardDeduction": 1610000,
+      "itemizedMortgage": 1600000,
+      "itemizedCharity": 50000,
+      "nonItemizerCharity": 100000,
+      "taxable": 8290000
+    },
+    "note": "Itemized 16,000 + (1,000 - 0.5% x 100,000 = 500) = 16,500. The standard path is 16,100 + 1,000 of gifts = 17,100, larger by 600, so the deduction is max(16,500, 17,100) = 17,100 and taxable is 100,000 - 17,100 = 82,900 (before T6 the estimate itemized: deduction 16,500, taxable 83,500)."
+  },
+  {
+    "id": "he4-itemized-wins-over-standard-plus-gifts",
+    "title": "Single, itemized $17,500 against standard $16,100 plus $1,000 of gifts: itemizes",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p) and 63(e): a person who itemizes takes no non-itemizer gift deduction"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "mortgageInterestCents": 1700000,
+      "charityCents": 100000
+    },
+    "expected": {
+      "itemizedMortgage": 1700000,
+      "itemizedCharity": 50000,
+      "nonItemizerCharity": 0,
+      "taxable": 8250000
+    },
+    "note": "Itemized 17,000 + 500 = 17,500, over the standard path's 17,100, so it itemizes and the gift is counted once, inside the itemized total. Taxable 100,000 - 17,500 = 82,500."
+  },
+  {
+    "id": "he4-tie-takes-the-standard-path",
+    "title": "Single, itemized exactly $17,100 against standard $16,100 plus $1,000 of gifts: not itemized",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/170",
+      "where": "26 USC 170(p) with Rev. Proc. 2025-32 section 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "mortgageInterestCents": 1660000,
+      "charityCents": 100000
+    },
+    "expected": {
+      "nonItemizerCharity": 100000,
+      "taxable": 8290000
+    },
+    "note": "Itemized 16,600 + 500 = 17,100, equal to 16,100 + 1,000. A tie is the standard path (itemize only when larger); either way taxable is 82,900."
+  },
+  {
+    "id": "mfs-spouse-itemizes-must-itemize",
+    "title": "Married filing separately, spouse itemizes, own deductions $9,000: no standard deduction, taxable $91,000",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/63",
+      "where": "26 USC 63(c)(6)(A): the standard deduction is zero for a married individual filing a separate return where either spouse itemizes"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "spouseItemizes": true,
+      "mortgageInterestCents": 900000
+    },
+    "expected": {
+      "standardDeduction": 0,
+      "itemizedMortgage": 900000,
+      "nonItemizerCharity": 0,
+      "taxable": 9100000
+    },
+    "note": "Standard deduction 0, so the person itemizes the $9,000 they have, even though 9,000 is under the usual 16,100: taxable 100,000 - 9,000 = 91,000."
+  },
+  {
+    "id": "mfs-spouse-not-itemizing-keeps-standard",
+    "title": "Married filing separately, spouse does not itemize, own deductions $9,000: standard $16,100",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/63",
+      "where": "26 USC 63(c)(6)(A) applies only where either spouse itemizes; Rev. Proc. 2025-32 section 4.14(1)"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 10000000
+    },
+    "extra": {
+      "spouseItemizes": false,
+      "mortgageInterestCents": 900000
+    },
+    "expected": {
+      "standardDeduction": 1610000,
+      "taxable": 8390000
+    },
+    "note": "9,000 is under 16,100, so the standard deduction: taxable 100,000 - 16,100 = 83,900."
+  },
+  {
+    "id": "mortgage-just-under-the-limit",
+    "title": "Single, $40,000 of mortgage interest on a $750,000 loan: all of it counts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/163",
+      "where": "26 USC 163(h)(3)(B)(ii) and (F)(i)(II); Publication 936 (2025), Part II line 8: $750,000"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 30000000
+    },
+    "extra": {
+      "mortgageInterestCents": 4000000,
+      "mortgageBalanceCents": 75000000
+    },
+    "expected": {
+      "itemizedMortgage": 4000000,
+      "taxable": 26000000
+    },
+    "note": "The balance is exactly the limit, so none is cut. Itemized 40,000, over the standard 16,100: taxable 300,000 - 40,000 = 260,000."
+  },
+  {
+    "id": "mortgage-over-the-limit",
+    "title": "Single, $40,000 of mortgage interest on a $1,000,000 loan: $30,000 counts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/163",
+      "where": "26 USC 163(h)(3)(B)(ii) and (F)(i)(II); Publication 936 (2025), Part II lines 8 to 12: interest on the first $750,000 of the debt"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 30000000
+    },
+    "extra": {
+      "mortgageInterestCents": 4000000,
+      "mortgageBalanceCents": 100000000
+    },
+    "expected": {
+      "itemizedMortgage": 3000000,
+      "taxable": 27000000
+    },
+    "note": "750,000 / 1,000,000 = 75% of the 40,000 = 30,000. Taxable 300,000 - 30,000 = 270,000 (before T6 the estimate counted all 40,000 and read 260,000)."
+  },
+  {
+    "id": "mortgage-over-the-limit-married-separate",
+    "title": "Married filing separately, $40,000 of mortgage interest on a $500,000 loan: $30,000 counts",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.law.cornell.edu/uscode/text/26/163",
+      "where": "26 USC 163(h)(3)(B)(ii) and (F)(i)(II); Publication 936 (2025): $375,000 if married filing separately"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 30000000
+    },
+    "extra": {
+      "mortgageInterestCents": 4000000,
+      "mortgageBalanceCents": 50000000
+    },
+    "expected": {
+      "itemizedMortgage": 3000000,
+      "taxable": 27000000
+    },
+    "note": "375,000 / 500,000 = 75% of the 40,000 = 30,000. Taxable 300,000 - 30,000 = 270,000."
   },
   {
     "id": "additional-medicare-box-5",

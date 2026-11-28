@@ -417,6 +417,25 @@ export function probePlan(year: number): Record<string, GroupPlan> {
         },
       ]),
     },
+    mortgageDebt: {
+      // The loan's size against the limit: all the interest counts up to it, then its share.
+      probes: (
+        [
+          ["normal", "single"],
+          ["marriedSeparate", "married_separate"],
+        ] as const
+      ).map(([param, status]) => ({
+        param,
+        points: around(p.mortgageDebt.value[param]),
+        f: (x: number) =>
+          est(
+            status,
+            { wagesCents: 30_000_000 },
+            { mortgageInterestCents: 4_000_000, mortgageBalanceCents: x },
+          ).deduction.itemized.mortgageInterestCents,
+        kind: "flat_then_falls" as const,
+      })),
+    },
     charity: {
       probes: [
         {
@@ -427,22 +446,27 @@ export function probePlan(year: number): Record<string, GroupPlan> {
               .charityCents,
           kind: "slope_up" as const,
         },
-        {
-          param: "nonItemizer.normal",
-          points: around(charity.nonItemizer.normal),
-          f: (x: number) =>
-            est("single", { wagesCents: 5_000_000 }, { charityCents: x }).deduction
-              .nonItemizerCharityCents,
-          kind: "rises_then_flat" as const,
-        },
-        {
-          param: "nonItemizer.marriedJoint",
-          points: around(charity.nonItemizer.marriedJoint),
-          f: (x: number) =>
-            est("married_joint", { wagesCents: 5_000_000 }, { charityCents: x }).deduction
-              .nonItemizerCharityCents,
-          kind: "rises_then_flat" as const,
-        },
+        // 2025 has no non-itemizer deduction (the cap is 0), so there is no cap to cross.
+        ...(charity.nonItemizer.normal === 0
+          ? []
+          : [
+              {
+                param: "nonItemizer.normal",
+                points: around(charity.nonItemizer.normal),
+                f: (x: number) =>
+                  est("single", { wagesCents: 5_000_000 }, { charityCents: x }).deduction
+                    .nonItemizerCharityCents,
+                kind: "rises_then_flat" as const,
+              },
+              {
+                param: "nonItemizer.marriedJoint",
+                points: around(charity.nonItemizer.marriedJoint),
+                f: (x: number) =>
+                  est("married_joint", { wagesCents: 5_000_000 }, { charityCents: x }).deduction
+                    .nonItemizerCharityCents,
+                kind: "rises_then_flat" as const,
+              },
+            ]),
       ],
     },
     medical: {
