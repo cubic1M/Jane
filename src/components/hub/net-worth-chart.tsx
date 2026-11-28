@@ -100,6 +100,37 @@ const subscribeReduced = (onChange: () => void) => {
 const reducedNow = () =>
   typeof window.matchMedia === "function" && window.matchMedia(REDUCED).matches;
 
+// The chosen view, remembered in this browser (CHART_VIEW_STORAGE_KEY). With no storage (a private
+// window) the choice lasts until the page is left.
+type ChartView = "line" | "changes";
+let chosenView: ChartView | null = null;
+const viewListeners = new Set<() => void>();
+const subscribeView = (onChange: () => void) => {
+  viewListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    viewListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+};
+function viewNow(): ChartView {
+  if (chosenView) return chosenView;
+  try {
+    return window.localStorage.getItem(CHART_VIEW_STORAGE_KEY) === "changes" ? "changes" : "line";
+  } catch {
+    return "line";
+  }
+}
+function chooseView(view: ChartView) {
+  chosenView = view;
+  try {
+    window.localStorage.setItem(CHART_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Not remembered: it still switches.
+  }
+  viewListeners.forEach((notify) => notify());
+}
+
 function useEasedRange(target: { lo: number; hi: number }): { lo: number; hi: number } {
   const [shown, setShown] = useState(target);
   const now = useRef(target);
@@ -242,15 +273,8 @@ export function NetWorthChart({
   const [figureShown, setFigureShown] = useState(false);
   const [range, setRange] = useState<RangeKey>("ALL");
   // The line of net worth, or one bar per period of how much it moved (the person's choice, kept
-  // on this device; read after the first paint so the server's and the browser's first HTML agree).
-  const [mode, setMode] = useState<"line" | "changes">("line");
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(CHART_VIEW_STORAGE_KEY) === "changes") setMode("changes");
-    } catch {
-      // No storage (a private window): the line.
-    }
-  }, []);
+  // on this device; the server and the first paint show the line).
+  const mode = useSyncExternalStore(subscribeView, viewNow, () => "line" as const);
   // Zoomed by hand (the wheel, a pinch, the brush): the days in view; null follows the range.
   const [view, setView] = useState<ViewWindow | null>(null);
   const [scrub, setScrub] = useState<number | null>(null);
@@ -434,14 +458,18 @@ export function NetWorthChart({
   const dayIndex0 = win.from + at;
   const stepCents =
     activeBar?.change ??
-    (dayIndex0 > 0 ? points[dayIndex0].cents - points[dayIndex0 - 1].cents : 0);
+    (dayIndex0 > 0 && points[dayIndex0]
+      ? points[dayIndex0].cents - points[dayIndex0 - 1].cents
+      : 0);
   const stepWords = activeBar
     ? barLabel(
         activeBar,
         (d) => dayLabel(d, { year: true }),
         (m) => monthLabel(m, { long: true }),
       )
-    : dayLabel(point.date, { year: true });
+    : point
+      ? dayLabel(point.date, { year: true })
+      : "";
   // A pointer's place across the days (0 to 1), left of the gutter being the first day.
   const shareOf = (clientX: number, r: { left: number; width: number }) =>
     Math.min(1, Math.max(0, (clientX - r.left - gutter) / Math.max(1, r.width - gutter)));
@@ -735,15 +763,10 @@ export function NetWorthChart({
                 data-net-worth-view={key}
                 aria-pressed={mode === key}
                 onClick={() => {
-                  setMode(key);
+                  chooseView(key);
                   setScrub(null);
                   setFocusDot(null);
                   shut();
-                  try {
-                    window.localStorage.setItem(CHART_VIEW_STORAGE_KEY, key);
-                  } catch {
-                    // Not remembered: it still switches.
-                  }
                 }}
                 className={`inline-flex min-h-11 items-center justify-center border px-3 text-sm font-medium ${
                   mode === key
@@ -867,7 +890,7 @@ export function NetWorthChart({
                   return;
                 }
                 // A tap or click on a movement's dot opens it.
-                if (!layout) return;
+                if (!layout || changes) return;
                 const r = e.currentTarget.getBoundingClientRect();
                 const i = layout.hit(e.clientX - r.left, e.clientY - r.top);
                 if (i === null) return;
@@ -890,7 +913,8 @@ export function NetWorthChart({
                 else if (e.key === "ArrowRight") {
                   const next = stepFrom(from, jump);
                   setScrub(next >= shown.length - 1 ? null : next);
-                } else if (e.key === "Home") setScrub(0);
+                } else if (e.key === "Home")
+                  setScrub(changes && bars.length ? bars[0].endIndex - win.from : 0);
                 else if (e.key === "End" || e.key === "Escape") setScrub(null);
                 else if (e.key === "+" || e.key === "=") zoomBy(0.5);
                 else if (e.key === "-") zoomBy(2);
