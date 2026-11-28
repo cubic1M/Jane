@@ -1,0 +1,137 @@
+[
+  {
+    "id": "pub915-mfs-apart-all-year-uses-the-single-base",
+    "title": "Married filing separately and lived apart all year, benefits $4,000, wages $8,000: none taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p915",
+      "where": "Publication 915 (2026), Worksheet 1 line 9: $25,000 if married filing separately and you lived apart from your spouse for all of 2026"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 800000,
+      "socialSecurityBenefitsCents": 400000
+    },
+    "extra": {
+      "livedWithSpouse": false
+    },
+    "expected": {
+      "socialSecurityTaxable": 0
+    },
+    "note": "Line 6 is 8,000 + half the benefits 2,000 = 10,000, under the 25,000 base: nothing taxable. (Example 4's person, who lived with the spouse, has 3,400 taxable.)"
+  },
+  {
+    "id": "pub915-mfs-together-big-benefit-is-capped-at-85-percent",
+    "title": "Married filing separately, lived together, benefits $10,000, wages $40,000: 85% of the benefits, $8,500",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p915",
+      "where": "Publication 915 (2026), Worksheet 1 lines 17 to 19: 85% of line 8, never more than 85% of the benefits"
+    },
+    "household": {
+      "filingStatus": "married_separate",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 4000000,
+      "socialSecurityBenefitsCents": 1000000
+    },
+    "extra": {
+      "livedWithSpouse": true
+    },
+    "expected": {
+      "socialSecurityTaxable": 850000
+    },
+    "note": "Line 8 is 40,000 + 5,000 = 45,000; 85% is 38,250, over 85% of the 10,000 benefits (8,500): 8,500."
+  },
+  {
+    "id": "pub915-ira-deduction-comes-off-before-the-bases",
+    "title": "Single, benefits $10,000, wages $30,000, a $2,000 IRA deduction comes off first: $4,000 taxable",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p915",
+      "where": "Publication 915 (2026), Worksheet 1 line 7: Schedule 1 lines 11 to 20, 23 and 25 (an IRA deduction), subtracted from line 6"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000,
+      "socialSecurityBenefitsCents": 1000000
+    },
+    "extra": {
+      "otherAdjustmentsCents": 200000
+    },
+    "expected": {
+      "socialSecurityTaxable": 400000
+    },
+    "note": "Line 2 is 5,000; line 6 is 30,000 + 5,000 = 35,000; line 7 (the IRA deduction) 2,000; line 8 is 33,000. Line 10 is 33,000 - 25,000 = 8,000; line 11 is 9,000; line 12 is 0; line 13 is 8,000; line 14 is 4,000; line 15 is the smaller of 5,000 and 4,000 = 4,000; line 16 is 0; line 17 is 4,000; line 18 is 85% of 10,000 = 8,500; line 19 is 4,000. (Without the adjustment line 8 is 35,000 and 5,350 would be taxable.)"
+  },
+  {
+    "id": "he3e-born-on-january-1-counts-as-65",
+    "title": "Single, age 64 at year end, born January 1, 1962, wages $30,000: the extra standard deduction counts (65 the day before)",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Publication 501 (2025), Higher Standard Deduction for Age: you are considered 65 on the day before your 65th birthday (born before January 2, 1961 for 2025, so before January 2, 1962 for 2026)"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 64,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "birthDate": "1962-01-01"
+    },
+    "expected": {
+      "standardDeduction": 1815000
+    },
+    "note": "16,100 + 2,050 = 18,150: born 1962-01-01, the 65th birthday is 2027-01-01 and the day before is 2026-12-31."
+  },
+  {
+    "id": "he3e-born-on-january-2-is-not-65-yet",
+    "title": "Single, age 64 at year end, born January 2, 1962, wages $30,000: no extra standard deduction",
+    "taxYear": 2026,
+    "source": {
+      "kind": "hand",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Publication 501 (2025), Higher Standard Deduction for Age: you are considered 65 on the day before your 65th birthday"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 64,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "birthDate": "1962-01-02"
+    },
+    "expected": {
+      "standardDeduction": 1610000
+    },
+    "note": "The 65th birthday is 2027-01-02, the day before is 2027-01-01: 65 in 2027, not 2026. Standard 16,100."
+  }
+]

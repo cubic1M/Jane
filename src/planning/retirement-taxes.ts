@@ -32,11 +32,17 @@ export function socialSecurityTax(input: {
   otherIncomeCents: number;
   taxExemptInterestCents?: number;
   status: Status;
+  // Married filing separately and lived with the spouse at any time in the year: the base amount is
+  // $0, so 85% of the income over nothing counts, up to 85% of the benefits (Pub. 915 Worksheet 1,
+  // lines 9 to 19). `status` is not read then.
+  separateTogether?: boolean;
 }): SocialSecurityTax {
   const b = input.benefitsCents;
   const provisional = input.otherIncomeCents + (input.taxExemptInterestCents ?? 0) + round(b / 2);
   const [base1, base2] = SS_BASE[input.status];
   const taxableAt = (p: number) => {
+    if (input.separateTogether)
+      return Math.min(SS_SHARES.second * b, SS_SHARES.second * Math.max(0, p));
     if (p <= base1) return 0;
     if (p <= base2) return Math.min(SS_SHARES.first * b, SS_SHARES.first * (p - base1));
     return Math.min(

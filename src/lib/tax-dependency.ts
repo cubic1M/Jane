@@ -8,11 +8,11 @@ import type { FactKey } from "@/profile/facts";
 // What the person told Jane as a yes or a no, read the way the profile reads it (a correction made on
 // the profile or by the question card wins over what Jane remembers from the chat). "unsure" and not
 // said both read as null: unknown.
-export async function loadToldYesNo(
+export async function loadToldChoice(
   userId: string,
   key: FactKey,
   { client = defaultClient }: { client?: PrismaClient } = {},
-): Promise<boolean | null> {
+): Promise<string | null> {
   const pref = await scopedFor(userId, client).janePreferences.findFirst({
     where: { kind: "fact", key: `${PROFILE_FACT_PREFIX}${key}` },
     select: { value: true },
@@ -20,6 +20,15 @@ export async function loadToldYesNo(
   const said = (pref?.value as { value?: unknown } | null)?.value;
   const value =
     typeof said === "string" ? said : toldFromFacts(await listFacts(userId, { client }))[key];
+  return typeof value === "string" ? value : null;
+}
+
+export async function loadToldYesNo(
+  userId: string,
+  key: FactKey,
+  options: { client?: PrismaClient } = {},
+): Promise<boolean | null> {
+  const value = await loadToldChoice(userId, key, options);
   return value === "yes" ? true : value === "no" ? false : null;
 }
 
@@ -29,6 +38,13 @@ export const loadToldDependency = (
   userId: string,
   options: { client?: PrismaClient } = {},
 ): Promise<boolean | null> => loadToldYesNo(userId, "claimed_as_dependent", options);
+
+// Whether they lived with their spouse at any time in the year ("lived_with_spouse"), asked of a person
+// filing married filing separately who gets Social Security: the base amount is $0 if they did (Pub. 915).
+export const loadToldLivedWithSpouse = (
+  userId: string,
+  options: { client?: PrismaClient } = {},
+): Promise<boolean | null> => loadToldYesNo(userId, "lived_with_spouse", options);
 
 // Whether their spouse itemizes ("spouse_itemizes"), asked of a person who files married filing
 // separately: the standard deduction is then zero for both (26 USC 63(c)(6)(A)).

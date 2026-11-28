@@ -105,6 +105,16 @@ export type EstimateInput = {
   // deduction is zero and they itemize too (26 USC 63(c)(6)(A)). Null or absent: not said, and the
   // estimate then takes the better of the two deductions as for anyone else.
   spouseItemizes?: boolean | null;
+  // Married filing separately only. Whether they lived with the spouse at any time in the year: it
+  // sets the base amount for taxing Social Security benefits (Pub. 915). Null or absent: not said, and
+  // the estimate counts it as yes. False: apart all year, the single base.
+  livedWithSpouse?: boolean | null;
+  // The dates of birth, when known (an ISO day): the extra standard deduction counts a person as 65
+  // on the day BEFORE the 65th birthday (Pub. 501), so someone born on January 1 counts for the year
+  // they turn 65, which an age at the year's end cannot show. They take the place of `age` and
+  // `spouseAge` for that amount only.
+  birthDate?: string | null;
+  spouseBirthDate?: string | null;
   // Cash gifts and medical costs PAID SO FAR this year, not projected to the year's end: both are
   // lumpy, so pacing them would invent a gift or a bill. (The high end of the range, T23, paces.)
   charityCents: number;
@@ -370,13 +380,15 @@ function netCapital(stCents: number, ltCents: number, status: FilingStatus, year
 //    on a joint return, the spouse's age and blindness. The amount is higher for an unmarried person.
 // Age is the age at the year's end. A person turns 65 "on the day before" the birthday (Pub. 501), so
 // someone born on January 1 counts for the year they turn 65 although their age at December 31 still
-// reads 64: an age alone cannot show that, and the estimate does not count it.
+// reads 64: an age alone cannot show that, so a birth date (when known) is read instead.
 export function standardDeductionFor(
   p: FederalParams,
   s: {
     status: FilingStatus;
     age?: number | null;
     spouseAge?: number | null;
+    birthDate?: string | null;
+    spouseBirthDate?: string | null;
     blind?: boolean;
     spouseBlind?: boolean;
     claimedAsDependent?: boolean;
@@ -397,10 +409,22 @@ export function standardDeductionFor(
       )
     : regular;
   const married = s.status === "married_joint" || s.status === "married_separate";
-  const senior = (age?: number | null) => (age != null && age >= ADDITIONAL_STANDARD_AGE ? 1 : 0);
+  // A birth date decides it exactly: 65 on the day before the 65th birthday, so born on or before
+  // January 1 of (year - 64) ("born before January 2, 1961" for 2025, Pub. 501 (2025), read
+  // 2026-11-27). Without one, the age at the year's end.
+  const senior = (age?: number | null, born?: string | null) =>
+    (
+      born
+        ? born <= `${p.year - ADDITIONAL_STANDARD_AGE + 1}-01-01`
+        : age != null && age >= ADDITIONAL_STANDARD_AGE
+    )
+      ? 1
+      : 0;
   const joint = s.status === "married_joint";
   const boxes =
-    senior(s.age) + (s.blind ? 1 : 0) + (joint ? senior(s.spouseAge) + (s.spouseBlind ? 1 : 0) : 0);
+    senior(s.age, s.birthDate) +
+    (s.blind ? 1 : 0) +
+    (joint ? senior(s.spouseAge, s.spouseBirthDate) + (s.spouseBlind ? 1 : 0) : 0);
   const per = p.additionalStandard.value[married ? "married" : "unmarried"];
   return base + boxes * per;
 }
@@ -437,11 +461,18 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     inc.unemploymentCents +
     (inc.otherCents ?? 0);
   // Taxes QA: Social Security's taxable part, from provisional income (step 271's rule).
+  // Publication 915 (2026) Worksheet 1: the income compared with the base amounts is the other income
+  // less the adjustments on Schedule 1 lines 11 to 20, 23 and 25 (half the self-employment tax, an IRA
+  // or HSA deduction): NOT the student loan interest deduction (line 21), which is figured after it.
+  // Married filing separately and lived with the spouse at any time in the year: base $0, 85%. Not
+  // said (null or absent) counts as lived together, the usual case for a separate return; the loader
+  // says so in a line.
   const ssTaxable = inc.socialSecurityBenefitsCents
     ? socialSecurityTax({
         benefitsCents: inc.socialSecurityBenefitsCents,
-        otherIncomeCents: totalIncome - halfSe,
+        otherIncomeCents: totalIncome - halfSe - (input.otherAdjustmentsCents ?? 0),
         status: status === "married_joint" ? "married_joint" : "single",
+        separateTogether: status === "married_separate" && input.livedWithSpouse !== false,
       }).taxableCents
     : 0;
   const beforeStudent = totalIncome + ssTaxable - halfSe;
@@ -472,6 +503,8 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     status,
     age: input.age,
     spouseAge: input.spouseAge,
+    birthDate: input.birthDate,
+    spouseBirthDate: input.spouseBirthDate,
     blind: input.blind,
     spouseBlind: input.spouseBlind,
     claimedAsDependent: input.claimedAsDependent,

@@ -26,7 +26,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { cachedCopy } from "@/lib/read-cache";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
-import { federalParams } from "@/config/tax-params";
+import { ADDITIONAL_STANDARD_AGE, federalParams } from "@/config/tax-params";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { deductibleMortgageInterest } from "@/planning/home-taxes";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
@@ -37,7 +37,13 @@ import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { loadToldResidency } from "@/lib/tax-residency";
-import { loadToldDependency, loadToldSpouseItemizes } from "@/lib/tax-dependency";
+import {
+  loadToldDependency,
+  loadToldChoice,
+  loadToldLivedWithSpouse,
+  loadToldSpouseItemizes,
+  loadToldYesNo,
+} from "@/lib/tax-dependency";
 import { earnedIncomeHeldLine } from "@/planning/tax-engine/residency-gate";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -247,6 +253,18 @@ export const ITEMIZED_PAID_SO_FAR_LINE =
   "Jane counted gifts and medical costs paid so far this year, not projected to the year's end.";
 export const SPOUSE_ITEMIZES_UNKNOWN_LINE =
   "Jane doesn't know whether your spouse itemizes. If they do, a separate return has no standard deduction and the deductions Jane can see are itemized.";
+export const LIVED_WITH_SPOUSE_UNKNOWN_LINE =
+  "Jane doesn't know whether you lived with your spouse at any time this year, so it counted Social Security benefits as if you did: on a separate return that way up to 85% of them count.";
+export const OVER_25_ONLY_LINE =
+  "Jane knows you're 25 or older but not your exact age. It used that for the earned income credit's age test and doesn't know whether you're 65 or older.";
+export const UNDER_25_ONLY_LINE =
+  "You said you're under 25. Jane used that for the earned income credit's age test and doesn't know your exact age.";
+export const birthdayLine = (year: number, extraCents: number) =>
+  `Jane took your age as 64 at the end of ${year} from the age you gave. If your birthday is January 1, the IRS counts you as 65 for ${year}, which adds ${formatCents(extraCents)} to the standard deduction.`;
+const extraStandardCents = (year: number, status: FilingStatus) =>
+  federalParams(year).additionalStandard.value[
+    status === "married_joint" || status === "married_separate" ? "married" : "unmarried"
+  ];
 export const mortgageLimitLine = (limitCents: number, countedCents: number, paidCents: number) =>
   `Mortgage interest counts on the first ${formatCents(limitCents)} of the loans: ${formatCents(countedCents)} of the ${formatCents(paidCents)} counts. Jane used the balance as the loan's size, and a loan taken out before December 16, 2017 has a higher limit.`;
 export const mortgageBalanceUnknownLine = (year: number, limitCents: number) =>
@@ -792,7 +810,22 @@ async function loadTaxEstimateFrom(
 
   // The age they told Jane (on the investor profile), at the year's end.
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
-  const age = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
+  const statedAge = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
+  // The age range and "25 or older" are answers to the childless earned income credit's age test (25
+  // to 64), read as the student card reads them (age25to64 in src/planning/student-tax.ts): a range
+  // under 58 or yes counts as 25, no as 24. A range from 58 up is not "25 or older" for this test (it
+  // may be past 64), so it gives no age here. None of these says whether they are 65 or older, and
+  // the line below says so.
+  const band = statedAge === null ? await loadToldChoice(userId, "age_band", { client }) : null;
+  const toldOver25 =
+    statedAge !== null
+      ? null
+      : band === "30_to_49" || band === "50_to_57"
+        ? true
+        : band === "58_to_65" || band === "66_to_72" || band === "73_plus"
+          ? null
+          : await loadToldYesNo(userId, "age_25_plus", { client });
+  const age = statedAge ?? (toldOver25 === true ? 25 : toldOver25 === false ? 24 : null);
   // Whether someone else can claim them as a dependent: it limits the standard deduction. Not said (or
   // "not sure") is the full deduction, and said so when it could matter (someone under 24).
   const dependent = await loadToldDependency(userId, { client });
@@ -806,6 +839,8 @@ async function loadTaxEstimateFrom(
   // The balance sits on the account itself, so it is dated by that row's own reading, not by a copy's
   // that reconcileLiabilities may have put on the row.
   const ownReading = new Map(loansAll.map((l) => [l.accountId, iso(l.updatedAt)]));
+  const livedWithSpouse =
+    filingStatus === "married_separate" ? await loadToldLivedWithSpouse(userId, { client }) : null;
   const mortgages = loans.filter((l) => l.kind === "mortgage");
   const mortgageBalance =
     mortgages.length > 0 &&
@@ -845,6 +880,7 @@ async function loadTaxEstimateFrom(
     mortgageInterestCents: loanInterest("mortgage"),
     mortgageBalanceCents: mortgageBalance,
     ...(spouseItemizes === null ? {} : { spouseItemizes }),
+    ...(livedWithSpouse === null ? {} : { livedWithSpouse }),
     charityCents: tags.totals.donation.totalCents,
     medicalCents: tags.totals.medical.totalCents,
     // Spec step 170: property tax paid this year.
@@ -912,6 +948,26 @@ async function loadTaxEstimateFrom(
   }
   if (filingStatus === "married_separate" && spouseItemizes === null) {
     assumptions.push(SPOUSE_ITEMIZES_UNKNOWN_LINE);
+  }
+  // Social Security on a separate return: living with the spouse at any time sets the base amount to $0.
+  if (
+    filingStatus === "married_separate" &&
+    livedWithSpouse === null &&
+    (input.income.socialSecurityBenefitsCents ?? 0) > 0
+  ) {
+    assumptions.push(LIVED_WITH_SPOUSE_UNKNOWN_LINE);
+  }
+  // An age alone cannot show a January 1 birthday, which counts as 65 a year early (Pub. 501).
+  // Not said when a spouse who itemizes leaves a separate return no standard deduction to add to.
+  if (
+    statedAge !== null &&
+    statedAge === ADDITIONAL_STANDARD_AGE - 1 &&
+    !(filingStatus === "married_separate" && spouseItemizes === true)
+  ) {
+    assumptions.push(birthdayLine(year, extraStandardCents(year, filingStatus)));
+  }
+  if (toldOver25 !== null && statedAge === null) {
+    assumptions.push(toldOver25 ? OVER_25_ONLY_LINE : UNDER_25_ONLY_LINE);
   }
   // Spec step 219: crypto, ESPP and ISO income, said plainly.
   if (equity.ordinaryCents > 0) {

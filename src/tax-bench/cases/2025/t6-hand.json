@@ -31,6 +31,60 @@
     "note": "2025 has no 0.5% floor, so the whole $1,000 of gifts counts when itemizing: 16,000 + 1,000 = 17,000, over the standard 15,750 (and no gift is added to the standard path in 2025). Taxable 100,000 - 17,000 = 83,000."
   },
   {
+    "id": "he3e-2025-born-january-1-1961-is-65",
+    "title": "2025 single, age 64 at year end, born January 1, 1961: the extra standard deduction counts",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Publication 501 (2025), Higher Standard Deduction for Age: you are considered 65 on the day before your 65th birthday, so for 2025 if you were born before January 2, 1961"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 64,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "birthDate": "1961-01-01"
+    },
+    "expected": {
+      "standardDeduction": 1775000
+    },
+    "note": "15,750 + 2,000 = 17,750 (Pub. 501 (2025) Table 7: single, 65 or older, $17,750)."
+  },
+  {
+    "id": "he3e-2025-born-january-2-1961-is-not-65",
+    "title": "2025 single, age 64 at year end, born January 2, 1961: no extra standard deduction",
+    "taxYear": 2025,
+    "source": {
+      "kind": "irs_example",
+      "url": "https://www.irs.gov/publications/p501",
+      "where": "Publication 501 (2025), Higher Standard Deduction for Age: born before January 2, 1961 is 65 or older at the end of 2025"
+    },
+    "household": {
+      "filingStatus": "single",
+      "childrenUnder17": 0,
+      "otherDependants": 0,
+      "age": 64,
+      "state": null
+    },
+    "income": {
+      "wagesCents": 3000000
+    },
+    "extra": {
+      "birthDate": "1961-01-02"
+    },
+    "expected": {
+      "standardDeduction": 1575000
+    },
+    "note": "Born January 2, 1961 is not before January 2, 1961: 15,750."
+  },
+  {
     "id": "mortgage-2025-over-the-limit",
     "title": "2025 single, $40,000 of mortgage interest on a $1,000,000 loan: $30,000 counts",
     "taxYear": 2025,
