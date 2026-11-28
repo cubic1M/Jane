@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { correctFact } from "@/lib/profile";
+import { decideTax } from "@/lib/tax-decisions";
 import { loadHomeTaxes } from "./home-taxes";
 import {
   ITEMIZED_PAID_SO_FAR_LINE,
@@ -72,12 +73,15 @@ describe.runIf(url)("the itemized deduction through the loader", { timeout: 120_
         kind: "mortgage",
         aprBps: 600,
         ytdInterestPaidCents: 4_000_000,
+        // The loader keeps the balance only for a reading taken in the year under test.
+        updatedAt: NOW,
       },
     });
   });
 
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: userId } });
+    // Never `deleteMany({ where: { id: undefined } })`: Prisma would drop the filter.
+    if (userId) await client.user.delete({ where: { id: userId } });
     await client.$disconnect();
   });
 
@@ -159,6 +163,12 @@ describe.runIf(url)("the itemized deduction through the loader", { timeout: 120_
     expect(yes.estimate.deduction.standardCents).toBe(0);
     expect(yes.estimate.deduction.kind).toBe("itemized");
     expect(yes.assumptions).not.toContain(SPOUSE_ITEMIZES_UNKNOWN_LINE);
+    // The chat's answers say there is nothing to choose between, not "take the standard deduction".
+    const itemize = await decideTax(userId, "itemize", { client, now: NOW });
+    expect(itemize.text).toMatch(/spouse itemizes, a separate return has no standard deduction/);
+    expect(itemize.text).not.toMatch(/Take the standard deduction/);
+    const deductions = await decideTax(userId, "deductions", { client, now: NOW });
+    expect(deductions.text).toMatch(/no standard deduction on your return/);
 
     await say("no");
     const no = await view();

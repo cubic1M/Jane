@@ -119,6 +119,11 @@ export async function decideTax(
       const standard = d.standardCents + gift;
       const diff = Math.abs(itemized - standard);
       const worth = Math.round(diff * e.marginalRate);
+      // A separate return whose spouse itemizes has no standard deduction: nothing to choose between.
+      if (d.standardCents === 0) {
+        const forced = `Because your spouse itemizes, a separate return has no standard deduction, so your itemized deductions of ${formatCents(itemized)} are the ones counted.`;
+        return recommend(forced, [itemized]) ?? made(forced, [itemized]);
+      }
       const fact = `Your itemized deductions come to ${formatCents(itemized)} and the standard deduction${gift > 0 ? `, with ${formatCents(gift)} of gifts,` : ""} is ${formatCents(standard)}.`;
       const gate = recommend(fact, [itemized, standard]);
       if (gate) return gate;
@@ -386,9 +391,16 @@ export async function decideTax(
         ["medical costs over the floor", d.itemized.medicalCents],
       ].filter(([, c]) => (c as number) > 0) as [string, number][];
       const list = parts.map(([n, c]) => `${n} ${formatWholeDollars(c)}`).join(", ");
+      // The standard deduction with the gifts a person who does not itemize may take beside it.
+      const gift =
+        d.standardCents === 0 ? 0 : nonItemizerGift(law, e.filingStatus, est.input.charityCents);
+      const standardWords =
+        d.standardCents === 0
+          ? "There is no standard deduction on your return (a separate return whose spouse itemizes has none)"
+          : `You can deduct the standard ${formatWholeDollars(d.standardCents)}${gift > 0 ? ` plus ${formatWholeDollars(gift)} of gifts` : ""}, or itemize`;
       return made(
-        `You can deduct the standard ${formatWholeDollars(d.standardCents)}, or itemize${list ? ` (${list}, ${formatWholeDollars(d.itemizedCents)} in all)` : " if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
-        [d.standardCents, d.itemizedCents],
+        `${standardWords}${d.standardCents === 0 ? ", so you itemize" : ""}${list ? ` (${list}, ${formatWholeDollars(d.itemizedCents)} in all)` : d.standardCents === 0 ? "" : " if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
+        [d.standardCents + gift, d.itemizedCents],
       );
     }
     case "setaside": {
@@ -472,7 +484,7 @@ export async function decideTax(
       const m = h.mortgageInterest;
       return m
         ? made(
-            `All ${formatWholeDollars(m.cents)} of your mortgage interest can be deducted, but only if you itemize; the limit applies to loans over $750,000. ${e.deduction.kind === "itemized" ? "You're itemizing, so it counts." : "You're taking the standard deduction, so it doesn't change your tax."}`,
+            `${m.note ? `${formatWholeDollars(m.cents)} of your mortgage interest can be deducted` : `All ${formatWholeDollars(m.cents)} of your mortgage interest can be deducted`}, but only if you itemize; the limit applies to loans over ${formatWholeDollars(e.filingStatus === "married_separate" ? law.mortgageDebt.value.marriedSeparate : law.mortgageDebt.value.normal)}. ${e.deduction.kind === "itemized" ? "You're itemizing, so it counts." : "You're taking the standard deduction, so it doesn't change your tax."}`,
             [m.cents],
             "/taxes?focus=life:home",
           )

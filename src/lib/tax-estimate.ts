@@ -772,11 +772,16 @@ async function loadTaxEstimateFrom(
   // What the mortgages total, for the $750,000 limit: today's balance stands in for the year's
   // debt only when the lender's reading was taken in this same year; a balance read later says
   // nothing about an earlier year's loan, and then the limit is not applied and the line says so.
+  // The balance sits on the account itself, so it is dated by that row's own reading, not by a copy's
+  // that reconcileLiabilities may have put on the row.
+  const ownReading = new Map(loansAll.map((l) => [l.accountId, iso(l.updatedAt)]));
   const mortgages = loans.filter((l) => l.kind === "mortgage");
   const mortgageBalance =
     mortgages.length > 0 &&
     mortgages.every(
-      (l) => l.account.currentBalanceCents !== null && iso(l.updatedAt).startsWith(`${year}-`),
+      (l) =>
+        l.account.currentBalanceCents !== null &&
+        (ownReading.get(l.accountId) ?? "").startsWith(`${year}-`),
     )
       ? mortgages.reduce((s, l) => s + Math.abs(l.account.currentBalanceCents ?? 0), 0)
       : null;

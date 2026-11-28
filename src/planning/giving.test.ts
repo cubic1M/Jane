@@ -66,9 +66,11 @@ describe("giving, done smart", () => {
     expect(shares.title).toBe("Give $5,000 of VTI shares instead of cash");
     expect(shares.withCents).toBe(tax(i, 500_000));
     expect(shares.withoutCents).toBe(tax(i, 500_000, 300_000));
-    // 15% on the $3,000 gain, and a little more: the gain raises income, and with it the
-    // 0.5% floor on the charity deduction ($15 at 24%).
-    expect(shares.savesCents).toBe(45_000 + 360);
+    // 15% on the $3,000 gain. The person's itemized total ($12,000 + $4,975 of gifts after the 0.5%
+    // floor) is under the standard deduction plus the $1,000 of gifts allowed beside it ($17,100),
+    // so (Tax T6) they take the standard path: a $1,000 gift deduction with no floor, which the gain
+    // does not move. (Before T6 the estimate itemized and the gain's higher floor cost $3.60 more.)
+    expect(shares.savesCents).toBe(45_000);
   });
 
   it("leaves out shares with no long-term gain, and small giving", () => {
