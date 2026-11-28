@@ -76,6 +76,9 @@ export function bucketChanges(
 export const squash = (cents: number): number =>
   Math.sign(cents) * Math.pow(Math.abs(cents) / 100, CHANGE_EXPONENT);
 
+// The least room between two axis labels, and between one and the zero line, in pixels.
+const TICK_GAP_PX = 14;
+
 export type ChangeScale = {
   // The pixel row of a change, and of zero.
   y: (cents: number) => number;
@@ -99,13 +102,18 @@ export function changeScale(bars: readonly Bar[], height: number): ChangeScale {
   const span = up + down + slack * 2;
   const room = height - PAD_Y * 2;
   const y = (cents: number) => PAD_Y + ((top - squash(cents)) / span) * room;
-  // Powers of ten that fit on either side, from $10 ($1 only when nothing reaches $10).
+  // Powers of ten that fit on either side, from $10 ($1 only when nothing reaches $10), leaving
+  // out any that would sit on the zero line or on the label next to it.
   const ticks: number[] = [];
+  let last = 0;
   for (const dollars of [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000]) {
     const reach = squash(dollars * 100);
     if (dollars === 1 && Math.max(up, down) >= squash(1_000)) continue;
+    const row = Math.abs(y(dollars * 100) - y(0));
+    if (row - last < TICK_GAP_PX) continue;
     if (up >= reach) ticks.push(dollars * 100);
     if (down >= reach) ticks.push(-dollars * 100);
+    last = row;
   }
   return { y, zero: y(0), ticks: ticks.sort((a, b) => b - a) };
 }

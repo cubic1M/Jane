@@ -106,9 +106,10 @@ describe("the changes scale", () => {
   });
 
   it("labels real amounts, both sides, and stops where the bars do", () => {
-    expect(changeScale(all, 260).ticks).toEqual([
-      100_000, 10_000, 1_000, -1_000, -10_000, -100_000, -1_000_000,
-    ]);
+    // $10 and $100 would sit on the zero line here: only the labels with room are kept.
+    const big = changeScale(all, 260);
+    expect(big.ticks).toEqual([100_000, -100_000, -1_000_000]);
+    for (const t of big.ticks) expect(Math.abs(big.y(t) - big.zero)).toBeGreaterThanOrEqual(14);
     // A quiet stretch: $10 and $100 only.
     const quiet = changeScale([-900, 13_800, 6_000].map(bar), 260).ticks;
     expect(quiet).toEqual([10_000, 1_000]);

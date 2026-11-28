@@ -416,7 +416,12 @@ export function NetWorthChart({
   const bars: Bar[] = changes ? bucketChanges(points, win.from, win.to) : [];
   const barScale = changes ? changeScale(bars, H) : null;
   const barTicks = barScale?.ticks ?? [];
-  const gutter = figureShown ? gutterFor((changes ? barTicks : ticks).map(dollars)) : 0;
+  // The bars keep the left edge for "$0" even when the figures are hidden.
+  const gutter = changes
+    ? gutterFor(["$0", ...(figureShown ? barTicks.map(dollars) : [])])
+    : figureShown
+      ? gutterFor(ticks.map(dollars))
+      : 0;
   const slot = bars.length ? (width - gutter) / bars.length : 0;
   // The bar a day (an index among those shown) belongs to.
   const barAt = (day: number) =>
@@ -1017,6 +1022,7 @@ export function NetWorthChart({
                 ticks={changes ? barTicks : ticks}
                 y={changes && barScale ? barScale.y : y}
                 zero={changes && barScale ? barScale.zero : lo < 0 && hi > 0 ? y(0) : null}
+                zeroLeft={changes}
                 amounts={figureShown}
               />
             </div>
@@ -1443,6 +1449,7 @@ function Scale({
   ticks,
   y,
   zero,
+  zeroLeft,
   amounts,
 }: {
   // Off while the figure is hidden: the labels would give it away.
@@ -1452,6 +1459,8 @@ function Scale({
   ticks: number[];
   y: (cents: number) => number;
   zero: number | null;
+  // "$0" at the left, by the other labels (the bars run to the right edge).
+  zeroLeft: boolean;
 }) {
   const label =
     "pointer-events-none absolute bg-white/80 px-0.5 text-[10px] leading-none text-zinc-500 tabular-nums dark:bg-zinc-950/80";
@@ -1466,7 +1475,11 @@ function Scale({
             className="absolute right-0 left-0 border-t border-zinc-400 dark:border-zinc-500"
             style={{ top: zero }}
           />
-          <span data-net-worth-scale="zero" className={label} style={{ top: zero + 2, right: 2 }}>
+          <span
+            data-net-worth-scale="zero"
+            className={label}
+            style={{ top: zero + 2, ...(zeroLeft ? { left: 2 } : { right: 2 }) }}
+          >
             $0
           </span>
         </>
