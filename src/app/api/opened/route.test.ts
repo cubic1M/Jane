@@ -40,6 +40,11 @@ describe("POST /api/opened", () => {
     expect(pageOpened).toHaveBeenCalledWith("user_1", "home", []);
   });
 
+  it("takes the chat on screen as a page too", async () => {
+    expect((await post({ page: "chat" })).status).toBe(204);
+    expect(pageOpened).toHaveBeenCalledWith("user_1", "chat", []);
+  });
+
   it("passes the plan's cards on", async () => {
     await post({ page: "plan", findingIds: ["abc", "def"] });
     expect(pageOpened).toHaveBeenCalledWith("user_1", "plan", ["abc", "def"]);

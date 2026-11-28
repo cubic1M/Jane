@@ -98,7 +98,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
       {/* Every message counts here, the cards too: the pulse counts them all, so a card posted by the
           scan reloads the page and the dock beside it. */}
-      {chat.scanning && <ScanRefresher shown={chat.pulseCount} />}
+      {(chat.scanning || chat.run === "owed") && (
+        <ScanRefresher shown={chat.pulseCount} opened={chat.run === "owed"} />
+      )}
 
       {/* Clear chat: deletes this chat for good, after one confirm (src/lib/jane-agent/clear-chat.ts). */}
       {!chat.scanning && <ClearChat />}

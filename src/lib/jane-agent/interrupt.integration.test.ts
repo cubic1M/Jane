@@ -26,9 +26,20 @@ import { ChatActionError, takeChatAction } from "./actions";
 import { createCheckPerson, deleteCheckPerson } from "./checks/person";
 import { chatFeed } from "./messages";
 import { openChat } from "./open";
+import { startOpenTurn } from "./open-run";
 import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { sendToJane } from "./typing";
+
+// What a visit does: the chat opens, the browser says it is on screen (/api/opened) and Jane's turn,
+// when it is owed, runs after that; the chat is then read again.
+async function visit(...args: Parameters<typeof openChat>) {
+  const chat = await openChat(...args);
+  if (chat?.run !== "owed") return chat;
+  const [userId, options] = args;
+  await startOpenTurn(userId, { client: options?.client, now: options?.now });
+  return openChat(...args);
+}
 
 // Spec step 92 against a real, migrated Postgres and the demo bank: while the person is
 // chatting, Jane's own messages wait and come after, never between a question and its
@@ -73,7 +84,7 @@ describe.runIf(url)("never interrupt, against a real database", () => {
 
     // Once they've stopped, the next visit brings it all, after the conversation.
     const after = at(CHAT_TYPING_PAUSE_MINUTES + 1);
-    await openChat(userId, { client, now: after });
+    await visit(userId, { client, now: after });
     const { messages } = await chatFeed(userId, { client, now: after });
     const kinds = messages.map((m) => m.kind);
     expect(kinds.slice(0, 2)).toEqual(["user", "reply"]);

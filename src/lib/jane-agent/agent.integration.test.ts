@@ -19,10 +19,21 @@ import { recordDecision } from "@/lib/decisions";
 import { ChatActionError, takeChatAction } from "./actions";
 import { BUNDLED_UNTIL, closeSettled, messageAboutFinding } from "./messages";
 import { openChat } from "./open";
+import { startOpenTurn } from "./open-run";
 import { runJaneAgent } from "./run";
 import { parseActions, parseRefs } from "./types";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
+
+// What a visit does: the chat opens, the browser says it is on screen (/api/opened) and Jane's turn,
+// when it is owed, runs after that; the chat is then read again.
+async function visit(...args: Parameters<typeof openChat>) {
+  const chat = await openChat(...args);
+  if (chat?.run !== "owed") return chat;
+  const [userId, options] = args;
+  await startOpenTurn(userId, { client: options?.client, now: options?.now });
+  return openChat(...args);
+}
 
 // Spec steps 81–82 against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): the demo bank's first sync posts Jane's
@@ -288,7 +299,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       expect(await runJaneAgent(userId, { client, now: night, trigger: "sync" })).toEqual({
         posted: 0,
       });
-      const chat = await openChat(userId, { client, now: night });
+      const chat = await visit(userId, { client, now: night });
       // The day's agenda (spec step 184, with the plan and the finding on it); no first-run
       // hello any more, and no autopilot question for a real account, where Jane does nothing
       // on its own (read-only beta). It is posted, for the dock, and not in the chat's list.

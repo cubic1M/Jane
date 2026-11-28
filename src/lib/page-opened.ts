@@ -2,6 +2,7 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { refreshEventsIfStale } from "@/lib/events/refresh";
 import { runEventsIfStale } from "@/lib/events/run";
 import { runPaperIfStale } from "@/lib/paper/account";
+import { startOpenTurn } from "@/lib/jane-agent/open-run";
 import { markPlanShown } from "@/lib/plan";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 
@@ -10,13 +11,18 @@ import { scanOnOpenQuietly } from "@/lib/practice/scan";
 // all when the page comes back from memory. So the browser says when one is really on screen
 // (AppHeader's opened, src/lib/page-cache.ts, /api/opened).
 
-export type OpenedPage = "home" | "investments" | "plan";
+export type OpenedPage = "home" | "investments" | "plan" | "chat";
 
 export async function pageOpened(
   userId: string,
   page: OpenedPage,
   findingIds: readonly string[] = [],
 ): Promise<void> {
+  // The chat on screen: Jane's turn when one is owed, after the page was sent.
+  if (page === "chat") {
+    await startOpenTurn(userId);
+    return;
+  }
   if (page === "plan") {
     // Seeing the plan counts as seeing each card in it.
     await markPlanShown(userId, [...findingIds]);

@@ -2,36 +2,19 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { chatFeed, closeSettled, postedToday, visibleCount } from "./messages";
+import { chatFeed, closeSettled, visibleCount } from "./messages";
 import { CHAT_KINDS } from "./popups";
 import { SCANNING_HELLO } from "@/config/scan";
 import { scanInProgress } from "@/lib/scan";
 import { timezoneOf } from "@/lib/today";
-import { runJaneAgentSafely } from "./run";
+import { runState, turnOwed, type OpenRun } from "./open-run";
 import { toView, type MessageView } from "./view";
 
-// Opening the chat (spec step 81). The first visit of the day is never empty: with nothing
-// posted yet today, Jane's brain runs first (quiet hours don't apply, the person is
-// looking). Null when the person has no accounts yet, like Today. With `since`, only what came
-// after this sign-in (src/lib/chat-start.ts).
-
-// Spec step 92: whether the person typed since Jane last posted on its own.
-async function talkedSince(userId: string, { client }: { client: PrismaClient }) {
-  const db = scopedFor(userId, client);
-  const [typed, posted] = await Promise.all([
-    db.janeMessages.findFirst({
-      where: { kind: "user" },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
-    db.janeMessages.findFirst({
-      where: { kind: { in: ["brief", "decision", "done", "heads_up"] } },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
-  ]);
-  return typed !== null && (posted === null || typed.createdAt > posted.createdAt);
-}
+// Opening the chat (spec step 81). It opens at once on what is stored. With nothing posted yet
+// today (or the person talking since), Jane's brain is owed a turn, which the page runs after the
+// response (`run`, src/lib/jane-agent/open-run.ts; quiet hours don't apply, the person is looking)
+// and the open page picks up what it posts. Null when the person has no accounts yet, like
+// Today. With `since`, only what came after this sign-in (src/lib/chat-start.ts).
 
 // The scan's old "still going through your accounts" message, posted before it was removed:
 // never shown.
@@ -50,8 +33,10 @@ export async function openChat(
   messages: MessageView[];
   hasEarlier: boolean;
   scanning: boolean;
-  // While scanning: every message the pulse counts, cards included, which the chat's refresher
-  // compares with its own count (the feed holds only the chat's kinds).
+  // Jane's turn: "owed" (the page tells the browser it is on screen, which starts it), or "settled".
+  run: OpenRun;
+  // While scanning or a turn is out: every message the pulse counts, cards included, which the
+  // chat's refresher compares with its own count (the feed holds only the chat's kinds).
   pulseCount: number;
 } | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
@@ -76,26 +61,26 @@ export async function openChat(
         .map((m) => toView(m, now, timezone, { concierge })),
       hasEarlier: feed.hasEarlier,
       scanning: true,
+      run: "settled",
       pulseCount,
     };
   }
   // Jane looks again on the first visit of the day, and (spec step 92) after a
   // conversation, when what it held back while the person was typing can come.
-  if (
-    (await postedToday(userId, timezone, { client, now })) &&
-    !(await talkedSince(userId, { client }))
-  ) {
-    await closeSettled(userId, { client, now });
-  } else {
-    await runJaneAgentSafely(userId, { client, now, trigger: "open" });
-  }
-  const feed = await chatFeed(userId, { client, pages, now, since, kinds: CHAT_KINDS });
+  const { owed, typedAt } = await turnOwed(userId, { client, now }, timezone);
+  if (!owed) await closeSettled(userId, { client, now });
+  const run: OpenRun = await runState(userId, { client, now }, { timezone, typedAt, owed });
+  const [feed, pulseCount] = await Promise.all([
+    chatFeed(userId, { client, pages, now, since, kinds: CHAT_KINDS }),
+    run === "settled" ? 0 : visibleCount(userId, { client, now, since }),
+  ]);
   return {
     messages: feed.messages
       .filter(notTheOldHello)
       .map((m) => toView(m, now, timezone, { concierge })),
     hasEarlier: feed.hasEarlier,
     scanning: false,
-    pulseCount: 0,
+    run,
+    pulseCount,
   };
 }

@@ -31,12 +31,23 @@ import { syncItem } from "@/lib/plaid/sync";
 import { answerProposal } from "@/lib/proposals";
 import { takeChatAction } from "./actions";
 import { openChat } from "./open";
+import { startOpenTurn } from "./open-run";
 import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { startOfTomorrow } from "./snooze";
 import { parseActions, parseRefs, type ActionId } from "./types";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 import { stubTestKeys } from "@/lib/__fixtures__/env";
+
+// What a visit does: the chat opens, the browser says it is on screen (/api/opened) and Jane's turn,
+// when it is owed, runs after that; the chat is then read again.
+async function visit(...args: Parameters<typeof openChat>) {
+  const chat = await openChat(...args);
+  if (chat?.run !== "owed") return chat;
+  const [userId, options] = args;
+  await startOpenTurn(userId, { client: options?.client, now: options?.now });
+  return openChat(...args);
+}
 
 // Spec step 83 against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): the rest of Jane from the chat. The demo
@@ -650,7 +661,7 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
 
       // Tomorrow: back at the bottom, open, with its buttons.
       const tomorrow = day(1);
-      const chat = await openChat(userId, { client, now: tomorrow });
+      const chat = await visit(userId, { client, now: tomorrow });
       const back = await reloadMessage(message.id);
       expect(back).toMatchObject({ status: "open", answeredWith: null, snoozedUntil: null });
       expect(back.createdAt.getTime()).toBeGreaterThanOrEqual(tomorrow.getTime());
