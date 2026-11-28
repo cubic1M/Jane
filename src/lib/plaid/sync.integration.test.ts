@@ -135,6 +135,18 @@ describe.runIf(url)("syncItem against a real database", () => {
       cursor: undefined,
     });
     expect(await transactions()).toHaveLength(4);
+    // The chart's past: worked back from today's $1,234.56 (no snapshot yet), undoing the Oct 1
+    // charge of $15.49 for the days before it: 123456 + 1549 = 125005 on Sep 30.
+    const past = await client.balanceSnapshot.findMany({
+      where: { userId, account: { plaidAccountId: `${suffix}-acc` } },
+      orderBy: { date: "asc" },
+      select: { date: true, balanceCents: true, source: true },
+    });
+    expect(past[0].date.toISOString().slice(0, 10)).toBe("2026-06-30");
+    expect(past.at(-1)).toMatchObject({ balanceCents: 123456, source: "derived" });
+    expect(past.find((p) => p.date.toISOString().startsWith("2026-09-30"))?.balanceCents).toBe(
+      125005,
+    );
     expect((await transactions())[0].categorySource).toBe("plaid");
     const item = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
     expect(item).toMatchObject({ transactionsCursor: "cursor-1", status: "active" });

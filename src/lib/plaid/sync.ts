@@ -2,6 +2,7 @@ import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from
 import { log } from "@/lib/log";
 import { recordOpsEvent } from "@/lib/ops-alerts";
 import { scrub } from "@/lib/scrub";
+import { rebuildPastBalances } from "@/lib/plaid/past-balances";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -890,6 +891,15 @@ async function syncItemWork(
       lastErrorAt: null,
     },
   });
+
+  // The chart's past, worked back from the transactions just saved (a later, older batch moves it
+  // too). Never fails the sync; the demo bank writes its own year at its first scan.
+  // Every sync, so a failed one is made good by the next, even one that brings nothing new.
+  if (!isDemoToken(accessToken)) {
+    await rebuildPastBalances(item.userId, { client, now }).catch((error) =>
+      log.error("Working back past balances failed", { error: String(error) }),
+    );
+  }
 
   const result: SyncResult = {
     accounts: accountIds.size,

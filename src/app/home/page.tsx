@@ -29,7 +29,7 @@ import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { Blinded } from "@/components/hub/blinded";
-import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { netWorthHistoryWithNote } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { heroView, tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
@@ -138,14 +138,15 @@ async function AreasTree({
 // The net worth chart: every day since the first day with Jane, ending at the hub's own figure,
 // and what moved it, from its first day.
 async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents: number }) {
-  const [line, missing, loans, onlyDebts, covers, maybeSame] = await Promise.all([
-    netWorthHistory(userId, todayCents),
-    accountsWithoutBalance(userId),
-    loansSeenWithoutBalance(userId),
-    onlyDebtsSeen(userId),
-    loadNetWorthCovers(userId),
-    loadMaybeSame(userId),
-  ]);
+  const [{ points: line, flatNote }, missing, loans, onlyDebts, covers, maybeSame] =
+    await Promise.all([
+      netWorthHistoryWithNote(userId, todayCents),
+      accountsWithoutBalance(userId),
+      loansSeenWithoutBalance(userId),
+      onlyDebtsSeen(userId),
+      loadNetWorthCovers(userId),
+      loadMaybeSame(userId),
+    ]);
   const events = line[0] ? await netWorthEvents(userId, line[0].date, todayCents) : [];
   // Never a number that silently leaves a debt out (an uploaded card with no balance yet).
   return (
@@ -154,6 +155,7 @@ async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents
       events={events}
       notCounting={notCounting(missing)?.sentence}
       covers={covers}
+      flatNote={flatNote}
       maybeSame={maybeSame?.words}
       maybeSameHref={maybeSame?.href}
       loansLeft={

@@ -87,6 +87,9 @@ describe.runIf(url)("the daily accuracy checks", { timeout: 120_000 }, () => {
     );
     const checking = accounts.get(bank.accounts.checking.account_id)!;
     const card = accounts.get(bank.accounts.card.account_id)!;
+    // The sync worked its own past balances back (src/lib/plaid/past-balances.ts); these hand-made
+    // daily snapshots stand in for the real ones the daily job would have taken.
+    await client.balanceSnapshot.deleteMany({ where: { userId: real, source: "derived" } });
     await client.balanceSnapshot.createMany({
       data: [
         { userId: real, accountId: checking, date: day("2026-10-20"), balanceCents: 130555 },

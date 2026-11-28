@@ -3,6 +3,7 @@ import { dailyNetWorth, type SeriesPoint } from "@/insights/net-worth-series";
 import { db as defaultClient } from "@/lib/db";
 import { isoDay as day } from "@/lib/dates";
 import { loadNetWorthInputs } from "@/lib/net-worth-history";
+import { dayLabel } from "@/lib/day-label";
 import { todayOf } from "@/lib/today";
 
 // The home hub's net worth chart (docs/design/home-hub.md): net worth every day from the
@@ -15,8 +16,25 @@ import { todayOf } from "@/lib/today";
 export async function netWorthHistory(
   userId: string,
   todayCents: number,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  options: { client?: PrismaClient; now?: Date } = {},
 ): Promise<SeriesPoint[]> {
+  return (await netWorthHistoryWithNote(userId, todayCents, options)).points;
+}
+
+// What is carried flat before it was first known, said under the chart: bank and card balances are
+// worked back from their transactions (src/lib/plaid/past-balances.ts), but investments and loans
+// have no transactions to work back from, so they stand at their first known value, never invented.
+const FLAT_KINDS: [string, (type: string) => boolean][] = [
+  ["investments", (t) => t === "investment"],
+  ["loans", (t) => t === "loan"],
+  ["other accounts", (t) => !["depository", "credit", "investment", "loan"].includes(t)],
+];
+
+export async function netWorthHistoryWithNote(
+  userId: string,
+  todayCents: number,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<{ points: SeriesPoint[]; flatNote: string | null }> {
   // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's date is tomorrow, and the
   // chart grew a point for a day that hadn't started (gate C's calendar sweep, 11-15).
   const [{ accounts, snapshots, owned, crypto }, asOf] = await Promise.all([
@@ -27,7 +45,7 @@ export async function netWorthHistory(
     ...accounts.map((a) => day(a.createdAt)),
     ...snapshots.map((s) => s.date),
   ].reduce((first, d) => (d < first ? d : first), asOf);
-  return dailyNetWorth({
+  const points = dailyNetWorth({
     accounts,
     snapshots,
     owned,
@@ -36,4 +54,33 @@ export async function netWorthHistory(
     asOf,
     todayCents,
   });
+  // The day an account's own values begin: its first snapshot, else the day it was added. Before it
+  // the line carries that value back. A kind is named when any one of its accounts is carried, and
+  // dated by the first of them to begin: before that day every one of them is carried back, so the
+  // sentence is true of all (some are carried back further than others).
+  const known = (id: string, created: Date) => {
+    const own = snapshots.filter((s) => s.accountId === id).map((s) => s.date);
+    return own.length > 0 ? own.reduce((a, b) => (a < b ? a : b)) : day(created);
+  };
+  const flat = FLAT_KINDS.flatMap(([words, is]) => {
+    const carried = accounts
+      .filter((a) => is(a.type) && a.currentBalanceCents !== null)
+      .map((a) => known(a.id, a.createdAt))
+      .filter((from) => points[0] && points[0].date < from)
+      .sort();
+    return carried.length > 0 ? [{ words, from: carried[0] }] : [];
+  });
+  // What the person owns counts across the whole line at its entered value.
+  const lateOwned = owned
+    .map((o) => o.valuedOn)
+    .filter((from) => points[0] && points[0].date < from)
+    .sort();
+  if (lateOwned.length > 0) flat.push({ words: "things you own", from: lateOwned[0] });
+  const first = flat.map((f) => f.from).sort()[0];
+  return {
+    points,
+    flatNote: first
+      ? `Before ${dayLabel(first, { year: true })}, ${flat.map((f) => f.words).join(" and ")} are shown at their first known value.`
+      : null,
+  };
 }
