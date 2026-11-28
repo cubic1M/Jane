@@ -15,6 +15,7 @@ import { summarize, TITLE_LOAN_NAMES } from "@/planning/costly-borrowing";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { subscriptionTrimCents } from "@/lib/subscription-trim";
 import { type Detector, suggestion } from "./contract";
+import { recurringRowFor } from "./recurring-source";
 import {
   cashLine,
   cushionSpendCents,
@@ -61,23 +62,48 @@ const subscriptions: Detector = {
     // subscription is the same charge in at least R.subscriptionMinCharges different months: three
     // purchases in one month is shopping, not a subscription.
     const named = new Map<string, { date: string; cents: number }[]>();
+    const merchantNames = new Map<string, string | null | undefined>();
     for (const t of tx(
       data,
       (x) =>
         x.amountCents > 0 &&
         x.amountCents < R.subscriptionMaxCents &&
         SUBSCRIPTION_CATEGORIES.has(x.pfc ?? ""),
-    ))
+    )) {
+      merchantNames.set(t.description, t.merchantName);
       named.set(t.description, [
         ...(named.get(t.description) ?? []),
         { date: t.date, cents: t.amountCents },
       ]);
-    const regular = [...named.entries()].filter(
-      ([, list]) => new Set(list.map((c) => c.date.slice(0, 7))).size >= R.subscriptionMinCharges,
-    );
+    }
+    const regular = [...named.entries()]
+      .filter(
+        ([, list]) => new Set(list.map((c) => c.date.slice(0, 7))).size >= R.subscriptionMinCharges,
+      )
+      // Only what the Subscriptions and regular bills page lists (founder 11-28).
+      .filter(
+        ([description]) =>
+          recurringRowFor(
+            data,
+            { description, merchantName: merchantNames.get(description) },
+            false,
+          ) !== null,
+      );
     const average = (list: { cents: number }[]) =>
       list.reduce((a, c) => a + c.cents, 0) / list.length;
-    const payees = regular.map(([description, list]) => ({
+    // The charges the total counts: the page's subscriptions when it gave them (CodeRabbit).
+    const counted =
+      given === undefined
+        ? regular
+        : regular.filter(
+            ([description]) =>
+              recurringRowFor(
+                data,
+                { description, merchantName: merchantNames.get(description) },
+                true,
+              ) !== null,
+          );
+    const payees = counted.map(([description, list]) => ({
       description,
       amountCents: Math.round(average(list)),
       perYear: 12,

@@ -71,6 +71,16 @@ const PERSON_PAID = new RegExp(`\\b${REGULAR_PAYER_PERSON_WORD}\\b`, "i");
 // the rows. Every fact says where it came from (seen in the data, told by the person, or
 // guessed from other facts) and how sure Jane is, worked out from the evidence.
 
+// One row of the Subscriptions and regular bills page (src/detectors/recurring-source.ts).
+export type RecurringRow = {
+  merchantKey: string;
+  // On the page's subscriptions list, not only among the regular bills.
+  subscription: boolean;
+  lastAmountCents: number;
+  // At the charge's own cadence (the page's figure): last price times how often it comes.
+  annualCostCents: number;
+};
+
 export type ProfileTx = {
   date: string;
   amountCents: number;
@@ -197,7 +207,13 @@ export type ProfileInput = {
     };
     // What the person's subscriptions cost in a year, as the subscriptions page and the chat
     // count them (recurring charges that are subscriptions). Absent: not loaded.
-    subscriptions?: { yearlyCents: number; count: number } | null;
+    subscriptions?: {
+      yearlyCents: number;
+      count: number;
+      // The page's own rows (src/detectors/recurring-source.ts): every card that calls a charge
+      // a subscription or a recurring charge may name only one of these.
+      recurring?: readonly RecurringRow[];
+    } | null;
     // A year of interest on the person's cards from their balances and rates (the chat's
     // figure). Null: not available, so the interest charges seen are used. Absent: not loaded.
     cardInterestYearCents?: number | null;
