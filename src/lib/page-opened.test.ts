@@ -7,12 +7,14 @@ vi.mock("@/lib/checklist", () => ({
 vi.mock("@/lib/events/refresh", () => ({ refreshEventsIfStale: vi.fn(async () => null) }));
 vi.mock("@/lib/events/run", () => ({ runEventsIfStale: vi.fn(async () => undefined) }));
 vi.mock("@/lib/paper/account", () => ({ runPaperIfStale: vi.fn(async () => undefined) }));
+vi.mock("@/lib/jane-agent/open-run", () => ({ startOpenTurn: vi.fn(async () => "started") }));
 vi.mock("@/lib/plan", () => ({ markPlanShown: vi.fn(async () => undefined) }));
 vi.mock("@/lib/practice/scan", () => ({ scanOnOpenQuietly: vi.fn(async () => undefined) }));
 
 import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { runEventsIfStale } from "@/lib/events/run";
 import { runPaperIfStale } from "@/lib/paper/account";
+import { startOpenTurn } from "@/lib/jane-agent/open-run";
 import { markPlanShown } from "@/lib/plan";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { pageOpened } from "./page-opened";
@@ -29,6 +31,13 @@ describe("what opening a page sets off", () => {
       .mockReset()
       .mockResolvedValue(undefined as never);
     vi.mocked(markPlanShown).mockClear();
+  });
+
+  it("Chat: Jane's turn when one is owed, and nothing else", async () => {
+    await pageOpened("user_1", "chat");
+    expect(startOpenTurn).toHaveBeenCalledWith("user_1");
+    expect(scanOnOpenQuietly).not.toHaveBeenCalled();
+    expect(runPaperIfStale).not.toHaveBeenCalled();
   });
 
   it("Home: the scan, and the checklist's progress when something's newly done", async () => {

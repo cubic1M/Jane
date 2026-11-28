@@ -3,7 +3,7 @@ import { log } from "@/lib/log";
 import { pageOpened, type OpenedPage } from "@/lib/page-opened";
 import { getCurrentUser } from "@/lib/session";
 
-const PAGES: readonly OpenedPage[] = ["home", "investments", "plan"];
+const PAGES: readonly OpenedPage[] = ["home", "investments", "plan", "chat"];
 const ID_PATTERN = /^[a-z0-9_-]{1,64}$/i;
 const MAX_IDS = 500;
 

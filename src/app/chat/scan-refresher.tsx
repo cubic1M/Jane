@@ -10,8 +10,36 @@ import { SCAN_PULSE_MS, SCAN_REFRESH_MAX_MS, SCAN_SLOW_REFRESH_MS } from "@/conf
 // seconds queued up behind the busy scan and the brief showed a minute late). A slow reload
 // every SCAN_SLOW_REFRESH_MS is the safety net. The page stops rendering this once the scan is
 // done, and it gives up after SCAN_REFRESH_MAX_MS either way.
-export function ScanRefresher({ shown }: { shown: number }) {
+// A failed telling is tried again a few times.
+const OPENED_TRIES = 3;
+const OPENED_RETRY_MS = 3_000;
+
+export function ScanRefresher({ shown, opened = false }: { shown: number; opened?: boolean }) {
   const router = useRouter();
+  // The chat is really on screen (a render alone is not: it also runs when a page is loaded ahead
+  // of time): Jane's turn, when one is owed, starts now (/api/opened, src/lib/page-opened.ts).
+  useEffect(() => {
+    if (!opened) return;
+    let tries = 0;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const tell = () => {
+      tries += 1;
+      fetch("/api/opened", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ page: "chat" }),
+        keepalive: true,
+      })
+        .then((response) => {
+          if (!response.ok && tries < OPENED_TRIES) retry = setTimeout(tell, OPENED_RETRY_MS);
+        })
+        .catch(() => {
+          if (tries < OPENED_TRIES) retry = setTimeout(tell, OPENED_RETRY_MS);
+        });
+    };
+    tell();
+    return () => clearTimeout(retry);
+  }, [opened]);
   useEffect(() => {
     const started = Date.now();
     let busy = false;

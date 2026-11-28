@@ -385,6 +385,10 @@ export const AFFORD_GOAL_MONTHS = 3;
 // Spec step 92: never interrupt. While the person is chatting (they typed within this many
 // minutes), Jane's own messages wait, and come after.
 export const CHAT_TYPING_PAUSE_MINUTES = 10;
+
+// A marker that says Jane's turn on opening the chat is running is believed for this long
+// (src/lib/jane-agent/open-run.ts): a run that died without finishing does not hold it up for good.
+export const OPEN_RUN_STALE_MINUTES = 10;
 // Findings of the same kind become one message with a list and a Yes each: at least this
 // many, at most this many in one message (one button each).
 export const CHAT_BUNDLE_MIN = 2;
