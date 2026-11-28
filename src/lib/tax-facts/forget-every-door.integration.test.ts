@@ -2,7 +2,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
-const session = vi.hoisted(() => ({ id: "" }));
+// The server actions use the app's own client (src/lib/db.ts, DATABASE_URL): point it at the test
+// database before anything loads it, so the fixtures and the actions share one database.
+const session = vi.hoisted(() => {
+  if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  return { id: "" };
+});
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: session.id })) }));
 vi.mock("@/lib/rescan-after-answer", () => ({ rescanAfterAnswer: vi.fn(async () => undefined) }));
