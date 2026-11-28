@@ -143,7 +143,7 @@ describe("Plaid Link", () => {
       expect.objectContaining({
         products: ["transactions"],
         additional_consented_products: ["liabilities", "investments"],
-        transactions: { days_requested: 365 },
+        transactions: { days_requested: 730 },
         user: { client_user_id: "user_1" },
         country_codes: ["US"],
         webhook: "https://app.example.com/api/plaid/webhook",

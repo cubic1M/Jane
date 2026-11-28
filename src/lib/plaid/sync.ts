@@ -132,6 +132,8 @@ export type SyncResult = {
   removed: number;
   firstSync: boolean;
   notReady?: boolean;
+  // Plaid has only the first 30 days so far: the caller reads again (the webhook or the daily job will).
+  historyPending?: boolean;
   recurring: "updated" | "unavailable";
   // "off" for items linked before Liabilities was asked for.
   liabilities: "updated" | "unavailable" | "off";
@@ -893,10 +895,19 @@ async function syncItemWork(
     accounts: accountIds.size,
     ...counts,
     firstSync: !item.transactionsCursor,
+    ...(sync.historyPending ? { historyPending: true } : {}),
     recurring,
     liabilities,
     investments,
   };
+  // Counts only, never rows or tokens.
+  log.info("Plaid sync done", {
+    itemId: item.id,
+    added: counts.added,
+    updated: counts.updated,
+    removed: counts.removed,
+    historyPending: sync.historyPending,
+  });
   if (secondLogin) return result;
   // A first report from no rows would say nothing's wrong: the next sync does the first scan's work.
   if (sync.notReady && result.firstSync) return { ...result, notReady: true };

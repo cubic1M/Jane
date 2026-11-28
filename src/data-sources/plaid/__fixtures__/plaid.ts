@@ -61,6 +61,8 @@ type Page = {
   accounts?: AccountBase[];
   next_cursor: string;
   has_more?: boolean;
+  // Plaid's transactions_update_status; the whole history by default.
+  status?: "NOT_READY" | "INITIAL_UPDATE_COMPLETE" | "HISTORICAL_UPDATE_COMPLETE";
 };
 
 export function syncPage(page: Page) {
@@ -72,7 +74,7 @@ export function syncPage(page: Page) {
       accounts: page.accounts ?? [plaidAccount()],
       next_cursor: page.next_cursor,
       has_more: page.has_more ?? false,
-      transactions_update_status: "HISTORICAL_UPDATE_COMPLETE",
+      transactions_update_status: page.status ?? "HISTORICAL_UPDATE_COMPLETE",
       request_id: "req",
     },
   };

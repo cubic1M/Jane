@@ -22,6 +22,9 @@ export type PlaidSync = SourceBatch & {
   nextCursor: string;
   // Plaid has nothing yet for a bank just linked: its webhook says when it has.
   notReady: boolean;
+  // Plaid has the first 30 days but not the rest of the history yet (transactions_update_status
+  // INITIAL_UPDATE_COMPLETE): a later sync from the saved cursor brings the older transactions.
+  historyPending: boolean;
 };
 
 // The most a cents column holds (32 bits). Past it, saving throws and the bank stops syncing.
@@ -120,6 +123,7 @@ export class PlaidDataSource implements DataSource {
     const removed = new Set<string>();
     let cursor = this.cursor ?? undefined;
     let notReady = false;
+    let historyPending = false;
 
     for (;;) {
       const data = await plaidCall(
@@ -143,6 +147,8 @@ export class PlaidDataSource implements DataSource {
       }
       cursor = data.next_cursor;
       notReady = data.transactions_update_status === ("NOT_READY" as TransactionsUpdateStatus);
+      historyPending =
+        data.transactions_update_status === ("INITIAL_UPDATE_COMPLETE" as TransactionsUpdateStatus);
       if (!data.has_more) break;
     }
 
@@ -165,6 +171,7 @@ export class PlaidDataSource implements DataSource {
       ],
       nextCursor: cursor ?? "",
       notReady,
+      historyPending,
     };
   }
 }

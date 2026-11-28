@@ -868,4 +868,83 @@ describe.runIf(url)("syncItem against a real database", () => {
       (await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).transactionsCursor,
     ).toBe("cursor-502");
   });
+
+  it("brings the older history in a later sync, once, and a missed webhook is caught by the next run", async () => {
+    // A fresh bank: Plaid has the first 30 days (INITIAL_UPDATE_COMPLETE), the rest comes later.
+    const acc = `${suffix}-hist`;
+    const fresh = (
+      await client.plaidItem.create({
+        data: {
+          userId,
+          plaidItemId: `item-hist-${suffix}`,
+          accessTokenEncrypted: encrypt("access-sandbox-hist"),
+          institutionName: "History Bank",
+        },
+      })
+    ).id;
+    const inAccount = (id: string, date: string) => ({
+      ...netflix(id, date),
+      account_id: acc,
+    });
+    const account = plaidAccount({ account_id: acc });
+    const recent = ["2026-09-20", "2026-09-30", "2026-10-10"].map((d, i) =>
+      inAccount(`h-r${i}`, d),
+    );
+    const monthly = Array.from({ length: 23 }, (_, i) =>
+      inAccount(
+        `h-m${i}`,
+        `${2025 + Math.floor((i + 10) / 12)}-${String(((i + 10) % 12) + 1).padStart(2, "0")}-05`,
+      ),
+    );
+    transactionsRecurringGet.mockResolvedValue({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [account],
+        added: recent,
+        next_cursor: "h1",
+        status: "INITIAL_UPDATE_COMPLETE",
+      }),
+    );
+    const first = await syncItem(fresh, { client, api, now: NOW });
+    expect(first).toMatchObject({ added: 3, historyPending: true });
+    const held = () => client.transaction.count({ where: { account: { itemId: fresh } } });
+    expect(await held()).toBe(3);
+
+    // The historical update arrives; the sync resumes from the saved cursor and pages to the end.
+    transactionsSync
+      .mockResolvedValueOnce(
+        syncPage({
+          accounts: [account],
+          added: monthly.slice(0, 12),
+          next_cursor: "h2",
+          has_more: true,
+        }),
+      )
+      .mockResolvedValueOnce(
+        syncPage({ accounts: [account], added: monthly.slice(12), next_cursor: "h3" }),
+      );
+    const second = await syncItem(fresh, { client, api, now: NOW });
+    expect(transactionsSync.mock.calls.at(-2)![0]).toMatchObject({ cursor: "h1" });
+    expect(second.historyPending).toBeUndefined();
+    expect(await held()).toBe(26);
+
+    // The same pages again (a repeated webhook, a second full run): nothing doubles.
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({ accounts: [account], added: [...recent, ...monthly], next_cursor: "h4" }),
+    );
+    await syncItem(fresh, { client, api, now: NOW });
+    expect(await held()).toBe(26);
+    expect(
+      (await client.plaidItem.findUniqueOrThrow({ where: { id: fresh } })).transactionsCursor,
+    ).toBe("h4");
+    // The oldest transaction held is from the year before.
+    const oldest = await client.transaction.findFirstOrThrow({
+      where: { account: { itemId: fresh } },
+      orderBy: { date: "asc" },
+    });
+    expect(oldest.date.toISOString().slice(0, 7)).toBe("2025-11");
+  });
 });
