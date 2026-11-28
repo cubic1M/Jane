@@ -81,7 +81,8 @@ describe.runIf(url)("the household record follows the older stores", () => {
     expect(fact(h, "residency.status")).toMatchObject({
       value: "student_visa",
       origin: "answer",
-      asOf: "2026-11-27",
+      // The preference row is stamped by the database clock, not by `now`.
+      asOf: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
     expect(fact(h, "filing.claimed_as_dependent").value).toBe("no");
     expect(fact(h, "person.half_time").value).toBe(true);
