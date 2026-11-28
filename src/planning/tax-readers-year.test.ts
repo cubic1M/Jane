@@ -62,6 +62,32 @@ describe("the health section reads the year's own figures", () => {
     expect([$(9_000), $(10_000)]).toContain(r.hsa.limitCents);
   });
 
+  // Review of #2383: the Marketplace check reads the 2026 poverty line and percentages, so it is
+  // held back for 2027 (a 2027 income near the cliff would be judged on 2026's), never priced with them.
+  it("holds the Marketplace credit check back for 2027, and keeps it in 2026", () => {
+    const withPlan = (input: ProfileInput): ProfileInput => ({
+      ...input,
+      told: { ...input.told, marketplace_aptc_monthly: 200 },
+      transactions: [
+        ...input.transactions,
+        ...Array.from({ length: 10 }, (_, i) => ({
+          date: `${input.today.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-03`,
+          amountCents: 41_200,
+          description: "HEALTHCARE.GOV MARKETPLACE",
+          pfc: "GENERAL_SERVICES_INSURANCE",
+          accountId: input.transactions[0]!.accountId,
+        })),
+      ],
+    });
+    const in2026 = withPlan(inputFor("equity"));
+    const in2027 = withPlan(shiftYear(inputFor("equity"), 1));
+    expect(readHealthTaxes(buildProfile(in2026), in2026).marketplace.check).not.toBeNull();
+    const r = readHealthTaxes(buildProfile(in2027), in2027);
+    expect(r.year).toBe(2027);
+    expect(r.marketplace.payments).toBeGreaterThan(0);
+    expect(r.marketplace.check).toBeNull();
+  });
+
   it("2028: no figures, so no section at all (refused, never 2027's)", () => {
     const data = shiftYear(base, 2);
     expect(() => readHealthTaxes(buildProfile(data), data)).toThrow(

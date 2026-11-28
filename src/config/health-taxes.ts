@@ -15,6 +15,9 @@ const $ = (d: number) => Math.round(d * 100);
 
 // The federal poverty line (48 states) used for 2026 coverage: one person, and each more.
 const FPL = { year: 2026, first: $(15_650), each: $(5_500) } as const;
+// The last tax year these poverty-line and applicable-percentage figures are for: a later year's
+// Marketplace check is held back, never priced with them (no 2027 figures are put here yet).
+export const PTC_FIGURES_YEAR = FPL.year;
 export const fplFor = (householdSize: number) =>
   FPL.first + FPL.each * Math.max(0, householdSize - 1);
 

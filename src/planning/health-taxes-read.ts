@@ -6,6 +6,7 @@ import {
   HEALTH_PREMIUM,
   HSA_DEPOSIT,
   MARKETPLACE_PAYEE,
+  PTC_FIGURES_YEAR,
   NOT_HEALTH_MARKETPLACE,
 } from "@/config/health-taxes";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
@@ -150,8 +151,13 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
     .filter((t) => t.date.startsWith(String(year)))
     .reduce((a, t) => (t.date < a ? t.date : a), "9999-12-31");
   const enrollmentSeen = toldAdvance !== null || dataStart <= `${year}-01-31`;
+  // A year after the poverty line and percentages' own (2026) has no such figures here: no check, never
+  // 2026's cliff on 2027 income.
   const check =
-    premiums.length >= T.marketplacePaymentsMin && advance > 0 && enrollmentSeen
+    year <= PTC_FIGURES_YEAR &&
+    premiums.length >= T.marketplacePaymentsMin &&
+    advance > 0 &&
+    enrollmentSeen
       ? ptcCheck({
           year,
           incomeCents: pace.projectedCents,
