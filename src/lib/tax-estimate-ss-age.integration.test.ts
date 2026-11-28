@@ -160,5 +160,11 @@ describe.runIf(url)("Social Security, age and the loader", { timeout: 120_000 },
     const v = await view();
     expect(v.input.age).toBe(64);
     expect(v.assumptions).toContain(birthdayLine(2026, 205_000));
+
+    // A separate return whose spouse itemizes has no standard deduction to add to, so no line.
+    await say("filing_status", "married_separate");
+    await say("spouse_itemizes", "yes");
+    const noStandard = await view();
+    expect(noStandard.assumptions.some((a) => a.includes("January 1"))).toBe(false);
   });
 });

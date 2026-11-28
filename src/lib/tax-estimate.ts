@@ -927,7 +927,12 @@ async function loadTaxEstimateFrom(
     assumptions.push(LIVED_WITH_SPOUSE_UNKNOWN_LINE);
   }
   // An age alone cannot show a January 1 birthday, which counts as 65 a year early (Pub. 501).
-  if (statedAge !== null && statedAge === ADDITIONAL_STANDARD_AGE - 1) {
+  // Not said when a spouse who itemizes leaves a separate return no standard deduction to add to.
+  if (
+    statedAge !== null &&
+    statedAge === ADDITIONAL_STANDARD_AGE - 1 &&
+    !(filingStatus === "married_separate" && spouseItemizes === true)
+  ) {
     assumptions.push(birthdayLine(year, extraStandardCents(year, filingStatus)));
   }
   if (toldOver25 !== null && statedAge === null) {
