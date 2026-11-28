@@ -734,14 +734,13 @@ describe("pauseReply", () => {
 });
 
 describe("greetingReply", () => {
-  it("says hi with safe to spend and something to ask, or you're welcome", () => {
-    const hi = greetingReply(false, { safeCents: 276_812, payday: "2026-10-28" });
+  it("says hi with something to ask, no safe to spend line, or you're welcome", () => {
+    const hi = greetingReply(false);
     expect(hi.body).toBe(
-      'Hi! You have $2,768.12 safe to spend until Oct 28. Ask me anything about your money, like "can I afford $900 for a trip in March".',
+      'Hi! Ask me anything about your money, like "can I afford $900 for a trip in March".',
     );
-    expect(hi.actions[0]).toMatchObject({ href: "/home" });
-    expect(greetingReply(false, null).body).toMatch(/^Hi! Ask me anything/);
-    expect(greetingReply(true, null)).toMatchObject({
+    expect(hi.actions).toEqual([]);
+    expect(greetingReply(true)).toMatchObject({
       body: "You're welcome! I'm here whenever you need me.",
       actions: [],
     });

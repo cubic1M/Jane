@@ -41,6 +41,10 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await expect(page.getByText(/safe[ -]to[ -]spend|money[ -]found|money jane found/i)).toHaveCount(
     0,
   );
+  // The old figure page for it opens Home.
+  await page.goto("/figures/safe_to_spend");
+  await expect(page).toHaveURL(/\/home$/);
+  await page.goto("/home");
   await expect(hero.getByRole("link", { name: "Net worth" })).toHaveAttribute("href", "/net-worth");
 
   // No month-ahead strip on Home (founder 11-24): bills and paydays are on Coming up.

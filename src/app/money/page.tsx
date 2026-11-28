@@ -150,8 +150,8 @@ async function MoneyContent({
     details[itemId("yearly", y.key)] = <Go href="/budgets#yearly">All your yearly bills</Go>;
     more[itemId("yearly", y.key)] = (
       <p className={MUTED}>
-        Bills that come less often than monthly, spread over the year. Safe to spend on Home already
-        takes this month&apos;s share off. Math from your data, not a recommendation.
+        Bills that come less often than monthly, spread over the year. Math from your data, not a
+        recommendation.
       </p>
     );
   }

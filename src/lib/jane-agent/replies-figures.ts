@@ -25,7 +25,9 @@ export function figureReply(working: Working | null): Reply {
   ].filter((l): l is string => Boolean(l));
   return {
     body: lines.join(" "),
-    actions: [openLink("See all of it", `/figures/${working.id}`)],
+    // The free-standing figure page for this one is gone (it opens Home), so no link to it.
+    actions:
+      working.id === "safe_to_spend" ? [] : [openLink("See all of it", `/figures/${working.id}`)],
     refs: {},
   };
 }

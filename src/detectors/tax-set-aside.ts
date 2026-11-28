@@ -24,7 +24,7 @@ function shared(figure: NonNullable<Figure>, today: string, state: unknown) {
   return {
     worked,
     // When it's due (suggest-taxes, 11-18): the next federal date, and California's there.
-    tail: `Safe to spend leaves it out.${kept}${unknowns} ${datesLine(today, state)}`,
+    tail: `${kept}${unknowns} ${datesLine(today, state)}`,
     confidence: figure.confidence,
     urgency: urgencyForEstimated(today),
     worthCents: figure.holdCents,
@@ -58,7 +58,7 @@ const taxNotYetPaid: Detector = {
     return suggestion("taxes", "tax_not_yet_paid", {
       title: `About ${cents} of your ${figure.year} tax isn't withheld or paid yet (estimate)`,
       headline: `Check tax not yet paid: about ${cents}`,
-      short: `An estimate from your ${figure.year} income so far. Safe to spend leaves it out.`,
+      short: `An estimate from your ${figure.year} income so far.`,
       ...card,
       why: `${worked} That leaves about ${cents}, as an estimate, not tax advice.${kept} ${tail}`,
       action: { label: "See the calculation", href: HREF },
@@ -80,7 +80,7 @@ const taxSetAside: Detector = {
     return suggestion("taxes", "tax_set_aside", {
       title: `Set aside about ${cents} for your ${figure.year} tax`,
       headline: `Set aside about ${cents} for tax`,
-      short: `An estimate from your ${figure.year} income so far. Safe to spend leaves it out.`,
+      short: `An estimate from your ${figure.year} income so far.`,
       ...card,
       why: `${worked} Setting aside about ${cents} covers the rest. ${tail}`,
       action: { label: "See the calculation", href: HREF },

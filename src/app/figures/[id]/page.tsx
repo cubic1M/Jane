@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { FIGURE_IDS, FIGURE_LABELS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
@@ -19,6 +19,8 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
   const user = await requireUser();
   const { id } = await params;
   if (!(FIGURE_IDS as readonly string[]).includes(id)) notFound();
+  // Safe to spend is no longer a figure a person can open (founder 11-28): old links land on Home.
+  if (id === "safe_to_spend") redirect("/home");
   const working = await explainFigure(user.id, id as FigureId);
   const said = incomeOverride(await listPreferences(user.id));
   const groups = categoryOptions();

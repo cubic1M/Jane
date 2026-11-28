@@ -147,7 +147,7 @@ const goal: FlowDef<null> = {
       },
       { client },
     );
-    return `Added "${name}": ${formatCents(cents)} by ${monthLabel(month)}. Safe to spend now sets a little aside for it each month.`;
+    return `Added "${name}": ${formatCents(cents)} by ${monthLabel(month)}. A little is now set aside for it each month.`;
   },
 };
 

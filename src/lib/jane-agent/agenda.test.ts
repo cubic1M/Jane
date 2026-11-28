@@ -86,9 +86,7 @@ describe("the day's agenda", () => {
     const visible = shown(out);
     expect(visible.map((m) => m.kind)).toEqual(["brief"]);
     const [agenda] = visible;
-    expect(agenda.body.split("\n")[0]).toBe(
-      "Good morning! You have $1,234.56 safe to spend until payday, Nov 1 (in 13 days).",
-    );
+    expect(agenda.body.split("\n")[0]).toBe("Good morning!");
     expect(agenda.body).toContain("These need your yes:");
     expect(agenda.body).toContain("Coming up: Netflix $15.49 tomorrow.");
     expect(agenda.actions.map((a) => a.id)).toEqual([
@@ -131,9 +129,7 @@ describe("the day's agenda", () => {
   it("is one short line on a day with nothing to do", () => {
     const [agenda, ...rest] = plan(snapshot(), NONE, MORNING, AGENDA);
     expect(rest).toEqual([]);
-    expect(agenda.body).toBe(
-      "Good morning! Nothing needs you today. You have $1,234.56 safe to spend until payday, Nov 1 (in 13 days).",
-    );
+    expect(agenda.body).toBe("Good morning! Nothing needs you today.");
     expect(agenda.actions.map((a) => a.id)).toEqual(["open"]);
   });
 

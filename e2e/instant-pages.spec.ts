@@ -1,6 +1,12 @@
 import { expect, test, type BrowserContext, type Page, type Request } from "@playwright/test";
 import { Client } from "pg";
-import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
+import {
+  E2E_DATABASE_URL,
+  addSavedChange,
+  deleteUser,
+  setCheckingBalance,
+  signedInUser,
+} from "./db";
 import { demoPerson } from "./demo-person";
 import { holds } from "./waits";
 import { signInWith } from "./session";
@@ -375,7 +381,10 @@ test.describe("what a person has seen", () => {
     page,
     baseURL,
   }) => {
-    created.push(await demoPerson(context, page, baseURL));
+    const id = await demoPerson(context, page, baseURL);
+    created.push(id);
+    // Something saved, so the Saved tile exists and its figure is checked too.
+    await addSavedChange(id, { title: "Cancel Hulu", annualCents: 21_600 });
     await open(page, "/home");
     const netWorth = page.locator('[data-net-worth-chart] [data-hub-number="net-worth"]');
     const show = page

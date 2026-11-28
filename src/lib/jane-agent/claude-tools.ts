@@ -1101,7 +1101,7 @@ async function runChatToolWork(
         })),
         rulesUsed: working.rules,
         canBeCorrected: working.corrections,
-        page: `/figures/${working.id}`,
+        page: working.id === "safe_to_spend" ? "/home" : `/figures/${working.id}`,
       });
     }
     case "month_close": {

@@ -398,7 +398,7 @@ async function LoansContent({
         ))}
       </ul>
       <p className="text-zinc-600 dark:text-zinc-400">
-        Any your forecast doesn&apos;t count yet are taken off your safe to spend.
+        Any your forecast doesn&apos;t count yet are counted against what you have before payday.
       </p>
     </div>
   );

@@ -947,19 +947,9 @@ export function comingUpReply(
 
 // "Safe to spend": the number on Today.
 // "Hi": hello, safe to spend, and something to ask. "Thanks": you're welcome.
-export function greetingReply(
-  thanks: boolean,
-  safe: { safeCents: number; payday: string | null } | null,
-  asOf: string | null = null,
-): Reply {
+export function greetingReply(thanks: boolean): Reply {
   if (thanks) return reply("You're welcome! I'm here whenever you need me.");
-  const money = safe
-    ? ` You have ${fmt(safe.safeCents)} safe to spend${safe.payday ? ` until ${asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday)}` : ""}.`
-    : "";
-  return reply(
-    `Hi!${money} Ask me anything about your money, like "${EXAMPLES[0]}".`,
-    safe ? [openLink("See today", "/home")] : [],
-  );
+  return reply(`Hi! Ask me anything about your money, like "${EXAMPLES[0]}".`);
 }
 
 export function safeReply(
