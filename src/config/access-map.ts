@@ -127,6 +127,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/admin/replies/actions.ts": "admin",
   "src/app/budgets/actions.ts": "signed-in",
   "src/app/chat/actions.ts": "signed-in",
+  "src/app/chat/clear.ts": "signed-in",
   "src/app/chat/pin.ts": "signed-in",
   "src/app/chat/practice-actions.ts": "signed-in",
   "src/app/chat/send.ts": "signed-in",
