@@ -3,9 +3,10 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { SubmitButton } from "@/components/submit-button";
 import type { FactSource } from "@/config/memory";
-import { dayLabel } from "@/lib/day-label";
 import { listFacts, type KnownFact } from "@/lib/memory/facts";
+import { sinceLabel } from "@/lib/memory/since";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import { factSpec } from "@/profile/facts";
 import { forgetAllMemory, forgetMemoryFact } from "./actions";
 import { CorrectMemoryForm } from "./correct-form";
@@ -35,7 +36,9 @@ function choicesFor(fact: KnownFact): readonly string[] | undefined {
   return undefined;
 }
 
-function FactItem({ fact }: { fact: KnownFact }) {
+// The day is the person's own (their timezone), not UTC's: an answer given the evening of Dec 31 in
+// Los Angeles is Dec 31, not "since Jan 1".
+function FactItem({ fact, timezone }: { fact: KnownFact; timezone: string }) {
   const correctable = factSpec(fact.key)?.correctable ?? true;
   return (
     <li
@@ -47,7 +50,7 @@ function FactItem({ fact }: { fact: KnownFact }) {
         <span className="text-sm font-semibold tabular-nums">{fact.confidence}% sure</span>
       </div>
       <p className={MUTED}>
-        {FROM[fact.source]} · since {dayLabel(fact.firstSeen, { year: true })}
+        {FROM[fact.source]} · since {sinceLabel(fact.firstSeen, timezone)}
         {fact.evidenceCount > 1 && ` · seen ${fact.evidenceCount} times`}
       </p>
       <div className="flex flex-wrap items-center gap-3">
@@ -82,7 +85,7 @@ function FactItem({ fact }: { fact: KnownFact }) {
 async function MemoryContent() {
   await connection();
   const user = await requireUser();
-  const facts = await listFacts(user.id);
+  const [facts, timezone] = await Promise.all([listFacts(user.id), timezoneOf(user.id)]);
   return (
     <>
       <AppHeader user={user} />
@@ -105,7 +108,7 @@ async function MemoryContent() {
       ) : (
         <ul aria-label="What Jane knows" className="flex flex-col">
           {facts.map((fact) => (
-            <FactItem key={fact.id} fact={fact} />
+            <FactItem key={fact.id} fact={fact} timezone={timezone} />
           ))}
         </ul>
       )}

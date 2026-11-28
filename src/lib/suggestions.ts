@@ -233,7 +233,13 @@ function openIdeas(
 }
 
 // The nightly scan runs every detector over the same facts: one read each (src/lib/read-cache.ts).
-export async function scanSuggestions(userId: string, options: Options = {}): Promise<ScanResult> {
+// `learn: false` skips adding what the scan saw to What Jane knows (a rescan after an answer: the
+// person has just deleted or corrected memory, and the nightly scan learns from the data again).
+type ScanOptions = Options & { learn?: boolean };
+export async function scanSuggestions(
+  userId: string,
+  options: ScanOptions = {},
+): Promise<ScanResult> {
   return withReadCache(options.client ?? defaultClient, (client) =>
     scanSuggestionsWork(userId, { ...options, client }),
   );
@@ -327,7 +333,7 @@ async function refreshFigures(
 
 async function scanSuggestionsWork(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), learn = true }: ScanOptions = {},
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
   // The person's day, not UTC's (debug 3, 11-16: at 4pm in Los Angeles a scan chose tomorrow's
@@ -340,7 +346,7 @@ async function scanSuggestionsWork(
   ]);
   const found = detected.filter((s) => !answered.has(s.topic));
   // What the scan saw is evidence for what Jane knows about the person (src/lib/memory/).
-  await learnFromData(userId, profile, input, { client, now });
+  if (learn) await learnFromData(userId, profile, input, { client, now });
   // Advice offered while the person was in demo advice mode must not outlive it: once a real
   // account is added, those rows go, answered or not (they would show as recommendations).
   const isAdviceRow = (topic: string) => (ADVICE_TOPICS as readonly string[]).includes(topic);
