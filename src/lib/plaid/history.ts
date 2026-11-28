@@ -39,6 +39,8 @@ export type HistoryNote = HeldHistory & {
   // read again from the start.
   cursorMovedAt: string | null;
   rescannedAt: string | null;
+  // Counts of a re-read that was held back (too many rows would have gone), else null.
+  rereadHeld: string | null;
 };
 
 // Links made before the maximum was asked for (#2398) asked for 365 days.
@@ -127,6 +129,7 @@ function parse(row: { metadata: unknown; createdAt: Date }): HistoryNote | null 
     count: typeof m.count === "number" ? m.count : 0,
     cursorMovedAt: text(m.cursorMovedAt),
     rescannedAt: text(m.rescannedAt),
+    rereadHeld: text(m.rereadHeld),
     checkedAt: row.createdAt,
   };
 }
@@ -174,6 +177,7 @@ export async function recordHistory(
     status: string | null;
     cursorMoved: boolean;
     rescanned: boolean;
+    rereadHeld?: string | null;
     previous: HistoryNote | null;
     now: Date;
   },
@@ -188,6 +192,7 @@ export async function recordHistory(
     checkedAt: now,
     cursorMovedAt: after.cursorMoved ? now.toISOString() : (previous?.cursorMovedAt ?? null),
     rescannedAt: after.rescanned ? now.toISOString() : (previous?.rescannedAt ?? null),
+    rereadHeld: after.rereadHeld ?? previous?.rereadHeld ?? null,
   };
   const same =
     previous &&
@@ -196,7 +201,8 @@ export async function recordHistory(
     previous.latest === note.latest &&
     previous.count === note.count &&
     previous.cursorMovedAt === note.cursorMovedAt &&
-    previous.rescannedAt === note.rescannedAt;
+    previous.rescannedAt === note.rescannedAt &&
+    previous.rereadHeld === note.rereadHeld;
   if (same && now.getTime() - previous.checkedAt.getTime() < 20 * 3_600_000) return note;
   await systemDb(WHY, client).auditLog.create({
     data: {
@@ -214,6 +220,7 @@ export async function recordHistory(
         count: note.count,
         cursorMovedAt: note.cursorMovedAt,
         rescannedAt: note.rescannedAt,
+        rereadHeld: note.rereadHeld,
       }),
     },
   });

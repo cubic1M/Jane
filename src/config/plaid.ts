@@ -133,3 +133,11 @@ export const HISTORY_GRACE_HOURS = 24;
 export const HISTORY_RESCAN_AFTER_DAYS = 3;
 // Plaid's last word on a link's history (/transactions/sync's transactions_update_status).
 export const HISTORY_COMPLETE = "HISTORICAL_UPDATE_COMPLETE";
+
+// A read from the start (the one re-read of a short link) removes the rows Plaid no longer lists
+// (src/lib/plaid/reread-removals.ts). Normal churn is a charge reissued under a new id: a few rows.
+// More POSTED rows than this many, or than this share of the link's rows (the larger bound
+// applies), looks like Plaid sending a truncated set: nothing is removed, the saved cursor stays,
+// and the link is flagged on /admin/history.
+export const REREAD_MAX_POSTED_REMOVALS = 5;
+export const REREAD_MAX_POSTED_SHARE = 0.02;

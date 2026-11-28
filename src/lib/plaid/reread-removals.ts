@@ -1,0 +1,134 @@
+import { REREAD_MAX_POSTED_REMOVALS, REREAD_MAX_POSTED_SHARE } from "@/config/plaid";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { personTransaction } from "@/lib/db-scoped";
+
+// A read from an empty cursor lists the Item's whole current set as "added" and carries no
+// "removed" entries; a cursor saved after it skips every removal that happened before it. So a
+// pending hold the bank dropped, or a charge it reissued under a new id, since the last ordinary
+// sync would stay in Jane for good (16 rows held where Plaid lists 14: the walker's proof, #2406).
+//
+// Plaid's docs (https://plaid.com/docs/api/products/transactions/, read 2026-11-28): the cursor
+// field says "If omitted, the entire history of updates will be returned, starting with the
+// first-added transactions on the Item."; pagination says "it's important to pull all available
+// pages"; after TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION "the entire pagination request loop
+// must be restarted". The docs do not say whether `removed` can appear on a call without a cursor
+// (https://plaid.com/docs/transactions/sync-migration/ only calls removals "patches"), so a read
+// from the start is trusted for what it lists, not for what it leaves unsaid.
+//
+// So, once a read from the start has finished (every page read; PlaidDataSource throws on a
+// partial read, and a restart is a whole new read), every row held for the link's accounts from
+// Plaid whose id the set lacks is one Plaid dropped. It goes through deleteRemoved, the code the
+// ordinary sync deletes a "removed" entry with.
+
+type DeleteMany = {
+  deleteMany(args: {
+    where: { plaidTransactionId: { in: string[] }; userId: string };
+  }): PromiseLike<{ count: number }>;
+};
+
+// Deletes rows by Plaid transaction id: the ordinary sync's "removed" entries and the read from
+// the start's dropped rows both come here.
+export async function deleteRemoved(
+  transactions: DeleteMany,
+  userId: string,
+  ids: readonly string[],
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { count } = await transactions.deleteMany({
+    where: { plaidTransactionId: { in: [...ids] }, userId },
+  });
+  return count;
+}
+
+export type RereadOutcome =
+  | { kind: "done"; removed: number; carried: number }
+  | { kind: "held"; posted: number; pending: number; rows: number };
+
+export function postedCap(rows: number): number {
+  return Math.max(REREAD_MAX_POSTED_REMOVALS, Math.floor(rows * REREAD_MAX_POSTED_SHARE));
+}
+
+const EDITED_PLACEMENT = new Set(["edited", "declined"]);
+
+// `listedIds`: every Plaid transaction id the finished read from the start returned. `accountIds`:
+// this link's accounts that read covered. One transaction as the person.
+export async function removeWhatPlaidDropped(
+  userId: string,
+  accountIds: readonly string[],
+  listedIds: ReadonlySet<string>,
+  client?: PrismaClient,
+): Promise<RereadOutcome> {
+  return personTransaction(
+    userId,
+    async (tx): Promise<RereadOutcome> => {
+      const held = await tx.transaction.findMany({
+        where: {
+          userId,
+          accountId: { in: [...accountIds] },
+          source: "plaid",
+          plaidTransactionId: { not: null },
+        },
+        select: {
+          id: true,
+          plaidTransactionId: true,
+          accountId: true,
+          date: true,
+          amountCents: true,
+          pending: true,
+          pfcPrimary: true,
+          pfcDetailed: true,
+          categorySource: true,
+          incomePlacement: true,
+          hsaReceipt: { select: { id: true } },
+          _count: { select: { taxTags: true } },
+        },
+      });
+      const gone = held.filter((r) => !listedIds.has(r.plaidTransactionId!));
+      const posted = gone.filter((r) => !r.pending);
+      const pending = gone.length - posted.length;
+      if (posted.length > postedCap(held.length)) {
+        return { kind: "held", posted: posted.length, pending, rows: held.length };
+      }
+      const key = (r: { accountId: string; amountCents: number; date: Date }) =>
+        `${r.accountId}|${r.amountCents}|${r.date.toISOString().slice(0, 10)}`;
+      const counterparts = new Map<string, typeof held>();
+      for (const r of held.filter((r) => listedIds.has(r.plaidTransactionId!))) {
+        counterparts.set(key(r), [...(counterparts.get(key(r)) ?? []), r]);
+      }
+      const remove: string[] = [];
+      let carried = 0;
+      for (const r of gone) {
+        const edited =
+          r.categorySource === "user" ||
+          (r.incomePlacement !== null && EDITED_PLACEMENT.has(r.incomePlacement)) ||
+          r.hsaReceipt !== null ||
+          r._count.taxTags > 0;
+        const same = counterparts.get(key(r)) ?? [];
+        // A hold the bank dropped is gone, whatever hangs on it. A posted row the person has
+        // edited, with no row of the same account, amount and day to take its place, stays:
+        // nothing is shown twice, and the edit is not lost to a guess.
+        if (!r.pending && edited && same.length === 0) continue;
+        // A reissued charge: exactly one new row of the same account, amount and day takes the
+        // category the person set, as a posted charge takes it from its pending one.
+        if (r.categorySource === "user" && same.length === 1 && same[0].categorySource !== "user") {
+          const { count } = await tx.transaction.updateMany({
+            where: { id: same[0].id, userId, NOT: { categorySource: "user" } },
+            data: {
+              pfcPrimary: r.pfcPrimary,
+              pfcDetailed: r.pfcDetailed,
+              categorySource: "user",
+            },
+          });
+          carried += count;
+        }
+        remove.push(r.plaidTransactionId!);
+      }
+      return {
+        kind: "done",
+        removed: await deleteRemoved(tx.transaction, userId, remove),
+        carried,
+      };
+    },
+    client,
+  );
+}

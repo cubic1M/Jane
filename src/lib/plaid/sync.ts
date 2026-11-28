@@ -4,6 +4,8 @@ import { recordOpsEvent } from "@/lib/ops-alerts";
 import { scrub } from "@/lib/scrub";
 import { rebuildPastBalances } from "@/lib/plaid/past-balances";
 import { heldHistory, latestNotes, recordHistory, rescanDue } from "@/lib/plaid/history";
+import { deleteRemoved } from "@/lib/plaid/reread-removals";
+import { finishRead, type RereadResult } from "@/lib/plaid/reread-finish";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -284,12 +286,7 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     await db.transactions.deleteMany({
       where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
     });
-  const { count: removed } =
-    sync.removedTransactionIds.length > 0
-      ? await db.transactions.deleteMany({
-          where: { plaidTransactionId: { in: sync.removedTransactionIds } },
-        })
-      : { count: 0 };
+  const removed = await deleteRemoved(db.transactions, db.userId, sync.removedTransactionIds);
   return { added, updated: changed.length, removed };
 }
 
@@ -832,6 +829,7 @@ async function syncItemWork(
   let sync: PlaidSync;
   // Whether the read from the start was done, or refused for good, and so is not to be tried again.
   let rescanSpent = rescan;
+  let readFromStart = false;
   try {
     sync = await (async () => {
       if (!rescan) return new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
@@ -841,7 +839,9 @@ async function syncItemWork(
       // attempt counts, so it is never asked again. Any other failure (a time-out, an outage) goes on
       // from the saved cursor for this run too, but does not count: a later sync tries again.
       try {
-        return await new PlaidDataSource(api, accessToken, null).load();
+        const fromStart = await new PlaidDataSource(api, accessToken, null).load();
+        readFromStart = true;
+        return fromStart;
       } catch (error) {
         const code = plaidErrorCode(error);
         log.warn("Reading a bank again from the start failed; going on from its saved cursor", {
@@ -874,6 +874,13 @@ async function syncItemWork(
     await noteSyncFailure(db, item.id, error, now, client);
     throw error;
   });
+  // A finished read from the start: what Plaid no longer lists goes (src/lib/plaid/reread-finish.ts).
+  let reread: RereadResult | null = null;
+  if (readFromStart) {
+    reread = await finishRead(item.userId, [...accountIds.values()], sync, client);
+    counts.removed += reread.removed;
+    if (reread.spent === false) rescanSpent = false;
+  }
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
   // Not on an empty first batch: Plaid has nothing ready yet, and the chat would open on no data.
@@ -928,11 +935,12 @@ async function syncItemWork(
     }
   }
 
+  const nextCursor = (reread?.keepCursor ? item.transactionsCursor : sync.nextCursor) || null;
   await db.plaidItems.updateMany({
     where: { id: item.id },
     data: {
       // Plaid's empty cursor means it has nothing yet, which isn't a first sync done.
-      transactionsCursor: sync.nextCursor || null,
+      transactionsCursor: nextCursor,
       lastSyncedAt: now,
       status: ITEM_STATUS.active,
       lastErrorCode: null,
@@ -947,8 +955,9 @@ async function syncItemWork(
       item,
       {
         status: sync.updateStatus,
-        cursorMoved: (sync.nextCursor || null) !== item.transactionsCursor,
+        cursorMoved: nextCursor !== item.transactionsCursor,
         rescanned: rescanSpent,
+        rereadHeld: reread?.held ?? null,
         previous: previousNote,
         now,
       },
