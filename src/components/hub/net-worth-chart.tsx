@@ -726,9 +726,11 @@ export function NetWorthChart({
                   // The days under the drag, zoomed into (at least MIN_DAYS), the axis refit.
                   const [i, j] = [indexAt(drag.x), indexAt(e.clientX)].sort((p, q) => p - q);
                   justSelected.current = true;
+                  // A drag at the last day keeps the day before it too.
+                  const from = Math.min(win.from + i, total - MIN_DAYS);
                   zoomTo({
-                    from: win.from + i,
-                    to: Math.min(total - 1, win.from + Math.max(j, i + MIN_DAYS - 1)),
+                    from,
+                    to: Math.min(total - 1, Math.max(win.from + j, from + MIN_DAYS - 1)),
                   });
                 }
                 fingers.current.delete(e.pointerId);

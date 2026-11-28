@@ -128,6 +128,18 @@ describe("the axis labels", () => {
     expect(text.every((t) => /^\$12,\d{3}$/.test(t))).toBe(true);
   });
 
+  it("stays within 3 to 5 labels for awkward ranges", () => {
+    const s = fitScale([1_000_183, 1_001_117]);
+    const ticks = niceTicks(s.lo, s.hi);
+    expect(ticks.length).toBeGreaterThanOrEqual(3);
+    expect(ticks.length).toBeLessThanOrEqual(5);
+    for (let span = 600; span < 4_000_000; span = Math.round(span * 1.37)) {
+      const t = niceTicks(1_000_000, 1_000_000 + span);
+      expect(t.length).toBeGreaterThanOrEqual(3);
+      expect(t.length).toBeLessThanOrEqual(5);
+    }
+  });
+
   it("none for an empty range", () => {
     expect(niceTicks(5, 5)).toEqual([]);
   });

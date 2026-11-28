@@ -66,20 +66,25 @@ export function chartScale(values: readonly number[], width: number, height: num
   return { ...fit, ...scaleAt(fit, values.length, width, height) };
 }
 
-// The axis labels for a range: whole-dollar steps of 1, 2 or 5 times a power of ten, about
+// The axis labels for a range: whole-dollar steps of 1 to 5 times a power of ten, about
 // TICKS_WANTED of them (3 to 5 when the range allows), so the labels differ at every size.
 export function niceTicks(lo: number, hi: number): number[] {
   const dollars = (hi - lo) / 100;
   if (!(dollars > 0)) return [];
   let best: { step: number; count: number } | null = null;
   for (let power = 1; power <= 1e12; power *= 10) {
-    for (const mult of [1, 2, 5]) {
+    for (const mult of [1, 2, 3, 4, 5]) {
       const step = mult * power * 100;
       const count = Math.floor(hi / step) - Math.ceil(lo / step) + 1;
       if (count < 1) continue;
-      if (!best || Math.abs(count - TICKS_WANTED) < Math.abs(best.count - TICKS_WANTED)) {
-        best = { step, count };
-      }
+      // Three to five labels win over any other count; then the closest to TICKS_WANTED.
+      const fits = (n: number) => n >= 3 && n <= 5;
+      const better =
+        !best ||
+        (fits(count) && !fits(best.count)) ||
+        (fits(count) === fits(best.count) &&
+          Math.abs(count - TICKS_WANTED) < Math.abs(best.count - TICKS_WANTED));
+      if (better) best = { step, count };
     }
     if (power * 100 > dollars * 100) break;
   }
